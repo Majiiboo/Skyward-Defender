@@ -159,7 +159,10 @@ Read this first. It replaces the chat history this project grew up in.
    layer in front) is added in battle.gd before _fx and in afk_wallpaper.gd; battle
    feeds aim (drag direction or idle_aim_ang), draw_bank / 0.3, hover, vy; _kick()
    triggers recoil; _muzzle_world() uses the rig muzzle. PilotRig.RIFLE = "rifle_side"
-   (Luna's side view, cut upright). Gear still shows pilot/idle.png. Rudy is playtesting;
+   (Luna's side view, cut upright). Gear still shows pilot/idle.png. Contrast pass: LIFT
+   (parts drawn x1.3), RIM (flat-colour outline via a shader on a layer behind him,
+   4 one-pixel offsets), BACKLIGHT (faint soft_glow), SIZE (x1.12 of PILOT_HEIGHT;
+   visual only, hit size unchanged). Rudy is playtesting;
    then a Luna brief for whatever he notices (likely chunkier legs/arms at reference scale).
    Details:
    tools/cut_pilot_art.gd cuts parts + flames into pilot_rig/ (parts keyed off black

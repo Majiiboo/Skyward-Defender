@@ -35,6 +35,13 @@ const PARTS := {
 const RIFLE := "rifle_side"
 # false = battle and Home go back to the painted PilotSprite.
 const ENABLED := true
+# Contrast on the dark sky (code only, Luna's art untouched): parts drawn a little
+# brighter, a thin cool rim around his outline, a soft light behind him, and a touch
+# bigger than the painted pilot's PILOT_HEIGHT.
+const LIFT := Color(1.3, 1.3, 1.36)
+const RIM := Color(0.42, 0.78, 1.0, 0.6)
+const BACKLIGHT := Color(0.22, 0.5, 1.0, 0.13)
+const SIZE := 1.12
 const KNEE := Vector2(0.5, 0.86)          # knee ball on both thigh pictures
 const NOZZLES := [Vector2(0.145, 0.96), Vector2(0.855, 0.96)]   # on the jetpack picture
 const ORIGIN := Vector2(800, 820)         # reference point drawn at `pos`
@@ -191,7 +198,7 @@ static func _bone(name: String, a: Vector2, b: Vector2) -> Transform2D:
 
 # Transforms here map the part's PIVOT frame (pivot at 0,0, rest orientation) to posed
 # reference px. Draw a part: its picture with the pivot at the origin.
-static func _draw_part(c: CanvasItem, base: Transform2D, xf: Transform2D, name: String, alpha: float, flip_x: bool = false) -> void:
+static func _draw_part(c: CanvasItem, base: Transform2D, xf: Transform2D, name: String, col: Color, flip_x: bool = false) -> void:
 	var tx := tex(name)
 	var sz := size_of(name)
 	var pv: Vector2 = PARTS[name].pv
@@ -199,7 +206,7 @@ static func _draw_part(c: CanvasItem, base: Transform2D, xf: Transform2D, name: 
 	if flip_x:
 		m = m * Transform2D(0.0, Vector2(-1, 1), 0.0, Vector2.ZERO)
 	c.draw_set_transform_matrix(m)
-	c.draw_texture_rect(tx, Rect2(-pv * sz, sz), false, Color(1, 1, 1, alpha))
+	c.draw_texture_rect(tx, Rect2(-pv * sz, sz), false, col)
 
 # reference px -> screen, with the mirror/turn squeeze and the overall tilt
 static func base_xform(r: Rig, pos: Vector2, height: float, tilt: float = 0.0) -> Transform2D:
@@ -216,17 +223,18 @@ const ORDER := ["jetpack", "thigh_r", "thigh_l", "shin_r", "shin_l", "hips", "to
 
 # The solid pilot. Call draw_light() on an additive layer drawn BEHIND him for the
 # flames, and draw_glow() on an additive layer in FRONT for visor light and muzzle flash.
-static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0, alpha: float = 1.0) -> void:
+static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0, alpha: float = 1.0, lift: Color = LIFT) -> void:
 	var base := base_xform(r, pos, height, tilt)
+	var col := Color(lift.r, lift.g, lift.b, alpha)
 	for nm in ORDER:
 		if nm == "shin_r":
-			_draw_part(c, base, X.shin_r, "shin", alpha)
+			_draw_part(c, base, X.shin_r, "shin", col)
 		elif nm == "shin_l":
-			_draw_part(c, base, X.shin_l, "shin", alpha, true)
+			_draw_part(c, base, X.shin_l, "shin", col, true)
 		elif nm == "rifle":
-			_draw_part(c, base, X.rifle, RIFLE, alpha)
+			_draw_part(c, base, X.rifle, RIFLE, col)
 		else:
-			_draw_part(c, base, X[nm], nm, alpha)
+			_draw_part(c, base, X[nm], nm, col)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # ------------------------------------------------------------------ light layers

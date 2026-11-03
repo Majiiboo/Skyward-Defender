@@ -166,6 +166,10 @@ New pilot test (not in the game yet, nothing in battle changed):
 - To go back to the painted pilot: in pilot_rig.gd change "const ENABLED := true" to
   "const ENABLED := false". One line, nothing else to undo. The Gear screen still shows
   the painted pilot picture.
+- Easier to see on the dark sky (Luna's art untouched): his parts are drawn a bit
+  brighter, a thin cool-blue rim traces his outline, a faint blue haze sits behind him,
+  and he is drawn about 12% bigger than before. The numbers are LIFT, RIM, BACKLIGHT
+  and SIZE at the top of pilot_rig.gd.
 - Also fixed: the Home screen logged an error on its very first frame (the base picture
   was drawn a moment before it was loaded). Nothing visible changes.
 - Luna's parts are cut by tools/cut_pilot_art.gd into the pilot_rig folder; the puppet
