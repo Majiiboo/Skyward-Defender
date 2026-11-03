@@ -116,6 +116,10 @@ var turret_levels := {}
 var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
 var _new_mount := -1              # a mount this win just opened (shown on the end screen)
 var _lid_anim := {}               # mount -> seconds into its hatch opening (first run after it opened)
+var game_speed := 1.0             # x1 / x1.5 (after stage 10) / x2 (store pack); saved as "game_speed"
+var _speed_pack := false           # save "speed_pack" (read at stage start)
+var _cards_open := false          # the "your cards" panel is showing (the game is paused meanwhile)
+var _cards_view: Control
 var _xp_gain := 0                 # pilot XP this run (end screen), _xp_bonus of it for a first clear
 var _xp_bonus := 0
 var _level_before := 1
@@ -273,6 +277,10 @@ func _start_stage() -> void:
 	stat_turret_dmg = 0.0
 	var sv := _read_save()
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
+	_speed_pack = bool(sv.get("speed_pack", false))
+	game_speed = float(sv.get("game_speed", 1.0))
+	if not _speeds().has(game_speed):
+		game_speed = 1.0
 	# a mount opened since the last run: its hatch opens before the turret drops in
 	_lid_anim = {}
 	var seen := int(sv.get("mounts_seen", 0))
@@ -383,6 +391,7 @@ func _process(delta: float) -> void:
 		position = Vector2.ZERO
 		queue_redraw()
 		return
+	delta *= game_speed
 	# hit feel: a big kill slows the world for a blink; hits shake the screen a little
 	if hitstop > 0.0:
 		hitstop -= delta
@@ -891,7 +900,7 @@ func _gain_xp(amount: float) -> void:
 		_open_cards()
 
 func _xp_need() -> float:
-	var base := 5.0 + 6.0 * (run_level - 1)   # the first card comes after about 3 kills
+	var base := 4.0 + 3.5 * (run_level - 1)   # the first card after 2 kills, then about one every 12-15 s
 	if run_level > 12:
 		base *= pow(2.0, run_level - 12)   # past the cap, picks keep coming but much slower
 	return base
@@ -1299,6 +1308,19 @@ func _build_ui() -> void:
 		_pause_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	_pause_btn.pressed.connect(_toggle_pause)
 	add_child(_pause_btn)
+	for spec in [[SPEED_RECT, _cycle_speed], [CARDS_RECT, _toggle_cards]]:
+		var hb := Button.new()
+		hb.flat = true
+		hb.focus_mode = Control.FOCUS_NONE
+		hb.position = Rect2(spec[0]).position - Vector2(3, 6)
+		hb.size = Rect2(spec[0]).size + Vector2(6, 12)
+		for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+			hb.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		hb.pressed.connect(spec[1])
+		add_child(hb)
+	_cards_view = Control.new()
+	_cards_view.visible = false
+	add_child(_cards_view)
 	# pause menu: the battle dims behind a panel in the Home style; Back to Hub lives here
 	_pause_panel = Control.new()
 	_pause_panel.size = get_viewport_rect().size
@@ -1338,6 +1360,9 @@ func _build_ui() -> void:
 	add_child(_end_panel)
 
 func _toggle_pause() -> void:
+	if _cards_open:
+		_toggle_cards()
+		return
 	if picking or game_over or stage_cleared:
 		return
 	paused = not paused
@@ -1930,6 +1955,17 @@ func _zigzag(a: Vector2, b: Vector2, seed: int) -> PackedVector2Array:
 # straight part of that outline is the run's XP track; the level hangs under it on a tab.
 const HUD_H := 70.0                  # bar height (its bottom line = XP track)
 const PAUSE_RECT := Rect2(FIELD_W - 50, 10, 36, 30)
+const SPEED_RECT := Rect2(FIELD_W - 92, 10, 36, 30)
+const CARDS_RECT := Rect2(FIELD_W - 134, 10, 36, 30)
+
+# A small chamfered frame like the pause button's (lit when active).
+func _hud_frame(p: Rect2, active: bool) -> void:
+	var cyan := Color(0.18, 0.9, 1.0)
+	var cut := 7.0
+	var frame := PackedVector2Array([p.position + Vector2(cut, 0), Vector2(p.end.x, p.position.y), Vector2(p.end.x, p.end.y - cut),
+		Vector2(p.end.x - cut, p.end.y), Vector2(p.position.x, p.end.y), p.position + Vector2(0, cut), p.position + Vector2(cut, 0)])
+	draw_colored_polygon(frame, Color(cyan, 0.16) if active else Color(0.05, 0.08, 0.16, 0.9))
+	draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
 
 func _hud_bar_points() -> PackedVector2Array:
 	var R := 20.0
@@ -1968,14 +2004,21 @@ func _draw_hud() -> void:
 	draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, name_w, 13, cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
-	draw_string(hud_font, Vector2(PAUSE_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
-	# pause button: a small chamfered frame with two thin bars (a play arrow while paused)
+	draw_string(hud_font, Vector2(CARDS_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	# cards button: three small fanned cards
+	_hud_frame(CARDS_RECT, _cards_open)
+	var cc := CARDS_RECT.get_center()
+	for k in 3:
+		draw_set_transform(cc + Vector2((k - 1) * 4.0, 2.0), (k - 1) * 0.28, Vector2.ONE)
+		draw_rect(Rect2(-5, -8, 10, 14), Color(0.05, 0.08, 0.16))
+		draw_rect(Rect2(-5, -8, 10, 14), Color(0.85, 0.75, 1.0) if k == 1 else Color(cyan, 0.9), false, 1.2)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# game speed
+	_hud_frame(SPEED_RECT, game_speed > 1.0)
+	draw_string(title_font, SPEED_RECT.position + Vector2(0, 20), "x%s" % (str(game_speed) if game_speed != 1.0 else "1"), HORIZONTAL_ALIGNMENT_CENTER, SPEED_RECT.size.x, 11, Color.WHITE if _speeds().size() > 1 else Color(1, 1, 1, 0.5))
+	# pause button: two thin bars (a play arrow while paused)
 	var p := PAUSE_RECT
-	var cut := 7.0
-	var frame := PackedVector2Array([p.position + Vector2(cut, 0), Vector2(p.end.x, p.position.y), Vector2(p.end.x, p.end.y - cut),
-		Vector2(p.end.x - cut, p.end.y), Vector2(p.position.x, p.end.y), p.position + Vector2(0, cut), p.position + Vector2(cut, 0)])
-	draw_colored_polygon(frame, Color(cyan, 0.16) if paused else Color(0.05, 0.08, 0.16, 0.9))
-	draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
+	_hud_frame(p, paused)
 	var pc := p.get_center()
 	if paused:
 		draw_colored_polygon(PackedVector2Array([pc + Vector2(-5, -8), pc + Vector2(8, 0), pc + Vector2(-5, 8)]), Color.WHITE)
@@ -2085,3 +2128,88 @@ func _lid_pic(name: String, p: Vector2, w: float, a: float, anchor_y: float) -> 
 	var tx: Texture2D = _tex[name]
 	var h: float = w * tx.get_height() / tx.get_width()
 	draw_texture_rect(tx, Rect2(p.x - w * 0.5, p.y - h * anchor_y, w, h), false, Color(1, 1, 1, a))
+
+# ------------------------------------------------------------------ speed and cards view
+
+# Game speeds the player has: x1 always, x1.5 once stage 10 is cleared, x2 with the
+# speed pack (a store item, save "speed_pack").
+func _speeds() -> Array:
+	var s := [1.0]
+	if stage_unlocked > 10:
+		s.append(1.5)
+	if _speed_pack:
+		s.append(2.0)
+	return s
+
+func _cycle_speed() -> void:
+	var s := _speeds()
+	if s.size() == 1:
+		_float_text(Vector2(FIELD_W - 120, HUD_H + 40), "x1.5 unlocks after stage 10", Color(0.75, 0.82, 0.92))
+		return
+	var i := s.find(game_speed)
+	game_speed = s[(i + 1) % s.size()]
+	_write_save({"game_speed": game_speed})
+	queue_redraw()
+
+# "Your cards": every card picked this run with its picture and level. Pauses the game.
+func _toggle_cards() -> void:
+	if picking or game_over or stage_cleared or (paused and not _cards_open):
+		return
+	_cards_open = not _cards_open
+	paused = _cards_open
+	dragging = false
+	drag_id = -1
+	for c in _cards_view.get_children():
+		c.queue_free()
+	_cards_view.visible = _cards_open
+	if not _cards_open:
+		queue_redraw()
+		return
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.04, 0.6)
+	dim.size = get_viewport_rect().size
+	dim.gui_input.connect(func(ev): if ev is InputEventMouseButton and ev.pressed: _toggle_cards())
+	_cards_view.add_child(dim)
+	var box := UIKit.panel(16)
+	box.position = Vector2(24, HUD_H + 40)
+	box.custom_minimum_size = Vector2(FIELD_W - 48, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	var title := UIKit.label("YOUR CARDS", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", title_font)
+	v.add_child(title)
+	if card_levels.is_empty():
+		v.add_child(UIKit.label("No cards yet. Collect gems to level up!", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for id in card_levels:
+		var def: Dictionary = Cards.CARDS[id]
+		var cell := VBoxContainer.new()
+		cell.custom_minimum_size = Vector2(92, 0)
+		var pic := TextureRect.new()
+		var pp := "res://cards/pic_%s.png" % id
+		pic.texture = load(pp) if ResourceLoader.exists(pp) else Icons.get_icon(def.icon)
+		if id == "nova_burst":
+			var add := CanvasItemMaterial.new()
+			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
+			pic.material = add
+		pic.custom_minimum_size = Vector2(0, 56)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		cell.add_child(pic)
+		var nl := UIKit.label(def.name, 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cell.add_child(nl)
+		cell.add_child(UIKit.label("Lv.%d / %d" % [int(card_levels[id]), int(def.max)], 10, Cards.COLOR[def.rarity], HORIZONTAL_ALIGNMENT_CENTER))
+		grid.add_child(cell)
+	v.add_child(grid)
+	var close := UIKit.gold_button("Back to battle")
+	close.custom_minimum_size = Vector2(0, 42)
+	close.pressed.connect(_toggle_cards)
+	v.add_child(close)
+	box.add_child(v)
+	_cards_view.add_child(box)
+	box.modulate.a = 0.0
+	box.create_tween().tween_property(box, "modulate:a", 1.0, 0.15)

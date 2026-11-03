@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev92 (version/code=92 and version/name="1.0-dev92" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev93 (version/code=93 and version/name="1.0-dev93" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev93: game speed, your cards, more cards
+
+- Game speed button in the battle top bar: x1, x1.5 once you have cleared stage 10,
+  x2 for a store pack later. Your choice is remembered.
+- "Your cards" button next to it: pauses and shows every card you picked this run with
+  its picture and level.
+- Power cards come more often: about 3-4 in an early stage, 6-7 in stages 6-10 (it was
+  2-3 and 4-5). Tested: a normal player still wins stages 1-9 most of the time; stage 10
+  (the Hive Mother) still asks for an upgraded Sentry.
 
 ## dev92: hatches, hearts, Home chest and drone
 
