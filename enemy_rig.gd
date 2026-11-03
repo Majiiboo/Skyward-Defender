@@ -5,13 +5,16 @@ extends RefCounted
 # (one painted wing, mirrored for the left). The Hive Mother adds egg sacs and
 # claws. Anchors are 0..1 across the body image.
 
+# Luna's 3D bugs (dev87): bodies seen from above with the head pointing DOWN, wings
+# hinged at the shoulders behind the head and swept back (up) at rest. "sac" and
+# "muzzle" are the Spitter's goo sac (on its back, top) and mouth (bottom).
 const PARTS := {
-	"scout":   {"hinge_l": Vector2(0.44, 0.34), "hinge_r": Vector2(0.56, 0.34), "wing_scale": 0.62, "flap": 50.0, "amp": 0.55, "rest": -0.35},
-	"drifter": {"hinge_l": Vector2(0.45, 0.34), "hinge_r": Vector2(0.55, 0.34), "wing_scale": 0.95, "flap": 30.0, "amp": 0.40, "rest": -0.20},
-	"spitter": {"hinge_l": Vector2(0.40, 0.28), "hinge_r": Vector2(0.60, 0.28), "wing_scale": 0.75, "flap": 42.0, "amp": 0.50, "rest": -0.30,
-		"sac": Vector2(0.5, 0.70), "muzzle": Vector2(0.5, 0.88)},
-	"diver":   {"hinge_l": Vector2(0.44, 0.30), "hinge_r": Vector2(0.56, 0.30), "wing_scale": 0.65, "flap": 46.0, "amp": 0.45, "rest": -0.25},
-	"hive_mother": {"hinge_l": Vector2(0.24, 0.36), "hinge_r": Vector2(0.76, 0.36), "wing_scale": 1.1, "flap": 7.0, "amp": 0.30, "rest": -0.15},
+	"scout":   {"hinge_l": Vector2(0.36, 0.62), "hinge_r": Vector2(0.64, 0.62), "wing_scale": 0.42, "flap": 50.0, "amp": 0.45, "rest": 0.55},
+	"drifter": {"hinge_l": Vector2(0.30, 0.55), "hinge_r": Vector2(0.70, 0.55), "wing_scale": 0.62, "flap": 30.0, "amp": 0.35, "rest": 0.45},
+	"spitter": {"hinge_l": Vector2(0.32, 0.62), "hinge_r": Vector2(0.68, 0.62), "wing_scale": 0.50, "flap": 42.0, "amp": 0.40, "rest": 0.55,
+		"sac": Vector2(0.5, 0.16), "muzzle": Vector2(0.5, 0.97)},
+	"diver":   {"hinge_l": Vector2(0.36, 0.66), "hinge_r": Vector2(0.64, 0.66), "wing_scale": 0.50, "flap": 46.0, "amp": 0.40, "rest": 0.75},
+	"hive_mother": {"hinge_l": Vector2(0.24, 0.52), "hinge_r": Vector2(0.76, 0.52), "wing_scale": 0.95, "flap": 7.0, "amp": 0.25, "rest": 0.40},
 }
 static var _tex := {}
 const WING_BLUR := [0.55, 0.42, 0.3]   # alpha of each motion-blur copy of a beating wing
@@ -83,11 +86,12 @@ static func draw_hive_mother(c: CanvasItem, pos: Vector2, size: float, t: float,
 	var hr := pos + Vector2(float(p.hinge_r.x) - 0.5, float(p.hinge_r.y) - 0.5) * bsz
 	_draw_tex(c, wing, hr, s * float(p.wing_scale), -flap, Vector2(0.02, 0.5), false)
 	_draw_tex(c, wing, hl, s * float(p.wing_scale), flap, Vector2(0.02, 0.5), true)
-	# claws sway slightly, hinged at the shoulders
-	var sway := sin(t * 1.7) * 0.08
-	_draw_tex(c, _t("hive_claw_l"), pos + Vector2(-0.44, 0.1) * bsz, s * 0.9, -0.1 + sway, Vector2(0.75, 0.1))
-	_draw_tex(c, _t("hive_claw_r"), pos + Vector2(0.44, 0.1) * bsz, s * 0.9, 0.1 - sway, Vector2(0.25, 0.1))
-	# egg sacs under the belly: breathe, swell before the burst, deflated after
+	# claws reach forward from under the head and sway, hinged at their elbows
+	var sway := sin(t * 1.7) * 0.10
+	_draw_tex(c, _t("hive_claw_l"), pos + Vector2(-0.28, 0.30) * bsz, s * 0.75, 0.15 + sway, Vector2(0.80, 0.12))
+	_draw_tex(c, _t("hive_claw_r"), pos + Vector2(0.28, 0.30) * bsz, s * 0.75, -0.15 - sway, Vector2(0.20, 0.12))
+	_draw_tex(c, body, pos, s, 0.0, Vector2(0.5, 0.5))
+	# egg sacs on her back (top): breathe, swell before the burst, deflated after
 	# Full and empty sacs cross-fade around the burst, and the size eases between
 	# phases, so nothing pops.
 	var sac_scale: float = 1.0 + 0.04 * sin(t * 2.2)
@@ -100,20 +104,19 @@ static func draw_hive_mother(c: CanvasItem, pos: Vector2, size: float, t: float,
 		else:
 			sac_scale = lerpf(1.35, 0.85, smoothstep(1.8, 1.5, lay)) + 0.15 * smoothstep(1.2, 0.0, lay)
 		empty_a = smoothstep(2.0, 1.6, lay) * smoothstep(0.0, 0.3, lay)
-	var sac_pos := pos + Vector2(0.0, 0.46) * bsz
+	var sac_pos := pos + Vector2(0.0, -0.24) * bsz
 	if empty_a < 1.0:
-		_draw_tex(c, _t("hive_sacs_full"), sac_pos, s * 0.95 * sac_scale, 0.0, Vector2(0.5, 0.15), false, 1.0 - empty_a)
+		_draw_tex(c, _t("hive_sacs_full"), sac_pos, s * 0.66 * sac_scale, 0.0, Vector2(0.5, 0.80), false, 1.0 - empty_a)
 	if empty_a > 0.0:
-		_draw_tex(c, _t("hive_sacs_empty"), sac_pos, s * 0.95 * sac_scale, 0.0, Vector2(0.5, 0.15), false, empty_a)
+		_draw_tex(c, _t("hive_sacs_empty"), sac_pos, s * 0.66 * sac_scale, 0.0, Vector2(0.5, 0.80), false, empty_a)
 	if lay > 1.8 and lay < 2.2:
 		# the burst: purple splash around the sacs
 		var k := (2.2 - lay) / 0.4
-		var centre := pos + Vector2(0.0, 0.7) * bsz
+		var centre := pos + Vector2(0.0, -0.40) * bsz
 		for i in 8:
 			var a := TAU * float(i) / 8.0 + k
 			c.draw_line(centre, centre + Vector2(cos(a), sin(a)) * (20.0 + 50.0 * k) * s, Color(0.8, 0.5, 1.0, (1.0 - k) * 0.8), 3.0 * s, true)
 		c.draw_circle(centre, (14.0 + 30.0 * k) * s, Color(0.7, 0.4, 1.0, (1.0 - k) * 0.35))
-	_draw_tex(c, body, pos, s, 0.0, Vector2(0.5, 0.5))
 	if cracked:
 		# phase 2: cracks and sparks on the armour
 		for i in 4:

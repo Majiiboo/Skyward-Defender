@@ -738,14 +738,14 @@ func _update_enemies(delta: float) -> void:
 					# the sac bursts: scouts crawl out of it, unfold, then fly
 					e.hatched = true
 					for k in (4 if e.hp < e.hp_max * 0.5 else 3):
-						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 22.0, 46.0),
+						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 22.0, -30.0),
 							"hp": 2.0 * StageData.hp_mult(stage, elite), "hp_max": 2.0 * StageData.hp_mult(stage, elite),
 							"speed": 62.0 * StageData.speed_mult(stage), "r": 13.6, "ph": rng.randf() * TAU,
-							"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 40.0, -30.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
+							"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 45.0, -70.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
 							"hatchling": true, "fold": 1.0}
 						next_enemy_id += 1
 						live.append(s)
-					_burst(e.pos + Vector2(0, 46), 22.0, Color(0.71, 0.55, 1.0), 12)
+					_burst(e.pos + Vector2(0, -32), 22.0, Color(0.71, 0.55, 1.0), 12)   # the sacs on her back burst
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# tilt and wing fold ease toward their targets so dives and hatches never snap
 		e.tilt_s = lerp_angle(float(e.get("tilt_s", _enemy_tilt(e))), _enemy_tilt(e), minf(1.0, delta * 10.0))

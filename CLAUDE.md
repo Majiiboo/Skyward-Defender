@@ -13,7 +13,7 @@ Read this first. It replaces the chat history this project grew up in.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev87 (code 87).
+  go UP every package (same signing key, install-over). Current: dev88 (code 88).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -210,6 +210,11 @@ Read this first. It replaces the chat history this project grew up in.
    cleared to open mount i (save stage_unlocked > N); battle mounts only open mounts
    and draws Backdrop.draw_socket_lock on closed ones; Gear/Home follow; Deploy Sentry
    card removed (turret_mult gone). Pilot level still unlocks turret TYPES.
+11f. 3D BUGS (dev88): tools/cut_bug_art.gd cuts art_src/dev87 (bug_*.webp, hive_mother_pieces,
+   bug_wings) into enemies/parts; EnemyRig.PARTS re-tuned for head-down bodies (rest > 0
+   sweeps wings back); Hive Mother sacs on her back (sac_pos -0.24, pivot 0.5,0.80),
+   claws at the front, hatchlings spawn from her back. hive_hatchling.png is still the old
+   2D art (cross-fades into the new Scout).
 11e. ENEMY ROLES (done dev87): Diver states fly -> aim (0.6 s, e.target on the dome, red
    dashed line) -> dive (e.dive_v = speed x dive_mult 2.0; e.vel is re-measured every frame,
    never store motion in it) -> base_dmg 13, ignores the pilot (feint removed). Drifter
