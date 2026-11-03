@@ -106,6 +106,9 @@ var hitstop := 0.0                # a moment of slow motion after a big kill (s)
 var bullets: Array = []
 var enemy_bullets: Array = []
 var enemies: Array = []
+var spawned: Array = []            # enemies born this frame (spore pods), joined after the enemy update
+var _seen: Array = []              # enemy types this player has met (save "seen_enemies")
+var _intro := {}                  # the "new enemy" card showing now: {id, t}
 var gems: Array = []
 var turrets: Array = []           # {type, lvl, pos, cd, fire_t, ang, flip, charge, build, bolt}
 var turret_loadout: Array = []    # from the save: turret id (or "") per mount
@@ -172,6 +175,8 @@ func _ready() -> void:
 	_stars = Backdrop.make_stars(90, 11)
 	_city = Backdrop.make_city(44, 7)
 	for id in StageData.ENEMIES:
+		if String(StageData.ENEMIES[id].tex) == "":
+			continue   # drawn in code (spore pods)
 		_tex[id + "_up"] = load("res://enemies/%s_up.png" % id)
 		_tex[id + "_down"] = load("res://enemies/%s_down.png" % id)
 	for id in Turrets.TURRETS:
@@ -251,6 +256,9 @@ func _start_stage() -> void:
 	magnet_radius = MAGNET_BASE
 	magnet_level = 0
 	bullets.clear(); enemy_bullets.clear(); enemies.clear(); gems.clear(); turrets.clear()
+	spawned.clear()
+	_seen = Array(_read_save().get("seen_enemies", []))
+	_intro = {}
 	sparks.clear(); rings.clear(); floaters.clear()
 	drones.clear()
 	fxs.clear()
@@ -290,17 +298,30 @@ func _start_wave() -> void:
 	_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 
 func _spawn(id: String) -> void:
+	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
+	if id == "hive_mother":
+		e.pos = Vector2(FIELD_W * 0.5, 40.0)
+		_boss_bar_max = e.hp_max
+	_meet(id)
+	enemies.append(e)
+
+# The first time a player meets a bug type, a small card says what it does.
+func _meet(id: String) -> void:
+	if _seen.has(id) or String(StageData.ENEMIES[id].get("intro", "")) == "":
+		return
+	_seen.append(id)
+	_write_save({"seen_enemies": _seen})
+	_intro = {"id": id, "t": 0.0}
+
+func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
-	var e := {"id": next_enemy_id, "type": id, "pos": Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0),
+	var e := {"id": next_enemy_id, "type": id, "pos": pos,
 		"hp": float(def.hp) * StageData.hp_mult(stage, elite), "hp_max": float(def.hp) * StageData.hp_mult(stage, elite),
 		"speed": float(def.speed) * StageData.speed_mult(stage), "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
-	if id == "hive_mother":
-		e.pos = Vector2(FIELD_W * 0.5, 40.0)
-		_boss_bar_max = e.hp_max
 	next_enemy_id += 1
-	enemies.append(e)
+	return e
 
 # ------------------------------------------------------------------ input
 
@@ -353,6 +374,10 @@ func _process(delta: float) -> void:
 	position = Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
+	if not _intro.is_empty():
+		_intro.t += delta
+		if _intro.t > 4.0:
+			_intro = {}
 	inv_t = maxf(inv_t - delta, 0.0)
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
@@ -658,38 +683,30 @@ func _update_enemies(delta: float) -> void:
 					for k in 4:
 						sparks.append({"pos": mouth, "vel": dir.rotated(rng.randf_range(-0.8, 0.8)) * rng.randf_range(30, 80), "life": 0.3, "col": Color(0.75, 0.4, 1.0)})
 			"dive":
+				# Kamikaze on the base (Rudy): flies in, stops to lock on (wings fold, a red line
+				# shows where it will hit), then dives at the dome about twice as fast as other
+				# bugs. It ignores the pilot. Shoot it during the dive or it hits the shield hard.
 				if e.state == "fly":
-					e.pos.y += e.speed * 0.8 * delta
+					e.pos.y += e.speed * 1.3 * delta
 					e.pos.x += sin(e.t * 1.2 + e.ph) * 30.0 * delta
-					if e.pos.y > FIELD_H * 0.22 and absf(e.pos.x - soldier_pos.x) < 70.0 and soldier_pos.y > e.pos.y:
-						e.vel = (soldier_pos - e.pos).normalized()
-						if hive_brains and not e.get("feinted", false) and rng.randf() < 0.6:
-							# a feint: a short lunge, then it pulls back up and comes again
-							e.feinted = true
-							e.state = "feint"
-							stat_feints += 1
-							e.t_state = 0.0
-							e.feint_dir = -1.0 if e.vel.x > 0.0 else 1.0
-							e.vel *= e.speed * 2.6
-						else:
-							e.state = "dive"
-							e.vel *= e.speed * 3.4
-				elif e.state == "feint":
+					if e.pos.y > FIELD_H * float(e.get("lock_y", 0.24)):
+						e.state = "aim"
+						e.t_state = 0.0
+						e.target = Vector2(clampf(e.pos.x + rng.randf_range(-110.0, 110.0), FIELD_W * 0.18, FIELD_W * 0.82), BASE_Y - DOME_RY * 0.85)
+				elif e.state == "aim":
 					e.t_state += delta
-					if e.t_state < 0.3:
-						e.pos += e.vel * delta
-					else:
-						# pull up and slide aside, then fly on as before
-						e.pos += Vector2(float(e.feint_dir) * 70.0, -e.speed * 1.6) * delta * clampf(1.0 - (e.t_state - 0.3) / 0.7, 0.0, 1.0)
-						if e.t_state > 1.0:
-							e.state = "fly"
+					e.pos.y += 6.0 * delta   # hangs in the air while it locks on
+					if e.t_state > 0.6:
+						e.state = "dive"
+						# own field: e.vel is re-measured from movement every frame below
+						e.dive_v = (Vector2(e.target) - e.pos).normalized() * e.speed * float(def.dive_mult)
 				else:
-					e.pos += e.vel * delta
-					if e.pos.distance_to(soldier_pos) < 22.0:
-						if inv_t <= 0.0:
-							stat_hit_diver += 1
-						_hurt_pilot()
-						e.hp = 0.0
+					e.pos += Vector2(e.dive_v) * delta
+			"spore":
+				# a Drifter's spore pod: pops out, then sinks slowly toward the base, swaying
+				e.vel.y = move_toward(float(e.vel.y), e.speed, 120.0 * delta)
+				e.vel.x = float(e.vel.x) * exp(-2.0 * delta)
+				e.pos += e.vel * delta + Vector2(sin(e.t * 2.3 + e.ph) * 14.0 * delta, 0.0)
 			"boss":
 				var enraged: bool = e.hp < e.hp_max * 0.5
 				var hover_y := 165.0 + (90.0 if enraged else 0.0)
@@ -700,6 +717,15 @@ func _update_enemies(delta: float) -> void:
 					if enraged and absf(soldier_pos.x - e.pos.x) < 60.0:
 						want_x += 120.0 * (1.0 if e.pos.x < FIELD_W * 0.5 else -1.0)
 					e.pos.x = lerpf(e.pos.x, want_x, delta * (1.5 if enraged else 0.9))
+				# angry: now and then she launches a Diver from her back
+				if enraged and e.pos.y >= 160.0:
+					e.launch_t = float(e.get("launch_t", 2.0)) - delta
+					if e.launch_t <= 0.0:
+						e.launch_t = float(def.launch_every)
+						var d := _make_enemy("diver", e.pos + Vector2(rng.randf_range(-30.0, 30.0), -10.0))
+						d.lock_y = (e.pos.y + 60.0) / FIELD_H
+						live.append(d)
+						_burst(e.pos, 16.0, Color(1.0, 0.75, 0.3), 6)
 				if e.laying > 0.0:
 					e.laying -= delta
 				else:
@@ -731,13 +757,18 @@ func _update_enemies(delta: float) -> void:
 			_kill(e)
 			continue
 		if e.type != "hive_mother" and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
-			_hurt_base({"scout": 10.0, "drifter": 13.0, "spitter": 14.0, "diver": 10.0}.get(e.type, 10.0))
-			_burst(e.pos, 14.0, Color(0.18, 0.9, 1.0), 10)
+			_hurt_base(float(def.get("base_dmg", 10.0)))
+			if e.type == "diver":
+				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
+				shake = maxf(shake, 0.55)
+			else:
+				_burst(e.pos, 14.0, Color(0.18, 0.9, 1.0), 10)
 			continue
 		if e.pos.y > FIELD_H + 40.0 or e.pos.x < -60.0 or e.pos.x > FIELD_W + 60.0:
 			continue
 		live.append(e)
-	enemies = live
+	enemies = live + spawned
+	spawned.clear()
 
 # Spitters watch incoming bolts and sometimes sidestep one about to hit. The
 # chance grows with the stage so early stages stay gentle.
@@ -766,19 +797,19 @@ func _spitter_dodge(e: Dictionary, delta: float) -> void:
 		return
 
 func _lunging(e: Dictionary) -> bool:
-	return e.type == "diver" and (e.state == "dive" or (e.state == "feint" and float(e.get("t_state", 1.0)) < 0.3))
+	return e.type == "diver" and (e.state == "dive" or e.state == "aim")
 
 # The tilt an enemy wants this frame; drawing uses e.tilt_s, which eases toward it.
 func _enemy_tilt(e: Dictionary) -> float:
 	if _lunging(e):
-		return e.vel.angle() + PI / 2.0
+		return (Vector2(e.target) - e.pos).angle() + PI / 2.0 if e.has("target") else e.vel.angle() + PI / 2.0
 	if e.type == "hive_mother":
 		return 0.0
 	return clampf(e.vel.x * 0.004, -0.35, 0.35) + sin(e.t * 6.0 + e.ph) * 0.05
 
 func _kill(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
-	var worth: int = 100 if e.type != "hive_mother" else 1500
+	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
 	kills += 1
 	coins_earned += int(def.coins)
@@ -789,10 +820,17 @@ func _kill(e: Dictionary) -> void:
 	elif int(def.xp_tier) >= 1:
 		hitstop = maxf(hitstop, 0.05)
 	_float_text(e.pos, "+%d" % worth, Color(1.0, 0.85, 0.4))
+	# a Drifter bursts into spore pods that drift down at the base
+	for k in int(def.get("spores", 0)):
+		var pod := _make_enemy("spore", e.pos)
+		pod.vel = Vector2(rng.randf_range(-70.0, 70.0), rng.randf_range(-70.0, -30.0))
+		spawned.append(pod)
 	var tier: int = int(def.xp_tier)
 	var count: int = 1
 	if e.type == "hive_mother":
 		count = 6
+	if tier < 0:
+		count = 0
 	for i in count:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-16, 16), rng.randf_range(-10, 10)), "tier": tier, "life": 16.0,
 			"vel": Vector2(rng.randf_range(-30, 30), rng.randf_range(-60, -20))})
@@ -1535,6 +1573,25 @@ func _draw() -> void:
 
 func _draw_enemy(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
+	if e.type == "spore":
+		# spore pod (code-drawn until it has art): a glowing purple seed that pulses
+		var pr: float = float(def.size) * 0.5 * (1.0 + 0.08 * sin(e.t * 7.0 + e.ph))
+		draw_circle(e.pos, pr * 2.0, Color(0.7, 0.35, 1.0, 0.14))
+		draw_circle(e.pos, pr, Color(0.42, 0.16, 0.62))
+		draw_circle(e.pos + Vector2(-pr * 0.3, -pr * 0.3), pr * 0.45, Color(0.85, 0.6, 1.0, 0.8))
+		return
+	if e.type == "diver" and (e.state == "aim" or e.state == "dive") and e.has("target"):
+		# the lock-on: a red dashed line to where it will hit, brightening until it dives
+		var la: float = clampf(float(e.get("t_state", 0.0)) / 0.6, 0.0, 1.0) if e.state == "aim" else 0.35
+		var tgt: Vector2 = e.target
+		var seg: Vector2 = tgt - e.pos
+		var n := int(seg.length() / 14.0)
+		for k in n:
+			if k % 2 == 0:
+				draw_line(e.pos + seg * (float(k) / n), e.pos + seg * (float(k + 1) / n), Color(1.0, 0.3, 0.3, 0.55 * la), 1.2, true)
+		draw_set_transform(tgt, 0.0, Vector2(1.0, 0.4))
+		draw_arc(Vector2.ZERO, 10.0 + 4.0 * sin(time_alive * 10.0), 0.0, TAU, 20, Color(1.0, 0.3, 0.3, 0.7 * la), 1.2, true)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	var size: float = float(def.size) * 1.35
 	var ang: float = float(e.get("tilt_s", _enemy_tilt(e)))
 	var fold: float = float(e.get("fold", 0.0))
@@ -1915,3 +1972,28 @@ func _draw_hud() -> void:
 			draw_rect(Rect2(br.position, Vector2(bw * clampf(e.hp / e.hp_max, 0.0, 1.0), 6)), Color(0.85, 0.35, 0.9))
 			draw_rect(br, Color(0.9, 0.7, 1.0, 0.6), false, 1.0)
 			draw_string(title_font, Vector2(FIELD_W * 0.5 - 100, by - 6), "HIVE MOTHER", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.9, 0.7, 1.0))
+	_draw_intro()
+
+# "NEW ENEMY" card under the top bar, the first time a player meets a bug type. It
+# slides in, stays a few seconds and fades; the game keeps running behind it.
+func _draw_intro() -> void:
+	if _intro.is_empty():
+		return
+	var t: float = _intro.t
+	var a: float = smoothstep(0.0, 0.25, t) * (1.0 - smoothstep(3.5, 4.0, t))
+	var id: String = _intro.id
+	var r := Rect2(FIELD_W * 0.5 - 160.0, HUD_H + 34.0 - 10.0 * (1.0 - smoothstep(0.0, 0.25, t)), 320.0, 74.0)
+	var cut := 10.0
+	var frame := PackedVector2Array([r.position + Vector2(cut, 0), Vector2(r.end.x, r.position.y), Vector2(r.end.x, r.end.y - cut),
+		Vector2(r.end.x - cut, r.end.y), Vector2(r.position.x, r.end.y), r.position + Vector2(0, cut), r.position + Vector2(cut, 0)])
+	draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.88 * a))
+	draw_polyline(frame, Color(1.0, 0.55, 0.35, 0.8 * a), 1.2, true)
+	# the bug itself, small, on the left
+	var icon := r.position + Vector2(38.0, 37.0)
+	if id == "hive_mother":
+		EnemyRig.draw_hive_mother(self, icon, 26.0, time_alive, 0.0, false)
+	else:
+		EnemyRig.draw_bug(self, id, icon, 46.0, time_alive, 0.0, 0.0, 0.0, 1.0, a)
+	draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
+	draw_string(hud_font, r.position + Vector2(76.0, 38.0), id.replace("_", " ").capitalize(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
+	draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), String(StageData.ENEMIES[id].intro), HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))

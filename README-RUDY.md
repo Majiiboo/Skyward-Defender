@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Source package v24, build 1.0-dev86 (version/code=86 and version/name="1.0-dev86" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key; 86 is above 85. The next build after this must be 87 or higher.
+Build 1.0-dev87 (version/code=87 and version/name="1.0-dev87" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -141,7 +141,7 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
-## Next build (not packaged yet; will be dev87)
+## dev87 (pushed to GitHub; Luna packages it)
 
 Sentry: a floating gun head (your idea):
 - The gun head now floats a few pixels above its ring base instead of sitting on it,
@@ -153,6 +153,22 @@ Sentry: a floating gun head (your idea):
 - The socket ring under the Sentry glows softer than under the other turrets, so its
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
+
+Each bug has its own job now (Rudy):
+- Diver = kamikaze on the base. It flies in, stops for a moment to lock on (its wings
+  fold and a red dashed line shows where it will hit), then dives at the shield about
+  twice as fast as other bugs. It hits harder (13 instead of 10) with a bigger blast and a
+  little shake. It no longer goes for the pilot. Shoot it during the dive.
+- Drifter = the tank: takes 4 hits instead of 3, and when it dies it bursts into a
+  small purple spore pod that sinks slowly toward the base. The pod chips the shield
+  (4) unless you shoot it (one hit).
+- Spitter = the shooter: still the one bug that attacks the pilot.
+- Scout = the swarm, as before.
+- Hive Mother: when she is angry (below half health) she launches a Diver from her
+  back every 7 seconds.
+- The first time you meet each bug, a "NEW ENEMY" card slides in under the top bar for
+  a few seconds with what it does. The game remembers which ones you have seen.
+- All in stage_data.gd ENEMIES (base_dmg, spores, dive_mult, launch_every, intro).
 
 Pilot levels (Rudy):
 - Levels 2-5 now come fast: a player who clears each of stages 1-5 once is pilot level

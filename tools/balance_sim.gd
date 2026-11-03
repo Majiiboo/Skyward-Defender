@@ -90,6 +90,10 @@ func _next() -> void:
 	cur = queue.pop_front()
 	_write_save(cur[0])
 	b = load("res://battle.tscn").instantiate()
+	if b.get_script() == null or not b.has_method("_start_stage"):
+		push_error("balance_sim: battle.gd failed to load (script error), stopping")
+		quit(1)
+		return
 	root.add_child(b)
 	b.set_process(false)
 	b.set_process_input(false)

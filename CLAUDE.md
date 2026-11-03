@@ -13,8 +13,10 @@ Read this first. It replaces the chat history this project grew up in.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev86 (code 86).
-  Rudy prefers batched updates: many fixes, one bump, one package.
+  go UP every package (same signing key, install-over). Current: dev87 (code 87).
+  Rudy (2026-11-03): work through the queue item by item; after EACH finished item
+  commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
+  current batch if small, otherwise queue and say so.
 - Update README-RUDY.md with a short plain-English changelog each build.
 - Don't copy the reference game "Galaxy Defense" (art, names, turret types).
 - Fonts: Exo 2 everywhere (project.godot gui/theme/custom_font), Orbitron only for the
@@ -208,6 +210,16 @@ Read this first. It replaces the chat history this project grew up in.
    cleared to open mount i (save stage_unlocked > N); battle mounts only open mounts
    and draws Backdrop.draw_socket_lock on closed ones; Gear/Home follow; Deploy Sentry
    card removed (turret_mult gone). Pilot level still unlocks turret TYPES.
+11e. ENEMY ROLES (done dev87): Diver states fly -> aim (0.6 s, e.target on the dome, red
+   dashed line) -> dive (e.dive_v = speed x dive_mult 2.0; e.vel is re-measured every frame,
+   never store motion in it) -> base_dmg 13, ignores the pilot (feint removed). Drifter
+   hp 4, "spores": 1 -> "spore" enemies (code-drawn, move "spore",
+   no gem, base_dmg 5) via battle.spawned. Hive Mother launches Divers when enraged
+   (launch_every 7). _meet() shows the NEW ENEMY card (save "seen_enemies").
+   Luna round 3 art (all usable) is in Downloads: hive-mother-pieces, bug-wings-single,
+   locked-socket-lid-only, icons-badge-padlock; plus round 2 (bugs top-down organic
+   3D singles, 6 backgrounds, bolt/goo, icons, quad drone, chest lid) and round 1
+   (cards, gems, impact, nova, hive zone A #915d, chest). NOT yet in the game.
 11d. LUNA-BRIEF-dev87.md (2026-11-03): the art list for this batch, in order: backgrounds,
    power card pictures (cards.gd "icon" still borrows nav icons), gems/bolt/impact/goo,
    locked socket shutter (3 frames), Home Chest/Patrol as layers, UI icons, pilot

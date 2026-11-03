@@ -27,18 +27,30 @@ static func stage_name(stage: int) -> String:
 	return s.stages[(stage - 1) % 5]
 
 # ---- enemies: how each one looks and behaves. "move" is handled in battle.gd. ----
-# hp/coins are stage-1 values; xp_tier 0..3 = shard/prism/ember/star (1/3/6/10 XP).
+# hp/coins are stage-1 values; xp_tier 0..3 = shard/prism/ember/star (1/3/6/10 XP), -1 = no gem.
+# base_dmg = what it does to the shield/hull if it reaches the base. intro = the line on
+# the "new enemy" card the first time a player meets it (empty = no card).
+# Roles (Rudy, 2026-11-03): Scout = the swarm, Drifter = the tank that bursts into spores,
+# Spitter = the shooter (the one bug that attacks the pilot), Diver = kamikaze on the base.
 const ENEMIES := {
 	"scout":   {"tex": "res://enemies/scout.png",   "size": 34.0, "hp": 2.0, "speed": 62.0, "move": "flit",
-		"xp_tier": 0, "coins": 1, "traits": ["swarm"]},
-	"drifter": {"tex": "res://enemies/drifter.png", "size": 44.0, "hp": 3.0, "speed": 48.0, "move": "scurve",
-		"xp_tier": 0, "coins": 1, "traits": ["swarm", "fast"]},
+		"xp_tier": 0, "coins": 1, "traits": ["swarm"], "base_dmg": 10.0,
+		"intro": "Fast swarm bug. They come in numbers: keep firing!"},
+	"drifter": {"tex": "res://enemies/drifter.png", "size": 44.0, "hp": 4.0, "speed": 48.0, "move": "scurve",
+		"xp_tier": 0, "coins": 1, "traits": ["swarm", "fast"], "base_dmg": 13.0, "spores": 1,
+		"intro": "Tough. Bursts into a spore when it dies: shoot that too!"},
 	"spitter": {"tex": "res://enemies/spitter.png", "size": 38.0, "hp": 4.0, "speed": 40.0, "move": "hover",
-		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.4},
+		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.4, "base_dmg": 14.0,
+		"intro": "Spits goo at you. Slide out of the way!"},
 	"diver":   {"tex": "res://enemies/diver.png",   "size": 36.0, "hp": 3.0, "speed": 55.0, "move": "dive",
-		"xp_tier": 1, "coins": 2, "traits": ["fast"]},
+		"xp_tier": 1, "coins": 2, "traits": ["fast"], "base_dmg": 13.0, "dive_mult": 2.0,
+		"intro": "Locks on, then dives at your base. Shoot it before it lands!"},
 	"hive_mother": {"tex": "res://enemies/hive_mother.png", "size": 120.0, "hp": 60.0, "speed": 22.0, "move": "boss",
-		"xp_tier": 3, "coins": 40, "traits": ["boss"], "lay_every": 6.0},
+		"xp_tier": 3, "coins": 40, "traits": ["boss"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 7.0,
+		"intro": "Lays eggs that hatch Scouts. Hit her while she lays: she is weak then!"},
+	# spore pod from a dying Drifter: drifts down slowly; shoot it or it chips the shield
+	"spore":   {"tex": "", "size": 16.0, "hp": 1.0, "speed": 34.0, "move": "spore",
+		"xp_tier": -1, "coins": 0, "traits": ["swarm"], "base_dmg": 4.0, "intro": ""},
 }
 
 const GEM_XP := [2, 4, 7, 12]
@@ -46,9 +58,9 @@ const GEM_COLORS := [Color(0.29, 0.66, 1.0), Color(0.71, 0.55, 1.0), Color(1.0, 
 
 # ---- difficulty scaling per stage ----
 static func hp_mult(stage: int, elite: bool) -> float:
-	# gentle through the first planet (+7% a stage), steeper after it (+10%), when
+	# gentle through the first planet (+7% a stage), a little steeper after it (+8%), when
 	# the player has turrets and upgrades to answer with
-	return pow(1.07, mini(stage, 5) - 1) * pow(1.10, maxi(stage - 5, 0)) * (1.85 if elite else 1.0)
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, maxi(stage - 5, 0)) * (1.85 if elite else 1.0)
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4
@@ -92,7 +104,7 @@ static func waves(stage: int) -> Array:
 		if stage >= 3 and w >= (3 if stage == 3 else 2):
 			wave.append(["spitter", 1 + (w - 1) / (4 if stage == 3 else 3) + extra / 4])
 		if stage >= 4 and w >= 4:
-			wave.append(["diver", 1 + (w - 3) / 4 + extra / 4])
+			wave.append(["diver", 1 + (w - 3) / 4 + extra / 5])   # kamikazes: few, but they hit hard
 		if stage % 5 == 0 and w == n:
 			wave.append(["hive_mother", 1])
 		out.append(wave)
