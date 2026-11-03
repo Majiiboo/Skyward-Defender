@@ -1167,34 +1167,43 @@ func _end_run(won: bool) -> void:
 # ------------------------------------------------------------------ UI
 
 func _build_ui() -> void:
+	# pause button: invisible hit area over the frame drawn in _draw_hud (a bit bigger, for thumbs)
 	_pause_btn = Button.new()
-	_pause_btn.text = "II"
-	_pause_btn.position = Vector2(FIELD_W - 110, 14)
-	_pause_btn.size = Vector2(34, 30)
-	_style_small(_pause_btn)
+	_pause_btn.flat = true
+	_pause_btn.focus_mode = Control.FOCUS_NONE
+	_pause_btn.position = PAUSE_RECT.position - Vector2(6, 6)
+	_pause_btn.size = PAUSE_RECT.size + Vector2(12, 12)
+	for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+		_pause_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	_pause_btn.pressed.connect(_toggle_pause)
 	add_child(_pause_btn)
-	var hub_btn := Button.new()
-	hub_btn.text = "HUB"
-	hub_btn.position = Vector2(FIELD_W - 70, 14)
-	hub_btn.size = Vector2(56, 30)
-	_style_small(hub_btn)
-	hub_btn.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
-	add_child(hub_btn)
-	# pause panel
-	_pause_panel = UIKit.panel(16)
-	_pause_panel.position = Vector2(FIELD_W * 0.5 - 110, 300)
-	_pause_panel.size = Vector2(220, 150)
+	# pause menu: the battle dims behind a panel in the Home style; Back to Hub lives here
+	_pause_panel = Control.new()
+	_pause_panel.size = get_viewport_rect().size
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.04, 0.55)
+	dim.size = _pause_panel.size
+	_pause_panel.add_child(dim)
+	var box := UIKit.panel(16)
+	box.position = Vector2(FIELD_W * 0.5 - 130, _pause_panel.size.y * 0.5 - 130)
+	box.custom_minimum_size = Vector2(260, 0)
 	var pv := VBoxContainer.new()
-	pv.add_theme_constant_override("separation", 10)
-	pv.add_child(UIKit.label("PAUSED", 18, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	pv.add_theme_constant_override("separation", 12)
+	var title := UIKit.label("PAUSED", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", title_font)
+	pv.add_child(title)
+	pv.add_child(UIKit.label("%d  %s" % [stage, StageData.stage_name(stage).to_upper()], 12, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	var resume := UIKit.gold_button("Resume")
+	resume.custom_minimum_size = Vector2(0, 46)
 	resume.pressed.connect(_toggle_pause)
 	pv.add_child(resume)
-	var quit_b := UIKit.ghost_button("Back to base")
+	var quit_b := UIKit.ghost_button("Back to Hub", 14)
+	quit_b.custom_minimum_size = Vector2(0, 40)
 	quit_b.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
 	pv.add_child(quit_b)
-	_pause_panel.add_child(pv)
+	pv.add_child(UIKit.label("Leaving ends this run.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	box.add_child(pv)
+	_pause_panel.add_child(box)
 	_pause_panel.visible = false
 	add_child(_pause_panel)
 	# card pick panel (filled when opened)
@@ -1206,18 +1215,15 @@ func _build_ui() -> void:
 	_end_panel.visible = false
 	add_child(_end_panel)
 
-func _style_small(b: Button) -> void:
-	b.add_theme_stylebox_override("normal", UIKit.glass(8))
-	b.add_theme_stylebox_override("hover", UIKit.glass(8))
-	b.add_theme_stylebox_override("pressed", UIKit.box(Color(UIKit.CYAN, 0.3), UIKit.CYAN, 8))
-	b.add_theme_font_size_override("font_size", 13)
-
 func _toggle_pause() -> void:
 	if picking or game_over or stage_cleared:
 		return
 	paused = not paused
 	_pause_panel.visible = paused
-	_pause_btn.text = ">" if paused else "II"
+	# the tap on the pause button also started a drag; drop it so he does not keep firing
+	dragging = false
+	drag_id = -1
+	queue_redraw()
 
 func _open_cards() -> void:
 	picking = true
@@ -1672,33 +1678,112 @@ func _zigzag(a: Vector2, b: Vector2, seed: int) -> PackedVector2Array:
 	pts.append(b)
 	return pts
 
+# Top bar, built like Home's (HomeFrame): flush with the top of the screen, dark fill,
+# one thin cyan outline along its bottom that curves up into the screen edges. The
+# straight part of that outline is the run's XP track; the level hangs under it on a tab.
+const HUD_H := 70.0                  # bar height (its bottom line = XP track)
+const PAUSE_RECT := Rect2(FIELD_W - 50, 10, 36, 30)
+
+func _hud_bar_points() -> PackedVector2Array:
+	var R := 20.0
+	var pts := PackedVector2Array()
+	pts.append(Vector2(0, HUD_H - R))
+	for i in range(9):
+		var a := lerpf(PI, PI * 0.5, float(i) / 8.0)
+		pts.append(Vector2(R, HUD_H - R) + Vector2(cos(a), sin(a)) * R)
+	for i in range(9):
+		var a := lerpf(PI * 0.5, 0.0, float(i) / 8.0)
+		pts.append(Vector2(FIELD_W - R, HUD_H - R) + Vector2(cos(a), sin(a)) * R)
+	pts.append(Vector2(FIELD_W, HUD_H - R))
+	return pts
+
+# A heart from the classic heart curve, filled when on, a thin outline when lost.
+func _draw_heart(c: Vector2, s: float, on: bool) -> void:
+	var pts := PackedVector2Array()
+	for i in 28:
+		var t := TAU * float(i) / 28.0
+		var x := 16.0 * pow(sin(t), 3)
+		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
+		pts.append(c + Vector2(x, y) * s / 17.0)
+	if on:
+		draw_colored_polygon(pts, Color(1.0, 0.36, 0.48))
+		pts.append(pts[0])
+		draw_polyline(pts, Color(1.0, 0.7, 0.78, 0.9), 1.0, true)
+	else:
+		pts.append(pts[0])
+		draw_polyline(pts, Color(1, 1, 1, 0.28), 1.0, true)
+
 func _draw_hud() -> void:
-	var pill := Rect2(12, 14, 200, 30)
-	draw_rect(pill, Color(0.04, 0.063, 0.172, 0.65))
-	draw_rect(pill, Color(1, 1, 1, 0.14), false, 1.0)
-	# stage number in white, then the name, so a stage is never mistaken for another
+	var cyan := Color(0.18, 0.9, 1.0)
+	var muted := Color(0.62, 0.70, 0.84)
+	var pts := _hud_bar_points()
+	var shape := PackedVector2Array(pts)
+	shape.append(Vector2(FIELD_W, -2))
+	shape.append(Vector2(0, -2))
+	draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
+	draw_polyline(pts, Color(cyan, 0.55), 1.2, true)
+	# row 1: stage number (white) and name (cyan), then the run time
 	var num := "%d " % stage
-	draw_string(title_font, Vector2(20, 35), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color.WHITE)
-	var nx: float = 20.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
-	draw_string(title_font, Vector2(nx, 35), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 162.0 - nx - 6.0, 11, Color(0.18, 0.9, 1.0))
+	draw_string(title_font, Vector2(16, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	var nx: float = 16.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	var name_w := 250.0 - nx
+	draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, name_w, 13, cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
-	draw_string(hud_font, Vector2(162, 35), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color.WHITE)
-	draw_string(hud_font, Vector2(14, 64), "SCORE %d" % score, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-	draw_string(hud_font, Vector2(160, 64), "WAVE %d/%d" % [mini(wave_index + 1, waves.size()), waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(0.8, 0.9, 1.0))
+	draw_string(hud_font, Vector2(PAUSE_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	# pause button: a small chamfered frame with two thin bars (a play arrow while paused)
+	var p := PAUSE_RECT
+	var cut := 7.0
+	var frame := PackedVector2Array([p.position + Vector2(cut, 0), Vector2(p.end.x, p.position.y), Vector2(p.end.x, p.end.y - cut),
+		Vector2(p.end.x - cut, p.end.y), Vector2(p.position.x, p.end.y), p.position + Vector2(0, cut), p.position + Vector2(cut, 0)])
+	draw_colored_polygon(frame, Color(cyan, 0.16) if paused else Color(0.05, 0.08, 0.16, 0.9))
+	draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
+	var pc := p.get_center()
+	if paused:
+		draw_colored_polygon(PackedVector2Array([pc + Vector2(-5, -8), pc + Vector2(8, 0), pc + Vector2(-5, 8)]), Color.WHITE)
+	else:
+		draw_rect(Rect2(pc + Vector2(-6, -8), Vector2(3.5, 16)), Color.WHITE)
+		draw_rect(Rect2(pc + Vector2(2.5, -8), Vector2(3.5, 16)), Color.WHITE)
+	# row 2: score, waves as pips (text when there are many), hearts
+	var y2 := 55.0
+	draw_string(hud_font, Vector2(16, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	draw_string(hud_font, Vector2(56, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+	var wave_now := mini(wave_index + 1, waves.size())
+	var wx := 160.0
+	draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	wx += 36.0
+	if waves.size() <= 10:
+		for i in waves.size():
+			var r := Rect2(wx + i * 13.0, y2 - 9.0, 9.0, 9.0)
+			var dia := PackedVector2Array([Vector2(r.get_center().x, r.position.y), Vector2(r.end.x, r.get_center().y),
+				Vector2(r.get_center().x, r.end.y), Vector2(r.position.x, r.get_center().y), Vector2(r.get_center().x, r.position.y)])
+			if i < wave_now - 1:
+				draw_colored_polygon(dia, Color(cyan, 0.85))
+			elif i == wave_now - 1:
+				draw_colored_polygon(dia, Color.WHITE)
+			draw_polyline(dia, Color(cyan, 0.6), 1.0, true)
+	else:
+		draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	for i in max_hearts:
-		var hp := Vector2(FIELD_W - 30 - (max_hearts - 1 - i) * 20, 62)
-		var on: bool = i < hearts
-		draw_circle(hp + Vector2(-3, -3), 4.0, Color(1.0, 0.35, 0.45) if on else Color(1, 1, 1, 0.15))
-		draw_circle(hp + Vector2(3, -3), 4.0, Color(1.0, 0.35, 0.45) if on else Color(1, 1, 1, 0.15))
-		draw_colored_polygon(PackedVector2Array([hp + Vector2(-7, -1), hp + Vector2(7, -1), hp + Vector2(0, 7)]), Color(1.0, 0.35, 0.45) if on else Color(1, 1, 1, 0.15))
+		_draw_heart(Vector2(FIELD_W - 22 - (max_hearts - 1 - i) * 22, y2 - 2), 7.5, i < hearts)
+	# XP along the bar's bottom line, and the level on a tab hanging under it
 	var need := _xp_need()
-	draw_rect(Rect2(12, 74, FIELD_W - 24, 5), Color(1, 1, 1, 0.10))
-	draw_rect(Rect2(12, 74, (FIELD_W - 24) * clampf(run_xp / need, 0.0, 1.0), 5), Color(0.71, 0.55, 1.0))
-	draw_string(hud_font, Vector2(12, 92), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.85, 0.75, 1.0))
+	var x0 := 20.0
+	var x1 := FIELD_W - 20.0
+	var xp := clampf(run_xp / need, 0.0, 1.0)
+	draw_line(Vector2(x0, HUD_H), Vector2(lerpf(x0, x1, xp), HUD_H), Color(0.71, 0.55, 1.0), 3.0, true)
+	if xp > 0.01:
+		draw_circle(Vector2(lerpf(x0, x1, xp), HUD_H), 2.2, Color(0.92, 0.86, 1.0))
+	var tab := PackedVector2Array([Vector2(16, HUD_H), Vector2(16, HUD_H + 14), Vector2(22, HUD_H + 20), Vector2(64, HUD_H + 20), Vector2(70, HUD_H + 14), Vector2(70, HUD_H)])
+	draw_colored_polygon(tab, Color(0.03, 0.045, 0.10, 0.82))
+	draw_polyline(tab, Color(0.71, 0.55, 1.0, 0.7), 1.0, true)
+	draw_string(hud_font, Vector2(16, HUD_H + 15), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, Color(0.88, 0.8, 1.0))
 	for e in enemies:
 		if e.type == "hive_mother":
-			var bw := 200.0
-			draw_rect(Rect2(FIELD_W * 0.5 - bw * 0.5, 104, bw, 6), Color(1, 1, 1, 0.12))
-			draw_rect(Rect2(FIELD_W * 0.5 - bw * 0.5, 104, bw * clampf(e.hp / e.hp_max, 0.0, 1.0), 6), Color(0.85, 0.35, 0.9))
-			draw_string(title_font, Vector2(FIELD_W * 0.5 - 52, 100), "HIVE MOTHER", HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(0.9, 0.7, 1.0))
+			var bw := 220.0
+			var by := HUD_H + 40.0
+			var br := Rect2(FIELD_W * 0.5 - bw * 0.5, by, bw, 6)
+			draw_rect(br, Color(0.03, 0.045, 0.10, 0.7))
+			draw_rect(Rect2(br.position, Vector2(bw * clampf(e.hp / e.hp_max, 0.0, 1.0), 6)), Color(0.85, 0.35, 0.9))
+			draw_rect(br, Color(0.9, 0.7, 1.0, 0.6), false, 1.0)
+			draw_string(title_font, Vector2(FIELD_W * 0.5 - 100, by - 6), "HIVE MOTHER", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.9, 0.7, 1.0))

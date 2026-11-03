@@ -143,6 +143,20 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 
 ## Next build (not packaged yet; will be dev87)
 
+Battle top bar, restyled to match Home:
+- One bar across the top, built like the Home top bar: dark, flush with the top of the
+  screen, one thin cyan line along its bottom that curves up into the screen edges.
+- Top row: stage number and name, the run time, and the pause button (a small framed
+  button with two bars). The HUB button is gone.
+- Second row: score, the waves as little diamonds (filled = done, white = now; plain
+  text on long stages), and cleaner hearts (an outline when lost).
+- The XP bar is now the bar's bottom line itself, filling in purple, with the level on
+  a small tab hanging under it. The Hive Mother's health bar sits below.
+- Pause menu: the battle dims behind a panel with PAUSED, the stage, Resume, and Back to
+  Hub ("Leaving ends this run.").
+- Fixed: tapping pause could leave him firing as if your finger were still down after
+  you resumed.
+
 New pilot test (not in the game yet, nothing in battle changed):
 - Luna's new 3D-style pilot parts are put together in code as a "puppet": helmet,
   visor, chest with the power orb, hips, arms, shoulder pads, legs, jetpack and rifle,

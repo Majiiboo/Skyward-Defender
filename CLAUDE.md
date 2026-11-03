@@ -71,6 +71,8 @@ Read this first. It replaces the chat history this project grew up in.
 3. Card visuals still to do: Nova ring, Aegis shimmer (bolt thickness, hot muzzle and
    magnet ring are done).
 4. Modernise the top bar, nav bar and edge tabs (Rudy finds them flat; mock options first).
+   Battle HUD done (2026-11-03): battle.gd _draw_hud draws a Home-style top bar (HUD_H,
+   PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun
    port or emitter, a charge frame).
 8. Gear rework (Rudy, after dev86). Exactly six upgradable slots, in this order:
