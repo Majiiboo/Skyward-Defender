@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev90 (version/code=90 and version/name="1.0-dev90" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev91 (version/code=91 and version/name="1.0-dev91" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,13 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev91: power card pictures
+
+- Every power card shows Luna's picture for it (Rapid Pulse, Heavy Bolts, Burst Fire,
+  Aegis, Magnet, Reinforced Hull, Nova Burst) inside her rarity frames.
+- When you level up, the three cards rise in one after another and settle with a small
+  bounce instead of appearing all at once.
 
 ## dev90: Luna's pickups and shots
 

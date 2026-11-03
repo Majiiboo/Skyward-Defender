@@ -1356,6 +1356,15 @@ func _open_cards() -> void:
 		var id: String = picks[i]
 		var card := _make_card(id, Vector2(x0 + i * (cw + gap), FIELD_H * 0.5 - 190), Vector2(cw, ch))
 		_card_panel.add_child(card)
+		# the three cards rise in one after another and settle with a small overshoot
+		card.pivot_offset = Vector2(cw, ch) * 0.5
+		card.scale = Vector2(0.82, 0.82)
+		card.modulate.a = 0.0
+		card.position.y += 26.0
+		var tw := card.create_tween().set_parallel(true)
+		tw.tween_property(card, "modulate:a", 1.0, 0.18).set_delay(0.07 * i)
+		tw.tween_property(card, "scale", Vector2.ONE, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(card, "position:y", card.position.y - 26.0, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var refresh := UIKit.ghost_button("Refresh (%d left)" % refreshes if refreshes > 0 else "No refresh left", 13)
 	refresh.position = Vector2(FIELD_W * 0.5 - 80, FIELD_H * 0.5 + 30)
 	refresh.size = Vector2(160, 34)
@@ -1390,8 +1399,18 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var icon := TextureRect.new()
-	icon.texture = Icons.get_icon(def.icon)
-	icon.custom_minimum_size = Vector2(0, 56)
+	# Luna's card picture (cards/pic_<id>.png) when there is one, else the menu icon
+	var pic_path := "res://cards/pic_%s.png" % id
+	if ResourceLoader.exists(pic_path):
+		icon.texture = load(pic_path)
+		icon.custom_minimum_size = Vector2(0, 74)
+		if id == "nova_burst":
+			var add := CanvasItemMaterial.new()
+			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
+			icon.material = add
+	else:
+		icon.texture = Icons.get_icon(def.icon)
+		icon.custom_minimum_size = Vector2(0, 56)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
