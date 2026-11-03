@@ -110,6 +110,10 @@ Read this first. It replaces the chat history this project grew up in.
    Cut by bounding boxes, key black to alpha keeping glows soft (the middle column's
    background is a slightly lighter black). Gear rarity colours should follow the sheet:
    cyan, green, purple.
+9a. (dev87) Sentry hover (Rudy's idea): head floats SENTRY_GAP above the base with bob,
+   drift, swing lean (t.swing), a shot-dip spring (t.hov_y/hov_v) and lift-off after
+   landing (t.lift); _draw_sentry_field draws the field on _fx. Rudy will send more
+   turret ideas.
 9. (done for dev87: base strip in battle and Home via Backdrop.draw_strip /
    socket_pos / draw_socket_glow; turrets on sockets with TURRET_LOOK sizes, two-piece
    Sentry (_sentry_geo), additive effect layer _fx/_draw_fx with Luna's fx/*.png, drop-in

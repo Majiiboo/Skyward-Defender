@@ -27,6 +27,10 @@ const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above
 const SENTRY_BASE_W := 58.0
 const SENTRY_HEAD_H := 66.0
 const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a little left
+# The Sentry's gun head floats above its ring base, held up by a field: it hovers a
+# few px clear, bobs and drifts, leans into its swings, and dips toward the base on
+# each shot before springing back up. On landing it powers up and lifts off the base.
+const SENTRY_GAP := 9.0
 const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
@@ -858,6 +862,15 @@ func _update_turrets(delta: float) -> void:
 
 func _update_sentry(t: Dictionary, delta: float) -> void:
 	var def: Dictionary = Turrets.TURRETS[t.type]
+	# hover: lift off once landed, a spring for the shot dip, swing speed for the lean
+	if float(t.drop) >= 1.0:
+		t.lift = move_toward(float(t.get("lift", 0.0)), 1.0, delta * 1.4)
+	var hv: float = float(t.get("hov_v", 0.0))
+	var hy: float = float(t.get("hov_y", 0.0))
+	hv += (-hy * 140.0 - hv * 9.0) * delta
+	t.hov_y = hy + hv * delta
+	t.hov_v = hv
+	var prev_ang: float = float(t.ang)
 	var best := -1
 	var bd: float = float(def.range)
 	for i in enemies.size():
@@ -867,13 +880,17 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			best = i
 	if best >= 0:
 		t.ang = lerp_angle(t.ang, (enemies[best].pos - t.pos).angle(), 0.12)
+		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
 		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 6.0)
 		t.cd -= delta
 		if t.cd <= 0.0:
 			t.cd = float(def.every)
 			t.fire_t = FIRE_TIME.sentry
+			t.hov_v = float(t.hov_v) + 55.0      # the shot pushes the head down toward its base
 			var dir := Vector2.from_angle(t.ang)
 			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type})
+	else:
+		t.swing = lerpf(float(t.get("swing", 0.0)), 0.0, 0.2)
 
 func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
 	return absf(e.pos.x - t.pos.x) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 100.0 and e.pos.y < t.pos.y
@@ -1515,21 +1532,51 @@ func _draw_turret(t: Dictionary) -> void:
 	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
 	draw_texture_rect(tex, Rect2(t.pos + Vector2(-sz.x * 0.5, -sz.y + 6.0 + yo + bob), sz), false, Color(1, 1, 1, a))
 
+# The field holding the Sentry's head up: a soft glow on the base, a faint column of
+# light, and thin rings rising from base to head. It brightens when the head dips.
+func _draw_sentry_field(t: Dictionary) -> void:
+	var g := _sentry_geo(t)
+	var lift: float = g.lift
+	if lift <= 0.01:
+		return
+	var cyan := Color(0.18, 0.9, 1.0)
+	var x: float = g.pivot.x
+	var y0: float = g.base_top
+	var y1: float = minf(g.head_bottom, y0 - 1.0)
+	var squeeze: float = clampf((y0 - y1) / SENTRY_GAP, 0.3, 1.5)
+	var hot: float = lift * (1.0 + clampf(float(t.get("hov_y", 0.0)) * 0.25, 0.0, 0.8) + 0.25 * (1.0 - minf(squeeze, 1.0)))
+	_fx.draw_set_transform(Vector2(t.pos.x, y0), 0.0, Vector2(1.0, 0.32))
+	Backdrop.soft_glow(_fx, Vector2.ZERO, 20.0, Color(cyan, 0.5 * hot))
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_fx.draw_colored_polygon(PackedVector2Array([Vector2(t.pos.x - 13, y0), Vector2(t.pos.x + 13, y0), Vector2(x + 8, y1), Vector2(x - 8, y1)]),
+		Color(cyan, 0.10 * hot))
+	for i in 3:
+		var ph := fposmod(time_alive * 1.4 + float(i) / 3.0 + float(t.mount) * 0.3, 1.0)
+		var y := lerpf(y0, y1, ph)
+		var w := lerpf(13.0, 8.0, ph)
+		_fx.draw_set_transform(Vector2(lerpf(t.pos.x, x, ph), y), 0.0, Vector2(1.0, 0.3))
+		_fx.draw_arc(Vector2.ZERO, w, 0.0, TAU, 24, Color(cyan, sin(ph * PI) * 0.55 * hot), 1.2, true)
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 # Where the Sentry's head sits and points. The painted barrels point up-left, so the
 # head is mirrored for targets on the right; `face` eases through the turn so it
 # swings round instead of flipping.
 func _sentry_geo(t: Dictionary) -> Dictionary:
 	var bt: Texture2D = _tex["sentry_base"]
 	var base_h: float = bt.get_height() * (SENTRY_BASE_W / bt.get_width())
-	var pivot: Vector2 = t.pos + Vector2(0, -base_h * 0.42)
+	var lift: float = smoothstep(0.0, 1.0, float(t.get("lift", 0.0)))
+	var ph: float = float(t.mount) * 1.7
+	var hover := Vector2(sin(time_alive * 0.9 + ph) * 1.5, -SENTRY_GAP * lift + (sin(time_alive * 2.3 + ph) * 1.6 + sin(time_alive * 3.7 + ph) * 0.5) * lift + float(t.get("hov_y", 0.0)))
+	var pivot: Vector2 = t.pos + Vector2(0, -base_h * 0.42) + hover
 	var face: float = signf(t.face) * maxf(absf(t.face), 0.15) if t.face != 0.0 else 0.15
 	var art_dir: float = SENTRY_ART_DIR if t.face >= 0.0 else PI - SENTRY_ART_DIR
-	var rot: float = clampf(angle_difference(art_dir, t.ang), -0.6, 0.6)
+	var lean: float = clampf(float(t.get("swing", 0.0)) * 0.06, -0.12, 0.12) + sin(time_alive * 1.3 + ph) * 0.025 * lift
+	var rot: float = clampf(angle_difference(art_dir, t.ang), -0.6, 0.6) + lean
 	var ht: Texture2D = _tex["sentry_head"]
 	var hs: float = SENTRY_HEAD_H / ht.get_height()
 	var recoil: float = 4.0 * float(t.fire_t) / FIRE_TIME.sentry
 	var local := Vector2((0.47 - 0.5) * ht.get_width() * face, (0.04 - 0.9) * ht.get_height()) * hs + Vector2(0, recoil)
-	return {"pivot": pivot, "rot": rot, "face": face, "recoil": recoil, "muzzle": pivot + local.rotated(rot)}
+	return {"pivot": pivot, "rot": rot, "face": face, "recoil": recoil, "muzzle": pivot + local.rotated(rot), "lift": lift, "base_top": t.pos.y - base_h * 0.28, "head_bottom": pivot.y + hs * ht.get_height() * 0.1}
 
 # The point a turret's weapon fires from.
 func _turret_tip(t: Dictionary) -> Vector2:
@@ -1551,6 +1598,9 @@ func _draw_fx() -> void:
 	for t in turrets:
 		lit[t.mount] = maxf(lit[t.mount], smoothstep(0.6, 1.0, float(t.drop)))
 	Backdrop.draw_socket_glow(_fx, FIELD_W, FIELD_H - STRIP_LIFT, lit)
+	for t in turrets:
+		if t.type == "sentry" and float(t.drop) >= 1.0:
+			_draw_sentry_field(t)
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]

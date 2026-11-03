@@ -143,6 +143,15 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 
 ## Next build (not packaged yet; will be dev87)
 
+Sentry: a floating gun head (your idea):
+- The gun head now floats a few pixels above its ring base instead of sitting on it,
+  held up by a field: a soft glow on the base, a faint column of light, and thin rings
+  rising from the base to the head.
+- It bobs and drifts gently, leans a little into its swings, and on each shot dips
+  toward the base and springs back up (the field brightens as it dips).
+- When the Sentry drops into its socket, the head powers up and lifts off the base.
+- Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
+
 Battle top bar, restyled to match Home:
 - One bar across the top, built like the Home top bar: dark, flush with the top of the
   screen, one thin cyan line along its bottom that curves up into the screen edges.
