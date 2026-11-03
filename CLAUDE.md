@@ -140,6 +140,30 @@ Read this first. It replaces the chat history this project grew up in.
    by tilting torso/legs, recoil, jetpack bob, visor glow, legs dangling with the
    hover. Show it side by side with the current painted pilot in a test scene first;
    Rudy decides before it replaces PilotSprite. If it works, bugs follow the same way.
+   Luna's round 1 is in art_src/pilot/ (reference.webp, parts_sheet.webp 4x4 on black,
+   rifle_side.webp, power_orb.webp). Parts are smaller than the reference (~0.56-0.63
+   and not uniform): fit each part to its place on the reference. Sheet has: helmet,
+   visor (glow baked in), torso (empty orb socket), hips, R upper arm, R forearm+fist,
+   L upper arm, L open hand, 2 shoulder pads, 2 thighs, ONE shin+boot (mirror it),
+   jetpack (flames baked in: crop), rifle. Round 2 (2026-11-03): left_arm.webp = the
+   WHOLE left arm in one piece (shoulder pad, upper arm, elbow pad, forearm, open hand),
+   larger scale, slight 3/4 turn: crop below the elbow pad for the left forearm+hand,
+   scale to the reference. jetpack_no_flames.webp = use instead of the sheet's jetpack.
+   All parts are in: ready to build the rig test.
+   Thrusters: LUNA-BRIEF-thrusters.md asks for painted flame LAYERS per style (outer
+   plume, core, nozzle glow, particle; black bg, pointing down). Draw them on an
+   additive layer, scaled by hover power, with flicker/scroll in code. Until they
+   arrive, keep PilotSprite.draw_thruster's code flames.
+   Flames arrived: art_src/pilot/flames_sheet.webp (1920x1280, uneven grid). Columns:
+   plume, nozzle glow, particle. Rows: Ion (cloudy wide plume with core baked in; blue
+   glow; blue sparks), Plasma (tall jet with lightning, spans 2 rows; white-blue ring;
+   electric arc), Pressure (no plume; grey ring; shock ring), Gravity (purple swirl;
+   double ring; falling specks), Pixel (pixel plume; square glow; ember), plus a grey
+   smoke puff. No separate cores (draw a thin core in code). The Ion glow and the
+   Plasma/Pressure rings sit on faint coloured boxes: when cutting, multiply by a soft
+   radial mask so no square edge shows. Ion plume is wide and cloudy: squeeze it
+   horizontally and stretch with hover power. A Gemini sheet was
+   compared and rejected (baked-in labels, sticker outlines, different design).
 10. LATER idea (Rudy, 2026-11-03), not scheduled: base super weapons. The command
    dome's top emitter (the orb/ring on the new base strip) fires a super weapon. Unlocked
    and levelled outside battle; in battle a tap button shows its cooldown ring (60-90 s
