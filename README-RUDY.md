@@ -150,6 +150,8 @@ Sentry: a floating gun head (your idea):
 - It bobs and drifts gently, leans a little into its swings, and on each shot dips
   toward the base and springs back up (the field brightens as it dips).
 - When the Sentry drops into its socket, the head powers up and lifts off the base.
+- The socket ring under the Sentry glows softer than under the other turrets, so its
+  base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
 Battle top bar, restyled to match Home:

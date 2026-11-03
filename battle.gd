@@ -1596,7 +1596,9 @@ func _draw_fx() -> void:
 	# a socket's ring lights up once its turret has landed
 	var lit := [0.0, 0.0, 0.0, 0.0]
 	for t in turrets:
-		lit[t.mount] = maxf(lit[t.mount], smoothstep(0.6, 1.0, float(t.drop)))
+		# under the Sentry the ring stays dim, so its hovering base and head read as two pieces
+		var glow: float = 0.35 if t.type == "sentry" else 1.0
+		lit[t.mount] = maxf(lit[t.mount], smoothstep(0.6, 1.0, float(t.drop)) * glow)
 	Backdrop.draw_socket_glow(_fx, FIELD_W, FIELD_H - STRIP_LIFT, lit)
 	for t in turrets:
 		if t.type == "sentry" and float(t.drop) >= 1.0:
