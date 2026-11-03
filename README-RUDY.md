@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev97 (version/code=97 and version/name="1.0-dev97" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev98 (version/code=98 and version/name="1.0-dev98" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev98: the store works
+
+- Daily: a free gift every day (150 coins + 3 crystals), Coin Pouch and Coin Chest for
+  crystals, and the Speed Pack (300 crystals) that unlocks x2 game speed.
+- Chests: Supply Crate and Vault Chest bought with crystals; the chest opens on screen
+  (lid up, light bursts out) and shows what you got. The odds are shown on each.
+- Packs: the real-money packs are listed as "coming soon" (they need the game on Google
+  Play with your developer account and Google Play billing).
+- Codes: type a redeem code for free rewards, each works once per player. Codes live in
+  store.gd (CODES): SKYBOUND, WELCOME, LUNA for now. Add a line to make a new one.
+- All rewards go through the same function as missions and trophies.
 
 ## dev97: gear rework
 

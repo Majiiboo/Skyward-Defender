@@ -11,7 +11,7 @@ var t := 0.0
 var _open := 0.0         # 0 closed .. 1 lid fully up (chest)
 var _open_t := -1.0
 var _tex := {}
-var _add: CanvasItemMaterial
+var _light: Node2D        # additive layer behind the chest for its burst of light
 
 # rotor ring centres on icons/drone_body.png (0..1)
 const ROTORS := [Vector2(0.13, 0.17), Vector2(0.87, 0.17), Vector2(0.15, 0.80), Vector2(0.85, 0.80)]
@@ -20,6 +20,13 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for n in ["drone_body", "drone_prop", "drone_thrust", "chest3d_body", "chest3d_lid", "chest3d_burst"]:
 		_tex[n] = load("res://icons/%s.png" % n)
+	_light = Node2D.new()
+	var add := CanvasItemMaterial.new()
+	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_light.material = add
+	_light.show_behind_parent = true
+	_light.draw.connect(_draw_light)
+	add_child(_light)
 
 func open() -> void:
 	_open_t = 0.0
@@ -34,6 +41,7 @@ func _process(delta: float) -> void:
 			_open_t = -1.0
 			_open = 0.0
 	queue_redraw()
+	_light.queue_redraw()
 
 func _draw() -> void:
 	if kind == "drone":
@@ -66,6 +74,15 @@ func _draw_drone() -> void:
 			draw_texture_rect(prop, Rect2(-pw * 0.5, -ph * 0.5, pw, ph), false, Color(1, 1, 1, 0.55 if k == 0 else 0.3))
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 
+# light from inside the chest while the lid is up (Luna's burst, added as light)
+func _draw_light() -> void:
+	if kind != "chest" or _open <= 0.01:
+		return
+	var w := size.x * 0.95
+	var bt: Texture2D = _tex.chest3d_burst
+	var bs := w * (0.9 + 0.5 * _open)
+	_light.draw_texture_rect(bt, Rect2(size.x * 0.5 - bs * 0.5, size.y * 0.35 - bs * 0.45, bs, bs), false, Color(1, 1, 1, 0.8 * _open))
+
 func _draw_chest() -> void:
 	var body: Texture2D = _tex.chest3d_body
 	var lid: Texture2D = _tex.chest3d_lid
@@ -73,11 +90,6 @@ func _draw_chest() -> void:
 	var h := w * body.get_height() / body.get_width()
 	var c := size * 0.5 + Vector2(0, sin(t * 1.8) * 1.2 + h * 0.06)
 	var r := Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h)
-	# light from inside while the lid is up
-	if _open > 0.01:
-		var bt: Texture2D = _tex.chest3d_burst
-		var bs := w * (0.9 + 0.5 * _open)
-		draw_texture_rect(bt, Rect2(c.x - bs * 0.5, r.position.y - bs * 0.45, bs, bs), false, Color(1, 1, 1, 0.6 * _open))
 	draw_texture_rect(body, r, false)
 	# the lid sits on the rim; opening lifts it and tips it back
 	var lw := w
