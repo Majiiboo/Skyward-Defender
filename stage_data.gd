@@ -34,7 +34,7 @@ const ENEMIES := {
 	"drifter": {"tex": "res://enemies/drifter.png", "size": 44.0, "hp": 3.0, "speed": 48.0, "move": "scurve",
 		"xp_tier": 0, "coins": 1, "traits": ["swarm", "fast"]},
 	"spitter": {"tex": "res://enemies/spitter.png", "size": 38.0, "hp": 4.0, "speed": 40.0, "move": "hover",
-		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.0},
+		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.4},
 	"diver":   {"tex": "res://enemies/diver.png",   "size": 36.0, "hp": 3.0, "speed": 55.0, "move": "dive",
 		"xp_tier": 1, "coins": 2, "traits": ["fast"]},
 	"hive_mother": {"tex": "res://enemies/hive_mother.png", "size": 120.0, "hp": 60.0, "speed": 22.0, "move": "boss",
@@ -46,7 +46,9 @@ const GEM_COLORS := [Color(0.29, 0.66, 1.0), Color(0.71, 0.55, 1.0), Color(1.0, 
 
 # ---- difficulty scaling per stage ----
 static func hp_mult(stage: int, elite: bool) -> float:
-	return pow(1.12, stage - 1) * (1.85 if elite else 1.0)
+	# gentle through the first planet (+7% a stage), steeper after it (+10%), when
+	# the player has turrets and upgrades to answer with
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.10, maxi(stage - 5, 0)) * (1.85 if elite else 1.0)
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4
@@ -55,21 +57,22 @@ static func speed_mult(stage: int) -> float:
 
 # How many enemies arrive together, and how often, while a wave is spawning.
 static func group_size(stage: int) -> int:
-	return clampi(stage, 1, 3)
+	# one at a time in stage 1, pairs through the first planet, threes from stage 6
+	return 1 if stage == 1 else (2 if stage <= 5 else 3)
 
 static func spawn_gap(stage: int) -> float:
-	return 2.0 if stage == 1 else 1.6
+	return 2.0 if stage == 1 else (1.8 if stage <= 5 else 1.7)
 
 static func wave_count(stage: int) -> int:
-	if stage <= 4:
+	if stage <= 5:
 		return 5
-	if stage <= 9:
+	if stage <= 10:
 		return 8
-	if stage <= 14:
+	if stage <= 15:
 		return 12
-	if stage <= 19:
+	if stage <= 20:
 		return 15
-	if stage <= 29:
+	if stage <= 30:
 		return 20
 	return 30
 
@@ -81,13 +84,15 @@ static func waves(stage: int) -> Array:
 		var wave: Array = []
 		var extra: int = (stage - 1) / 2
 		# tutorial stages start small: 3 scouts in stage 1 wave 1, growing each wave
-		wave.append(["scout", (2 + w) if stage == 1 else ((4 + w) if stage == 2 else 6 + w + extra)])
+		# later waves grow by about two bugs every three waves, so long stages stay fair
+		wave.append(["scout", (2 + w) if stage == 1 else ((4 + w) if stage == 2 else 4 + (w * 2) / 3 + extra / 2)])
 		if stage >= 2 and w >= 2:
-			wave.append(["drifter", 2 + w / 2 + extra / 2])
-		if stage >= 3 and w >= 2:
-			wave.append(["spitter", (1 if stage == 3 else 2) + (w - 1) / 3 + extra / 3])
+			wave.append(["drifter", 1 + w / 3 + extra / 3])
+		# Spitters make you move: from wave 3 of stage 3, more later
+		if stage >= 3 and w >= (3 if stage == 3 else 2):
+			wave.append(["spitter", 1 + (w - 1) / (4 if stage == 3 else 3) + extra / 4])
 		if stage >= 4 and w >= 4:
-			wave.append(["diver", 1 + (w - 3) / 3 + extra / 3])
+			wave.append(["diver", 1 + (w - 3) / 4 + extra / 4])
 		if stage % 5 == 0 and w == n:
 			wave.append(["hive_mother", 1])
 		out.append(wave)

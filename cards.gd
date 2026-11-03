@@ -20,7 +20,7 @@ const CARDS := {
 	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
 		"desc": "+1 heart (max 5)"},
 	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 4, "icon": "gem",
-		"desc": "Gem pull range +50%"},
+		"desc": "Pulls gems from further away (+30 px)"},
 	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 4, "icon": "chest",
 		"desc": "Base hull +25%, and repairs that much"},
 	"deploy_sentry":   {"name": "Deploy Sentry",   "family": "turret", "rarity": "uncommon",  "max": 2, "icon": "patrol",

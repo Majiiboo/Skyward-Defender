@@ -154,6 +154,26 @@ Sentry: a floating gun head (your idea):
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
+Balance pass for stages 1-10 (tested with an autopilot that plays real stages):
+- Auto-aim (finger off the screen) now fires as fast as dragging, so he is equally
+  strong both ways.
+- Gentler growth: bugs get 7% tougher per stage through stage 5, then 10% per stage.
+- Smaller waves: stages 1-5 have 5 waves, 6-10 have 8 (stage 10 had 12). Waves grow
+  by about two bugs every three waves. Bugs arrive one at a time in stage 1, in pairs
+  in stages 2-5, in threes from stage 6.
+- Spitters: in stage 3 they first appear in wave 3; they spit a little less often.
+- Gems are pulled in from further away (90 px at the start, +30 per Magnet card), so
+  you get cards without flying into danger.
+- Sentry: hits harder and fires faster (about 1.6x its damage per second).
+- Result, 8 test runs per stage:
+  - Hands off the screen the whole time: wins stages 1-5, loses from stage 6 (you
+    need to dodge Spitter shots from there).
+  - A normal player who dodges shots (with the starting Sentry only): wins stages
+    1-8, about 60% at stages 9-10. That is where upgrading turrets starts to matter.
+  - With Sentry, Lance and Storm at level 2: wins stages 6-10 almost every time.
+  - Stages last about 50-80 s (1-5) and 100-150 s (6-10).
+- The test autopilot is tools/balance_sim.gd. Stages 11-30 are not tuned yet.
+
 Livelier sky, base and hits (code only, until Luna's painted backgrounds arrive):
 - Sky: stars at different depths (far ones small, dim and slow, near ones bigger and
   faster), twinkling, the coloured nebula clouds drift and breathe, a shooting star

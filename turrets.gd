@@ -18,7 +18,7 @@ const DEFAULT_LOADOUT := ["sentry", "", "", ""]
 const TURRETS := {
 	"sentry":  {"name": "Sentry",         "art": "sentry",  "rarity": "common",    "unlock": 1, "ready": true,
 		"strong": [], "glow": Color(0.2, 0.85, 1.0),
-		"damage": 0.7, "every": 1.1, "range": 430.0,
+		"damage": 0.9, "every": 0.85, "range": 430.0,
 		"desc": "Twin cannons, steady fire at the nearest enemy."},
 	"lance":   {"name": "Lance Pylon",    "art": "lance",   "rarity": "rare",      "unlock": 2, "ready": true,
 		"strong": ["armoured", "boss"], "glow": Color(0.75, 0.9, 1.0),

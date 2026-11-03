@@ -199,6 +199,18 @@ Read this first. It replaces the chat history this project grew up in.
    radial mask so no square edge shows. Ion plume is wide and cloudy: squeeze it
    horizontally and stretch with hover power. A Gemini sheet was
    compared and rejected (baked-in labels, sticker outlines, different design).
+12. AREAS (Rudy + Claude, 2026-11-03, proposed; confirm with Rudy before coding): an area =
+   a planet + an enemy family, 10 stages, big boss at stage 10; two zones of 5 (A orbit,
+   B descent; mini-boss at stage 5) so the background changes every 5 stages and the
+   world every 10. Areas: 1 Hive, 2 Scrap belt, 3 Magma, 4 Crystal, 5 Plasma storm,
+   6 Sentinel. Needs SECTORS reworked from 5 to 10 stages per planet (+ zone), an
+   "Area complete" screen after each boss, new enemies per area. Luna brief for the
+   painted layers: LUNA-BRIEF-backgrounds.md (Area 1 first).
+13. STAGE MAP (Rudy idea, Candy Crush style): a scrolling trail of stage nodes on the
+   Home "stages" button, grouped by area with a themed backdrop per area, boss nodes
+   bigger, cleared stages replayable (best score / stars), the next stage pulsing.
+   Light STORY (Claude's suggestion): a short comms briefing card at the start of each
+   area and after its boss (commander portrait + 2-3 lines), not cutscenes.
 10. LATER idea (Rudy, 2026-11-03), not scheduled: base super weapons. The command
    dome's top emitter (the orb/ring on the new base strip) fires a super weapon. Unlocked
    and levelled outside battle; in battle a tap button shows its cooldown ring (60-90 s
@@ -211,9 +223,17 @@ Read this first. It replaces the chat history this project grew up in.
    as a SEPARATE layer (deck strip without dome + one dome per super weapon, each with
    idle / charging / firing frames, same footprint), so domes swap without repainting
    the whole base.
-6. Balance pass with a headless simulator (see "Testing"). The simple sim pilot never
-   dodges well and dies to Spitter goo from stage 3 on (before and after Hive brains);
-   it needs a pilot that steers away from enemy shots before its win rates mean much.
+6. Balance pass 1 DONE (dev87, stages 1-10) with tools/balance_sim.gd (see Testing).
+   Changes: hp_mult +7%/stage to 5 then +10%; waves 5 (st 1-5), 8 (6-10); scouts
+   4 + 2w/3 + extra/2, drifters 1 + w/3 + extra/3; Spitters from wave 3 in stage 3,
+   fire_every 3.4; group 1/2/3 (st 1, 2-5, 6+), gap 2.0/1.8/1.7; idle_fire_ratio 1.0
+   (Rudy: auto-aim as strong as dragging); MAGNET_BASE 90 (+30 per Magnet card);
+   Sentry 0.9 dmg every 0.85 s. Result (8 runs each): afk wins 1-5, fails from 6;
+   "human" bot with starting Sentry wins 1-8, ~60% at 9-10; with sentry+lance+storm
+   lvl 2 wins 6-10 ~95%. Next: Rudy's playtest; stages 11-30 not tuned yet; Sentry
+   still only ~5% of damage (range 430 from the base, the pilot kills most bugs first).
+   Rudy may screen-record the reference game on autopilot for pacing (stage length,
+   counts), not for its cards/turrets; extract frames to compare.
 7. (done dev86: smooth-animation pass. Anim.mix() cross-fades pilot frames, facing_s
    squeezes the turn, enemies use e.tilt_s / e.fold, turret fire art fades over idle,
    nav icon top layers fade with the base following in hub._process. Rule: never set
@@ -222,6 +242,12 @@ Read this first. It replaces the chat history this project grew up in.
    cross-fades for real frames, starting with the pilot turn-around.)
 
 ## Testing
+- Balance: cp tools/sim_override.cfg override.cfg (separate save dir "skybound_sim"),
+  SIM_STAGES=1-10 SIM_RUNS=8 SIM_PILOT=afk|dodge|skilled|human [SIM_TURRETS=sentry,lance,,
+  SIM_LEVEL=2] godot --headless --path . --script res://tools/balance_sim.gd, then
+  delete override.cfg. "human" = best guess at a real player. Movie captures:
+  override.cfg with [display] window/size/mode=0 and --write-movie; do NOT run test
+  harnesses that end a stage without the sim override (they write the real save).
 - Headless run: godot --headless --import --path . then run scenes with a small
   SceneTree script that instantiates battle.tscn, calls _process in a loop and prints
   results; screenshots via a virtual display. Always run before handing a build over.

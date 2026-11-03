@@ -53,7 +53,7 @@ var aim_lead_accuracy := 0.92
 var aim_avoid_overkill := true
 var aim_target_sticky := 40.0
 var aim_ready_angle := 0.10
-var idle_fire_ratio := 1.45
+var idle_fire_ratio := 1.0           # auto-aim fires as fast as dragging (Rudy: same strength either way)
 var idle_power := 1.0
 
 # ---- run stats changed by cards ----
@@ -66,7 +66,8 @@ var burst_timer := 0.0
 var burst_dir := Vector2.UP
 var burst_tid := -2
 var max_hearts := 3
-var magnet_radius := 60.0
+const MAGNET_BASE := 90.0           # gem pull range at the start of a run (px); each Magnet card adds 30
+var magnet_radius := MAGNET_BASE
 var magnet_level := 0
 var hull_max := 100.0
 var shield_max := 150.0
@@ -242,7 +243,7 @@ func _start_stage() -> void:
 	extra_projectiles = 0
 	burst_count = 1
 	burst_left = 0
-	magnet_radius = 60.0
+	magnet_radius = MAGNET_BASE
 	magnet_level = 0
 	bullets.clear(); enemy_bullets.clear(); enemies.clear(); gems.clear(); turrets.clear()
 	sparks.clear(); rings.clear(); floaters.clear()
@@ -1356,7 +1357,7 @@ func _pick_card(id: String) -> void:
 			hearts = mini(hearts + 1, max_hearts)
 		"magnet":
 			magnet_level += 1
-			magnet_radius = 60.0 * (1.0 + 0.5 * magnet_level)   # 90, 120, 150, 180 px
+			magnet_radius = MAGNET_BASE + 30.0 * magnet_level   # 120, 150, 180, 210 px
 		"reinforced_hull":
 			hull_max += 25.0
 			hull = minf(hull + 25.0, hull_max)
