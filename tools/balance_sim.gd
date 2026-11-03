@@ -71,8 +71,9 @@ func _write_save(stage: int) -> void:
 		if t != "":
 			levels[t] = tlevel
 	# stage_unlocked = stage: a player meeting this stage for the first time, so only the
-	# mounts opened by stages before it are open (Turrets.mount_open)
-	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": stage,
+	# mounts opened by stages before it are open (Turrets.mount_open); every turret type is
+	# unlocked (pilot_xp), the loadout says which ones stand on the base
+	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": stage, "pilot_xp": 100000,
 		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
 	var f := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))
@@ -227,6 +228,7 @@ func _finish() -> void:
 	r.turret_dmg = b.stat_turret_dmg
 	r.hit_bullet = b.stat_hit_bullet
 	r.hit_diver = b.stat_hit_diver
+	r.pxp = b._xp_gain
 	var why := "WIN" if r.won else ("hearts" if b.hearts <= 0 else ("hull" if b.hull <= 0.0 else "timeout"))
 	print("stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hearts lost %d (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
@@ -238,15 +240,22 @@ func _finish() -> void:
 
 func _summary() -> void:
 	print("\nSUMMARY pilot=%s" % pilot)
-	print("stage  win  avg time  avg wave  hearts lost  hull min  pilot dmg share")
+	print("stage  win  avg time  avg wave  hearts lost  hull min  pilot dmg share  pilot XP  (sum of wins, level)")
+	var total_xp := 0.0
 	for st in stages:
 		var rs: Array = results.get(st, [])
 		if rs.is_empty():
 			continue
-		var w := 0; var t := 0.0; var wv := 0.0; var hl := 0.0; var hm := 0.0; var ps := 0.0
+		var w := 0; var t := 0.0; var wv := 0.0; var hl := 0.0; var hm := 0.0; var ps := 0.0; var px := 0.0; var pw := 0
 		for x in rs:
 			w += 1 if x.won else 0
 			t += x.t; wv += x.wave; hl += x.hearts_lost; hm += x.min_hull
 			ps += x.pilot_dmg / maxf(x.pilot_dmg + x.turret_dmg, 0.001)
+			if x.won:
+				px += x.pxp
+				pw += 1
 		var n := float(rs.size())
-		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n])
+		# pilot XP of a winning run here, and the running total for a player who wins each stage once
+		var avg_xp := px / maxf(pw, 1)
+		total_xp += avg_xp
+		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%  %8.0f  (%5.0f, Lv %d)" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n, avg_xp, total_xp, Turrets.pilot_level(int(total_xp))])

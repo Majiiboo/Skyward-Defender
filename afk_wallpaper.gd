@@ -343,9 +343,10 @@ func _load_wall_turrets() -> void:
 				d = parsed
 	_wall_unlocked = int(d.get("stage_unlocked", 1))
 	var loadout: Array = Turrets.read(d).loadout
+	var plevel := Turrets.pilot_level(int(d.get("pilot_xp", 0)))
 	for i in Turrets.MOUNTS:
 		var id: String = loadout[i]
-		if id != "" and Turrets.mount_open(i, _wall_unlocked):
+		if id != "" and Turrets.mount_open(i, _wall_unlocked) and plevel >= int(Turrets.TURRETS[id].unlock):
 			_wall_turrets.append({"socket": i, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
 
 func _draw_turrets() -> void:

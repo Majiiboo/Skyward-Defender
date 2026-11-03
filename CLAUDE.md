@@ -199,6 +199,11 @@ Read this first. It replaces the chat history this project grew up in.
    radial mask so no square edge shows. Ion plume is wide and cloudy: squeeze it
    horizontally and stretch with hover power. A Gemini sheet was
    compared and rejected (baked-in labels, sticker outlines, different design).
+11c. PILOT LEVELS (done dev87): Turrets.LEVEL_XP_EARLY [0,150,330,560,850] then +500,+650,...
+   (xp_for_level); first_clear_bonus = 60 + 20*stage (normal mode, first win only);
+   unlocks Sentry 5, Lance 8, Storm 11, Gravity 14, Swarm 18, Prism 22; battle and Home
+   need mount open AND pilot level. Next: real missions (quests.gd is show-only) paying
+   pilot XP and coins.
 11b. MOUNTS (done dev87): Turrets.MOUNT_OPENS_AFTER [5, 15, 25, 40] = stage that must be
    cleared to open mount i (save stage_unlocked > N); battle mounts only open mounts
    and draws Backdrop.draw_socket_lock on closed ones; Gear/Home follow; Deploy Sentry

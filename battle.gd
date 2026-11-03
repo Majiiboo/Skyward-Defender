@@ -112,6 +112,10 @@ var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
 var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
 var _new_mount := -1              # a mount this win just opened (shown on the end screen)
+var _xp_gain := 0                 # pilot XP this run (end screen), _xp_bonus of it for a first clear
+var _xp_bonus := 0
+var _level_before := 1
+var _level_after := 1
 var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
 var fxs: Array = []               # short effect sprites {tex, pos, size, rot, life, max, grow, col}
 var _fx: Node2D                   # additive effect layer
@@ -252,10 +256,13 @@ func _start_stage() -> void:
 	fxs.clear()
 	stat_pilot_dmg = 0.0
 	stat_turret_dmg = 0.0
-	stage_unlocked = int(_read_save().get("stage_unlocked", 1))
+	var sv := _read_save()
+	stage_unlocked = int(sv.get("stage_unlocked", 1))
+	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	_new_mount = -1
+	# a turret stands on the base only if its mount is open (stages) and it is unlocked (pilot level)
 	for i in turret_loadout.size():
-		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked):
+		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and plevel >= int(Turrets.TURRETS[turret_loadout[i]].unlock):
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
 	soldier_pos = Vector2(240, BASE_Y - 200.0)
 	prev_soldier_x = soldier_pos.x
@@ -1201,10 +1208,16 @@ func _end_run(won: bool) -> void:
 		game_over = true
 	dragging = false
 	var d := _read_save()
+	# pilot XP: what you destroyed, plus a bonus the first time this stage is cleared
+	var was := int(d.get("stage_unlocked", 1))
+	var old_xp := int(d.get("pilot_xp", 0))
+	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and stage >= was else 0
+	_xp_gain = int(score / 50) + _xp_bonus
+	_level_before = Turrets.pilot_level(old_xp)
+	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
-		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": int(d.get("pilot_xp", 0)) + int(score / 50)}
+		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	if won:
-		var was := int(d.get("stage_unlocked", 1))
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
 			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
@@ -1395,11 +1408,21 @@ func _show_end(won: bool) -> void:
 	v.add_child(t)
 	v.add_child(UIKit.label("%s %d: %s" % ["Elite" if elite else "Stage", stage, StageData.stage_name(stage)], 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Score %d    Kills %d" % [score, kills], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Coins +%d    Pilot XP +%d" % [coins_earned, int(score / 50)], 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("Coins +%d    Pilot XP +%d" % [coins_earned, _xp_gain], 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	if _xp_bonus > 0:
+		v.add_child(UIKit.label("(first clear bonus +%d)" % _xp_bonus, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if _level_after > _level_before:
+		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 14, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+		for id in Turrets.TURRETS:
+			var u: int = int(Turrets.TURRETS[id].unlock)
+			if u > _level_before and u <= _level_after:
+				v.add_child(UIKit.label("%s unlocked" % Turrets.TURRETS[id].name, 12, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Waves %d / %d" % [mini(wave_index + (1 if won else 1), waves.size()), waves.size()], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	if won and _new_mount >= 0:
 		v.add_child(UIKit.label("NEW TURRET MOUNT OPEN!", 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-		v.add_child(UIKit.label("Place a turret on mount %d in Gear." % (_new_mount + 1), 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var on: String = turret_loadout[_new_mount] if _new_mount < turret_loadout.size() else ""
+		var hint := ("Your %s stands on mount %d from the next stage." % [Turrets.TURRETS[on].name, _new_mount + 1]) if on != "" and _level_after >= int(Turrets.TURRETS[on].unlock) else ("Place a turret on mount %d in Gear." % (_new_mount + 1))
+		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp)
 	if won:

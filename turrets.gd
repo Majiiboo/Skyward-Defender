@@ -21,27 +21,27 @@ const MOUNT_OPENS_AFTER := [5, 15, 25, 40]
 # ready = the battle mechanic exists; the others show in Gear as "in development".
 # unlock = pilot level needed. strong = enemy traits it does +50% against.
 const TURRETS := {
-	"sentry":  {"name": "Sentry",         "art": "sentry",  "rarity": "common",    "unlock": 1, "ready": true,
+	"sentry":  {"name": "Sentry",         "art": "sentry",  "rarity": "common",    "unlock": 5, "ready": true,
 		"strong": [], "glow": Color(0.2, 0.85, 1.0),
 		"damage": 0.9, "every": 0.85, "range": 430.0,
 		"desc": "Twin cannons, steady fire at the nearest enemy."},
-	"lance":   {"name": "Lance Pylon",    "art": "lance",   "rarity": "rare",      "unlock": 2, "ready": true,
+	"lance":   {"name": "Lance Pylon",    "art": "lance",   "rarity": "rare",      "unlock": 8, "ready": true,
 		"strong": ["armoured", "boss"], "glow": Color(0.75, 0.9, 1.0),
 		"damage": 1.8, "every": 2.6, "width": 26.0,
 		"desc": "Charges, then fires a spear of light straight up through its whole column."},
-	"storm":   {"name": "Storm Spire",    "art": "storm",   "rarity": "epic",      "unlock": 3, "ready": true,
+	"storm":   {"name": "Storm Spire",    "art": "storm",   "rarity": "epic",      "unlock": 11, "ready": true,
 		"strong": ["swarm", "shielded"], "glow": Color(0.6, 0.55, 1.0),
 		"damage": 0.9, "every": 1.8, "chain": 2, "cloud_r": 125.0, "cloud_h": 300.0,
 		"desc": "Builds a storm cloud above the base; lightning jumps between enemies inside it."},
-	"gravity": {"name": "Gravity Anchor", "art": "gravity", "rarity": "epic",      "unlock": 5, "ready": true,
+	"gravity": {"name": "Gravity Anchor", "art": "gravity", "rarity": "epic",      "unlock": 14, "ready": true,
 		"strong": ["swarm", "fast"], "glow": Color(0.71, 0.55, 1.0),
 		"damage": 2.0, "every": 3.2, "pull": 2.0, "radius": 115.0, "crush_r": 85.0, "height": 230.0,
 		"desc": "Pulls nearby enemies to one point, then crushes them on a pulse."},
-	"swarm":   {"name": "Swarm Hive",     "art": "swarm",   "rarity": "rare",      "unlock": 7, "ready": true,
+	"swarm":   {"name": "Swarm Hive",     "art": "swarm",   "rarity": "rare",      "unlock": 18, "ready": true,
 		"strong": ["fast", "high"], "glow": Color(0.2, 0.85, 1.0),
 		"damage": 0.35, "every": 3.5, "count": 4, "life": 4.0, "speed": 230.0,
 		"desc": "Releases micro-drones that chase enemies for a few seconds."},
-	"prism":   {"name": "Prism Tower",    "art": "prism",   "rarity": "legendary", "unlock": 9, "ready": true,
+	"prism":   {"name": "Prism Tower",    "art": "prism",   "rarity": "legendary", "unlock": 22, "ready": true,
 		"strong": ["wide"], "glow": Color(1.0, 0.85, 0.6),
 		"damage": 0.5, "every": 3.0, "beams": 5, "spread": 1.0, "split_h": 300.0,
 		"desc": "Splits one bright shot into a fan of beams across the screen."},
@@ -69,12 +69,30 @@ static func level_mult(level: int) -> float:
 static func upgrade_cost(level: int) -> int:
 	return 150 * level
 
-# Same curve as the Home screen's pilot level.
+# Pilot level from total pilot XP (Rudy, 2026-11-03): levels 2-5 come fast, so a
+# player who clears stage 5 is about level 5 just as the first mount opens and the
+# Sentry unlocks. After that each level needs 500, 650, 800, ... more XP, and
+# missions (quests) are meant to make up the difference. Home and Gear use this too.
+const LEVEL_XP_EARLY := [0, 150, 330, 560, 850]   # total XP to reach levels 1..5
+
+static func xp_for_level(level: int) -> int:
+	if level <= LEVEL_XP_EARLY.size():
+		return LEVEL_XP_EARLY[maxi(level, 1) - 1]
+	var xp: int = LEVEL_XP_EARLY[-1]
+	for l in range(LEVEL_XP_EARLY.size() + 1, level + 1):
+		xp += 500 + 150 * (l - LEVEL_XP_EARLY.size() - 1)
+	return xp
+
 static func pilot_level(pilot_xp: int) -> int:
 	var level := 1
-	while pilot_xp >= int(100.0 * pow(float(level + 1), 1.5)) and level < 60:
+	while level < 60 and pilot_xp >= xp_for_level(level + 1):
 		level += 1
 	return level
+
+# Pilot XP for one run: what you destroyed (score / 50), plus a bonus the first time a
+# stage is cleared (80 for stage 1, +20 per stage).
+static func first_clear_bonus(stage: int) -> int:
+	return 60 + 20 * stage
 
 static func strong_text(id: String) -> String:
 	var s: Array = TURRETS[id].strong

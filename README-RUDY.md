@@ -154,6 +154,19 @@ Sentry: a floating gun head (your idea):
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
+Pilot levels (Rudy):
+- Levels 2-5 now come fast: a player who clears each of stages 1-5 once is pilot level
+  5 right as stage 5 is cleared (checked with the autopilot: 130, 314, 512, 739, 1041
+  XP). After level 5 each level needs 500, 650, 800... more XP; missions will help.
+- Pilot XP per run = score / 50, plus a first-clear bonus the first time you beat a
+  stage (80 for stage 1, +20 per stage). The end screen shows it, and any new pilot
+  level and turret it unlocks.
+- Turrets unlock by pilot level: Sentry 5, Lance 8, Storm 11, Gravity 14, Swarm 18,
+  Prism 22. A turret stands on the base only when its mount is open AND you have
+  unlocked it. At stage 5 both arrive together: "PILOT LEVEL 5! Sentry unlocked" and
+  "NEW TURRET MOUNT OPEN!".
+- Elite still unlocks at pilot level 10 (now about stage 12-15).
+
 Turret mounts open as you clear stages (Rudy):
 - Two separate unlocks: your PILOT LEVEL unlocks which turrets you own; CLEARING
   STAGES opens the four mounts on the base where they stand.

@@ -115,9 +115,7 @@ func _load_save() -> void:
 				stage = clampi(int(data.get("selected_stage", 1)), 1, stage_unlocked)
 				mode = "Elite" if bool(data.get("selected_elite", false)) else "Normal"
 				var px := int(data.get("pilot_xp", 0))
-				level = 1
-				while px >= int(100.0 * pow(float(level + 1), 1.5)) and level < 60:
-					level += 1
+				level = Turrets.pilot_level(px)
 				elite_unlocked = level >= 10
 
 # ---------------------------------------------------------------- styles
