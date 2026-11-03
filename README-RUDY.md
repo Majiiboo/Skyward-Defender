@@ -143,6 +143,28 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 
 ## Next build (not packaged yet; will be dev87)
 
+New pilot test (not in the game yet, nothing in battle changed):
+- Luna's new 3D-style pilot parts are put together in code as a "puppet": helmet,
+  visor, chest with the power orb, hips, arms, shoulder pads, legs, jetpack and rifle,
+  each moving on its own joint. Because it is one set of pictures moved smoothly, he
+  never flickers between frames.
+- He breathes, aims the rifle where he shoots (left, right, up; the arm bends to
+  follow and he turns round when the target crosses over), kicks back with a flash on
+  each shot, leans into sideways moves with his legs trailing behind, spreads his legs
+  when dropping and tucks them when climbing, the jetpack bobs a little behind the body,
+  and the visor light pulses.
+- Jetpack flames use Luna's flame layers for all five thruster styles (Ion, Plasma,
+  Pressure, Gravity, Pixel): they stretch when he climbs, shrink when he drops, flicker,
+  and throw sparks.
+- To see it: open rig_test.tscn in Godot and press F6 (Run Current Scene). Left is the
+  current painted pilot, right is the new puppet, at battle size on top and twice the
+  size below. It loops through idle, aiming, leaning, firing, climbing, dropping and
+  every thruster style, with the name of each step at the top.
+- You decide: if you like the new one, the next step is to put him in the battle and on
+  Home. If not, nothing needs undoing.
+- Luna's parts are cut by tools/cut_pilot_art.gd into the pilot_rig folder; the puppet
+  is pilot_rig.gd.
+
 New base and turrets (Luna's art):
 - Battle: Luna's base strip replaces the drawn deck and dome, along the bottom of the
   screen, with the four numbered sockets. Turrets sit in the sockets at about twice

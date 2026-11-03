@@ -154,6 +154,25 @@ Read this first. It replaces the chat history this project grew up in.
    plume, core, nozzle glow, particle; black bg, pointing down). Draw them on an
    additive layer, scaled by hover power, with flicker/scroll in code. Until they
    arrive, keep PilotSprite.draw_thruster's code flames.
+   BUILT (2026-11-03, waiting on Rudy's verdict; battle still uses PilotSprite):
+   tools/cut_pilot_art.gd cuts parts + flames into pilot_rig/ (parts keyed off black
+   with dark insides kept solid, all at the parts sheet's pixel scale; helmet cut
+   without its neck ball; left forearm = left_arm.webp below the elbow x0.575; jetpack
+   = jetpack_no_flames x0.44; power_orb drawn in the torso socket; visor_light.png =
+   the visor line only, for the additive pulse). pilot_rig.gd: PARTS table (scale to
+   reference px, pivot in the picture, pivot's place on the reference), Rig state class
+   (update(delta, aim, lean, hover, vy), fire()), solve() -> transforms, then draw()
+   (solid), draw_light() (flames, additive layer BEHIND him) and draw_glow() (visor +
+   muzzle flash, additive layer IN FRONT). Arms are two-bone IK: rifle grip out to the
+   side swinging with the aim, free left arm for balance. He mirrors when aiming right
+   (squeeze min 0.3). Part scales were fitted against reference.webp (helmet 1.78 and
+   torso 1.26 by correlation, the rest by eye); legs and arms on the sheet are longer
+   and thinner than the chibi reference, so they don't match it exactly.
+   rig_test.tscn compares old and new (60 px + 2x) through 15 phases; run it with the
+   user arg "fit" (godot ... -- fit, wide override.cfg viewport) to see the rig over the
+   reference. Rig is drawn ~1270 reference px = `height`. To adopt: replace the
+   PilotSprite.draw call in battle.gd/afk_wallpaper.gd, add an additive node behind
+   the pilot for draw_light, and use X.muzzle for the bullet start.
    Flames arrived: art_src/pilot/flames_sheet.webp (1920x1280, uneven grid). Columns:
    plume, nozzle glow, particle. Rows: Ion (cloudy wide plume with core baked in; blue
    glow; blue sparks), Plasma (tall jet with lightning, spans 2 rows; white-blue ring;
