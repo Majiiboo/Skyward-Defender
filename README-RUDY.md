@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev95 (version/code=95 and version/name="1.0-dev95" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev96 (version/code=96 and version/name="1.0-dev96" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,23 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev96: missions and trophies are real
+
+- Quests screen: Daily, Career and Trophies tabs, all live.
+  - Daily: 5 missions a day (destroy bugs, clear stages, collect gems, shoot down
+    Divers, a perfect stage...), new ones every day; finishing all five pays a bonus of
+    200 coins + 10 crystals.
+  - Career: milestones that never reset (clear stage 5, complete each planet, destroy
+    500 / 5,000 bugs, reach pilot level 5 / 10, earn 30 stars, 5 perfect stages).
+  - Trophies: 10 trophies with bronze, silver and gold tiers (Bug Hunter, Boss Slayer,
+    Flawless, Explorer, Star Collector, Gem Hoarder, Card Shark, Veteran, Sky Shield,
+    Defender). Each tier pays crystals.
+- Claim pays at once: coins, crystals and pilot XP (missions help you level up, as
+  planned). Home now shows the crystals you have.
+- Every battle records your stats. All rewards go through one function
+  (Progress.grant), ready for redeem codes, the store and later the inbox.
+- Trophy medals are drawn in code for now; Luna can paint real trophy art later.
 
 ## dev95: stage map and stars
 

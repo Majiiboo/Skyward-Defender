@@ -123,6 +123,8 @@ var _cards_view: Control
 var _xp_gain := 0                 # pilot XP this run (end screen), _xp_bonus of it for a first clear
 var _xp_bonus := 0
 var _took_damage := false         # any hit on the base or pilot this run (3 stars need none)
+var _gems_got := 0                # gems collected this run (missions, trophies)
+var _kills_by := {}               # enemy type -> kills this run
 var _stars_got := 0
 var _level_before := 1
 var _level_after := 1
@@ -294,6 +296,8 @@ func _start_stage() -> void:
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	_took_damage = false
 	_stars_got = 0
+	_gems_got = 0
+	_kills_by = {}
 	_new_mount = -1
 	# a turret stands on the base only if its mount is open (stages) and it is unlocked (pilot level)
 	for i in turret_loadout.size():
@@ -855,6 +859,7 @@ func _kill(e: Dictionary) -> void:
 	score += worth
 	kills += 1
 	coins_earned += int(def.coins)
+	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
 	if e.type == "hive_mother":
 		hitstop = 0.18
@@ -892,6 +897,7 @@ func _update_gems(delta: float) -> void:
 
 		if d < 16.0:
 			_gain_xp(float(StageData.GEM_XP[g.tier]))
+			_gems_got += 1
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
 			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
 			continue
@@ -1314,6 +1320,12 @@ func _end_run(won: bool) -> void:
 			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
 		stage_unlocked = patch["stage_unlocked"]
 	_write_save(patch)
+	var ncards := 0
+	for k in card_levels:
+		ncards += int(card_levels[k])
+	Progress.record_run({"kills": kills, "kills_by_type": _kills_by, "won": won, "stage": stage,
+		"boss": StageData.boss_kind(stage) if won else "", "perfect": won and _stars_got == 3, "gems": _gems_got,
+		"cards": ncards, "seconds": time_alive, "coins": coins_earned})
 	_show_end(won)
 
 # ------------------------------------------------------------------ UI

@@ -109,6 +109,7 @@ func _load_save() -> void:
 			var data = JSON.parse_string(f.get_as_text())
 			if typeof(data) == TYPE_DICTIONARY:
 				coins = int(data.get("coins", 0))
+				crystals = int(data.get("crystals", 0))
 				best_score = int(data.get("best_score", 0))
 				best_kills = int(data.get("best_kills", 0))
 				stage_unlocked = int(data.get("stage_unlocked", 1))
