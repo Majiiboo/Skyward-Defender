@@ -12,7 +12,7 @@ const TRAIT_BONUS := 0.5        # +50% damage vs a trait the turret is strong ag
 const BOSS_TRAIT_BONUS := 0.3   # bosses resist the bonus a little
 const DEFAULT_LOADOUT := ["sentry", "", "", ""]
 
-# art = file prefix in turrets/ (<art>_idle.png, <art>_fire.png).
+# art = file prefix in turrets/ (<art>_idle.png; the Sentry also has _head and _base).
 # ready = the battle mechanic exists; the others show in Gear as "in development".
 # unlock = pilot level needed. strong = enemy traits it does +50% against.
 const TURRETS := {

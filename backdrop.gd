@@ -10,6 +10,44 @@ extends RefCounted
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
 
+# ---- Luna's base strip (base/base_strip.png, cut by tools/cut_battle_art.gd) ----
+# Socket ring centres as fractions of the strip picture (x across, y down).
+const STRIP_SOCKETS := [Vector2(0.144, 0.53), Vector2(0.297, 0.524), Vector2(0.701, 0.523), Vector2(0.857, 0.533)]
+static var _strip: Texture2D
+static var _strip_glow: Texture2D
+
+static func strip_rect(width: float, bottom_y: float) -> Rect2:
+	if _strip == null:
+		_strip = load("res://base/base_strip.png")
+		_strip_glow = load("res://base/base_strip_glow.png")
+	var h: float = width * _strip.get_height() / _strip.get_width()
+	return Rect2(0.0, bottom_y - h, width, h)
+
+# Where socket i's ring centre is on screen for a strip of this width.
+static func socket_pos(i: int, width: float, bottom_y: float) -> Vector2:
+	var r := strip_rect(width, bottom_y)
+	var s: Vector2 = STRIP_SOCKETS[i]
+	return r.position + Vector2(s.x * r.size.x, s.y * r.size.y)
+
+static func draw_strip(c: CanvasItem, width: float, bottom_y: float) -> void:
+	c.draw_texture_rect(_strip, strip_rect(width, bottom_y), false)
+
+# The lit sockets: Luna's ring glow, drawn as added light on a layer with additive
+# blending. lit[i] (0..1) fades socket i's glow in.
+static func draw_socket_glow(c: CanvasItem, width: float, bottom_y: float, lit: Array) -> void:
+	var r := strip_rect(width, bottom_y)
+	var tw: float = _strip_glow.get_width()
+	var th: float = _strip_glow.get_height()
+	for i in mini(lit.size(), STRIP_SOCKETS.size()):
+		var a: float = float(lit[i])
+		if a < 0.01:
+			continue
+		var s: Vector2 = STRIP_SOCKETS[i]
+		var src := Rect2((s.x - 0.08) * tw, (s.y - 0.32) * th, 0.16 * tw, 0.64 * th)
+		var dst := Rect2(r.position + Vector2(src.position.x / tw * r.size.x, src.position.y / th * r.size.y),
+			Vector2(src.size.x / tw * r.size.x, src.size.y / th * r.size.y))
+		c.draw_texture_rect_region(_strip_glow, dst, src, Color(1, 1, 1, a))
+
 static func make_city(count: int = 46, seed_value: int = 7) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = seed_value
@@ -116,51 +154,6 @@ static func draw_shield(c: CanvasItem, size: Vector2, horizon_y: float, elite: b
 	c.draw_polyline(pts, Color(col, 0.14 * strength), 5.0, true)
 	c.draw_polyline(pts, Color(col, 0.2 + 0.3 * strength), 1.6, true)
 
-static func draw_turret(c: CanvasItem, base: Vector2, angle: float, t: float, recoil: float = 0.0) -> void:
-	# A generic base-mounted gun: raised platform, armoured housing with a glowing
-	# core, twin barrels on a pivot, and a status light. No fins or arcs above it.
-	var dir := Vector2.from_angle(angle)
-	var perp := Vector2(-dir.y, dir.x)
-	c.draw_colored_polygon(PackedVector2Array([base + Vector2(-22, 12), base + Vector2(22, 12), base + Vector2(17, 2), base + Vector2(-17, 2)]), Color(0.06, 0.07, 0.13))
-	c.draw_line(base + Vector2(-17, 2), base + Vector2(17, 2), Color(PURPLE, 0.45), 1.4, true)
-	c.draw_rect(Rect2(base + Vector2(-7, -8), Vector2(14, 11)), Color(0.08, 0.09, 0.16))
-	c.draw_line(base + Vector2(-7, -8), base + Vector2(7, -8), Color(CYAN, 0.3), 1.0, true)
-	var pivot := base + Vector2(0, -11)
-	c.draw_colored_polygon(PackedVector2Array([pivot + Vector2(-10, 6), pivot + Vector2(10, 6), pivot + Vector2(8, -7), pivot + Vector2(-8, -7)]), Color(0.11, 0.12, 0.20))
-	c.draw_polyline(PackedVector2Array([pivot + Vector2(-10, 6), pivot + Vector2(-8, -7), pivot + Vector2(8, -7), pivot + Vector2(10, 6)]), Color(CYAN, 0.35), 1.2, true)
-	c.draw_circle(pivot, 3.2, Color(PURPLE, 0.6 + 0.4 * sin(t * 4.0)))
-	var back := dir * (-2.0 - recoil * 3.0)
-	for s in [-1.0, 1.0]:
-		var o: Vector2 = perp * float(s) * 2.8 + back
-		c.draw_line(pivot + o, pivot + o + dir * 18.0, Color(0.10, 0.10, 0.17), 4.0, true)
-		c.draw_line(pivot + o + dir * 12.0, pivot + o + dir * 18.0, Color(PURPLE, 0.9), 2.2, true)
-	c.draw_line(pivot + dir * 5.0 - perp * 5.0, pivot + dir * 5.0 + perp * 5.0, Color(0.16, 0.16, 0.26), 2.0, true)
-	c.draw_circle(base + Vector2(14, 7), 1.5, Color(0.3, 1.0, 0.5, 0.6 + 0.4 * sin(t * 2.0)))
-
-static func draw_base(c: CanvasItem, centre: Vector2, t: float, elite: bool = false) -> void:
-	# The home base: a low command dome on a plinth with a mast, between the turrets.
-	var col := PURPLE if elite else CYAN
-	c.draw_colored_polygon(PackedVector2Array([centre + Vector2(-46, 10), centre + Vector2(46, 10), centre + Vector2(40, 0), centre + Vector2(-40, 0)]), Color(0.05, 0.06, 0.12))
-	c.draw_line(centre + Vector2(-40, 0), centre + Vector2(40, 0), Color(col, 0.35), 1.2, true)
-	c.draw_rect(Rect2(centre + Vector2(-30, -10), Vector2(60, 10)), Color(0.07, 0.08, 0.15))
-	var pts := PackedVector2Array()
-	for i in 17:
-		var a := PI + PI * float(i) / 16.0
-		pts.append(centre + Vector2(cos(a) * 22.0, -10.0 + sin(a) * 16.0))
-	var dome := PackedVector2Array(pts)
-	dome.append(centre + Vector2(22, -10))
-	c.draw_colored_polygon(dome, Color(0.09, 0.10, 0.19))
-	c.draw_polyline(pts, Color(col, 0.6), 1.4, true)
-	c.draw_line(centre + Vector2(-16, -16), centre + Vector2(16, -16), Color(col, 0.5), 2.0, true)
-	c.draw_circle(centre + Vector2(0, -19), 2.5, Color(col, 0.5 + 0.5 * sin(t * 3.0)))
-	c.draw_line(centre + Vector2(0, -26), centre + Vector2(0, -42), Color(0.35, 0.38, 0.5), 1.4, true)
-	c.draw_circle(centre + Vector2(0, -43), 1.8, Color(1.0, 0.35, 0.42, 0.9 if fmod(t, 1.2) < 0.25 else 0.25))
-	for s in [-1.0, 1.0]:
-		var hx: float = float(s) * 29.0
-		c.draw_rect(Rect2(centre + Vector2(hx - 5, -8), Vector2(10, 7)), Color(0.04, 0.05, 0.1))
-		c.draw_line(centre + Vector2(hx - 4, -3), centre + Vector2(hx + 4, -3), Color(col, 0.35), 1.0, true)
-
-
 static func _ell_pts(centre: Vector2, rx: float, ry: float, a0: float, a1: float, steps: int = 40) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	for i in range(steps + 1):
@@ -212,19 +205,3 @@ static func draw_force_field(c: CanvasItem, centre: Vector2, rx: float, ry: floa
 	if hit_t >= 0.0 and hit_t < 0.5:
 		var k := hit_t / 0.5
 		c.draw_polyline(_ell_pts(centre, rx * (1.0 + 0.08 * k), ry * (1.0 + 0.12 * k), PI, TAU), Color(1, 1, 1, (1.0 - k) * 0.5), 3.0, true)
-
-
-static func draw_deck(c: CanvasItem, width: float, ground_y: float, deck_h: float, mounts: Array, t: float, elite: bool = false) -> void:
-	# A raised deck across the base with a platform at each turret mount, so the
-	# player can see where the four turrets sit even when empty.
-	var col := PURPLE if elite else CYAN
-	var top := ground_y - deck_h
-	c.draw_colored_polygon(PackedVector2Array([Vector2(width * 0.06, ground_y), Vector2(width * 0.94, ground_y), Vector2(width * 0.90, top), Vector2(width * 0.10, top)]), Color(0.05, 0.06, 0.12))
-	c.draw_line(Vector2(width * 0.10, top), Vector2(width * 0.90, top), Color(col, 0.35), 1.2, true)
-	for i in mounts.size():
-		var x: float = width * float(mounts[i])
-		var p := Vector2(x, top)
-		c.draw_colored_polygon(PackedVector2Array([p + Vector2(-20, 0), p + Vector2(20, 0), p + Vector2(16, -6), p + Vector2(-16, -6)]), Color(0.08, 0.09, 0.16))
-		c.draw_line(p + Vector2(-16, -6), p + Vector2(16, -6), Color(col, 0.45), 1.2, true)
-		c.draw_circle(p + Vector2(0, -3), 2.0, Color(col, 0.4 + 0.3 * sin(t * 2.0 + i)))
-		c.draw_string(ThemeDB.fallback_font, p + Vector2(-4, -9), str(i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 9, Color(col, 0.5))

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://k0pd6h5raahw"
-path="res://.godot/imported/sentry_fire.png-5c51a43bbc564e9138fd3d1cd3c04710.ctex"
+uid="uid://chfs2q3m72wo"
+path="res://.godot/imported/crush.png-5cb24a1fe10f1f80a9474d2df7bd5765.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://turrets/sentry_fire.png"
-dest_files=["res://.godot/imported/sentry_fire.png-5c51a43bbc564e9138fd3d1cd3c04710.ctex"]
+source_file="res://fx/crush.png"
+dest_files=["res://.godot/imported/crush.png-5cb24a1fe10f1f80a9474d2df7bd5765.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

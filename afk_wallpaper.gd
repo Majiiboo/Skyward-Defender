@@ -10,6 +10,8 @@ extends Control
 # use (set_elite). When a menu view opens, hub.gd hides and pauses this node.
 
 const PILOT_H := 60.0
+const STRIP_DROP := 16.0       # base strip bottom, below the horizon line
+const WALL_TURRET_H := 64.0
 const SHOW_TURRETS := true   # set to false to remove the two base turrets
 
 const CYAN := Color(0.18, 0.9, 1.0)
@@ -41,6 +43,7 @@ var _soldier_vx := 0.0
 var _bank := 0.0
 var _aim := Vector2.ZERO
 var _has_aim := false
+var _wall_turrets: Array = []
 var _turret_cd: Array[float] = [0.5, 1.1]
 var _turret_ang: Array[float] = [-PI / 2.0, -PI / 2.0]
 var _facing := 1.0
@@ -151,8 +154,7 @@ func _shoot(dt: float) -> void:
 		_flash = 0.07
 	if SHOW_TURRETS:
 		for i in 2:
-			var tx := size.x * (0.21 if i == 0 else 0.79)
-			var base := Vector2(tx, _horizon_y() - 8.0)
+			var base := _wall_turret_tip(i)
 			var ti := _nearest_enemy(base, 420.0)
 			if ti >= 0:
 				var tp: Vector2 = _enemies[ti].pos
@@ -272,8 +274,7 @@ func _draw() -> void:
 	_draw_ship()
 	_draw_rocks()
 	Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
-	Backdrop.draw_deck(self, size.x, _horizon_y(), 26.0, [0.18, 0.36, 0.64, 0.82], _t, elite)
-	Backdrop.draw_base(self, Vector2(size.x * 0.5, _horizon_y() - 28.0), _t, elite)
+	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
 	if SHOW_TURRETS:
 		_draw_turrets()
 	_draw_enemies()
@@ -311,10 +312,27 @@ func _draw_rocks() -> void:
 		edge.append(pts[0])
 		draw_polyline(edge, Color(CYAN, 0.18), 1.2, true)
 
+# Two of Luna's turrets on the base strip: a Lance Pylon on socket 1 and a Storm Spire\n# on socket 4 (the same pictures the battle uses).
 func _draw_turrets() -> void:
 	for i in 2:
-		var tx := size.x * (0.18 if i == 0 else 0.82)
-		Backdrop.draw_turret(self, Vector2(tx, _horizon_y() - 34.0), _turret_ang[i], _t, maxf(0.0, 1.0 - _turret_cd[i] * 2.5))
+		var tex: Texture2D = _wall_tex(i)
+		var s: float = _wall_turret_h() / tex.get_height()
+		var sz := tex.get_size() * s
+		var p := Backdrop.socket_pos(0 if i == 0 else 3, size.x, _horizon_y() + STRIP_DROP)
+		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * 0.5, -sz.y + 6.0 * size.x / 480.0), sz), false)
+
+func _wall_tex(i: int) -> Texture2D:
+	if _wall_turrets.is_empty():
+		_wall_turrets = [load("res://turrets/lance_idle.png"), load("res://turrets/storm_idle.png")]
+	return _wall_turrets[i]
+
+func _wall_turret_tip(i: int) -> Vector2:
+	var p := Backdrop.socket_pos(0 if i == 0 else 3, size.x, _horizon_y() + STRIP_DROP)
+	return p + Vector2(0, 6.0 * size.x / 480.0 - _wall_turret_h() * 0.9)
+
+# turrets keep their size relative to the base strip, whatever the screen width
+func _wall_turret_h() -> float:
+	return WALL_TURRET_H * size.x / 480.0
 
 func _draw_enemies() -> void:
 	for e in _enemies:

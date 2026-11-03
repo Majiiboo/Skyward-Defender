@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://byicx7mu0iqn3"
-path="res://.godot/imported/storm_fire.png-59f59f1aae55411a532e87cc4c073b50.ctex"
+uid="uid://devxg6wc0sy40"
+path="res://.godot/imported/prism_beam.png-5c152904724991554938a6c5496fcfa9.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://turrets/storm_fire.png"
-dest_files=["res://.godot/imported/storm_fire.png-59f59f1aae55411a532e87cc4c073b50.ctex"]
+source_file="res://fx/prism_beam.png"
+dest_files=["res://.godot/imported/prism_beam.png-5c152904724991554938a6c5496fcfa9.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

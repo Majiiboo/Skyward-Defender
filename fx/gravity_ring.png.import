@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bqt2s8xjae0sl"
-path="res://.godot/imported/swarm_fire.png-e1b842de145f926d156ec81942f33b59.ctex"
+uid="uid://byboinn7vvjwb"
+path="res://.godot/imported/gravity_ring.png-3f52191fe741d9867e7929a3930400c4.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://turrets/swarm_fire.png"
-dest_files=["res://.godot/imported/swarm_fire.png-e1b842de145f926d156ec81942f33b59.ctex"]
+source_file="res://fx/gravity_ring.png"
+dest_files=["res://.godot/imported/gravity_ring.png-3f52191fe741d9867e7929a3930400c4.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

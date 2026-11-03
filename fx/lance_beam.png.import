@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://25osdfytf4a4"
-path="res://.godot/imported/prism_fire.png-8559335c3b4cab321e93de0e3b6e358e.ctex"
+uid="uid://dwxq5vpvu6gon"
+path="res://.godot/imported/lance_beam.png-30caa19168500a6feeed862c3ae603a6.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://turrets/prism_fire.png"
-dest_files=["res://.godot/imported/prism_fire.png-8559335c3b4cab321e93de0e3b6e358e.ctex"]
+source_file="res://fx/lance_beam.png"
+dest_files=["res://.godot/imported/lance_beam.png-30caa19168500a6feeed862c3ae603a6.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

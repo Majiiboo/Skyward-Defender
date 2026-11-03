@@ -35,7 +35,8 @@ Read this first. It replaces the chat history this project grew up in.
   in-between frames, idle breathing), five thruster styles.
 - enemy_rig.gd: enemies drawn from Luna's parts (body + hinged wings, Hive Mother body,
   wings, sacs, claws) with smooth flap curves.
-- backdrop.gd: sky, planet horizon, city, deck with 4 turret platforms, force field dome.
+- backdrop.gd: sky, planet horizon, city, Luna's base strip (base/base_strip.png, 4
+  sockets at STRIP_SOCKETS), socket glow, force field dome.
 - gear.gd, modes.gd, store.gd, quests.gd: menu screens built with ui_kit.gd. Gear has a
   Pilot / Turrets switch; the Turrets page edits the loadout and spends coins on levels.
 - turrets.gd: TURRETS table (stats, unlock pilot level, strong-vs traits, ready flag),
@@ -107,7 +108,11 @@ Read this first. It replaces the chat history this project grew up in.
    Cut by bounding boxes, key black to alpha keeping glows soft (the middle column's
    background is a slightly lighter black). Gear rarity colours should follow the sheet:
    cyan, green, purple.
-9. Base and turret redo (Rudy, dev86 playtest): base, deck, platforms and turrets look
+9. (done for dev87: base strip in battle and Home via Backdrop.draw_strip /
+   socket_pos / draw_socket_glow; turrets on sockets with TURRET_LOOK sizes, two-piece
+   Sentry (_sentry_geo), additive effect layer _fx/_draw_fx with Luna's fx/*.png, drop-in
+   on mount. Re-cut art with tools/cut_battle_art.gd.) Original notes:
+   Base and turret redo (Rudy, dev86 playtest): base, deck, platforms and turrets look
    pasted on, too dark and small; turret shots too thin to notice. Brief for Luna:
    LUNA-BRIEF-base-turrets.md (wide base strip with 4 empty sockets, 6 turrets x
    idle/charging/firing without floor plates, shot + impact sprites). Code side, can

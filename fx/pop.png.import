@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dfl8dch0n7g7p"
-path="res://.godot/imported/gravity_fire.png-0a3012985e76d05b42755a5b277e2173.ctex"
+uid="uid://bmsbmsmctwahs"
+path="res://.godot/imported/pop.png-a0309fb63ec0b47d86c1ce53d033925f.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://turrets/gravity_fire.png"
-dest_files=["res://.godot/imported/gravity_fire.png-0a3012985e76d05b42755a5b277e2173.ctex"]
+source_file="res://fx/pop.png"
+dest_files=["res://.godot/imported/pop.png-a0309fb63ec0b47d86c1ce53d033925f.ctex"]
 
 [params]
 
@@ -23,7 +23,7 @@ compress/rdo_quality_loss=0.0
 compress/hdr_compression=1
 compress/normal_map=0
 compress/channel_pack=0
-mipmaps/generate=true
+mipmaps/generate=false
 mipmaps/limit=-1
 roughness/mode=0
 roughness/src_normal=""

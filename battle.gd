@@ -13,9 +13,21 @@ var FIELD_H := 800.0
 var BASE_Y := 786.0
 const DOME_RX := 300.0
 const DOME_RY := 112.0
-const DECK_H := 34.0              # the raised deck the base and turret platforms stand on
-const MOUNT_X := [0.18, 0.36, 0.64, 0.82]
 const PILOT_HEIGHT := 60.0
+# How each turret sits on its socket: draw height and widest width (px), where its
+# weapon tip is (fraction of the drawn height from the foot), and a hover bob (px).
+const TURRET_LOOK := {
+	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0},
+	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0},
+	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0},
+	"swarm":   {"h": 72.0, "w": 72.0, "tip": 0.60, "bob": 2.5},
+	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0},
+}
+const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above the screen's bottom edge
+const SENTRY_BASE_W := 58.0
+const SENTRY_HEAD_H := 66.0
+const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a little left
+const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
 
@@ -88,6 +100,9 @@ var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
 var turret_mult := 1.0            # run boost from Deploy cards
 var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
+var fxs: Array = []               # short effect sprites {tex, pos, size, rot, life, max, grow, col}
+var _fx: Node2D                   # additive effect layer
+var _fx_tex := {}
 var stat_pilot_dmg := 0.0
 var stat_turret_dmg := 0.0
 var sparks: Array = []
@@ -142,8 +157,18 @@ func _ready() -> void:
 		_tex[id + "_up"] = load("res://enemies/%s_up.png" % id)
 		_tex[id + "_down"] = load("res://enemies/%s_down.png" % id)
 	for id in Turrets.TURRETS:
-		for k in ["_idle", "_fire"]:
-			_tex[Turrets.TURRETS[id].art + k] = load("res://turrets/%s%s.png" % [Turrets.TURRETS[id].art, k])
+		_tex[Turrets.TURRETS[id].art + "_idle"] = load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art)
+	_tex["sentry_head"] = load("res://turrets/sentry_head.png")
+	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
+	for n in FX_NAMES:
+		_fx_tex[n] = load("res://fx/%s.png" % n)
+	# effects (shots, hits, glows) are drawn on their own layer with additive light
+	_fx = Node2D.new()
+	var fx_mat := CanvasItemMaterial.new()
+	fx_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+	_fx.material = fx_mat
+	_fx.draw.connect(_draw_fx)
+	add_child(_fx)
 	for n in ["hive_lay_1", "hive_lay_2", "hive_lay_3", "hive_lay_4", "hive_hatchling"]:
 		_tex[n] = load("res://enemies/%s.png" % n)
 	_load()
@@ -207,6 +232,7 @@ func _start_stage() -> void:
 	sparks.clear(); rings.clear(); floaters.clear()
 	turret_mult = 1.0
 	drones.clear()
+	fxs.clear()
 	stat_pilot_dmg = 0.0
 	stat_turret_dmg = 0.0
 	for i in turret_loadout.size():
@@ -480,6 +506,7 @@ func _update_bullets(delta: float) -> void:
 				if b.has("src"):
 					dmg *= Turrets.trait_mult(b.src, StageData.ENEMIES[e.type].traits)
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
+					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 				else:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 				e.hp -= dmg
@@ -752,11 +779,11 @@ func _xp_need() -> float:
 # ------------------------------------------------------------------ turrets
 
 # Turrets from the Gear loadout are mounted at the start of every run (mount =
-# index into MOUNT_X); a Deploy card fills a free mount during the run. Each
+# index into Backdrop.STRIP_SOCKETS); a Deploy card fills a free mount during the run. Each
 # type's numbers live in turrets.gd.
 func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true) -> bool:
 	if mount < 0:
-		for i in MOUNT_X.size():
+		for i in Backdrop.STRIP_SOCKETS.size():
 			var taken := false
 			for t in turrets:
 				if t.mount == i:
@@ -766,12 +793,15 @@ func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true)
 				break
 	if mount < 0:
 		return false
-	var x: float = FIELD_W * float(MOUNT_X[mount])
-	turrets.append({"type": type, "lvl": lvl, "mount": mount, "pos": Vector2(x, BASE_Y - DECK_H - 4.0), "cd": 0.5 + 0.3 * mount,
-		"fire_t": 0.0, "ang": -PI / 2.0, "flip": x > FIELD_W * 0.5, "charge": 0.0, "build": 0.0, "bolt": []})
-	if fx:
-		_burst(Vector2(x, BASE_Y - 30.0), 16.0, Color(0.2, 0.85, 1.0), 10)
+	# every turret drops onto its socket: one after another at the start of a run,
+	# straight away when a Deploy card adds one
+	turrets.append({"type": type, "lvl": lvl, "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
+		"fire_t": 0.0, "ang": -PI / 2.0, "face": 1.0, "charge": 0.0, "build": 0.0, "bolt": [],
+		"drop": 0.0, "drop_wait": 0.0 if fx else 0.3 + 0.18 * mount})
 	return true
+
+func _socket(i: int) -> Vector2:
+	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT)
 
 func _turret_dmg(t: Dictionary) -> float:
 	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl)) * turret_mult
@@ -783,7 +813,16 @@ func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 
 func _update_turrets(delta: float) -> void:
 	for t in turrets:
-		t.pos.y = BASE_Y - DECK_H - 4.0   # follows the screen height
+		t.pos = _socket(t.mount)   # follows the screen height
+		if t.drop < 1.0:
+			t.drop_wait -= delta
+			if t.drop_wait <= 0.0:
+				t.drop = minf(t.drop + delta / 0.45, 1.0)
+				if t.drop >= 1.0:
+					# landed: a flash on the socket
+					_fx_add("spark", t.pos + Vector2(0, -6), 70.0, 0.35, 0.0, 1.8)
+					_burst(t.pos, 18.0, Color(0.2, 0.85, 1.0), 8)
+			continue
 		t.fire_t = maxf(t.fire_t - delta, 0.0)
 		match String(t.type):
 			"lance": _update_lance(t, delta)
@@ -805,12 +844,13 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			best = i
 	if best >= 0:
 		t.ang = lerp_angle(t.ang, (enemies[best].pos - t.pos).angle(), 0.12)
+		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 6.0)
 		t.cd -= delta
 		if t.cd <= 0.0:
 			t.cd = float(def.every)
 			t.fire_t = FIRE_TIME.sentry
 			var dir := Vector2.from_angle(t.ang)
-			bullets.append({"pos": t.pos + Vector2(0, -22) + dir * 26.0, "vel": dir * 320.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "purple", "src": t.type})
+			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type})
 
 func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
 	return absf(e.pos.x - t.pos.x) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 100.0 and e.pos.y < t.pos.y
@@ -837,7 +877,7 @@ func _update_lance(t: Dictionary, delta: float) -> void:
 		if _lance_in_column(t, e):
 			_turret_hit(t, e, dmg)
 			for k in 3:
-				sparks.append({"pos": e.pos, "vel": Vector2(rng.randf_range(-90, 90), rng.randf_range(-90, 90)), "life": 0.3, "col": Color(def.glow)})
+				_fx_add("lance_flare", e.pos, 44.0, 0.3, 0.0, 1.4)
 	var half: float = float(def.width) * 0.5
 	enemy_bullets = enemy_bullets.filter(func(b): return absf(b.pos.x - t.pos.x) > half)
 
@@ -904,7 +944,7 @@ func _update_storm(t: Dictionary, delta: float) -> void:
 	t.bolt = path
 	t.bolt_seed = rng.randi()   # one fixed zigzag per strike, so the bolt doesn't jitter
 	for p in path.slice(1):
-		_burst(p, 5.0, Color(def.glow), 3)
+		_fx_add("storm_zap", p, 40.0, 0.3, rng.randf() * TAU)
 
 func _gravity_centre(t: Dictionary) -> Vector2:
 	var def: Dictionary = Turrets.TURRETS.gravity
@@ -941,7 +981,7 @@ func _update_gravity(t: Dictionary, delta: float) -> void:
 	for e in enemies:
 		if e.pos.y > 100.0 and c.distance_to(e.pos) < float(def.crush_r):
 			_turret_hit(t, e, dmg)
-	_burst(c, float(def.crush_r) * 0.4, Color(def.glow), 10)
+	_fx_add("crush", c, float(def.crush_r) * 1.9, 0.45, rng.randf() * TAU, 1.3)
 
 # Swarm Hive: lets out a handful of micro-drones; they live in `drones`.
 func _update_swarm(t: Dictionary, delta: float) -> void:
@@ -961,7 +1001,7 @@ func _update_swarm(t: Dictionary, delta: float) -> void:
 	t.fire_t = FIRE_TIME.swarm
 	for i in int(def.count):
 		var a: float = -PI / 2.0 + lerpf(-0.7, 0.7, float(i) / maxf(float(def.count) - 1.0, 1.0))
-		drones.append({"type": "swarm", "pos": t.pos + Vector2(0, -28), "vel": Vector2.from_angle(a) * 120.0,
+		drones.append({"type": "swarm", "pos": _turret_tip(t), "vel": Vector2.from_angle(a) * 120.0,
 			"life": float(def.life), "age": 0.0, "dmg": _turret_dmg(t)})
 
 # Each drone steers toward the nearest enemy, hits once and is gone.
@@ -982,7 +1022,7 @@ func _update_drones(delta: float) -> void:
 			dr.vel = dr.vel.lerp((best.pos - dr.pos).normalized() * speed, minf(1.0, delta * 4.0))
 			if bd < float(best.r) * 0.6 + 6.0:
 				_turret_hit(dr, best, float(dr.dmg))
-				_burst(dr.pos, 3.0, Color(Turrets.TURRETS.swarm.glow), 3)
+				_fx_add("pop", dr.pos, 30.0, 0.3, rng.randf() * TAU)
 				continue
 		dr.pos += dr.vel * delta
 		if dr.life > 0.0:
@@ -1021,6 +1061,7 @@ func _update_prism(t: Dictionary, delta: float) -> void:
 						break   # one hit per enemy per volley, even where beams overlap
 			t.beams = segs
 			t.fire_t = FIRE_TIME.prism
+			_fx_add("prism_burst", split, 70.0, 0.4, 0.0, 1.3)
 		return
 	t.cd -= delta
 	if t.cd > 0.0:
@@ -1058,6 +1099,12 @@ func _float_text(p: Vector2, text: String, col: Color, big: bool = false) -> voi
 	floaters.append({"pos": p + Vector2(rng.randf_range(-6, 6), 0), "text": text, "life": 1.1 if big else 0.9, "col": col, "big": big})
 
 func _step_effects(delta: float) -> void:
+	var live_fx: Array = []
+	for f in fxs:
+		f.life -= delta
+		if f.life > 0.0:
+			live_fx.append(f)
+	fxs = live_fx
 	var live: Array = []
 	for s in sparks:
 		s.pos += s.vel * delta
@@ -1305,8 +1352,7 @@ func _draw() -> void:
 	Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow)
 	Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
-	Backdrop.draw_deck(self, FIELD_W, BASE_Y, DECK_H, MOUNT_X, time_alive, elite)
-	Backdrop.draw_base(self, Vector2(FIELD_W * 0.5, BASE_Y - DECK_H - 2.0), time_alive, elite)
+	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
@@ -1338,6 +1384,8 @@ func _draw() -> void:
 	# bullets
 	var bolt_w: float = 1.0 + (damage_mult - 1.0) * 1.6   # Heavy Bolts: thicker, brighter bolts
 	for bl in bullets:
+		if bl.col == "tracer":
+			continue   # turret tracers are drawn on the light layer
 		var dir: Vector2 = bl.vel.normalized()
 		var purple: bool = bl.col == "purple"
 		var w: float = 1.0 if purple else bolt_w
@@ -1374,6 +1422,7 @@ func _draw() -> void:
 		var big: bool = f.get("big", false)
 		draw_string(title_font if big else hud_font, f.pos + Vector2(-40 if big else -14, 0), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18 if big else 14, Color(f.col, clampf(f.life * 1.5, 0.0, 1.0)))
 	_draw_hud()
+	_fx.queue_redraw()
 
 func _draw_enemy(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
@@ -1408,29 +1457,136 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w * clampf(e.hp / e.hp_max, 0.0, 1.0), 3), Color(1.0, 0.5, 0.4))
 
 func _draw_turret(t: Dictionary) -> void:
-	# The idle art is always drawn; the firing art fades out over it, so a shot is
-	# a flash that settles rather than a swap between two pictures.
-	var art: String = Turrets.TURRETS[t.type].art
-	var tex: Texture2D = _tex[art + "_idle"]
-	var fire_a: float = smoothstep(0.0, float(FIRE_TIME.get(t.type, 0.14)), float(t.fire_t))
-	var h := 54.0 if t.type == "lance" else 44.0
-	var s: float = h / tex.get_height()
-	var dsize := tex.get_size() * s
-	var flip: bool = t.flip
-	draw_set_transform(t.pos, 0.0, Vector2(-1.0 if flip else 1.0, 1.0))
-	draw_texture_rect(tex, Rect2(Vector2(-dsize.x * 0.5, -dsize.y + 6.0), dsize), false)
-	if fire_a > 0.01:
-		var ft: Texture2D = _tex[art + "_fire"]
-		var fsize := ft.get_size() * (h / ft.get_height())
-		draw_texture_rect(ft, Rect2(Vector2(-fsize.x * 0.5, -fsize.y + 6.0), fsize), false, Color(1, 1, 1, fire_a))
+	# Luna's turret sits in its socket with a soft shadow; it falls in from above
+	# when mounted (drop 0 -> 1) and lands with a flash.
+	if t.drop <= 0.0:
+		return
+	var k: float = t.drop
+	var yo: float = -90.0 * (1.0 - k) * (1.0 - k)
+	var a: float = clampf(k * 4.0, 0.0, 1.0)
+	draw_set_transform(t.pos + Vector2(0, 3), 0.0, Vector2(1.0, 0.32))
+	draw_circle(Vector2.ZERO, 30.0, Color(0, 0, 0, 0.45 * k))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if t.type == "lance":
-		# the tip fills up while it charges
-		var k: float = clampf(t.charge / float(Turrets.TURRETS.lance.every), 0.0, 1.0)
-		var tip: Vector2 = t.pos + Vector2(0, -h + 8.0)
-		var r: float = 2.0 + 2.5 * k
-		draw_colored_polygon(PackedVector2Array([tip + Vector2(0, -r * 1.4), tip + Vector2(r, 0), tip + Vector2(0, r * 1.4), tip + Vector2(-r, 0)]),
-			Color(0.75, 0.9, 1.0, 0.2 + 0.7 * k))
+	if t.type == "sentry":
+		var bt: Texture2D = _tex["sentry_base"]
+		var bs := bt.get_size() * (SENTRY_BASE_W / bt.get_width())
+		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.5 + yo), bs), false, Color(1, 1, 1, a))
+		var g := _sentry_geo(t)
+		var ht: Texture2D = _tex["sentry_head"]
+		var hs: float = SENTRY_HEAD_H / ht.get_height()
+		var hsz := ht.get_size() * hs
+		draw_set_transform(g.pivot + Vector2(0, yo), g.rot, Vector2(g.face, 1.0))
+		draw_texture_rect(ht, Rect2(Vector2(-hsz.x * 0.5, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz), false, Color(1, 1, 1, a))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
+	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
+	var look: Dictionary = TURRET_LOOK[t.type]
+	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
+	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
+	draw_texture_rect(tex, Rect2(t.pos + Vector2(-sz.x * 0.5, -sz.y + 6.0 + yo + bob), sz), false, Color(1, 1, 1, a))
+
+# Where the Sentry's head sits and points. The painted barrels point up-left, so the
+# head is mirrored for targets on the right; `face` eases through the turn so it
+# swings round instead of flipping.
+func _sentry_geo(t: Dictionary) -> Dictionary:
+	var bt: Texture2D = _tex["sentry_base"]
+	var base_h: float = bt.get_height() * (SENTRY_BASE_W / bt.get_width())
+	var pivot: Vector2 = t.pos + Vector2(0, -base_h * 0.42)
+	var face: float = signf(t.face) * maxf(absf(t.face), 0.15) if t.face != 0.0 else 0.15
+	var art_dir: float = SENTRY_ART_DIR if t.face >= 0.0 else PI - SENTRY_ART_DIR
+	var rot: float = clampf(angle_difference(art_dir, t.ang), -0.6, 0.6)
+	var ht: Texture2D = _tex["sentry_head"]
+	var hs: float = SENTRY_HEAD_H / ht.get_height()
+	var recoil: float = 4.0 * float(t.fire_t) / FIRE_TIME.sentry
+	var local := Vector2((0.47 - 0.5) * ht.get_width() * face, (0.04 - 0.9) * ht.get_height()) * hs + Vector2(0, recoil)
+	return {"pivot": pivot, "rot": rot, "face": face, "recoil": recoil, "muzzle": pivot + local.rotated(rot)}
+
+# The point a turret's weapon fires from.
+func _turret_tip(t: Dictionary) -> Vector2:
+	if t.type == "sentry":
+		return _sentry_geo(t).muzzle
+	var look: Dictionary = TURRET_LOOK[t.type]
+	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
+	var h: float = tex.get_height() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
+	return t.pos + Vector2(0, 6.0 - h * float(look.tip) + sin(time_alive * 2.2 + float(t.mount)) * float(look.bob))
+
+func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
+	fxs.append({"tex": name, "pos": pos, "size": size, "rot": rot, "life": life, "max": life, "grow": grow, "col": col})
+
+# The additive light layer: Luna's shot and hit sprites (painted on black, so they
+# only add light), turret charge glows and beams.
+func _draw_fx() -> void:
+	# a socket's ring lights up once its turret has landed
+	var lit := [0.0, 0.0, 0.0, 0.0]
+	for t in turrets:
+		lit[t.mount] = maxf(lit[t.mount], smoothstep(0.6, 1.0, float(t.drop)))
+	Backdrop.draw_socket_glow(_fx, FIELD_W, FIELD_H - STRIP_LIFT, lit)
+	for f in fxs:
+		var k: float = 1.0 - f.life / f.max
+		var tex: Texture2D = _fx_tex[f.tex]
+		var w: float = float(f.size) * lerpf(1.0, float(f.grow), 1.0 - (1.0 - k) * (1.0 - k))
+		var h: float = w * tex.get_height() / tex.get_width()
+		var col: Color = f.col
+		_fx.draw_set_transform(f.pos, f.rot, Vector2.ONE)
+		_fx.draw_texture_rect(tex, Rect2(-w * 0.5, -h * 0.5, w, h), false, Color(col.r, col.g, col.b, pow(1.0 - k, 1.2)))
+	# Sentry tracers: the bright head sits on the bullet, the tail trails behind
+	var tr: Texture2D = _fx_tex["sentry_tracer"]
+	for bl in bullets:
+		if bl.col != "tracer":
+			continue
+		var L := 30.0
+		var th: float = L * tr.get_height() / tr.get_width()
+		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
+		_fx.draw_texture_rect(tr, Rect2(-L * 0.9, -th * 0.5, L, th), false)
+	# Swarm drones
+	var dt: Texture2D = _fx_tex["drone"]
+	for dr in drones:
+		var da: float = minf(1.0, dr.age / 0.15) * minf(1.0, dr.life / 0.4)
+		_fx.draw_set_transform(dr.pos, dr.vel.angle(), Vector2.ONE)
+		_fx.draw_texture_rect(dt, Rect2(-11, -11 * dt.get_height() / dt.get_width(), 22, 22 * dt.get_height() / dt.get_width()), false, Color(1, 1, 1, da))
+	for t in turrets:
+		if t.drop < 1.0:
+			continue
+		match String(t.type):
+			"lance":
+				# the tip gathers light while it charges; firing throws a beam to the sky
+				var tip := _turret_tip(t)
+				var kc: float = clampf(t.charge / float(Turrets.TURRETS.lance.every), 0.0, 1.0)
+				_fx_sprite("lance_flare", tip, 8.0 + 26.0 * kc * kc, 0.25 + 0.6 * kc)
+				if t.fire_t > 0.0:
+					var kf: float = t.fire_t / FIRE_TIME.lance
+					var bt: Texture2D = _fx_tex["lance_beam"]
+					_fx.draw_set_transform(tip, -PI / 2.0, Vector2.ONE)
+					_fx.draw_texture_rect(bt, Rect2(0, -14.0 * kf, tip.y + 20.0, 28.0 * kf), false)
+					_fx_sprite("lance_flare", tip, 70.0 * kf, kf)
+			"gravity":
+				var pulling: float = smoothstep(0.0, 1.0, float(t.get("well_a", 0.0)))
+				var after: float = float(t.fire_t) / FIRE_TIME.gravity
+				var wa: float = maxf(pulling, after)
+				if wa > 0.01:
+					var gt: Texture2D = _fx_tex["gravity_ring"]
+					var gs: float = 120.0 * (0.6 + 0.4 * pulling)
+					_fx.draw_set_transform(_gravity_centre(t), -time_alive * 2.0, Vector2.ONE)
+					_fx.draw_texture_rect(gt, Rect2(-gs * 0.5, -gs * 0.5, gs, gs), false, Color(1, 1, 1, 0.9 * wa))
+			"prism":
+				if float(t.get("orb_t", 0.0)) > 0.0:
+					var kk: float = smoothstep(0.0, 1.0, 1.0 - float(t.orb_t) / 0.25)
+					var p: Vector2 = _turret_tip(t).lerp(Vector2(t.pos.x, BASE_Y - float(Turrets.TURRETS.prism.split_h)), kk)
+					_fx_sprite("prism_burst", p, 26.0, 0.9)
+				if t.fire_t > 0.0 and t.has("beams"):
+					var fa: float = smoothstep(0.0, FIRE_TIME.prism, float(t.fire_t))
+					var pt: Texture2D = _fx_tex["prism_beam"]
+					for s in t.beams:
+						var seg: Vector2 = s[1] - s[0]
+						_fx.draw_set_transform(s[0], seg.angle(), Vector2.ONE)
+						_fx.draw_texture_rect(pt, Rect2(0, -8, seg.length(), 16), false, Color(0.8, 0.8, 0.8, fa))
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _fx_sprite(name: String, pos: Vector2, size: float, alpha: float) -> void:
+	var tex: Texture2D = _fx_tex[name]
+	var h: float = size * tex.get_height() / tex.get_width()
+	_fx.draw_set_transform(pos, 0.0, Vector2.ONE)
+	_fx.draw_texture_rect(tex, Rect2(-size * 0.5, -h * 0.5, size, h), false, Color(1, 1, 1, alpha))
 
 # Behind the enemies: the Storm Spire's cloud and the Gravity Anchor's well.
 func _draw_turret_back() -> void:
@@ -1454,7 +1610,7 @@ func _draw_turret_back() -> void:
 			draw_circle(Vector2.ZERO, r * (0.24 + 0.14 * sin(f * PI)), Color(col.darkened(0.6), 0.16 * a))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		if t.fire_t > 0.0:
-			draw_line(t.pos + Vector2(0, -40), c, Color(col, 0.35), 1.0, true)
+			draw_line(_turret_tip(t), c, Color(col, 0.35), 1.0, true)
 
 # The well grows in while it pulls (three thin arcs turning inward) and fades
 # out after the pulse.
@@ -1468,46 +1624,13 @@ func _draw_gravity_well(t: Dictionary) -> void:
 		return
 	var col: Color = def.glow
 	# a faint tether from the turret shows whose well it is
-	draw_line(t.pos + Vector2(0, -30), c, Color(col, 0.18 * a), 1.0, true)
-	for i in 3:
-		var ph: float = fmod(time_alive * 0.8 + float(i) / 3.0, 1.0)
-		var r: float = float(def.radius) * (1.0 - ph)
-		draw_arc(c, r, time_alive * 1.5 + i * 2.1, time_alive * 1.5 + i * 2.1 + 2.2, 24, Color(col, 0.35 * a * ph), 1.2, true)
-	draw_circle(c, 3.0 + 2.0 * pulling, Color(col.darkened(0.2), 0.7 * a))
-	if after > 0.0:
-		draw_arc(c, float(def.crush_r) * (1.2 - 0.5 * after), 0.0, TAU, 40, Color(col, 0.6 * after), 1.5, true)
+	draw_line(_turret_tip(t), c, Color(col, 0.18 * a), 1.0, true)
 
-# In front of the enemies: lance spears, storm lightning, prism orb and beams,
-# swarm drones.
+# In front of the enemies: the Storm Spire's lightning (the rest of the turret
+# light is on the additive layer, _draw_fx).
 func _draw_turret_front() -> void:
-	for dr in drones:
-		var a: float = minf(1.0, dr.age / 0.15) * minf(1.0, dr.life / 0.4)
-		var dir: Vector2 = dr.vel.normalized()
-		var side := Vector2(-dir.y, dir.x)
-		draw_line(dr.pos - dir * 9.0, dr.pos, Color(0.2, 0.85, 1.0, 0.35 * a), 1.5, true)
-		draw_colored_polygon(PackedVector2Array([dr.pos + dir * 4.0, dr.pos - dir * 3.0 + side * 2.5, dr.pos - dir * 3.0 - side * 2.5]), Color(0.75, 0.97, 1.0, a))
 	for t in turrets:
-		if t.type == "prism" and float(t.get("orb_t", 0.0)) > 0.0:
-			var k: float = smoothstep(0.0, 1.0, 1.0 - float(t.orb_t) / 0.25)
-			var p: Vector2 = (t.pos + Vector2(0, -42)).lerp(Vector2(t.pos.x, BASE_Y - float(Turrets.TURRETS.prism.split_h)), k)
-			draw_circle(p, 3.0, Color(1, 1, 1, 0.95))
-			draw_arc(p, 6.0, 0.0, TAU, 16, Color(1.0, 0.9, 0.7, 0.6), 1.0, true)
-		if t.type == "prism" and t.fire_t > 0.0 and t.has("beams"):
-			var fa: float = smoothstep(0.0, FIRE_TIME.prism, float(t.fire_t))
-			for i in t.beams.size():
-				var s: Array = t.beams[i]
-				var hue := Color.from_hsv(float(i) / float(t.beams.size()) * 0.8, 0.55, 1.0)
-				draw_line(s[0], s[1], Color(hue, 0.45 * fa), 3.0, true)
-				draw_line(s[0], s[1], Color(1, 1, 1, 0.8 * fa), 1.0, true)
-		if t.fire_t <= 0.0:
-			continue
-		if t.type == "lance":
-			var k: float = t.fire_t / FIRE_TIME.lance
-			var top := Vector2(t.pos.x, 0.0)
-			var foot: Vector2 = t.pos + Vector2(0, -46)
-			draw_line(foot, top, Color(0.55, 0.8, 1.0, 0.35 * k), 9.0 * k + 2.0, true)
-			draw_line(foot, top, Color(0.95, 0.98, 1.0, k), 2.5, true)
-		elif t.type == "storm" and t.bolt.size() > 1:
+		if t.type == "storm" and t.fire_t > 0.0 and t.bolt.size() > 1:
 			var col: Color = Turrets.TURRETS.storm.glow
 			var a: float = smoothstep(0.0, FIRE_TIME.storm, float(t.fire_t))
 			for i in t.bolt.size() - 1:

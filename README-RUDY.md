@@ -143,6 +143,26 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 
 ## Next build (not packaged yet; will be dev87)
 
+New base and turrets (Luna's art):
+- Battle: Luna's base strip replaces the drawn deck and dome, along the bottom of the
+  screen, with the four numbered sockets. Turrets sit in the sockets at about twice
+  their old size, with a shadow under them, and a socket's ring lights up when its
+  turret lands. At the start of a battle the turrets drop in one after another;
+  a Deploy card drops a Sentry in straight away.
+- Sentry: Luna's two-piece Sentry; the gun head swivels to follow bugs and turns round
+  smoothly when they cross over.
+- Shots and hits use Luna's effect art, drawn as light: Sentry tracers with spark hits,
+  the Lance's tip gathering light then firing a thick beam, Storm zaps on each bug the
+  lightning jumps to, the Gravity well as a spinning purple ring with a crush burst,
+  real little drones from the Swarm Hive with a pop on hit, and the Prism's rainbow fan
+  with a burst where it splits.
+- Gravity Anchor and Swarm Hive hover gently on their sockets.
+- Home: the wallpaper shows the same base strip with a Lance Pylon and a Storm Spire.
+- Gear: the Turrets page shows the new turret pictures.
+- Luna's source sheets are in art_src/battle; tools/cut_battle_art.gd cuts them into
+  the game's pictures again if she sends new versions with the same layout.
+- Removed: the old drawn deck, dome and turrets, and the old turret firing pictures.
+
 From the dev86 playtest:
 - Diver: the short blue line that popped up when it dived is gone. The dive now shows
   only through the Diver itself: wings folding and the body tipping toward you.
