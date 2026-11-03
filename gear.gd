@@ -1,46 +1,16 @@
 extends Control
-# Gear screen: pilot on the left, the six equip slots on the right, Upgrade
-# under them, and the bag (inventory) below. Tapping a bag item equips it;
-# the slot tile and the pilot's power update at once. Equipment is saved in
-# user://skybound_save.json under "gear". Upgrades are show-only for now:
-# the cost is shown, nothing is spent until battle rewards exist.
+# Gear screen. Pilot page: the pilot (the live rig), the six gear slots (Weapon, Helmet,
+# Chest, Gauntlets, Boots, Jetpack), the selected piece's stats with Upgrade (spends
+# coins), the three pieces you can wear in that slot (Ion / Scavenger / Void sets),
+# and the set bonuses you have. Rules and numbers: gear_data.gd. Turrets page: mounts
+# and turret upgrades. Saved in user://skybound_save.json ("gear", "turrets").
 
-const SLOTS := ["Helmet", "Chest", "Gauntlets", "Boots", "Power Orb", "Weapon"]
-# All items: slot, rarity, power. Add items here.
-const ITEMS := {
-	"Sleek Helmet":   {"slot": "Helmet",    "rarity": "common",    "power": 20},
-	"Teal Helmet":    {"slot": "Helmet",    "rarity": "rare",      "power": 32},
-	"White Helmet":   {"slot": "Helmet",    "rarity": "rare",      "power": 34},
-	"Ember Helmet":   {"slot": "Helmet",    "rarity": "epic",      "power": 48},
-	"Charcoal Plate": {"slot": "Chest",     "rarity": "common",    "power": 26},
-	"Teal Plate":     {"slot": "Chest",     "rarity": "rare",      "power": 40},
-	"White Plate":    {"slot": "Chest",     "rarity": "rare",      "power": 42},
-	"Grip Gauntlets": {"slot": "Gauntlets", "rarity": "common",    "power": 14},
-	"Teal Gauntlets": {"slot": "Gauntlets", "rarity": "rare",      "power": 24},
-	"Hover Boots":    {"slot": "Boots",     "rarity": "common",    "power": 16},
-	"Teal Boots":     {"slot": "Boots",     "rarity": "rare",      "power": 26},
-	"White Boots":    {"slot": "Boots",     "rarity": "rare",      "power": 27},
-	"Purple Orb":     {"slot": "Power Orb", "rarity": "common",    "power": 30},
-	"Cyan Orb":       {"slot": "Power Orb", "rarity": "epic",      "power": 55},
-	"Teal Orb":       {"slot": "Power Orb", "rarity": "rare",      "power": 42},
-	"Laser Pistol":   {"slot": "Weapon",    "rarity": "common",    "power": 35},
-	"Dual Minis":     {"slot": "Weapon",    "rarity": "rare",      "power": 52},
-	"Pulse Cannon":   {"slot": "Weapon",    "rarity": "epic",      "power": 70},
-	"Nova Lance":     {"slot": "Weapon",    "rarity": "legendary", "power": 95},
-}
-const SLOT_ICON := {"Helmet": "nav_gear", "Chest": "starter", "Gauntlets": "patrol", "Boots": "chev_r", "Power Orb": "crystal", "Weapon": "nav_battle"}
-
-var equipped := {"Helmet": "Sleek Helmet", "Chest": "Charcoal Plate", "Gauntlets": "Grip Gauntlets",
-	"Boots": "Hover Boots", "Power Orb": "Purple Orb", "Weapon": "Laser Pistol"}
-var levels := {}          # item name -> level (1 if missing)
-var owned: Array = ["Sleek Helmet", "Teal Helmet", "White Helmet", "Charcoal Plate", "Teal Plate", "Grip Gauntlets", "Teal Gauntlets",
-	"Hover Boots", "Teal Boots", "Purple Orb", "Cyan Orb", "Teal Orb", "Laser Pistol", "Dual Minis"]
-var selected_slot := "Helmet"
-var bag_tab := 0           # 0 armor, 1 weapons, 2 items
-
+var gear := {}             # GearData.read(save): {equipped, levels}
+var selected_slot := "Weapon"
 var _slot_tiles := {}
 var _power_label: Label
 var _detail: Label
+var _bonus: Label
 var _bag_grid: GridContainer
 var _upgrade_btn: Button
 var _pilot_box: VBoxContainer
@@ -67,47 +37,40 @@ func _ready() -> void:
 	_select(selected_slot)
 	_fade_in_overlay()
 
-func _load() -> void:
-	if FileAccess.file_exists("user://skybound_save.json"):
-		var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
-		if f:
-			var data = JSON.parse_string(f.get_as_text())
-			if typeof(data) == TYPE_DICTIONARY:
-				var t := Turrets.read(data)
-				t_loadout = t.loadout
-				t_levels = t.levels
-				coins = int(data.get("coins", 0))
-				pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
-				t_unlocked = int(data.get("stage_unlocked", 1))
-			if typeof(data) == TYPE_DICTIONARY and data.has("gear"):
-				var g: Dictionary = data["gear"]
-				for s in SLOTS:
-					if g.get("equipped", {}).has(s) and ITEMS.has(g["equipped"][s]):
-						equipped[s] = g["equipped"][s]
-				levels = g.get("levels", {})
-
-func _save() -> void:
-	var data := {}
+func _read() -> Dictionary:
 	if FileAccess.file_exists("user://skybound_save.json"):
 		var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
 		if f:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
-				data = d
-	data["gear"] = {"equipped": equipped, "levels": levels}
+				return d
+	return {}
+
+func _load() -> void:
+	var data := _read()
+	var t := Turrets.read(data)
+	t_loadout = t.loadout
+	t_levels = t.levels
+	coins = int(data.get("coins", 0))
+	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
+	t_unlocked = int(data.get("stage_unlocked", 1))
+	gear = GearData.read(data)
+
+func _save() -> void:
+	var data := _read()
+	data["gear"] = {"equipped": gear.equipped, "levels": gear.levels}
+	data["coins"] = coins
+	# the jetpack sets the thruster style (the Home wallpaper reads "thruster")
+	data["thruster"] = GearData.SETS[GearData.ITEMS[gear.equipped["Jetpack"]].set].thruster
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
 		out.store_string(JSON.stringify(data))
 
-func _lvl(item: String) -> int:
-	return int(levels.get(item, 1))
+func _lvl(id: String) -> int:
+	return GearData.level(gear, id)
 
-func _power() -> int:
-	var p := 0
-	for s in SLOTS:
-		var it: String = equipped[s]
-		p += int(ITEMS[it].power) * (1.0 + 0.12 * (_lvl(it) - 1))
-	return p
+func _pic(id: String) -> Texture2D:
+	return load("res://gear/%s.png" % id)
 
 # ------------------------------------------------------------------ build
 
@@ -126,7 +89,6 @@ func _build() -> void:
 	var col := VBoxContainer.new()
 	col.add_theme_constant_override("separation", 10)
 	root.add_child(col)
-
 	# title row
 	var top := HBoxContainer.new()
 	top.add_theme_constant_override("separation", 10)
@@ -138,10 +100,9 @@ func _build() -> void:
 	top.add_child(UIKit.screen_title("GEAR"))
 	var sp := Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(sp)
-	_power_label = UIKit.label("", 15, UIKit.GOLD)
+	_power_label = UIKit.label("", 13, UIKit.GOLD)
 	top.add_child(_power_label)
 	col.add_child(top)
-
 	# Pilot / Turrets switch
 	col.add_child(UIKit.tabs(["Pilot", "Turrets"], _show_page, 0))
 	_turret_box = VBoxContainer.new()
@@ -153,148 +114,162 @@ func _build() -> void:
 	_pilot_box.add_theme_constant_override("separation", 10)
 	col.add_child(_pilot_box)
 	col = _pilot_box
-
-	# pilot + slots
+	# the pilot (live rig) beside the six slots
 	var hero_row := HBoxContainer.new()
 	hero_row.add_theme_constant_override("separation", 10)
 	var hero_panel := UIKit.panel()
 	hero_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	var hv := VBoxContainer.new()
-	hv.alignment = BoxContainer.ALIGNMENT_CENTER
-	var pic := TextureRect.new()
-	pic.texture = load("res://pilot/idle.png")
-	pic.custom_minimum_size = Vector2(0, 170)
-	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	hv.add_child(pic)
-	hv.add_child(UIKit.label("PILOT", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	hero_panel.add_child(hv)
+	var hero := PilotShowcase.new()
+	hero.custom_minimum_size = Vector2(0, 210)
+	hero_panel.add_child(hero)
 	hero_row.add_child(hero_panel)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
-	for s in SLOTS:
-		var t := _make_slot_tile(s)
-		grid.add_child(t)
-		_slot_tiles[s] = t
+	for s in GearData.SLOTS:
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(104, 66)
+		var slot: String = s
+		b.pressed.connect(func(): _select(slot))
+		grid.add_child(b)
+		_slot_tiles[s] = b
 	hero_row.add_child(grid)
 	col.add_child(hero_row)
-
-	# upgrade + detail
+	# set bonuses you have
+	var bp := UIKit.panel(10)
+	_bonus = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
+	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bp.add_child(_bonus)
+	col.add_child(bp)
+	# selected piece: stats + upgrade
 	var up_row := HBoxContainer.new()
 	up_row.add_theme_constant_override("separation", 10)
-	_upgrade_btn = UIKit.gold_button("Upgrade")
-	_upgrade_btn.custom_minimum_size = Vector2(130, 40)
-	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
-	up_row.add_child(_upgrade_btn)
 	var dp := UIKit.panel(10)
 	dp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_detail = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
 	_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dp.add_child(_detail)
 	up_row.add_child(dp)
+	_upgrade_btn = UIKit.gold_button("Upgrade", 14)
+	_upgrade_btn.custom_minimum_size = Vector2(118, 50)
+	_upgrade_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
+	up_row.add_child(_upgrade_btn)
 	col.add_child(up_row)
-
-	# bag
-	col.add_child(UIKit.header("BAG"))
-	col.add_child(UIKit.tabs(["Armor", "Weapons", "Thrusters"], func(i): bag_tab = i; _fill_bag(), 0))
+	# the three pieces for this slot
+	col.add_child(UIKit.header("CHOOSE"))
 	_bag_grid = GridContainer.new()
-	_bag_grid.columns = 4
+	_bag_grid.columns = 3
 	_bag_grid.add_theme_constant_override("h_separation", 8)
 	_bag_grid.add_theme_constant_override("v_separation", 8)
 	col.add_child(_bag_grid)
-	_fill_bag()
 
-func _make_slot_tile(slot: String) -> Button:
-	var it: String = equipped[slot]
-	var t := UIKit.tile(it, "%s  Lv.%d" % [slot, _lvl(it)], ITEMS[it].rarity, "", Icons.get_icon(SLOT_ICON[slot]), Vector2(118, 86))
-	t.pressed.connect(func(): _select(slot))
-	return t
-
-func _refresh_slot(slot: String) -> void:
-	var old: Button = _slot_tiles[slot]
-	var idx := old.get_index()
-	var parent := old.get_parent()
-	old.queue_free()
-	var t := _make_slot_tile(slot)
-	parent.add_child(t)
-	parent.move_child(t, idx)
-	_slot_tiles[slot] = t
-	if slot == selected_slot:
-		t.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.RARITY[ITEMS[equipped[slot]].rarity], 0.25), Color.WHITE, 10, 2))
+# A slot tile: the piece's picture, slot name and level, in its set's colour.
+func _paint_slot(s: String) -> void:
+	var b: Button = _slot_tiles[s]
+	for c in b.get_children():
+		c.queue_free()
+	var id: String = gear.equipped[s]
+	var set_id: String = GearData.ITEMS[id].set
+	var col: Color = UIKit.RARITY[set_id]
+	var on := s == selected_slot
+	UIKit._style_btn(b, UIKit.box(Color(col, 0.25 if on else 0.12), Color.WHITE if on else Color(col, 0.8), 10, 2 if on else 1),
+		UIKit.box(Color(col, 0.35), Color.WHITE, 10), Color.WHITE)
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 0)
+	var tr := TextureRect.new()
+	tr.texture = _pic(id)
+	tr.custom_minimum_size = Vector2(0, 36)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(tr)
+	v.add_child(UIKit.label("%s  Lv.%d" % [s, _lvl(id)], 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	b.add_child(v)
 
 func _fill_bag() -> void:
 	for c in _bag_grid.get_children():
 		c.queue_free()
-	var want_weapon := bag_tab == 1
-	if bag_tab == 2:
-		for key in PilotSprite.THRUSTERS:
-			var th: Dictionary = PilotSprite.THRUSTERS[key]
-			var on: bool = PilotSprite.style == key
-			var tt := UIKit.tile(th.name, "(on)" if on else th.desc, th.rarity, "", null, Vector2(104, 72))
-			tt.pressed.connect(func(): _pick_thruster(key))
-			_bag_grid.add_child(tt)
-		return
-	for name in owned:
-		var info: Dictionary = ITEMS[name]
-		if (info.slot == "Weapon") != want_weapon:
-			continue
-		var is_on: bool = equipped[info.slot] == name
-		var t := UIKit.tile(name, info.slot + ("  (on)" if is_on else ""), info.rarity, "Lv.%d" % _lvl(name), null, Vector2(104, 72))
-		t.pressed.connect(func(): _equip(info.slot, name))
+	for set_id in GearData.SETS:
+		var id: String = "%s_%s" % [set_id, selected_slot.to_lower()]
+		var info: Dictionary = GearData.ITEMS[id]
+		var open := GearData.set_unlocked(set_id, t_unlocked)
+		var is_on: bool = gear.equipped[selected_slot] == id
+		var sub := "Wearing" if is_on else ("Lv.%d" % _lvl(id) if open else "Clear stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
+		var t := UIKit.tile(info.name, sub, set_id, GearData.SETS[set_id].name, _pic(id), Vector2(108, 96))
+		if not open:
+			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
+		var item: String = id
+		t.pressed.connect(func():
+			if open:
+				_equip(item))
 		_bag_grid.add_child(t)
 
 # ------------------------------------------------------------------ actions
 
 func _select(slot: String) -> void:
 	selected_slot = slot
-	for s in SLOTS:
-		var t: Button = _slot_tiles[s]
-		var col: Color = UIKit.RARITY[ITEMS[equipped[s]].rarity]
-		if s == slot:
-			t.add_theme_stylebox_override("normal", UIKit.box(Color(col, 0.25), Color.WHITE, 10, 2))
-		else:
-			t.add_theme_stylebox_override("normal", UIKit.box(Color(col, 0.13), Color(col, 0.85), 10))
-	var it: String = equipped[slot]
-	var info: Dictionary = ITEMS[it]
-	var cost := 150 * _lvl(it)
-	_detail.text = "%s (%s, %s)\nPower %d at Lv.%d. Upgrade to Lv.%d: %d coins.\nSpending comes with battle rewards." % [
-		it, slot, info.rarity, int(info.power * (1.0 + 0.12 * (_lvl(it) - 1))), _lvl(it), _lvl(it) + 1, cost]
-	_upgrade_btn.text = "Upgrade  (%d)" % cost
-	_power_label.text = "POWER %d" % _power()
+	for s in GearData.SLOTS:
+		_paint_slot(s)
+	_fill_bag()
+	var id: String = gear.equipped[slot]
+	var info: Dictionary = GearData.ITEMS[id]
+	var lv := _lvl(id)
+	var st: Dictionary = GearData.SLOT_STAT[slot]
+	var set_info: Dictionary = GearData.SETS[info.set]
+	var next_txt := _stat_text(slot, lv + 1) if lv < GearData.MAX_LEVEL else "max level"
+	_detail.text = "%s  (%s set)  Lv.%d\n%s: %s  ->  %s\nSet stat: %s" % [info.name, set_info.name, lv, st.text, _stat_text(slot, lv), next_txt, set_info.minor]
+	if slot == "Weapon":
+		_detail.text += "\nWeapon: %s" % {"laser_pistol": "steady single bolts", "dual_minis": "two bolts side by side", "pulse_cannon": "slow, heavy bolts"}[set_info.weapon]
+	if slot == "Jetpack":
+		_detail.text += "\nThruster: %s" % PilotSprite.THRUSTERS[set_info.thruster].name
+	var cost := GearData.upgrade_cost(lv)
+	_upgrade_btn.disabled = lv >= GearData.MAX_LEVEL or coins < cost
+	_upgrade_btn.text = "MAX" if lv >= GearData.MAX_LEVEL else "Upgrade\n%d coins" % cost
+	_power_label.text = "POWER %d  ·  %d coins" % [GearData.power(gear), coins]
+	var lines: Array = []
+	for set_id in GearData.SETS:
+		var n := GearData.set_count(gear, set_id)
+		if n == 0:
+			continue
+		var s: Dictionary = GearData.SETS[set_id]
+		lines.append("%s %d/6:  %s %s  ·  %s %s" % [s.name, n, "ON" if n >= 3 else "(3)", s.bonus3, "ON" if n >= 6 else "(6)", s.bonus6])
+	_bonus.text = "SET BONUSES\n" + "\n".join(lines)
 
-func _equip(slot: String, item: String) -> void:
-	equipped[slot] = item
+func _stat_text(slot: String, lv: int) -> String:
+	var per: float = float(GearData.SLOT_STAT[slot].per)
+	match slot:
+		"Boots":
+			return "+%d px" % int(per * lv)
+		"Chest":
+			var hearts := (1 if lv >= 5 else 0) + (1 if lv >= 10 else 0)
+			return "+%d%%%s" % [int(per * lv * 100.0), (", +%d heart" % hearts) if hearts > 0 else ""]
+	return "+%d%%" % int(round(per * lv * 100.0))
+
+func _equip(id: String) -> void:
+	gear.equipped[selected_slot] = id
 	_save()
-	_refresh_slot(slot)
-	_select(slot)
-	_fill_bag()
-
-func _pick_thruster(key: String) -> void:
-	PilotSprite.style = key
-	var data := {}
-	if FileAccess.file_exists("user://skybound_save.json"):
-		var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
-		if f:
-			var d = JSON.parse_string(f.get_as_text())
-			if typeof(d) == TYPE_DICTIONARY:
-				data = d
-	data["thruster"] = key
-	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
-	if out:
-		out.store_string(JSON.stringify(data))
-	_detail.text = "Thruster: %s. %s" % [PilotSprite.THRUSTERS[key].name, PilotSprite.THRUSTERS[key].desc]
-	_fill_bag()
+	_select(selected_slot)
 
 func _on_upgrade_pressed() -> void:
-	var it: String = equipped[selected_slot]
-	_detail.text = "%s: upgrade to Lv.%d would cost %d coins.\nNo spending yet; battle rewards enable it." % [it, _lvl(it) + 1, 150 * _lvl(it)]
-
-# ------------------------------------------------------------------ turrets page
-# Four mounts across the top (left to right, as on the base deck), the six
-# turrets below. Tap a mount, then a turret to place it there; a turret stands
-# on one mount at most, so placing it again moves it. Upgrades spend coins.
+	var id: String = gear.equipped[selected_slot]
+	var lv := _lvl(id)
+	var cost := GearData.upgrade_cost(lv)
+	if lv >= GearData.MAX_LEVEL or coins < cost:
+		return
+	coins -= cost
+	gear.levels[id] = lv + 1
+	_save()
+	_select(selected_slot)
+	var b: Button = _slot_tiles[selected_slot]
+	b.pivot_offset = b.size * 0.5
+	var tw := b.create_tween()
+	tw.tween_property(b, "scale", Vector2(1.12, 1.12), 0.1)
+	tw.tween_property(b, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 func _show_page(i: int) -> void:
 	_pilot_box.visible = i == 0
@@ -302,8 +277,24 @@ func _show_page(i: int) -> void:
 	if i == 1:
 		_refresh_turrets()
 	else:
-		_power_label.text = "POWER %d" % _power()
+		_select(selected_slot)
 
+# The pilot standing in the Gear screen: the same live rig as in battle, idling, his
+# rifle drifting, flames in the equipped jetpack's style.
+class PilotShowcase extends Control:
+	var view: PilotRigView
+	var t := 0.0
+	func _ready() -> void:
+		clip_contents = true
+		view = PilotRigView.new()
+		view.height = 150.0
+		add_child(view)
+	func _process(delta: float) -> void:
+		t += delta
+		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
+		view.update(delta, size * 0.5 + Vector2(0, 8 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+
+# ------------------------------------------------------------------ turrets page
 func _save_turrets() -> void:
 	var data := {}
 	if FileAccess.file_exists("user://skybound_save.json"):

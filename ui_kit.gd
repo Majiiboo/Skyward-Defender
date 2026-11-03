@@ -12,6 +12,8 @@ const INK := Color(0.04, 0.063, 0.172)
 const RARITY := {
 	"common": Color(0.55, 0.62, 0.75), "rare": Color(0.25, 0.75, 1.0),
 	"epic": Color(0.71, 0.55, 1.0), "legendary": Color(1.0, 0.8, 0.3),
+	# gear sets (GearData.SETS): colour shows the set, never strength
+	"ion": Color(0.2, 0.85, 1.0), "scavenger": Color(0.45, 1.0, 0.35), "void": Color(0.71, 0.45, 1.0),
 }
 
 static func box(fill: Color, line: Color, radius: float = 12.0, width: int = 1) -> StyleBoxFlat:

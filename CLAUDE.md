@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev96 (code 96).
+  go UP every package (same signing key, install-over). Current: dev97 (code 97).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -78,7 +78,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun
    port or emitter, a charge frame).
-8. Gear rework (Rudy, after dev86). Exactly six upgradable slots, in this order:
+8. GEAR REWORK DONE (dev97): gear_data.gd (GearData: SLOTS, SETS ion/scavenger/void unlocked at
+   stages 1/11/21, ITEMS 18, stats() -> battle, read() maps old saves), gear/ cut by
+   tools/cut_gear_art.gd, WEAPONS dual_minis + pulse_cannon, Void pierce5, Gear page
+   rewritten with PilotShowcase (live rig). Gear art is Luna's older painted style: a 3D
+   re-render can come later. Orb pictures cut (gear/orb_*.png), not yet shown on the rig.
+   Original spec (Rudy, after dev86). Exactly six upgradable slots, in this order:
    Weapon, Helmet (helmet + visor in one), Chest (armour + Power Orb as ONE piece),
    Gauntlets, Boots, Jetpack. No separate Orb slot: each chest piece has its own orb
    shape (circle, triangle, hexagon...) that changes and upgrades with it. Start with

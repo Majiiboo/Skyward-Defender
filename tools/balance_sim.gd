@@ -121,6 +121,9 @@ func _step() -> bool:
 	var hearts_before: int = b.hearts
 	var hull_before: float = b.hull
 	var shield_before: float = b.shield
+	if b.paused:
+		push_error("balance_sim: battle is paused (briefing/menu), stopping")
+		return false
 	if pilot == "dodge" or pilot == "skilled":
 		_dodge()
 	elif pilot == "human":

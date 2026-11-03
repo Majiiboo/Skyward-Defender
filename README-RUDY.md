@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev96 (version/code=96 and version/name="1.0-dev96" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev97 (version/code=97 and version/name="1.0-dev97" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,27 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev97: gear rework
+
+- Six gear slots: Weapon, Helmet, Chest, Gauntlets, Boots, Jetpack, with Luna's 18 gear
+  pictures in three sets: Ion (cyan, from the start), Scavenger (green, after stage 10)
+  and Void (purple, after stage 20). Colour shows the set, never strength.
+- Every slot now matters in battle: Weapon = bolt damage, Helmet = auto-aim accuracy,
+  Chest = hit recovery (+1 heart at Lv.5 and Lv.10), Gauntlets = fire rate, Boots = gem
+  magnet, Jetpack = auto-fire speed and your thruster style.
+- Weapons differ by set: Ion Pistol (steady bolts), Dual Minis (two bolts side by side),
+  Pulse Cannon (slow, heavy bolts).
+- Each piece adds a small set stat, and 3 / 6 pieces of one set give bonuses: Ion = gem
+  XP +15% / shield recharges 50% faster; Scavenger = coins +20% / +1 card refresh; Void
+  = damage +10% / every 5th bolt pierces through.
+- Upgrade spends coins now (Lv.1-10, 120 coins x level).
+- The Gear screen shows the live pilot, your set bonuses, each stat now and at the next
+  level, and the three pieces you can wear in the selected slot.
+- Fixed: the planet briefing would have shown again every time (a number mix-up in the
+  save).
+- Balance: with the starting gear a normal player clears stages 1-12; later planets get
+  6% tougher per stage, where upgrades matter. A later-stage balance pass is queued.
 
 ## dev96: missions and trophies are real
 

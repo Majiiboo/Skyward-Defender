@@ -43,6 +43,10 @@ const SAVE := "user://skybound_save.json"
 # ---- weapons ----
 const WEAPONS := {
 	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 1.0, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0},
+	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
+	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.6, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0},
+	# Void set: a slow, heavy bolt (same damage per second, more per hit)
+	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.38, "speed": 470.0, "damage": 1.75, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true},
 }
 var weapon_id := "laser_pistol"
 
@@ -125,6 +129,15 @@ var _xp_bonus := 0
 var _took_damage := false         # any hit on the base or pilot this run (3 stars need none)
 var _gems_got := 0                # gems collected this run (missions, trophies)
 var _kills_by := {}               # enemy type -> kills this run
+# from the equipped gear (GearData.stats), set at stage start
+var _magnet_base := MAGNET_BASE
+var _recovery := 1.0
+var _gem_xp_mult := 1.0
+var _coin_mult := 1.0
+var _coins_f := 0.0
+var _shield_regen := 1.0
+var _pierce5 := false
+var _shot_n := 0
 var _stars_got := 0
 var _level_before := 1
 var _level_after := 1
@@ -282,6 +295,27 @@ func _start_stage() -> void:
 	var sv := _read_save()
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
 	_speed_pack = bool(sv.get("speed_pack", false))
+	# the pilot's gear: every slot boosts a battle stat, sets add bonuses (gear_data.gd)
+	var gs := GearData.stats(sv)
+	damage_mult = gs.damage
+	fire_rate_mult = gs.fire_rate
+	aim_error = 0.05 / gs.aim
+	aim_turn_speed = 10.0 * gs.aim
+	max_hearts = 3 + int(gs.hearts)
+	hearts = max_hearts
+	_recovery = gs.recovery
+	_magnet_base = MAGNET_BASE + float(gs.magnet)
+	magnet_radius = _magnet_base
+	idle_power = gs.auto_fire
+	_gem_xp_mult = gs.gem_xp
+	_coin_mult = gs.coins
+	_coins_f = 0.0
+	_shield_regen = gs.shield_regen
+	refreshes = 1 + int(gs.refreshes)
+	_pierce5 = gs.pierce5
+	_shot_n = 0
+	weapon_id = gs.weapon
+	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
 	if not _speeds().has(game_speed):
 		game_speed = 1.0
@@ -429,7 +463,7 @@ func _process(delta: float) -> void:
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	# shield regenerates after 4 s without a hit
 	if hit_t > 4.5 and shield < shield_max:
-		shield = minf(shield + 6.0 * delta, shield_max)
+		shield = minf(shield + 6.0 * _shield_regen * delta, shield_max)
 	_aim_and_fire(delta)
 	_spawn_step(delta)
 	_update_bullets(delta)
@@ -574,8 +608,10 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2) -> void:
 		var off := 0.0
 		if count > 1:
 			off = lerpf(-spread * 0.5, spread * 0.5, float(i) / float(count - 1))
+		_shot_n += 1
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed), "dmg": float(w.damage) * damage_mult,
-			"r": float(w.hit_radius), "tid": target_id, "col": "cyan"})
+			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false),
+			"pierce": _pierce5 and _shot_n % 5 == 0, "hits": []})
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -621,6 +657,8 @@ func _update_bullets(delta: float) -> void:
 		b.pos += b.vel * delta
 		var hit := false
 		for e in enemies:
+			if b.has("hits") and Array(b.hits).has(e.id):
+				continue   # a piercing bolt hits each bug once
 			if b.pos.distance_to(e.pos) < float(b.r) + float(e.r) * 0.5:
 				var dmg: float = float(b.dmg)
 				if e.type == "hive_mother" and e.laying > 1.2:
@@ -633,7 +671,10 @@ func _update_bullets(delta: float) -> void:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6)
 				e.hp -= dmg
-				hit = true
+				# Void set bonus: every 5th bolt flies on through
+				hit = not b.get("pierce", false)
+				if not hit:
+					b.hits.append(e.id)
 				stat_hits += 1
 				for k in 3:
 					sparks.append({"pos": b.pos, "vel": Vector2(rng.randf_range(-100, 100), rng.randf_range(-100, 100)), "life": 0.3, "col": Color(0.2, 0.85, 1.0)})
@@ -858,7 +899,8 @@ func _kill(e: Dictionary) -> void:
 	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
 	kills += 1
-	coins_earned += int(def.coins)
+	_coins_f += float(def.coins) * _coin_mult
+	coins_earned = int(_coins_f)
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
 	if e.type == "hive_mother":
@@ -896,7 +938,7 @@ func _update_gems(delta: float) -> void:
 			g.pos += g.vel * delta
 
 		if d < 16.0:
-			_gain_xp(float(StageData.GEM_XP[g.tier]))
+			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult)
 			_gems_got += 1
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
 			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
@@ -1245,7 +1287,7 @@ func _hurt_base(amount: float) -> void:
 func _hurt_pilot() -> void:
 	if inv_t > 0.0:
 		return
-	inv_t = 1.5
+	inv_t = 1.5 * _recovery
 	hearts -= 1
 	_took_damage = true
 	shake = maxf(shake, 0.7)
@@ -1514,7 +1556,7 @@ func _pick_card(id: String) -> void:
 			hearts = mini(hearts + 1, max_hearts)
 		"magnet":
 			magnet_level += 1
-			magnet_radius = MAGNET_BASE + 30.0 * magnet_level   # 120, 150, 180, 210 px
+			magnet_radius = _magnet_base + 30.0 * magnet_level   # +30 px per card (on top of the boots)
 		"reinforced_hull":
 			hull_max += 25.0
 			hull = minf(hull + 25.0, hull_max)
@@ -1867,8 +1909,9 @@ func _draw_fx() -> void:
 	for bl in bullets:
 		if bl.col == "tracer" or bl.col == "purple":
 			continue
-		var BL := 26.0 * (0.85 + 0.15 * bw)
-		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw
+		var big: float = 1.6 if bl.get("big", false) else (1.25 if bl.get("pierce", false) else 1.0)
+		var BL := 26.0 * (0.85 + 0.15 * bw) * big
+		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw * (1.2 if big > 1.3 else 1.0)
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(bt0, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false)
 	# Swarm drones
@@ -2263,7 +2306,9 @@ func _maybe_brief() -> void:
 	if elite or StageData.area_stage(stage) != 1:
 		return
 	var ai := StageData.area_index(stage)
-	var done: Array = Array(_read_save().get("areas_briefed", []))
+	var done: Array = []
+	for v in Array(_read_save().get("areas_briefed", [])):
+		done.append(int(v))   # the save stores numbers as decimals; compare as whole numbers
 	if done.has(ai):
 		return
 	done.append(ai)
