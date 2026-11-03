@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+<g fill="none" stroke-linecap="round" stroke-linejoin="round">
+<polygon points="32,8 53,26 32,57 11,26" stroke="#B58CFF" stroke-width="9.5" stroke-opacity="0.16"/>
+<path d="M11 26 H53 M22 26 L32 8 L42 26 M22 26 L32 57 L42 26" stroke="#B58CFF" stroke-width="9.5" stroke-opacity="0.16"/>
+</g>
+<g stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+<polygon points="32,8 53,26 32,57 11,26" stroke="#B58CFF" fill="#B58CFF" fill-opacity="0.28"/>
+<path d="M11 26 H53 M22 26 L32 8 L42 26 M22 26 L32 57 L42 26" stroke="#B58CFF" fill="none"/>
+</g></svg>

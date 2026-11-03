@@ -1,0 +1,281 @@
+[gd_scene load_steps=4 format=3 uid="uid://skyboundhub001"]
+
+[ext_resource type="Script" path="res://hub.gd" id="1"]
+[ext_resource type="Script" path="res://afk_wallpaper.gd" id="3"]
+[ext_resource type="Script" path="res://safe_area_margin.gd" id="4"]
+
+[node name="Hub" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.02, 0.04, 0.12, 1)
+
+[node name="AFK" type="Control" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+script = ExtResource("3")
+
+[node name="Dim" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+color = Color(0.012, 0.024, 0.07, 0.12)
+
+[node name="Safe" type="MarginContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+mouse_filter = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 4
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 80
+script = ExtResource("4")
+apply_bottom = false
+
+[node name="Home" type="Control" parent="Safe"]
+layout_mode = 2
+mouse_filter = 2
+
+[node name="NavBar" type="PanelContainer" parent="."]
+layout_mode = 1
+anchors_preset = 12
+anchor_top = 1.0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = -1.0
+grow_horizontal = 2
+grow_vertical = 0
+
+[node name="NavVBox" type="VBoxContainer" parent="NavBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 2
+
+[node name="NavRow" type="HBoxContainer" parent="NavBar/NavVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="SlotStore" type="Control" parent="NavBar/NavVBox/NavRow"]
+custom_minimum_size = Vector2(0, 56)
+size_flags_horizontal = 3
+
+[node name="NavStore" type="Button" parent="NavBar/NavVBox/NavRow/SlotStore"]
+custom_minimum_size = Vector2(56, 56)
+text = ""
+
+[node name="SlotGear" type="Control" parent="NavBar/NavVBox/NavRow"]
+custom_minimum_size = Vector2(0, 56)
+size_flags_horizontal = 3
+
+[node name="NavGear" type="Button" parent="NavBar/NavVBox/NavRow/SlotGear"]
+custom_minimum_size = Vector2(56, 56)
+text = ""
+
+[node name="SlotBattle" type="Control" parent="NavBar/NavVBox/NavRow"]
+custom_minimum_size = Vector2(0, 56)
+size_flags_horizontal = 3
+
+[node name="NavBattle" type="Button" parent="NavBar/NavVBox/NavRow/SlotBattle"]
+custom_minimum_size = Vector2(56, 56)
+text = ""
+
+[node name="SlotModes" type="Control" parent="NavBar/NavVBox/NavRow"]
+custom_minimum_size = Vector2(0, 56)
+size_flags_horizontal = 3
+
+[node name="NavModes" type="Button" parent="NavBar/NavVBox/NavRow/SlotModes"]
+custom_minimum_size = Vector2(56, 56)
+text = ""
+
+[node name="SlotQuests" type="Control" parent="NavBar/NavVBox/NavRow"]
+custom_minimum_size = Vector2(0, 56)
+size_flags_horizontal = 3
+
+[node name="NavQuests" type="Button" parent="NavBar/NavVBox/NavRow/SlotQuests"]
+custom_minimum_size = Vector2(56, 56)
+text = ""
+
+[node name="NavLabelRow" type="HBoxContainer" parent="NavBar/NavVBox"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 4
+
+[node name="LabelStore" type="Label" parent="NavBar/NavVBox/NavLabelRow"]
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = ""
+
+[node name="LabelGear" type="Label" parent="NavBar/NavVBox/NavLabelRow"]
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = ""
+
+[node name="LabelBattle" type="Label" parent="NavBar/NavVBox/NavLabelRow"]
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = "BATTLE"
+
+[node name="LabelModes" type="Label" parent="NavBar/NavVBox/NavLabelRow"]
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = ""
+
+[node name="LabelQuests" type="Label" parent="NavBar/NavVBox/NavLabelRow"]
+size_flags_horizontal = 3
+horizontal_alignment = 1
+text = ""
+
+[node name="SelectPanel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -300.0
+offset_right = 200.0
+offset_bottom = 300.0
+visible = false
+
+[node name="SelectLabel" type="Label" parent="SelectPanel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 368.0
+offset_bottom = 400.0
+theme_override_font_sizes/font_size = 15
+text = "Select Stage"
+
+[node name="SelectGo" type="Button" parent="SelectPanel"]
+offset_left = 120.0
+offset_top = 500.0
+offset_right = 280.0
+offset_bottom = 550.0
+text = "Go to Stage 1"
+
+[node name="SelectClose" type="Button" parent="SelectPanel"]
+offset_left = 120.0
+offset_top = 560.0
+offset_right = 280.0
+offset_bottom = 610.0
+text = "Close"
+
+[node name="PatrolPanel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -300.0
+offset_right = 200.0
+offset_bottom = 300.0
+visible = false
+
+[node name="PatrolLabel" type="Label" parent="PatrolPanel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 368.0
+offset_bottom = 200.0
+theme_override_font_sizes/font_size = 15
+text = "Auto-Patrol Gain
+Coins 34/h, Parts 8/h
+Patrol time: Max reached (show-only)
+Rewards: 612 coins, 18 parts, 144 gems"
+
+[node name="PatrolClaim" type="Button" parent="PatrolPanel"]
+offset_left = 120.0
+offset_top = 500.0
+offset_right = 280.0
+offset_bottom = 550.0
+text = "Claim (show-only)"
+
+[node name="PatrolClose" type="Button" parent="PatrolPanel"]
+offset_left = 120.0
+offset_top = 560.0
+offset_right = 280.0
+offset_bottom = 610.0
+text = "Close"
+
+[node name="InfoPanel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -300.0
+offset_right = 200.0
+offset_bottom = 300.0
+visible = false
+
+[node name="InfoLabel" type="Label" parent="InfoPanel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 368.0
+offset_bottom = 200.0
+theme_override_font_sizes/font_size = 15
+text = "Stage info"
+
+[node name="InfoClose" type="Button" parent="InfoPanel"]
+offset_left = 120.0
+offset_top = 500.0
+offset_right = 280.0
+offset_bottom = 550.0
+text = "Close"
+
+[node name="SidePanel" type="Panel" parent="."]
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -200.0
+offset_top = -300.0
+offset_right = 200.0
+offset_bottom = 300.0
+visible = false
+
+[node name="SideLabel" type="Label" parent="SidePanel"]
+offset_left = 16.0
+offset_top = 60.0
+offset_right = 368.0
+offset_bottom = 400.0
+theme_override_font_sizes/font_size = 15
+text = "Side icon detail"
+
+[node name="SideTitle" type="Label" parent="SidePanel"]
+offset_left = 16.0
+offset_top = 16.0
+offset_right = 368.0
+offset_bottom = 56.0
+theme_override_font_sizes/font_size = 20
+
+[node name="SideClose" type="Button" parent="SidePanel"]
+offset_left = 120.0
+offset_top = 500.0
+offset_right = 280.0
+offset_bottom = 550.0
+text = "Close"

@@ -1,0 +1,16 @@
+# Godot's import cache (rebuilt automatically when the project opens)
+.godot/
+*.translation
+
+# Android build output and signing keys (never commit a keystore)
+android/build/
+*.apk
+*.aab
+*.keystore
+*.jks
+
+# OS clutter and temporary test scripts
+.DS_Store
+Thumbs.db
+_*_tmp.gd
+_*_tmp.gd.uid
