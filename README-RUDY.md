@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev94 (version/code=94 and version/name="1.0-dev94" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev95 (version/code=95 and version/name="1.0-dev95" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,17 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev95: stage map and stars
+
+- Tap the stage name on Home to open the STAGE MAP: a winding trail of all 60 stages
+  from the bottom up, each planet on its own painted band with its name. Cleared stages
+  show their stars, the next stage pulses gold, bosses and mini-bosses have bigger
+  rings, locked stages are dim. Your total stars are at the top right.
+- Tap a stage for its card: waves, boss, your stars, and Select (make it Home's stage)
+  or Play.
+- Stars: 1 for clearing the stage, 2 if the base kept more than half its hull, 3 for no
+  damage at all (base and pilot). You keep your best. The end screen shows them.
 
 ## dev94: six planets
 

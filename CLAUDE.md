@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev94 (code 94).
+  go UP every package (same signing key, install-over). Current: dev95 (code 95).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -240,7 +240,9 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    6 Sentinel. Needs SECTORS reworked from 5 to 10 stages per planet (+ zone), an
    "Area complete" screen after each boss, new enemies per area. Luna brief for the
    painted layers: LUNA-BRIEF-backgrounds.md (Area 1 first).
-13. STAGE MAP (Rudy idea, Candy Crush style): a scrolling trail of stage nodes on the
+13. STAGE MAP DONE (dev95): stage_map.gd/tscn from Home's stage name; save "stars" {stage: 1-3}
+   written in battle._end_run (_took_damage). Story briefing done as _maybe_brief.
+   Original idea (Rudy, Candy Crush style): a scrolling trail of stage nodes on the
    Home "stages" button, grouped by area with a themed backdrop per area, boss nodes
    bigger, cleared stages replayable (best score / stars), the next stage pulsing.
    Light STORY (Claude's suggestion): a short comms briefing card at the start of each

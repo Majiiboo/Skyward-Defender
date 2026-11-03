@@ -122,6 +122,8 @@ var _cards_open := false          # the "your cards" panel is showing (the game 
 var _cards_view: Control
 var _xp_gain := 0                 # pilot XP this run (end screen), _xp_bonus of it for a first clear
 var _xp_bonus := 0
+var _took_damage := false         # any hit on the base or pilot this run (3 stars need none)
+var _stars_got := 0
 var _level_before := 1
 var _level_after := 1
 var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
@@ -290,6 +292,8 @@ func _start_stage() -> void:
 	if open_now != seen:
 		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
+	_took_damage = false
+	_stars_got = 0
 	_new_mount = -1
 	# a turret stands on the base only if its mount is open (stages) and it is unlocked (pilot level)
 	for i in turret_loadout.size():
@@ -1225,6 +1229,7 @@ func _update_prism(t: Dictionary, delta: float) -> void:
 
 func _hurt_base(amount: float) -> void:
 	hit_t = 0.0
+	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
 	if shield > 0.0:
 		shield = maxf(shield - amount, 0.0)
@@ -1236,6 +1241,7 @@ func _hurt_pilot() -> void:
 		return
 	inv_t = 1.5
 	hearts -= 1
+	_took_damage = true
 	shake = maxf(shake, 0.7)
 	_burst(soldier_pos, 16.0, Color(1.0, 0.35, 0.42), 10)
 	_float_text(soldier_pos + Vector2(0, -30), "-1 HEART", Color(1.0, 0.4, 0.45))
@@ -1293,6 +1299,15 @@ func _end_run(won: bool) -> void:
 	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
+	# stars for the stage map: 1 cleared, 2 base above half hull, 3 no damage at all
+	if won and not elite:
+		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if hull >= hull_max and hearts >= max_hearts and not _took_damage else 0)
+		var st = d.get("stars", {})
+		if typeof(st) != TYPE_DICTIONARY:
+			st = {}
+		st[str(stage)] = maxi(int(st.get(str(stage), 0)), got)
+		patch["stars"] = st
+		_stars_got = got
 	if won:
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
@@ -1521,6 +1536,8 @@ func _show_end(won: bool) -> void:
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
 	v.add_child(UIKit.label("%s %d: %s" % ["Elite" if elite else "Stage", stage, StageData.stage_name(stage)], 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if won and not elite:
+		v.add_child(UIKit.label("★".repeat(_stars_got) + "☆".repeat(3 - _stars_got), 24, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	if area_done:
 		var nxt_area := StageData.area_index(stage) + 1
 		v.add_child(UIKit.label("%s cleared!" % StageData.area(stage).name, 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))

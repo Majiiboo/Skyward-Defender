@@ -276,7 +276,7 @@ func _build_home() -> void:
 	_stage_btn.add_theme_color_override("font_pressed_color", CYAN)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		_stage_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	_stage_btn.pressed.connect(func(): _show_panel($SelectPanel))
+	_stage_btn.pressed.connect(func(): _smooth_change_scene("res://stage_map.tscn"))   # the stage map trail
 	name_row.add_child(_stage_btn)
 	var next := _arrow_button("NextButton", "chev_r")
 	next.pressed.connect(func(): _change_stage(1))
