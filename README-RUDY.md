@@ -154,6 +154,20 @@ Sentry: a floating gun head (your idea):
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
+Livelier sky, base and hits (code only, until Luna's painted backgrounds arrive):
+- Sky: stars at different depths (far ones small, dim and slow, near ones bigger and
+  faster), twinkling, the coloured nebula clouds drift and breathe, a shooting star
+  every few seconds, and the sky slides a little as the pilot moves (near stars more
+  than far ones), on Home too.
+- Base: a soft light runs round the dome's ring of window lights, the two upper lamps
+  breathe, the antenna tip blinks red and the dish sends out a ping.
+- Turrets: Storm Spire, Swarm Hive and Prism Tower gather light at their weapon before
+  they fire; every turret squats a little on its socket when it shoots.
+- Hits: a short screen shake when the shield, hull or pilot is hit, a split second of
+  slow motion when a big bug dies (longer for the Hive Mother).
+- Gems: a short streak as they fly to the pilot and a small pop when collected.
+- Luna brief for painted backgrounds: LUNA-BRIEF-backgrounds.md.
+
 Turrets centred on their sockets:
 - Each turret picture had its painted body slightly off the middle of the image, so
   turrets sat 1 to 4 pixels left of their socket ring (the Prism and Gravity Anchor

@@ -279,13 +279,14 @@ func _soft_glow(c: Vector2, radius: float, col: Color) -> void:
 		draw_circle(c, lerpf(radius, radius * 0.12, t), Color(col, col.a * 0.16))
 
 func _draw() -> void:
-	Backdrop.draw_sky(self, size, elite, _stars, _t)
+	Backdrop.draw_sky(self, size, elite, _stars, _t, _soldier.x / maxf(size.x, 1.0) - 0.5)
 	for s in _streaks:
 		draw_line(s.pos, s.pos - s.vel.normalized() * 34.0, Color(1, 1, 1, clampf(s.life, 0.0, 0.8)), 1.5, true)
 	_draw_ship()
 	_draw_rocks()
 	Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
 	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
+	Backdrop.draw_base_lights(self, size.x, _horizon_y() + STRIP_DROP, _t)
 	if SHOW_TURRETS:
 		_draw_turrets()
 	_draw_enemies()

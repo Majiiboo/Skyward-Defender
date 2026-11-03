@@ -34,6 +34,8 @@ const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a
 # each shot before springing back up. On landing it powers up and lifts off the base.
 const SENTRY_GAP := 9.0
 const SENTRY_HEAD_CX := 0.468              # visual centre of the head picture across its width
+# charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
+const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0)}
 const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
@@ -98,6 +100,8 @@ var run_level := 1
 var refreshes := 1
 var hit_t := 9.0                  # seconds since the shield was last hit
 var inv_t := 0.0                  # pilot invulnerability after a hit
+var shake := 0.0                  # screen shake strength (0..1), set by hits, fades fast
+var hitstop := 0.0                # a moment of slow motion after a big kill (s)
 var bullets: Array = []
 var enemy_bullets: Array = []
 var enemies: Array = []
@@ -327,8 +331,16 @@ func _process(delta: float) -> void:
 		FIELD_H = vp_h
 		BASE_Y = FIELD_H - 14.0
 	if paused or picking or game_over or stage_cleared:
+		position = Vector2.ZERO
 		queue_redraw()
 		return
+	# hit feel: a big kill slows the world for a blink; hits shake the screen a little
+	if hitstop > 0.0:
+		hitstop -= delta
+		delta *= 0.2
+	shake = maxf(shake - delta * 3.5, 0.0)
+	var sk := shake * shake * 5.0
+	position = Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
 	inv_t = maxf(inv_t - delta, 0.0)
@@ -761,6 +773,11 @@ func _kill(e: Dictionary) -> void:
 	kills += 1
 	coins_earned += int(def.coins)
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
+	if e.type == "hive_mother":
+		hitstop = 0.18
+		shake = maxf(shake, 0.8)
+	elif int(def.xp_tier) >= 1:
+		hitstop = maxf(hitstop, 0.05)
 	_float_text(e.pos, "+%d" % worth, Color(1.0, 0.85, 0.4))
 	var tier: int = int(def.xp_tier)
 	var count: int = 1
@@ -775,7 +792,8 @@ func _update_gems(delta: float) -> void:
 	for g in gems:
 		g.life -= delta
 		var d: float = g.pos.distance_to(soldier_pos)
-		if d < magnet_radius:
+		g.pull = d < magnet_radius
+		if g.pull:
 			g.pos = g.pos.move_toward(soldier_pos, (320.0 + (magnet_radius - d) * 4.0) * delta)
 		else:
 			g.vel.y = minf(g.vel.y + 70.0 * delta, 55.0)
@@ -785,6 +803,7 @@ func _update_gems(delta: float) -> void:
 		if d < 16.0:
 			_gain_xp(float(StageData.GEM_XP[g.tier]))
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
+			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
 			continue
 		if g.life <= 0.0 or g.pos.y > BASE_Y - DOME_RY * 0.5:
 			continue
@@ -1120,6 +1139,7 @@ func _update_prism(t: Dictionary, delta: float) -> void:
 
 func _hurt_base(amount: float) -> void:
 	hit_t = 0.0
+	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
 	if shield > 0.0:
 		shield = maxf(shield - amount, 0.0)
 	else:
@@ -1130,6 +1150,7 @@ func _hurt_pilot() -> void:
 		return
 	inv_t = 1.5
 	hearts -= 1
+	shake = maxf(shake, 0.7)
 	_burst(soldier_pos, 16.0, Color(1.0, 0.35, 0.42), 10)
 	_float_text(soldier_pos + Vector2(0, -30), "-1 HEART", Color(1.0, 0.4, 0.45))
 
@@ -1398,10 +1419,11 @@ func _draw() -> void:
 	var fsize := Vector2(FIELD_W, FIELD_H)
 	var sec := StageData.sector(stage)
 	draw_rect(Rect2(Vector2.ZERO, get_viewport_rect().size), sec.sky_bot)
-	Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow)
+	Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow, soldier_pos.x / FIELD_W - 0.5)
 	Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
 	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
+	Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
@@ -1411,6 +1433,11 @@ func _draw() -> void:
 		var p: Vector2 = g.pos
 		var r: float = 4.0 + g.tier * 1.2
 		var blink: float = 1.0 if g.life > 2.0 else (0.4 + 0.6 * absf(sin(g.life * 10.0)))
+		if g.get("pull", false):
+			# flying to the pilot: a short fading streak behind it
+			var back: Vector2 = (p - soldier_pos).normalized() * (10.0 + 3.0 * g.tier)
+			draw_line(p + back, p, Color(c, 0.0), r * 1.2, true)
+			draw_line(p + back * 0.6, p, Color(c, 0.45), r * 0.9, true)
 		draw_circle(p, r * 2.2, Color(c, 0.12 * blink))
 		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r * 1.3), p + Vector2(r, 0), p + Vector2(0, r * 1.3), p + Vector2(-r, 0)]), Color(c, blink))
 		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r * 1.3), p + Vector2(r * 0.5, -r * 0.3), p + Vector2(-r * 0.5, -r * 0.3)]), Color(1, 1, 1, 0.5 * blink))
@@ -1533,7 +1560,11 @@ func _draw_turret(t: Dictionary) -> void:
 	var look: Dictionary = TURRET_LOOK[t.type]
 	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
 	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
-	draw_texture_rect(tex, Rect2(t.pos + Vector2(-sz.x * float(look.cx), -sz.y + 6.0 + yo + bob), sz), false, Color(1, 1, 1, a))
+	# a shot kicks the turret: it squats a little on its socket and springs back
+	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
+	kick = kick * kick
+	var ksz := Vector2(sz.x * (1.0 + 0.03 * kick), sz.y * (1.0 - 0.05 * kick))
+	draw_texture_rect(tex, Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + yo + bob), ksz), false, Color(1, 1, 1, a))
 
 # The field holding the Sentry's head up: a soft glow on the base, a faint column of
 # light, and thin rings rising from base to head. It brightens when the head dips.
@@ -1629,6 +1660,16 @@ func _draw_fx() -> void:
 		var da: float = minf(1.0, dr.age / 0.15) * minf(1.0, dr.life / 0.4)
 		_fx.draw_set_transform(dr.pos, dr.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(dt, Rect2(-11, -11 * dt.get_height() / dt.get_width(), 22, 22 * dt.get_height() / dt.get_width()), false, Color(1, 1, 1, da))
+	for t in turrets:
+		if t.drop >= 1.0 and CHARGE_COL.has(t.type):
+			# charge-up: light gathers at the weapon in the last moments before a shot,
+			# holds (softly pulsing) while it waits for a target, and empties when it fires
+			var every: float = float(Turrets.TURRETS[t.type].every)
+			var kc: float = smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd)) * (0.85 + 0.15 * sin(time_alive * 6.0 + float(t.mount)))
+			if kc > 0.02:
+				var col: Color = CHARGE_COL[t.type]
+				_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+				Backdrop.soft_glow(_fx, _turret_tip(t), 6.0 + 9.0 * kc, Color(col, 0.55 * kc))
 	for t in turrets:
 		if t.drop < 1.0:
 			continue

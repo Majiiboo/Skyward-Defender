@@ -33,6 +33,44 @@ static func draw_strip(c: CanvasItem, width: float, bottom_y: float) -> void:
 	var r := strip_rect(width, bottom_y)   # loads _strip on first use, so before it is read
 	c.draw_texture_rect(_strip, r, false)
 
+# Lights painted on the command dome, in pixels of base/base_strip.png (1400 x 235):
+# the ring of window lights left to right, the two upper lamps, the antenna tip and
+# the dish's emitter. draw_base_lights brings them to life: a slow light chase round
+# the ring, the lamps breathing, the antenna blinking red, the dish sending a ping.
+const DOME_LIGHTS := [Vector2(609.5, 136.3), Vector2(623.8, 150.0), Vector2(633.8, 155.0), Vector2(644.5, 159.3),
+	Vector2(659.5, 163.8), Vector2(671.8, 166.3), Vector2(727.0, 166.3), Vector2(739.3, 164.3), Vector2(754.3, 160.0),
+	Vector2(764.3, 155.0), Vector2(773.8, 150.0), Vector2(788.0, 136.3)]
+const DOME_LAMPS := [Vector2(636.3, 98.8), Vector2(761.8, 98.8)]
+const ANTENNA_TIP := Vector2(699.5, 3.8)
+const DISH_EMITTER := Vector2(743.8, 46.3)
+
+static func draw_base_lights(c: CanvasItem, width: float, bottom_y: float, t: float) -> void:
+	var r := strip_rect(width, bottom_y)
+	var k: float = r.size.x / 1400.0
+	var warm := Color(1.0, 0.85, 0.55)
+	var n := DOME_LIGHTS.size()
+	# a soft bright spot runs round the ring and back every 4 s
+	var run := (0.5 - 0.5 * cos(t * TAU / 4.0)) * float(n - 1)
+	for i in n:
+		var p: Vector2 = r.position + DOME_LIGHTS[i] * k
+		var a := exp(-pow(float(i) - run, 2.0) / 1.6)
+		c.draw_circle(p, 5.0 * k * 3.0, Color(warm, 0.10 + 0.25 * a))
+		c.draw_circle(p, 2.2 * k * 3.0, Color(1, 0.95, 0.85, 0.15 + 0.6 * a))
+	for i in 2:
+		var p: Vector2 = r.position + DOME_LAMPS[i] * k
+		c.draw_circle(p, 4.0 * k * 3.0, Color(warm, 0.12 + 0.12 * sin(t * 1.7 + i * 2.0)))
+	# antenna: a short red blink every 1.6 s
+	var blink := smoothstep(0.25, 0.0, fposmod(t, 1.6))
+	var tip: Vector2 = r.position + ANTENNA_TIP * k
+	c.draw_circle(tip, 6.0 * k * 3.0 * (0.6 + 0.4 * blink), Color(1.0, 0.25, 0.3, 0.12 + 0.3 * blink))
+	c.draw_circle(tip, 1.8 * k * 3.0, Color(1.0, 0.5, 0.5, 0.35 + 0.65 * blink))
+	# dish: a cyan ping ring every 3 s
+	var dish: Vector2 = r.position + DISH_EMITTER * k
+	var ph := fposmod(t, 3.0) / 1.2
+	if ph < 1.0:
+		c.draw_arc(dish, (2.0 + 22.0 * ph) * k * 3.0, 0.0, TAU, 24, Color(0.18, 0.9, 1.0, 0.5 * (1.0 - ph)), 1.0, true)
+	c.draw_circle(dish, 1.6 * k * 3.0, Color(0.6, 1.0, 1.0, 0.4 + 0.4 * smoothstep(0.3, 0.0, ph)))
+
 # The lit sockets: Luna's ring glow, drawn as added light on a layer with additive
 # blending. lit[i] (0..1) fades socket i's glow in.
 static func draw_socket_glow(c: CanvasItem, width: float, bottom_y: float, lit: Array) -> void:
@@ -84,26 +122,50 @@ static func soft_glow(c: CanvasItem, centre: Vector2, radius: float, col: Color)
 		var t := float(i) / 13.0
 		c.draw_circle(centre, lerpf(radius, radius * 0.12, t), Color(col, col.a * 0.16))
 
-static func draw_sky(c: CanvasItem, size: Vector2, elite: bool, stars: Array, t: float) -> void:
+static func draw_sky(c: CanvasItem, size: Vector2, elite: bool, stars: Array, t: float, shift: float = 0.0) -> void:
 	var top_col := Color(0.10, 0.05, 0.24) if elite else Color(0.04, 0.07, 0.20)
 	var bot_col := Color(0.012, 0.016, 0.045)
-	c.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]),
-		PackedColorArray([top_col, top_col, bot_col, bot_col]))
-	var glow := Color(0.45, 0.2, 0.9, 0.16) if elite else Color(0.1, 0.4, 0.8, 0.14)
-	soft_glow(c, Vector2(size.x * 0.2, size.y * 0.28), 190.0, glow)
-	soft_glow(c, Vector2(size.x * 0.85, size.y * 0.5), 210.0, Color(glow, glow.a * 0.9))
-	for st in stars:
-		var y := fmod(st.y + t * 0.012 * st.z, 1.0)
-		c.draw_circle(Vector2(st.x * size.x, y * size.y), st.z * 0.8, Color(1, 1, 1, 0.45))
+	var glow := Color(0.45, 0.2, 0.9) if elite else Color(0.1, 0.4, 0.8)
+	draw_sky_palette(c, size, stars, t, top_col, bot_col, glow, shift)
 
-static func draw_sky_palette(c: CanvasItem, size: Vector2, stars: Array, t: float, top_col: Color, bot_col: Color, glow_col: Color) -> void:
+# The sky until Luna's painted layers arrive (LUNA-BRIEF-backgrounds.md). Depth comes from
+# motion: stars in three depths (far = small, slow, dim; near = bigger, faster),
+# twinkling, nebula clouds that drift and breathe, the odd shooting star, and a little
+# parallax: `shift` (-0.5..0.5, where the pilot is across the screen) slides near
+# layers more than far ones.
+static func draw_sky_palette(c: CanvasItem, size: Vector2, stars: Array, t: float, top_col: Color, bot_col: Color, glow_col: Color, shift: float = 0.0) -> void:
 	c.draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(size.x, 0), size, Vector2(0, size.y)]),
 		PackedColorArray([top_col, top_col, bot_col, bot_col]))
-	soft_glow(c, Vector2(size.x * 0.2, size.y * 0.28), 190.0, Color(glow_col, 0.14))
-	soft_glow(c, Vector2(size.x * 0.85, size.y * 0.5), 210.0, Color(glow_col, 0.12))
+	# nebula: three soft clouds on slow loops, the third a cooler tint
+	var n1 := Vector2(size.x * (0.2 + 0.05 * sin(t * 0.031)), size.y * (0.28 + 0.03 * sin(t * 0.023 + 1.0))) - Vector2(shift * 10.0, 0)
+	var n2 := Vector2(size.x * (0.85 + 0.04 * sin(t * 0.027 + 2.0)), size.y * (0.5 + 0.04 * cos(t * 0.019))) - Vector2(shift * 10.0, 0)
+	var n3 := Vector2(size.x * (0.6 + 0.06 * cos(t * 0.017 + 0.5)), size.y * (0.12 + 0.03 * sin(t * 0.029))) - Vector2(shift * 7.0, 0)
+	soft_glow(c, n1, 190.0 * (1.0 + 0.06 * sin(t * 0.11)), Color(glow_col, 0.14))
+	soft_glow(c, n2, 210.0 * (1.0 + 0.06 * sin(t * 0.09 + 1.3)), Color(glow_col, 0.12))
+	soft_glow(c, n3, 150.0, Color(glow_col.lerp(Color(0.5, 0.3, 1.0), 0.5), 0.08))
+	# stars: z (0.6..1.8) is depth
 	for st in stars:
-		var y := fmod(st.y + t * 0.012 * st.z, 1.0)
-		c.draw_circle(Vector2(st.x * size.x, y * size.y), st.z * 0.8, Color(1, 1, 1, 0.45))
+		var z: float = st.z
+		var d: float = (z - 0.6) / 1.2                      # 0 far .. 1 near
+		var y := fmod(st.y + t * 0.004 * (1.0 + d * 5.0), 1.0)
+		var x := fposmod(st.x * size.x - shift * (3.0 + d * 16.0), size.x)
+		var tw := 0.75 + 0.25 * sin(t * (1.3 + d * 2.0) + st.x * 61.0)
+		var a := lerpf(0.25, 0.7, d) * tw
+		var col := Color(0.8, 0.9, 1.0, a) if d > 0.7 else Color(1, 1, 1, a)
+		c.draw_circle(Vector2(x, y * size.y), lerpf(0.5, 1.4, d), col)
+	# a shooting star every ~9 s, somewhere across the top half
+	var slot := floorf(t / 9.0)
+	var ph := (t - slot * 9.0) / 0.8
+	if ph < 1.0:
+		var hx := fposmod(sin(slot * 12.9898) * 43758.5453, 1.0)
+		var hy := fposmod(sin(slot * 78.233) * 12345.678, 1.0)
+		var dir := Vector2(-1.0 if hx > 0.5 else 1.0, 0.45).normalized()
+		var p0 := Vector2(size.x * (0.2 + 0.6 * hx), size.y * (0.08 + 0.3 * hy))
+		var head := p0 + dir * ph * 170.0
+		var fade := sin(ph * PI)
+		c.draw_line(head - dir * 46.0, head, Color(0.8, 0.9, 1.0, 0.0), 1.0, true)
+		c.draw_line(head - dir * 26.0, head, Color(0.85, 0.95, 1.0, 0.55 * fade), 1.2, true)
+		c.draw_circle(head, 1.3, Color(1, 1, 1, 0.9 * fade))
 
 static func draw_horizon(c: CanvasItem, size: Vector2, horizon_y: float, elite: bool, city: Array, t: float, rim_in: Color = Color(0, 0, 0, 0)) -> void:
 	var pr := planet_radius(size)
