@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev88 (version/code=88 and version/name="1.0-dev88" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev89 (version/code=89 and version/name="1.0-dev89" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev89: painted worlds
+
+- Every battle now plays in front of Luna's painted world for its part of the game:
+  stages 1-5 the Hive world from orbit, 6-10 the glowing Hive caves, 11-15 the magma
+  world, 16-20 the crystal world, 21-25 the plasma storm, 26-30 the Sentinel machine
+  world. The painting slides a little as the pilot moves and breathes very slowly;
+  near stars still twinkle and shooting stars still cross it.
+- Home shows the world of the stage you have selected and cross-fades when you flip
+  stages.
+- The Scrap belt painting is ready for when the areas become 10 stages each.
+- Cut by tools/cut_backgrounds.gd into backdrops/ (small webp files, 350 KB total).
 
 ## dev88: Luna's 3D bugs
 

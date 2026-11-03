@@ -589,6 +589,7 @@ func _update_stage_label() -> void:
 	_paint_segment(_std_btn, not is_elite, true)
 	_paint_segment(_elite_btn, is_elite, false)
 	$AFK.set_elite(is_elite)
+	$AFK.set_stage(stage)
 	var lines := PackedStringArray(["Select Stage", ""])
 	for i in range(maxi(1, stage - 3), mini(30, stage + 3) + 1):
 		var tail := "  (current)" if i == stage else ("" if i <= stage_unlocked else "  [locked]")

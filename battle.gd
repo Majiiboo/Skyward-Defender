@@ -1486,8 +1486,11 @@ func _draw() -> void:
 	var fsize := Vector2(FIELD_W, FIELD_H)
 	var sec := StageData.sector(stage)
 	draw_rect(Rect2(Vector2.ZERO, get_viewport_rect().size), sec.sky_bot)
-	Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow, soldier_pos.x / FIELD_W - 0.5)
-	Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
+	if sec.has("bg"):
+		Backdrop.draw_world(self, fsize, FIELD_H, String(sec.bg), _stars, time_alive, soldier_pos.x / FIELD_W - 0.5)
+	else:
+		Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow, soldier_pos.x / FIELD_W - 0.5)
+		Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
 	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
 	Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)

@@ -157,6 +157,11 @@ static func draw_sky_palette(c: CanvasItem, size: Vector2, stars: Array, t: floa
 	soft_glow(c, n1, 190.0 * (1.0 + 0.06 * sin(t * 0.11)), Color(glow_col, 0.14))
 	soft_glow(c, n2, 210.0 * (1.0 + 0.06 * sin(t * 0.09 + 1.3)), Color(glow_col, 0.12))
 	soft_glow(c, n3, 150.0, Color(glow_col.lerp(Color(0.5, 0.3, 1.0), 0.5), 0.08))
+	draw_sky_extras(c, size, stars, t, shift, 1.0)
+
+# Stars in three depths (twinkling, parallax) and the odd shooting star. Drawn over the
+# code sky, and faintly over Luna's painted worlds so they still sparkle.
+static func draw_sky_extras(c: CanvasItem, size: Vector2, stars: Array, t: float, shift: float, strength: float) -> void:
 	# stars: z (0.6..1.8) is depth
 	for st in stars:
 		var z: float = st.z
@@ -164,7 +169,9 @@ static func draw_sky_palette(c: CanvasItem, size: Vector2, stars: Array, t: floa
 		var y := fmod(st.y + t * 0.004 * (1.0 + d * 5.0), 1.0)
 		var x := fposmod(st.x * size.x - shift * (3.0 + d * 16.0), size.x)
 		var tw := 0.75 + 0.25 * sin(t * (1.3 + d * 2.0) + st.x * 61.0)
-		var a := lerpf(0.25, 0.7, d) * tw
+		var a := lerpf(0.25, 0.7, d) * tw * strength
+		if strength < 1.0 and d < 0.5:
+			continue   # over a painting only the nearer stars show
 		var col := Color(0.8, 0.9, 1.0, a) if d > 0.7 else Color(1, 1, 1, a)
 		c.draw_circle(Vector2(x, y * size.y), lerpf(0.5, 1.4, d), col)
 	# a shooting star every ~9 s, somewhere across the top half
@@ -178,8 +185,27 @@ static func draw_sky_palette(c: CanvasItem, size: Vector2, stars: Array, t: floa
 		var head := p0 + dir * ph * 170.0
 		var fade := sin(ph * PI)
 		c.draw_line(head - dir * 46.0, head, Color(0.8, 0.9, 1.0, 0.0), 1.0, true)
-		c.draw_line(head - dir * 26.0, head, Color(0.85, 0.95, 1.0, 0.55 * fade), 1.2, true)
-		c.draw_circle(head, 1.3, Color(1, 1, 1, 0.9 * fade))
+		c.draw_line(head - dir * 26.0, head, Color(0.85, 0.95, 1.0, 0.55 * fade * strength), 1.2, true)
+		c.draw_circle(head, 1.3, Color(1, 1, 1, 0.9 * fade * strength))
+
+# Luna's painted world for an area (backdrops/<key>.webp), covering the screen with its
+# bottom edge at bottom_y (the base strip sits on its ground). It is a little wider than
+# the screen and slides slightly opposite the pilot (shift -0.5..0.5) for depth, and
+# breathes very slowly so the sky never looks frozen.
+static var _worlds := {}
+static func draw_world(c: CanvasItem, size: Vector2, bottom_y: float, key: String, stars: Array, t: float, shift: float = 0.0, alpha: float = 1.0) -> void:
+	if not _worlds.has(key):
+		_worlds[key] = load("res://backdrops/%s.webp" % key)
+	var tex: Texture2D = _worlds[key]
+	var aspect: float = tex.get_width() / float(tex.get_height())
+	var zoom := 1.0 + 0.012 * sin(t * 0.07)
+	var w := maxf(size.x * 1.08, (bottom_y + 10.0) * aspect) * zoom
+	var h := w / aspect
+	var x := (size.x - w) * 0.5 - shift * size.x * 0.04
+	if alpha >= 1.0:
+		c.draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.012, 0.03))
+	c.draw_texture_rect(tex, Rect2(x, bottom_y + 10.0 - h, w, h), false, Color(1, 1, 1, alpha))
+	draw_sky_extras(c, size, stars, t, shift, 0.6 * alpha)
 
 static func draw_horizon(c: CanvasItem, size: Vector2, horizon_y: float, elite: bool, city: Array, t: float, rim_in: Color = Color(0, 0, 0, 0)) -> void:
 	var pr := planet_radius(size)

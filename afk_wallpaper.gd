@@ -73,6 +73,21 @@ func set_elite(value: bool) -> void:
 	elite = value
 	queue_redraw()
 
+# The selected stage picks the painted world behind Home (its sector's "bg"); flipping
+# stages cross-fades from the old world to the new one.
+var stage := 1
+var _world := ""
+var _world_prev := ""
+var _world_fade := 1.0
+func set_stage(value: int) -> void:
+	stage = value
+	var key := String(StageData.sector(stage).get("bg", ""))
+	if key != _world:
+		_world_prev = _world
+		_world = key
+		_world_fade = 0.0 if _world_prev != "" else 1.0
+	queue_redraw()
+
 # ----------------------------------------------------------------- geometry
 
 func _horizon_y() -> float:
@@ -87,6 +102,7 @@ func _process(delta: float) -> void:
 	var dt := minf(delta, 0.05)
 	_t += dt
 	_hit_t += dt
+	_world_fade = minf(_world_fade + dt / 0.6, 1.0)
 	var want_dir := (_aim - _soldier).normalized() if _has_aim else Vector2.UP
 	_anim.update(PilotSprite.pose_for(false, 0.0, want_dir, _has_aim), dt)
 	_move_soldier(dt)
@@ -283,12 +299,22 @@ func _soft_glow(c: Vector2, radius: float, col: Color) -> void:
 		draw_circle(c, lerpf(radius, radius * 0.12, t), Color(col, col.a * 0.16))
 
 func _draw() -> void:
-	Backdrop.draw_sky(self, size, elite, _stars, _t, _soldier.x / maxf(size.x, 1.0) - 0.5)
+	var shift: float = _soldier.x / maxf(size.x, 1.0) - 0.5
+	if _world != "":
+		var bottom := _horizon_y() + STRIP_DROP
+		if _world_fade < 1.0 and _world_prev != "":
+			Backdrop.draw_world(self, size, bottom, _world_prev, _stars, _t, shift)
+			Backdrop.draw_world(self, size, bottom, _world, _stars, _t, shift, smoothstep(0.0, 1.0, _world_fade))
+		else:
+			Backdrop.draw_world(self, size, bottom, _world, _stars, _t, shift)
+	else:
+		Backdrop.draw_sky(self, size, elite, _stars, _t, shift)
 	for s in _streaks:
 		draw_line(s.pos, s.pos - s.vel.normalized() * 34.0, Color(1, 1, 1, clampf(s.life, 0.0, 0.8)), 1.5, true)
 	_draw_ship()
 	_draw_rocks()
-	Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
+	if _world == "":
+		Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
 	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
 	Backdrop.draw_base_lights(self, size.x, _horizon_y() + STRIP_DROP, _t)
 	if SHOW_TURRETS:
