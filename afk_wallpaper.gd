@@ -12,7 +12,7 @@ extends Control
 const PILOT_H := 60.0
 const STRIP_DROP := 16.0       # base strip bottom, below the horizon line
 const WALL_TURRET_H := 64.0
-const SHOW_TURRETS := true   # set to false to remove the two base turrets
+const SHOW_TURRETS := true   # set to false to hide the turrets on the base strip
 
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
@@ -44,8 +44,9 @@ var _bank := 0.0
 var _aim := Vector2.ZERO
 var _has_aim := false
 var _wall_turrets: Array = []
-var _turret_cd: Array[float] = [0.5, 1.1]
-var _turret_ang: Array[float] = [-PI / 2.0, -PI / 2.0]
+var _turret_cd: Array[float] = [0.5, 1.1, 0.8, 1.4]
+var _turret_ang: Array[float] = [-PI / 2.0, -PI / 2.0, -PI / 2.0, -PI / 2.0]
+var _wall_unlocked := 1
 var _facing := 1.0
 var _facing_s := 1.0   # eases toward _facing so turning round squeezes, not snaps
 var _anim := PilotSprite.Anim.new()
@@ -56,6 +57,9 @@ var _hit_t := 9.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PilotSprite.load_style()
+	_load_wall_turrets()
+	# Gear opens over Home: re-read the loadout when Home shows again
+	visibility_changed.connect(func(): if is_visible_in_tree(): _load_wall_turrets())
 	for k in ["scout_up", "scout_down", "drifter_up", "drifter_down"]:
 		_etex[k] = load("res://enemies/%s.png" % k)
 	_stars = Backdrop.make_stars(80, 3)
@@ -164,7 +168,7 @@ func _shoot(dt: float) -> void:
 		if _rig_view:
 			_rig_view.fire()
 	if SHOW_TURRETS:
-		for i in 2:
+		for i in _wall_turrets.size():
 			var base := _wall_turret_tip(i)
 			var ti := _nearest_enemy(base, 420.0)
 			if ti >= 0:
@@ -324,24 +328,40 @@ func _draw_rocks() -> void:
 		edge.append(pts[0])
 		draw_polyline(edge, Color(CYAN, 0.18), 1.2, true)
 
-# Two of Luna's turrets on the base strip: a Lance Pylon on socket 1 and a Storm Spire\n# on socket 4 (the same pictures the battle uses).
+# The player's own turrets on the mounts they have opened (Turrets.mount_open), the
+# same pictures the battle uses; closed mounts show a lock. Read from the save on Home.
+const WALL_CX := {"lance": 0.481, "storm": 0.479, "gravity": 0.435, "swarm": 0.501, "prism": 0.441, "sentry": 0.5}
+
+func _load_wall_turrets() -> void:
+	_wall_turrets.clear()
+	var d := {}
+	if FileAccess.file_exists("user://skybound_save.json"):
+		var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
+		if f:
+			var parsed = JSON.parse_string(f.get_as_text())
+			if typeof(parsed) == TYPE_DICTIONARY:
+				d = parsed
+	_wall_unlocked = int(d.get("stage_unlocked", 1))
+	var loadout: Array = Turrets.read(d).loadout
+	for i in Turrets.MOUNTS:
+		var id: String = loadout[i]
+		if id != "" and Turrets.mount_open(i, _wall_unlocked):
+			_wall_turrets.append({"socket": i, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
+
 func _draw_turrets() -> void:
-	for i in 2:
-		var tex: Texture2D = _wall_tex(i)
+	var bottom := _horizon_y() + STRIP_DROP
+	for i in Turrets.MOUNTS:
+		if not Turrets.mount_open(i, _wall_unlocked):
+			Backdrop.draw_socket_lock(self, i, size.x, bottom)
+	for w in _wall_turrets:
+		var tex: Texture2D = w.tex
 		var s: float = _wall_turret_h() / tex.get_height()
 		var sz := tex.get_size() * s
-		var p := Backdrop.socket_pos(0 if i == 0 else 3, size.x, _horizon_y() + STRIP_DROP)
-		# centred on the socket by the art's visual centre (battle.gd TURRET_LOOK cx)
-		var cx: float = 0.481 if i == 0 else 0.479
-		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * cx, -sz.y + 6.0 * size.x / 480.0), sz), false)
-
-func _wall_tex(i: int) -> Texture2D:
-	if _wall_turrets.is_empty():
-		_wall_turrets = [load("res://turrets/lance_idle.png"), load("res://turrets/storm_idle.png")]
-	return _wall_turrets[i]
+		var p := Backdrop.socket_pos(int(w.socket), size.x, bottom)
+		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * float(w.cx), -sz.y + 6.0 * size.x / 480.0), sz), false)
 
 func _wall_turret_tip(i: int) -> Vector2:
-	var p := Backdrop.socket_pos(0 if i == 0 else 3, size.x, _horizon_y() + STRIP_DROP)
+	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, _horizon_y() + STRIP_DROP)
 	return p + Vector2(0, 6.0 * size.x / 480.0 - _wall_turret_h() * 0.9)
 
 # turrets keep their size relative to the base strip, whatever the screen width

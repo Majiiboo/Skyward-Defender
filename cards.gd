@@ -23,8 +23,6 @@ const CARDS := {
 		"desc": "Pulls gems from further away (+30 px)"},
 	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 4, "icon": "chest",
 		"desc": "Base hull +25%, and repairs that much"},
-	"deploy_sentry":   {"name": "Deploy Sentry",   "family": "turret", "rarity": "uncommon",  "max": 2, "icon": "patrol",
-		"desc": "Mounts a Sentry on a free mount (all full: turret damage +20%)"},
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen"},
 }

@@ -11,6 +11,11 @@ const MAX_LEVEL := 10
 const TRAIT_BONUS := 0.5        # +50% damage vs a trait the turret is strong against
 const BOSS_TRAIT_BONUS := 0.3   # bosses resist the bonus a little
 const DEFAULT_LOADOUT := ["sentry", "", "", ""]
+# The base's four mounts open as you clear stages (Rudy, 2026-11-03): no turret until
+# stage 5 is beaten, so the first stages are played with the pilot alone. Pilot level
+# decides WHICH turrets you own (TURRETS.unlock); cleared stages decide HOW MANY stand
+# on the base. Mount i opens once stage MOUNT_OPENS_AFTER[i] is cleared.
+const MOUNT_OPENS_AFTER := [5, 15, 25, 40]
 
 # art = file prefix in turrets/ (<art>_idle.png; the Sentry also has _head and _base).
 # ready = the battle mechanic exists; the others show in Gear as "in development".
@@ -44,6 +49,17 @@ const TURRETS := {
 
 const TRAIT_NAMES := {"armoured": "armoured", "boss": "bosses", "swarm": "swarm", "shielded": "shielded",
 	"fast": "fast", "high": "high flyers", "wide": "wide waves"}
+
+# stage_unlocked = the save's highest playable stage (last cleared stage + 1).
+static func mount_open(i: int, stage_unlocked: int) -> bool:
+	return stage_unlocked > int(MOUNT_OPENS_AFTER[i])
+
+static func mounts_open(stage_unlocked: int) -> int:
+	var n := 0
+	for i in MOUNTS:
+		if mount_open(i, stage_unlocked):
+			n += 1
+	return n
 
 # Damage multiplier for a turret level: +15% per level.
 static func level_mult(level: int) -> float:

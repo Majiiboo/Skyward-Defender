@@ -110,7 +110,8 @@ var gems: Array = []
 var turrets: Array = []           # {type, lvl, pos, cd, fire_t, ang, flip, charge, build, bolt}
 var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
-var turret_mult := 1.0            # run boost from Deploy cards
+var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
+var _new_mount := -1              # a mount this win just opened (shown on the end screen)
 var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
 var fxs: Array = []               # short effect sprites {tex, pos, size, rot, life, max, grow, col}
 var _fx: Node2D                   # additive effect layer
@@ -247,13 +248,14 @@ func _start_stage() -> void:
 	magnet_level = 0
 	bullets.clear(); enemy_bullets.clear(); enemies.clear(); gems.clear(); turrets.clear()
 	sparks.clear(); rings.clear(); floaters.clear()
-	turret_mult = 1.0
 	drones.clear()
 	fxs.clear()
 	stat_pilot_dmg = 0.0
 	stat_turret_dmg = 0.0
+	stage_unlocked = int(_read_save().get("stage_unlocked", 1))
+	_new_mount = -1
 	for i in turret_loadout.size():
-		if turret_loadout[i] != "":
+		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked):
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
 	soldier_pos = Vector2(240, BASE_Y - 200.0)
 	prev_soldier_x = soldier_pos.x
@@ -829,8 +831,8 @@ func _xp_need() -> float:
 # ------------------------------------------------------------------ turrets
 
 # Turrets from the Gear loadout are mounted at the start of every run (mount =
-# index into Backdrop.STRIP_SOCKETS); a Deploy card fills a free mount during the run. Each
-# type's numbers live in turrets.gd.
+# index into Backdrop.STRIP_SOCKETS), only on mounts the player has opened by clearing
+# stages (Turrets.mount_open). Each type's numbers live in turrets.gd.
 func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true) -> bool:
 	if mount < 0:
 		for i in Backdrop.STRIP_SOCKETS.size():
@@ -843,8 +845,8 @@ func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true)
 				break
 	if mount < 0:
 		return false
-	# every turret drops onto its socket: one after another at the start of a run,
-	# straight away when a Deploy card adds one
+	# every turret drops onto its socket, one after another at the start of a run
+	# (fx = true drops it straight away, used by tests)
 	turrets.append({"type": type, "lvl": lvl, "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
 		"fire_t": 0.0, "ang": -PI / 2.0, "face": 1.0, "charge": 0.0, "build": 0.0, "bolt": [],
 		"drop": 0.0, "drop_wait": 0.0 if fx else 0.3 + 0.18 * mount})
@@ -854,7 +856,7 @@ func _socket(i: int) -> Vector2:
 	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT)
 
 func _turret_dmg(t: Dictionary) -> float:
-	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl)) * turret_mult
+	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl))
 
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
@@ -1202,7 +1204,11 @@ func _end_run(won: bool) -> void:
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": int(d.get("pilot_xp", 0)) + int(score / 50)}
 	if won:
-		patch["stage_unlocked"] = maxi(stage + 1, int(d.get("stage_unlocked", 1)))
+		var was := int(d.get("stage_unlocked", 1))
+		patch["stage_unlocked"] = maxi(stage + 1, was)
+		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
+			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
+		stage_unlocked = patch["stage_unlocked"]
 	_write_save(patch)
 	_show_end(won)
 
@@ -1361,10 +1367,6 @@ func _pick_card(id: String) -> void:
 		"reinforced_hull":
 			hull_max += 25.0
 			hull = minf(hull + 25.0, hull_max)
-		"deploy_sentry":
-			# a free mount gets a Sentry for this run; with all four taken, turrets hit harder
-			if not _mount_turret("sentry", -1, int(turret_levels.get("sentry", 1))):
-				turret_mult *= 1.2
 		"nova_burst":
 			for e in enemies.duplicate():
 				if e.type != "hive_mother":
@@ -1395,6 +1397,9 @@ func _show_end(won: bool) -> void:
 	v.add_child(UIKit.label("Score %d    Kills %d" % [score, kills], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Coins +%d    Pilot XP +%d" % [coins_earned, int(score / 50)], 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Waves %d / %d" % [mini(wave_index + (1 if won else 1), waves.size()), waves.size()], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if won and _new_mount >= 0:
+		v.add_child(UIKit.label("NEW TURRET MOUNT OPEN!", 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("Place a turret on mount %d in Gear." % (_new_mount + 1), 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp)
 	if won:
@@ -1407,7 +1412,7 @@ func _show_end(won: bool) -> void:
 	var again := UIKit.teal_button("Retry" if not won else "Play again")
 	again.pressed.connect(func(): _start_stage())
 	v.add_child(again)
-	var home := UIKit.ghost_button("Back to base")
+	var home := UIKit.ghost_button("Back to Hub")
 	home.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
 	v.add_child(home)
 	p.add_child(v)
@@ -1425,6 +1430,9 @@ func _draw() -> void:
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
 	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
 	Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
+	for i in Turrets.MOUNTS:
+		if not Turrets.mount_open(i, stage_unlocked):
+			Backdrop.draw_socket_lock(self, i, FIELD_W, FIELD_H - STRIP_LIFT)
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()

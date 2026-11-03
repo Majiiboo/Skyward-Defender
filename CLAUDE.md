@@ -199,6 +199,10 @@ Read this first. It replaces the chat history this project grew up in.
    radial mask so no square edge shows. Ion plume is wide and cloudy: squeeze it
    horizontally and stretch with hover power. A Gemini sheet was
    compared and rejected (baked-in labels, sticker outlines, different design).
+11b. MOUNTS (done dev87): Turrets.MOUNT_OPENS_AFTER [5, 15, 25, 40] = stage that must be
+   cleared to open mount i (save stage_unlocked > N); battle mounts only open mounts
+   and draws Backdrop.draw_socket_lock on closed ones; Gear/Home follow; Deploy Sentry
+   card removed (turret_mult gone). Pilot level still unlocks turret TYPES.
 12. AREAS (Rudy + Claude, 2026-11-03, proposed; confirm with Rudy before coding): an area =
    a planet + an enemy family, 10 stages, big boss at stage 10; two zones of 5 (A orbit,
    B descent; mini-boss at stage 5) so the background changes every 5 stages and the

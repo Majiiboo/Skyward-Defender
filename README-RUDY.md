@@ -154,6 +154,20 @@ Sentry: a floating gun head (your idea):
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
+Turret mounts open as you clear stages (Rudy):
+- Two separate unlocks: your PILOT LEVEL unlocks which turrets you own; CLEARING
+  STAGES opens the four mounts on the base where they stand.
+- No turrets in stages 1-5: you play them with the pilot alone. Mount 1 opens after
+  stage 5, mount 2 after stage 15, mount 3 after stage 25, mount 4 after stage 40
+  (MOUNT_OPENS_AFTER in turrets.gd).
+- Closed mounts show a small padlock on the base, in battle and on Home. Gear shows
+  them as "Locked - Clear stage N". The stage that opens a mount says "NEW TURRET
+  MOUNT OPEN!" on its end screen.
+- Home now shows YOUR turrets on your open mounts (it used to always show a Lance and
+  a Storm).
+- The Deploy Sentry card is gone.
+- Tested again: hands-off still wins stages 1-5; a normal player wins 1-8.
+
 Balance pass for stages 1-10 (tested with an autopilot that plays real stages):
 - Auto-aim (finger off the screen) now fires as fast as dragging, so he is equally
   strong both ways.

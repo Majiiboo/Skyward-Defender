@@ -23,7 +23,7 @@ extends SceneTree
 const DT := 1.0 / 30.0
 const MAX_T := 600.0
 # cards a sensible player takes first
-const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "burst_fire", "aegis", "deploy_sentry", "reinforced_hull", "nova_burst", "magnet"]
+const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "burst_fire", "aegis", "reinforced_hull", "nova_burst", "magnet"]
 
 var stages: Array = []
 var runs := 3
@@ -70,7 +70,9 @@ func _write_save(stage: int) -> void:
 	for t in loadout:
 		if t != "":
 			levels[t] = tlevel
-	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": 99,
+	# stage_unlocked = stage: a player meeting this stage for the first time, so only the
+	# mounts opened by stages before it are open (Turrets.mount_open)
+	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": stage,
 		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
 	var f := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))

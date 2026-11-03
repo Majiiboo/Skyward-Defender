@@ -52,6 +52,7 @@ var pilot_level := 1
 var t_loadout: Array = Turrets.DEFAULT_LOADOUT.duplicate()
 var t_levels := {}         # turret id -> level (1 if missing)
 var t_mount := 0           # selected mount
+var t_unlocked := 1        # save stage_unlocked: which mounts are open (Turrets.mount_open)
 var t_focus := ""          # turret shown in the detail panel
 var _mount_row: HBoxContainer
 var _turret_grid: GridContainer
@@ -77,6 +78,7 @@ func _load() -> void:
 				t_levels = t.levels
 				coins = int(data.get("coins", 0))
 				pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
+				t_unlocked = int(data.get("stage_unlocked", 1))
 			if typeof(data) == TYPE_DICTIONARY and data.has("gear"):
 				var g: Dictionary = data["gear"]
 				for s in SLOTS:
@@ -371,7 +373,10 @@ func _refresh_turrets() -> void:
 	for i in Turrets.MOUNTS:
 		var id: String = t_loadout[i]
 		var t: Button
-		if id == "":
+		if not Turrets.mount_open(i, t_unlocked):
+			t = UIKit.tile("Locked", "Clear stage %d" % Turrets.MOUNT_OPENS_AFTER[i], "common", "", null, Vector2(104, 112))
+			t.modulate = Color(1, 1, 1, 0.55)
+		elif id == "":
 			t = UIKit.tile("Empty", "Mount %d" % (i + 1), "common", "", null, Vector2(104, 112))
 		else:
 			t = _turret_tile(id, "Mount %d" % (i + 1), "Lv.%d" % _t_lvl(id), Vector2(104, 112), false)
@@ -402,6 +407,13 @@ func _refresh_turrets() -> void:
 	_refresh_turret_detail()
 
 func _refresh_turret_detail() -> void:
+	if t_focus == "" and not Turrets.mount_open(t_mount, t_unlocked):
+		_t_detail.text = "Mount %d opens after you clear stage %d." % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]]
+		_t_upgrade.disabled = true
+		_t_upgrade.text = "Upgrade"
+		_t_place.disabled = true
+		_t_place.text = "Locked"
+		return
 	if t_focus == "":
 		_t_detail.text = "Mount %d is empty.\nPick a turret below, then Place." % (t_mount + 1)
 		_t_upgrade.disabled = true
@@ -427,6 +439,10 @@ func _refresh_turret_detail() -> void:
 	var here: bool = t_loadout[t_mount] == t_focus
 	_t_place.disabled = not usable
 	_t_place.text = "Remove" if here else "Place on %d" % (t_mount + 1)
+	if not Turrets.mount_open(t_mount, t_unlocked):
+		_t_detail.text = "Mount %d opens after you clear stage %d.\n\n" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]] + lines
+		_t_place.disabled = true
+		_t_place.text = "Locked"
 
 func _on_turret_place() -> void:
 	if t_focus == "":
