@@ -115,6 +115,7 @@ var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
 var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
 var _new_mount := -1              # a mount this win just opened (shown on the end screen)
+var _lid_anim := {}               # mount -> seconds into its hatch opening (first run after it opened)
 var _xp_gain := 0                 # pilot XP this run (end screen), _xp_bonus of it for a first clear
 var _xp_bonus := 0
 var _level_before := 1
@@ -186,6 +187,9 @@ func _ready() -> void:
 	for i in 4:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
 	_tex["goo"] = load("res://fx/goo.png")
+	_tex["ui_heart"] = load("res://icons/ui_heart.png")
+	for n in ["lid_closed", "lid_half", "lid_open"]:
+		_tex[n] = load("res://base/%s.png" % n)
 	for n in FX_NAMES:
 		_fx_tex[n] = load("res://fx/%s.png" % n)
 	# effects (shots, hits, glows) are drawn on their own layer with additive light
@@ -269,12 +273,23 @@ func _start_stage() -> void:
 	stat_turret_dmg = 0.0
 	var sv := _read_save()
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
+	# a mount opened since the last run: its hatch opens before the turret drops in
+	_lid_anim = {}
+	var seen := int(sv.get("mounts_seen", 0))
+	var open_now := Turrets.mounts_open(stage_unlocked)
+	for i in range(seen, open_now):
+		_lid_anim[i] = -0.4
+	if open_now != seen:
+		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	_new_mount = -1
 	# a turret stands on the base only if its mount is open (stages) and it is unlocked (pilot level)
 	for i in turret_loadout.size():
 		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and plevel >= int(Turrets.TURRETS[turret_loadout[i]].unlock):
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
+	for t in turrets:
+		if _lid_anim.has(t.mount):
+			t.drop_wait = float(t.drop_wait) + 1.2   # wait for the hatch
 	soldier_pos = Vector2(240, BASE_Y - 200.0)
 	prev_soldier_x = soldier_pos.x
 	prev_soldier_y = soldier_pos.y
@@ -377,6 +392,10 @@ func _process(delta: float) -> void:
 	position = Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
+	for k in _lid_anim.keys():
+		_lid_anim[k] = float(_lid_anim[k]) + delta
+		if _lid_anim[k] > 1.6:
+			_lid_anim.erase(k)
 	if not _intro.is_empty():
 		_intro.t += delta
 		if _intro.t > 4.0:
@@ -1520,8 +1539,7 @@ func _draw() -> void:
 	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
 	Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
 	for i in Turrets.MOUNTS:
-		if not Turrets.mount_open(i, stage_unlocked):
-			Backdrop.draw_socket_lock(self, i, FIELD_W, FIELD_H - STRIP_LIFT)
+		_draw_socket_lid(i)
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
@@ -1926,21 +1944,12 @@ func _hud_bar_points() -> PackedVector2Array:
 	pts.append(Vector2(FIELD_W, HUD_H - R))
 	return pts
 
-# A heart from the classic heart curve, filled when on, a thin outline when lost.
+# Luna's heart; a lost heart shows as a dark, see-through shape.
 func _draw_heart(c: Vector2, s: float, on: bool) -> void:
-	var pts := PackedVector2Array()
-	for i in 28:
-		var t := TAU * float(i) / 28.0
-		var x := 16.0 * pow(sin(t), 3)
-		var y := -(13.0 * cos(t) - 5.0 * cos(2.0 * t) - 2.0 * cos(3.0 * t) - cos(4.0 * t))
-		pts.append(c + Vector2(x, y) * s / 17.0)
-	if on:
-		draw_colored_polygon(pts, Color(1.0, 0.36, 0.48))
-		pts.append(pts[0])
-		draw_polyline(pts, Color(1.0, 0.7, 0.78, 0.9), 1.0, true)
-	else:
-		pts.append(pts[0])
-		draw_polyline(pts, Color(1, 1, 1, 0.28), 1.0, true)
+	var ht: Texture2D = _tex["ui_heart"]
+	var hw := s * 2.3
+	var hh: float = hw * ht.get_height() / ht.get_width()
+	draw_texture_rect(ht, Rect2(c.x - hw * 0.5, c.y - hh * 0.5, hw, hh), false, Color(1, 1, 1) if on else Color(0.25, 0.28, 0.4, 0.45))
 
 func _draw_hud() -> void:
 	var cyan := Color(0.18, 0.9, 1.0)
@@ -2041,3 +2050,38 @@ func _draw_intro() -> void:
 	draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
 	draw_string(hud_font, r.position + Vector2(76.0, 38.0), id.replace("_", " ").capitalize(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
 	draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), String(StageData.ENEMIES[id].intro), HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
+
+# Luna's armoured hatch over a locked socket. On the first run after a mount opens,
+# the hatch tips up (closed -> half -> open, standing behind the socket) with a cyan
+# flash, then folds away, and the turret drops in.
+func _draw_socket_lid(i: int) -> void:
+	var p: Vector2 = _socket(i)
+	var w := 52.0
+	var open: bool = Turrets.mount_open(i, stage_unlocked)
+	if open and not _lid_anim.has(i):
+		return
+	var t: float = float(_lid_anim.get(i, 0.0)) if open else 0.0
+	var closed_a := 1.0 - smoothstep(0.0, 0.3, t)
+	var half_a := smoothstep(0.0, 0.3, t) * (1.0 - smoothstep(0.3, 0.6, t))
+	var open_a := smoothstep(0.3, 0.6, t) * (1.0 - smoothstep(1.0, 1.5, t))
+	_lid_pic("lid_closed", p + Vector2(0, -1), w, closed_a, 0.5)
+	_lid_pic("lid_half", p + Vector2(0, -2), w, half_a, 0.75)
+	if open_a > 0.01:
+		var ot: Texture2D = _tex["lid_open"]
+		var oh := 40.0
+		var ow: float = oh * ot.get_width() / ot.get_height()
+		draw_texture_rect(ot, Rect2(p.x - ow * 0.5, p.y - oh - 2.0, ow, oh), false, Color(1, 1, 1, open_a))
+	if open and t > 0.25 and t < 0.9:
+		var k := (t - 0.25) / 0.65
+		draw_set_transform(p, 0.0, Vector2(1.0, 0.36))
+		draw_arc(Vector2.ZERO, 18.0 + 26.0 * k, 0.0, TAU, 32, Color(0.18, 0.9, 1.0, 0.8 * (1.0 - k)), 2.0, true)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# a hatch picture, its width `w`, placed so the point `anchor_y` (0..1 down the picture)
+# sits on p
+func _lid_pic(name: String, p: Vector2, w: float, a: float, anchor_y: float) -> void:
+	if a <= 0.01:
+		return
+	var tx: Texture2D = _tex[name]
+	var h: float = w * tx.get_height() / tx.get_width()
+	draw_texture_rect(tx, Rect2(p.x - w * 0.5, p.y - h * anchor_y, w, h), false, Color(1, 1, 1, a))

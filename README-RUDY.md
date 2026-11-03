@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev91 (version/code=91 and version/name="1.0-dev91" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev92 (version/code=92 and version/name="1.0-dev92" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev92: hatches, hearts, Home chest and drone
+
+- Locked turret sockets are covered by Luna's armoured hatch (battle and Home). The
+  first time you play after a mount opens, its hatch tips up with a cyan flash and folds
+  away, then your turret drops in.
+- The hearts in the battle top bar are Luna's red heart; a lost heart turns dark.
+- Home: the Chest button is Luna's 3D chest, floating gently; tap it and the lid lifts
+  off and light bursts out. The Patrol button is her quad drone, hovering with its four
+  rotors spinning. Coins and crystals use her new icons.
 
 ## dev91: power card pictures
 

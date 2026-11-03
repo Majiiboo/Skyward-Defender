@@ -226,10 +226,10 @@ func _build_home() -> void:
 	profile.add_child(lv)
 	profile.pressed.connect(func(): _side_popup("PROFILE", "Pilot\nLevel %d\nProfile and account\nsettings will live here." % level))
 	dockL.add_child(profile)
-	_coin_btn = _pill_button("CoinButton", "coin", _fmt(coins))
+	_coin_btn = _pill_button("CoinButton", "ui_coin", _fmt(coins))
 	_coin_btn.pressed.connect(func(): _side_popup("COINS", "Coins: earned by defeating enemies.\nYou keep them between runs."))
 	dockL.add_child(_coin_btn)
-	_crystal_btn = _pill_button("CrystalButton", "crystal", _fmt(crystals))
+	_crystal_btn = _pill_button("CrystalButton", "ui_crystal", _fmt(crystals))
 	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Crystals: premium currency.\nComing soon."))
 	dockL.add_child(_crystal_btn)
 	var open := _icon_button("OpenCurrencyButton", "plus", 36.0, 26.0, 14, Color(CYAN, 0.4))
@@ -366,6 +366,15 @@ func _action_item(node_name: String, icon_name: String, label: String, on_press:
 	var b := _icon_button(node_name, icon_name, 46.0, 40.0, 38, Color(0, 0, 0, 0))
 	b.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	b.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	# Chest and Patrol are Luna's 3D chest and drone, animated (home_prop.gd)
+	if node_name == "ChestButton" or node_name == "PatrolButton":
+		b.icon = null
+		var prop := HomeProp.new()
+		prop.name = "Prop"
+		prop.kind = "chest" if node_name == "ChestButton" else "drone"
+		prop.size = Vector2(44, 44)
+		prop.position = Vector2(1, 1)
+		b.add_child(prop)
 	b.pressed.connect(on_press)
 	box.add_child(b)
 	if node_name in LABELED:
@@ -962,32 +971,16 @@ func _chest_open_fx() -> void:
 	var b := _find_button(self, "ChestButton")
 	if b == null:
 		return
-	# The open chest fades in over the closed icon, holds, and fades back out
-	# (no icon swap), with a little hop.
-	var lid := TextureRect.new()
-	lid.texture = Icons.get_icon("chest_open")
-	lid.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	lid.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	lid.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var side: float = float(b.get_theme_constant("icon_max_width")) if b.has_theme_constant_override("icon_max_width") else minf(b.size.x, b.size.y)
-	lid.size = Vector2(side, side)
-	lid.position = (b.size - lid.size) * 0.5
-	lid.modulate.a = 0.0
-	b.add_child(lid)
+	# Luna's chest lifts its lid and lets the light out (HomeProp.open), with a beam
+	# and a little hop.
+	var prop := b.get_node_or_null("Prop") as HomeProp
+	if prop:
+		prop.open()
 	IconFx.play(b, "beam", b.size * 0.5 + Vector2(0, -8), 0.5)
 	b.pivot_offset = b.size * 0.5
 	var tw := create_tween()
-	var mix := func(a: float):
-		lid.modulate.a = a
-		var base := Color(1, 1, 1, clampf((1.0 - a) * 2.0, 0.0, 1.0))
-		for st in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
-			b.add_theme_color_override(st, base)
-	tw.tween_method(mix, 0.0, 1.0, 0.12)
-	tw.parallel().tween_property(b, "scale", Vector2(1.08, 1.08), 0.12).set_trans(Tween.TRANS_SINE)
+	tw.tween_property(b, "scale", Vector2(1.08, 1.08), 0.12).set_trans(Tween.TRANS_SINE)
 	tw.tween_property(b, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-	tw.tween_interval(0.5)
-	tw.tween_method(mix, 1.0, 0.0, 0.3)
-	tw.tween_callback(lid.queue_free)
 
 func _find_button(n: Node, nm: String) -> Button:
 	if n.name == nm and n is Button:

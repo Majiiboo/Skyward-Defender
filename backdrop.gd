@@ -73,19 +73,16 @@ static func draw_base_lights(c: CanvasItem, width: float, bottom_y: float, t: fl
 
 # The lit sockets: Luna's ring glow, drawn as added light on a layer with additive
 # blending. lit[i] (0..1) fades socket i's glow in.
-# A locked mount: the socket darkened with a small padlock in thin lines.
+# A locked mount: Luna's closed armoured hatch over the socket (battle.gd animates it
+# opening; Home just shows it).
+static var _lid: Texture2D
 static func draw_socket_lock(c: CanvasItem, i: int, width: float, bottom_y: float) -> void:
+	if _lid == null:
+		_lid = load("res://base/lid_closed.png")
 	var p := socket_pos(i, width, bottom_y)
-	var k := width / 480.0
-	c.draw_set_transform(p, 0.0, Vector2(1.0, 0.36))
-	c.draw_circle(Vector2.ZERO, 24.0 * k, Color(0.0, 0.01, 0.03, 0.6))
-	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	var body := Rect2(p + Vector2(-5.0, -6.0) * k, Vector2(10.0, 8.0) * k)
-	var col := Color(0.62, 0.70, 0.84, 0.85)
-	c.draw_rect(body, Color(0.03, 0.045, 0.10, 0.9))
-	c.draw_rect(body, col, false, 1.0)
-	c.draw_arc(p + Vector2(0, -6.0) * k, 3.2 * k, PI, TAU, 10, col, 1.0, true)
-	c.draw_circle(body.get_center(), 1.0 * k, col)
+	var w := 52.0 * width / 480.0
+	var h: float = w * _lid.get_height() / _lid.get_width()
+	c.draw_texture_rect(_lid, Rect2(p.x - w * 0.5, p.y - 1.0 - h * 0.5, w, h), false)
 
 static func draw_socket_glow(c: CanvasItem, width: float, bottom_y: float, lit: Array) -> void:
 	var r := strip_rect(width, bottom_y)
