@@ -208,6 +208,10 @@ Read this first. It replaces the chat history this project grew up in.
    cleared to open mount i (save stage_unlocked > N); battle mounts only open mounts
    and draws Backdrop.draw_socket_lock on closed ones; Gear/Home follow; Deploy Sentry
    card removed (turret_mult gone). Pilot level still unlocks turret TYPES.
+11d. LUNA-BRIEF-dev87.md (2026-11-03): the art list for this batch, in order: backgrounds,
+   power card pictures (cards.gd "icon" still borrows nav icons), gems/bolt/impact/goo,
+   locked socket shutter (3 frames), Home Chest/Patrol as layers, UI icons, pilot
+   parts round 3 (chunky arms/legs at reference scale), Hive bugs in 3D (later).
 12. AREAS (Rudy + Claude, 2026-11-03, proposed; confirm with Rudy before coding): an area =
    a planet + an enemy family, 10 stages, big boss at stage 10; two zones of 5 (A orbit,
    B descent; mini-boss at stage 5) so the background changes every 5 stages and the
