@@ -36,7 +36,7 @@ const SENTRY_GAP := 9.0
 const SENTRY_HEAD_CX := 0.468              # visual centre of the head picture across its width
 # charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
 const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0)}
-const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst"]
+const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst", "bolt", "impact", "nova"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
 
@@ -183,6 +183,9 @@ func _ready() -> void:
 		_tex[Turrets.TURRETS[id].art + "_idle"] = load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art)
 	_tex["sentry_head"] = load("res://turrets/sentry_head.png")
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
+	for i in 4:
+		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
+	_tex["goo"] = load("res://fx/goo.png")
 	for n in FX_NAMES:
 		_fx_tex[n] = load("res://fx/%s.png" % n)
 	# effects (shots, hits, glows) are drawn on their own layer with additive light
@@ -586,6 +589,7 @@ func _update_bullets(delta: float) -> void:
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 				else:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
+					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6)
 				e.hp -= dmg
 				hit = true
 				stat_hits += 1
@@ -1425,6 +1429,8 @@ func _pick_card(id: String) -> void:
 					_kill(e)
 			enemies = enemies.filter(func(e): return e.type == "hive_mother")
 			_burst(soldier_pos, 60.0, Color(1.0, 0.9, 0.6), 24)
+			_fx_add("nova", soldier_pos, 150.0, 0.7, 0.0, 4.5)   # Luna's white-gold ring sweeps the screen
+			shake = maxf(shake, 0.6)
 	_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
 	_card_panel.visible = false
 	picking = false
@@ -1512,8 +1518,13 @@ func _draw() -> void:
 			draw_line(p + back, p, Color(c, 0.0), r * 1.2, true)
 			draw_line(p + back * 0.6, p, Color(c, 0.45), r * 0.9, true)
 		draw_circle(p, r * 2.2, Color(c, 0.12 * blink))
-		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r * 1.3), p + Vector2(r, 0), p + Vector2(0, r * 1.3), p + Vector2(-r, 0)]), Color(c, blink))
-		draw_colored_polygon(PackedVector2Array([p + Vector2(0, -r * 1.3), p + Vector2(r * 0.5, -r * 0.3), p + Vector2(-r * 0.5, -r * 0.3)]), Color(1, 1, 1, 0.5 * blink))
+		# Luna's gem, turning slowly (a squeeze across its width) and bobbing
+		var gtx: Texture2D = _tex["gem_%d" % int(g.tier)]
+		var gs: float = r * 4.2 / maxf(gtx.get_width(), gtx.get_height())
+		var spin: float = 0.75 + 0.25 * cos(time_alive * 3.0 + p.x * 0.05)
+		draw_set_transform(p + Vector2(0, sin(time_alive * 4.0 + p.x) * 1.2), 0.0, Vector2(gs * spin, gs))
+		draw_texture_rect(gtx, Rect2(-gtx.get_size() * 0.5, gtx.get_size()), false, Color(1, 1, 1, blink))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
 	var pose := _current_pose()
@@ -1532,29 +1543,29 @@ func _draw() -> void:
 			clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), clampf(draw_bank * 5.0, -1.0, 1.0), smoothstep(0.3, 1.0, gun_recoil), anim.mix(), turn, pilot_a)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# bullets
-	var bolt_w: float = 1.0 + (damage_mult - 1.0) * 1.6   # Heavy Bolts: thicker, brighter bolts
 	for bl in bullets:
 		if bl.col == "tracer":
 			continue   # turret tracers are drawn on the light layer
 		var dir: Vector2 = bl.vel.normalized()
 		var purple: bool = bl.col == "purple"
-		var w: float = 1.0 if purple else bolt_w
-		draw_line(bl.pos - dir * (10.0 + 4.0 * (w - 1.0)), bl.pos + dir * 4.0, Color(0.71, 0.55, 1.0, 0.5) if purple else Color(0.2, 0.85, 1.0, 0.5), 5.0 * w, true)
-		draw_line(bl.pos - dir * (10.0 + 4.0 * (w - 1.0)), bl.pos + dir * 4.0, Color(0.95, 0.9, 1.0) if purple else Color(0.9, 1.0, 1.0), 2.0 * w, true)
+		if not purple:
+			continue   # the pilot's bolts are Luna's energy bolt, drawn on the light layer
+		draw_line(bl.pos - dir * 10.0, bl.pos + dir * 4.0, Color(0.71, 0.55, 1.0, 0.5), 5.0, true)
+		draw_line(bl.pos - dir * 10.0, bl.pos + dir * 4.0, Color(0.95, 0.9, 1.0), 2.0, true)
 	# Rapid Pulse: the muzzle stays hot between shots
 	if fire_rate_mult > 1.01:
 		var heat: float = clampf((fire_rate_mult - 1.0) / 0.5, 0.0, 1.0)
 		draw_circle(_muzzle_world(), 3.0 + 4.0 * heat, Color(1.0, 0.75, 0.5, 0.25 + 0.35 * heat))
 	for eb in enemy_bullets:
 		if eb.get("kind", "") == "goo":
-			# a wobbling glob stretched along its flight, with two drips behind
+			# Luna's goo glob (it travels toward the top of its picture), wobbling as it flies
 			var gd: Vector2 = eb.vel.normalized()
 			var wob: float = sin(time_alive * 14.0 + float(eb.ph))
-			draw_circle(eb.pos - gd * 8.0, 2.2, Color(0.62, 0.3, 0.95, 0.8))
-			draw_circle(eb.pos - gd * 13.0, 1.4, Color(0.62, 0.3, 0.95, 0.6))
-			draw_set_transform(eb.pos, gd.angle(), Vector2(1.3 + 0.15 * wob, 0.85 - 0.1 * wob))
-			draw_circle(Vector2.ZERO, 5.0, Color(0.68, 0.32, 1.0))
-			draw_circle(Vector2(1.5, -1.5), 2.0, Color(0.9, 0.75, 1.0, 0.9))
+			var gt: Texture2D = _tex["goo"]
+			var gh := 22.0
+			var gw: float = gh * gt.get_width() / gt.get_height()
+			draw_set_transform(eb.pos, gd.angle() + PI / 2.0, Vector2(1.0 - 0.08 * wob, 1.0 + 0.08 * wob))
+			draw_texture_rect(gt, Rect2(-gw * 0.5, -gh * 0.3, gw, gh), false)
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		else:
 			draw_circle(eb.pos, 5, Color(1.0, 0.2, 0.6, 0.5))
@@ -1746,6 +1757,17 @@ func _draw_fx() -> void:
 		var th: float = L * tr.get_height() / tr.get_width()
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(tr, Rect2(-L * 0.9, -th * 0.5, L, th), false)
+	# the pilot's bolts: Luna's energy bolt, its bright head on the bullet (Heavy Bolts:
+	# bigger and brighter)
+	var bt0: Texture2D = _fx_tex["bolt"]
+	var bw: float = 1.0 + (damage_mult - 1.0) * 1.6
+	for bl in bullets:
+		if bl.col == "tracer" or bl.col == "purple":
+			continue
+		var BL := 26.0 * (0.85 + 0.15 * bw)
+		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw
+		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
+		_fx.draw_texture_rect(bt0, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false)
 	# Swarm drones
 	var dt: Texture2D = _fx_tex["drone"]
 	for dr in drones:

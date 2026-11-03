@@ -1,0 +1,158 @@
+extends SceneTree
+# Cuts Luna's dev87 small pieces (art_src/dev87) into game pictures:
+#   pickups/gem_0..3.png      gems (blue shard, purple prism, red ember, gold star)
+#   fx/bolt.png, fx/impact.png, fx/nova.png   light (stays on black, drawn additive)
+#   fx/goo.png                Spitter goo glob (travels toward the top of the picture)
+#   cards/pic_<card>.png      power card pictures
+#   icons/ui_*.png            coin, crystal, energy, heart, badge, padlock
+#   base/lid_closed|half|open.png   locked socket hatch
+#   icons/chest3d_*.png, icons/drone_*.png   Home Chest and Patrol layers
+# Run: godot --headless --path . --script res://tools/cut_ui_art.gd
+
+const SRC := "res://art_src/dev87/"
+
+# [sheet, rect (x, y, w, h), output, longest side px, mode]
+# mode: "solid" = key black to alpha; "light" = keep on black (additive); add "+flip"
+# to mirror left-right.
+const JOBS := [
+	["pickups_v1", [96, 260, 260, 232], "pickups/gem_0.png", 96, "solid"],
+	["pickups_v1", [556, 136, 252, 464], "pickups/gem_1.png", 96, "solid"],
+	["pickups_v1", [1008, 256, 244, 236], "pickups/gem_2.png", 96, "solid"],
+	["pickups_v1", [1396, 108, 484, 476], "pickups/gem_3.png", 128, "solid"],
+	["pickups_v1", [1010, 720, 370, 420], "fx/impact.png", 128, "light"],
+	["bolt_goo", [440, 90, 1352, 390], "fx/bolt.png", 256, "light+flip"],
+	["bolt_goo", [660, 520, 590, 720], "fx/goo.png", 128, "solid"],
+	["card_pictures", [672, 880, 564, 360], "fx/nova.png", 256, "light"],
+	["card_pictures", [66, 50, 552, 388], "cards/pic_rapid_pulse.png", 256, "solid"],
+	["card_pictures", [674, 50, 560, 388], "cards/pic_heavy_bolts.png", 256, "solid"],
+	["card_pictures", [1290, 50, 564, 388], "cards/pic_burst_fire.png", 256, "solid"],
+	["card_pictures", [66, 490, 552, 396], "cards/pic_aegis.png", 256, "solid"],
+	["card_pictures", [674, 490, 560, 360], "cards/pic_magnet.png", 256, "solid"],
+	["card_pictures", [1290, 490, 564, 396], "cards/pic_reinforced_hull.png", 256, "solid"],
+	["card_pictures", [672, 880, 564, 360], "cards/pic_nova_burst.png", 256, "light"],
+	["ui_icons", [112, 128, 480, 476], "icons/ui_coin.png", 128, "solid"],
+	["ui_icons", [812, 104, 304, 536], "icons/ui_crystal.png", 128, "solid"],
+	["ui_icons", [1380, 72, 372, 584], "icons/ui_energy.png", 128, "solid"],
+	["ui_icons", [116, 744, 460, 420], "icons/ui_heart.png", 128, "solid"],
+	["badge_padlock", [60, 320, 1076, 696], "icons/ui_badge.png", 160, "solid"],
+	["badge_padlock", [1164, 276, 568, 748], "icons/ui_padlock.png", 128, "solid"],
+	["socket_lid", [16, 410, 944, 380], "base/lid_closed.png", 256, "solid"],
+	["socket_lid", [1056, 150, 888, 680], "base/lid_half.png", 256, "solid"],
+	["socket_lid", [2136, 16, 328, 892], "base/lid_open.png", 256, "solid"],
+	["chest_v1", [130, 190, 690, 550], "icons/chest3d_body.png", 192, "solid"],
+	["chest_v1", [1040, 200, 680, 540], "icons/chest3d_closed.png", 192, "solid"],
+	["chest_v1", [1880, 86, 772, 744], "icons/chest3d_burst.png", 192, "light"],
+	["chest_lid", [960, 200, 708, 452], "icons/chest3d_lid.png", 192, "solid"],
+	["patrol_drone", [90, 94, 1744, 1088], "icons/drone_body.png", 192, "solid"],
+	["home_buttons_v1", [730, 300, 464, 96], "icons/drone_prop.png", 128, "solid"],
+	["home_buttons_v1", [1450, 176, 184, 384], "icons/drone_thrust.png", 96, "light"],
+]
+
+func _initialize() -> void:
+	for d in ["pickups", "fx", "cards", "icons", "base"]:
+		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://" + d))
+	var sheets := {}
+	for j in JOBS:
+		if not sheets.has(j[0]):
+			var img := Image.load_from_file(ProjectSettings.globalize_path(SRC + j[0] + ".webp"))
+			img.convert(Image.FORMAT_RGBA8)
+			sheets[j[0]] = img
+		var src: Image = sheets[j[0]]
+		var r: Array = j[1]
+		var rect := Rect2i(r[0], r[1], r[2], r[3]).intersection(Rect2i(Vector2i.ZERO, src.get_size()))
+		var cell := src.get_region(rect)
+		var mode: String = j[4]
+		var out: Image
+		if mode.begins_with("light"):
+			out = _light(cell)
+		else:
+			out = _trim(_solid(cell))
+		if mode.ends_with("+flip"):
+			out.flip_x()
+		_save(_fit(out, j[3]), "res://" + j[2])
+	quit()
+
+func _save(img: Image, path: String) -> void:
+	img.save_png(ProjectSettings.globalize_path(path))
+	print("%-34s %dx%d" % [path, img.get_width(), img.get_height()])
+
+func _fit(img: Image, px: int) -> Image:
+	var s := float(px) / maxi(img.get_width(), img.get_height())
+	var out: Image = img.duplicate()
+	out.resize(maxi(1, roundi(img.get_width() * s)), maxi(1, roundi(img.get_height() * s)), Image.INTERPOLATE_LANCZOS)
+	return out
+
+func _trim(img: Image, pad: int = 3) -> Image:
+	var r := img.get_used_rect().grow(pad).intersection(Rect2i(Vector2i.ZERO, img.get_size()))
+	return img.get_region(r) if r.size.x > 0 else img
+
+# Light on black: subtract the faint cell background, crop to what is lit, alpha 1.
+func _light(img: Image) -> Image:
+	var w := img.get_width(); var h := img.get_height()
+	var bg := 1.0
+	for p in [Vector2i(2, 2), Vector2i(w - 3, 2), Vector2i(2, h - 3), Vector2i(w - 3, h - 3)]:
+		var c := img.get_pixelv(p)
+		bg = minf(bg, maxf(maxf(c.r, c.g), c.b))
+	bg += 0.025
+	var lit := Rect2i()
+	var any := false
+	for y in h:
+		for x in w:
+			var c := img.get_pixel(x, y)
+			var k := 1.0 / (1.0 - bg)
+			c = Color(maxf(c.r - bg, 0.0) * k, maxf(c.g - bg, 0.0) * k, maxf(c.b - bg, 0.0) * k, 1.0)
+			img.set_pixel(x, y, c)
+			if maxf(maxf(c.r, c.g), c.b) > 0.03:
+				lit = Rect2i(x, y, 1, 1) if not any else lit.expand(Vector2i(x, y)).expand(Vector2i(x + 1, y + 1))
+				any = true
+	return img.get_region(lit.grow(2).intersection(Rect2i(0, 0, w, h))) if any else img
+
+# Black -> alpha with soft edges; dark parts inside the object stay solid (see
+# tools/cut_bug_art.gd for the same method).
+func _solid(img: Image, lo: float = 14.0, span: float = 34.0, close: int = 3) -> Image:
+	var w := img.get_width(); var h := img.get_height()
+	var d := img.get_data()
+	var grown := PackedByteArray(); grown.resize(w * h)
+	for i in w * h:
+		grown[i] = 1 if maxf(maxf(d[i * 4], d[i * 4 + 1]), d[i * 4 + 2]) > lo + span * 0.5 else 0
+	for _k in close:
+		var g2 := grown.duplicate()
+		for y in h:
+			for x in w:
+				var i := y * w + x
+				if grown[i] == 0 and ((x > 0 and grown[i - 1] == 1) or (x < w - 1 and grown[i + 1] == 1) or (y > 0 and grown[i - w] == 1) or (y < h - 1 and grown[i + w] == 1)):
+					g2[i] = 1
+		grown = g2
+	var outside := PackedByteArray(); outside.resize(w * h)
+	var stack: Array = []
+	for x in w:
+		stack.append(x); stack.append((h - 1) * w + x)
+	for y in h:
+		stack.append(y * w); stack.append(y * w + w - 1)
+	while not stack.is_empty():
+		var p: int = stack.pop_back()
+		if outside[p] == 1 or grown[p] == 1:
+			continue
+		outside[p] = 1
+		var x := p % w
+		if x > 0: stack.append(p - 1)
+		if x < w - 1: stack.append(p + 1)
+		if p >= w: stack.append(p - w)
+		if p < w * (h - 1): stack.append(p + w)
+	for i in w * h:
+		var m: float = maxf(maxf(d[i * 4], d[i * 4 + 1]), d[i * 4 + 2])
+		var a: float = clampf((m - lo) / span, 0.0, 1.0)
+		if outside[i] == 0:
+			var x := i % w; var y := i / w
+			var near_out := false
+			for r in range(1, close + 2):
+				if (x - r >= 0 and outside[i - r] == 1) or (x + r < w and outside[i + r] == 1) or (y - r >= 0 and outside[i - r * w] == 1) or (y + r < h and outside[i + r * w] == 1):
+					near_out = true
+					break
+			if not near_out:
+				a = 1.0
+		elif a > 0.0 and a < 1.0:
+			for c in 3:
+				d[i * 4 + c] = int(clampf(d[i * 4 + c] / a, 0.0, 255.0))
+		d[i * 4 + 3] = int(a * 255.0)
+	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, d)

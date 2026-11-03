@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev89 (version/code=89 and version/name="1.0-dev89" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev90 (version/code=90 and version/name="1.0-dev90" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev90: Luna's pickups and shots
+
+- Gems are Luna's crystals (blue shard, purple prism, red ember, gold star); they turn
+  and bob as they float.
+- The pilot fires Luna's cyan energy bolt (bigger and brighter with Heavy Bolts), with
+  her cyan spark where it hits.
+- Spitters spit Luna's purple goo glob, wobbling as it flies.
+- Nova Burst sweeps the screen with her white-gold ring and a short shake.
+- Also cut and ready for the next steps: card pictures, coin / crystal / energy / heart /
+  badge / padlock icons, the locked socket hatch, the 3D chest and the patrol drone
+  (tools/cut_ui_art.gd).
 
 ## dev89: painted worlds
 
