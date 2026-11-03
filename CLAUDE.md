@@ -1,6 +1,7 @@
 # Skybound Defender: handoff for Claude Code
 
-Read this first. It replaces the chat history this project grew up in.
+Read this first. It replaces the chat history this project grew up in. The long-term
+plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Who and what
 - Owner: Rudy (non-coder; explain changes in plain English, deliver working results,
