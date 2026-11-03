@@ -133,6 +133,13 @@ Read this first. It replaces the chat history this project grew up in.
    rows: sentry tracer+sparks, tracer dup + lance flare, lance beam + storm zap,
    gravity rings + crush, drone + pop, prism beam + burst). MOUNT_X must move to the
    strip's socket centres. Compact Swarm Hive arrived 2026-11-03; ready to build.
+11. Pilot rig test (Rudy, 2026-11-03): Luna paints the pilot in a 3D-rendered look as
+   parts (LUNA-BRIEF-pilot-parts.md: assembled reference + 16 parts at the same
+   scale). Build a cut-out rig (Node2D bones or a code rig like enemy_rig.gd): pivots
+   measured from the reference, idle breathing, aim arms + rifle at the target, lean
+   by tilting torso/legs, recoil, jetpack bob, visor glow, legs dangling with the
+   hover. Show it side by side with the current painted pilot in a test scene first;
+   Rudy decides before it replaces PilotSprite. If it works, bugs follow the same way.
 10. LATER idea (Rudy, 2026-11-03), not scheduled: base super weapons. The command
    dome's top emitter (the orb/ring on the new base strip) fires a super weapon. Unlocked
    and levelled outside battle; in battle a tap button shows its cooldown ring (60-90 s
