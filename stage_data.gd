@@ -1,28 +1,78 @@
 class_name StageData
 extends RefCounted
-# Everything about stages in one place: sectors (look per five stages), enemy
-# definitions, and the wave list for a stage. Tune numbers here, not in battle.gd.
+# Everything about stages in one place: areas and zones (the look and story per 10 and
+# per 5 stages), enemy definitions, and the wave list for a stage. Tune numbers here,
+# not in battle.gd.
 
-# ---- sectors: a planet every five stages. Colours tint the sky, rim and shield; "bg" is
-# Luna's painted world (backdrops/<bg>.webp, Backdrop.draw_world). backdrops/scrap.webp is
-# ready for the Scrap belt area when the areas are reworked (ROADMAP: 10 stages per area). ----
+# ---- areas (ROADMAP 1.0): a planet every 10 stages, ending with its boss. Each area has
+# two zones of 5 stages (A in orbit, B down at the surface; a mini-boss ends zone A), so
+# the painted world changes every 5 stages and the planet every 10. "brief" is the comms
+# message shown the first time you reach the area. Later areas reuse the Hive bugs until
+# their own enemy families are painted (LUNA-BRIEF-areas.md).
+const AREAS := [
+	{"name": "Hive World", "boss": "Hive Mother",
+		"brief": "Pilot, the swarms come from this planet. Hold the base, thin the swarm, and find the Hive Mother."},
+	{"name": "Scrap Belt", "boss": "Hive Mother",
+		"brief": "A ring of wrecked ships. The bugs nest in the junk: watch for anything that moves in the debris."},
+	{"name": "Magma World", "boss": "Hive Mother",
+		"brief": "The crust is cracking. Heat haze, ash and bugs that thrive in it. Keep your shield up."},
+	{"name": "Crystal World", "boss": "Hive Mother",
+		"brief": "Frozen seas and crystal spires. Beautiful, and full of things that want you gone."},
+	{"name": "Plasma Storm", "boss": "Hive Mother",
+		"brief": "A gas giant wrapped in lightning. The storm charges them up: stay sharp."},
+	{"name": "Sentinel World", "boss": "Hive Mother",
+		"brief": "A dead machine planet. Something here is still awake, and it has been waiting for us."},
+]
+
+# Zones: 5 stages each, two per area. Colours tint the sky, rim and shield (used only if a
+# zone has no painting); "bg" is Luna's painted world (backdrops/<bg>.webp).
 const SECTORS := [
 	{"name": "Ember Reach", "stages": ["Ember Reach", "Nova Drift", "Cinder Belt", "Halo Verge", "Ion Fields"],
 		"sky_top": Color(0.04, 0.07, 0.20), "sky_bot": Color(0.012, 0.016, 0.045), "rim": Color(0.15, 0.55, 0.95), "glow": Color(0.1, 0.4, 0.8), "bg": "hive_a"},
-	{"name": "Nova Drift", "stages": ["Shard Field", "Ring Gap", "Dust Veil", "Ashen Moon", "Broken Crown"],
+	{"name": "Glow Caverns", "stages": ["Shard Field", "Ring Gap", "Dust Veil", "Ashen Moon", "Broken Crown"],
 		"sky_top": Color(0.10, 0.07, 0.18), "sky_bot": Color(0.02, 0.015, 0.04), "rim": Color(0.55, 0.45, 0.95), "glow": Color(0.35, 0.25, 0.7), "bg": "hive_b"},
+	{"name": "Wreck Ring", "stages": ["Hull Drift", "Rust Field", "Torn Keel", "Salvage Gate", "Iron Graves"],
+		"sky_top": Color(0.06, 0.06, 0.09), "sky_bot": Color(0.01, 0.01, 0.02), "rim": Color(0.8, 0.55, 0.3), "glow": Color(0.4, 0.3, 0.2), "bg": "scrap"},
+	{"name": "Junk Tide", "stages": ["Scrap Wake", "Gear Storm", "Bent Spire", "Dead Dock", "Breaker Yard"],
+		"sky_top": Color(0.06, 0.06, 0.09), "sky_bot": Color(0.01, 0.01, 0.02), "rim": Color(0.8, 0.55, 0.3), "glow": Color(0.4, 0.3, 0.2), "bg": "scrap"},
 	{"name": "Cinder Belt", "stages": ["Lava Seam", "Ash Plain", "Pyre Ridge", "Smolder Deep", "Furnace Gate"],
+		"sky_top": Color(0.20, 0.07, 0.04), "sky_bot": Color(0.04, 0.012, 0.01), "rim": Color(1.0, 0.5, 0.2), "glow": Color(0.8, 0.3, 0.1), "bg": "magma"},
+	{"name": "Furnace Deep", "stages": ["Ember Vent", "Molten Run", "Slag Crown", "Caldera", "Heart of Fire"],
 		"sky_top": Color(0.20, 0.07, 0.04), "sky_bot": Color(0.04, 0.012, 0.01), "rim": Color(1.0, 0.5, 0.2), "glow": Color(0.8, 0.3, 0.1), "bg": "magma"},
 	{"name": "Halo Verge", "stages": ["Frost Spire", "Glass Sea", "Rime Hollow", "Crystal Reach", "White Ring"],
 		"sky_top": Color(0.06, 0.14, 0.22), "sky_bot": Color(0.01, 0.03, 0.05), "rim": Color(0.6, 0.95, 1.0), "glow": Color(0.3, 0.7, 0.9), "bg": "crystal"},
+	{"name": "Prism Depths", "stages": ["Shard Maze", "Mirror Lake", "Cold Light", "Facet Gorge", "Crystal Throne"],
+		"sky_top": Color(0.06, 0.14, 0.22), "sky_bot": Color(0.01, 0.03, 0.05), "rim": Color(0.6, 0.95, 1.0), "glow": Color(0.3, 0.7, 0.9), "bg": "crystal"},
 	{"name": "Ion Fields", "stages": ["Storm Edge", "Thunderhead", "Static Sea", "Charge Belt", "Eye of Ion"],
 		"sky_top": Color(0.10, 0.05, 0.22), "sky_bot": Color(0.01, 0.03, 0.02), "rim": Color(0.6, 0.9, 0.5), "glow": Color(0.5, 0.2, 0.9), "bg": "plasma"},
-	{"name": "Null Reach", "stages": ["Dead Grid", "Silent Core", "Null Gate", "Last Array", "The Sentinel"],
+	{"name": "Storm Crown", "stages": ["Arc Fall", "Pulse Line", "Volt Rift", "Sky Furnace", "Crown of Storms"],
+		"sky_top": Color(0.10, 0.05, 0.22), "sky_bot": Color(0.01, 0.03, 0.02), "rim": Color(0.6, 0.9, 0.5), "glow": Color(0.5, 0.2, 0.9), "bg": "plasma"},
+	{"name": "Null Reach", "stages": ["Dead Grid", "Silent Core", "Null Gate", "Last Array", "Cold Signal"],
+		"sky_top": Color(0.02, 0.02, 0.05), "sky_bot": Color(0.0, 0.0, 0.01), "rim": Color(0.2, 1.0, 0.8), "glow": Color(0.1, 0.5, 0.5), "bg": "sentinel"},
+	{"name": "Core Array", "stages": ["Black Lattice", "Echo Vault", "Prime Node", "Gate Zero", "The Sentinel"],
 		"sky_top": Color(0.02, 0.02, 0.05), "sky_bot": Color(0.0, 0.0, 0.01), "rim": Color(0.2, 1.0, 0.8), "glow": Color(0.1, 0.5, 0.5), "bg": "sentinel"},
 ]
+const MAX_STAGE := 60
 
+# The zone a stage is in (5 stages each).
 static func sector(stage: int) -> Dictionary:
 	return SECTORS[clampi((stage - 1) / 5, 0, SECTORS.size() - 1)]
+
+# The area (planet) a stage is in, 0-based, and the area data.
+static func area_index(stage: int) -> int:
+	return clampi((stage - 1) / 10, 0, AREAS.size() - 1)
+
+static func area(stage: int) -> Dictionary:
+	return AREAS[area_index(stage)]
+
+# 1..10 inside the area
+static func area_stage(stage: int) -> int:
+	return (stage - 1) % 10 + 1
+
+# "mini" ends zone A (stage 5 of an area), "boss" ends the area (stage 10), else "".
+static func boss_kind(stage: int) -> String:
+	var s := area_stage(stage)
+	return "boss" if s == 10 else ("mini" if s == 5 else "")
 
 static func stage_name(stage: int) -> String:
 	var s := sector(stage)
@@ -62,7 +112,8 @@ const GEM_COLORS := [Color(0.29, 0.66, 1.0), Color(0.71, 0.55, 1.0), Color(1.0, 
 static func hp_mult(stage: int, elite: bool) -> float:
 	# gentle through the first planet (+7% a stage), a little steeper after it (+8%), when
 	# the player has turrets and upgrades to answer with
-	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, maxi(stage - 5, 0)) * (1.85 if elite else 1.0)
+	# (beyond the first planet +6% a stage; gear and turret upgrades carry the player there)
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.06, maxi(stage - 10, 0)) * (1.85 if elite else 1.0)
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4
@@ -78,17 +129,13 @@ static func spawn_gap(stage: int) -> float:
 	return 2.0 if stage == 1 else (1.8 if stage <= 5 else 1.7)
 
 static func wave_count(stage: int) -> int:
+	# the first planet is the tutorial (5 then 8 waves); later planets 10 waves in zone A,
+	# 12 in zone B, so a stage stays a few minutes long
 	if stage <= 5:
 		return 5
 	if stage <= 10:
 		return 8
-	if stage <= 15:
-		return 12
-	if stage <= 20:
-		return 15
-	if stage <= 30:
-		return 20
-	return 30
+	return 10 if area_stage(stage) <= 5 else 12
 
 # A wave = list of [enemy_id, count]. Enemies arrive one at a time over the wave.
 static func waves(stage: int) -> Array:

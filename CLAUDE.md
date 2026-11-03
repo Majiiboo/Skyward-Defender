@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev93 (code 93).
+  go UP every package (same signing key, install-over). Current: dev94 (code 94).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -230,7 +230,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    power card pictures (cards.gd "icon" still borrows nav icons), gems/bolt/impact/goo,
    locked socket shutter (3 frames), Home Chest/Patrol as layers, UI icons, pilot
    parts round 3 (chunky arms/legs at reference scale), Hive bugs in 3D (later).
-12. AREAS (Rudy + Claude, 2026-11-03, proposed; confirm with Rudy before coding): an area =
+12. AREAS DONE (dev94): StageData.AREAS (6, name/boss/brief) + SECTORS = 12 zones; area(),
+   area_stage(), boss_kind() mini/boss; MAX_STAGE 60; _maybe_brief (save areas_briefed);
+   AREA COMPLETE on the end screen. Later areas reuse Hive bugs: LUNA-BRIEF-areas.md.
+   Original plan: an area =
    a planet + an enemy family, 10 stages, big boss at stage 10; two zones of 5 (A orbit,
    B descent; mini-boss at stage 5) so the background changes every 5 stages and the
    world every 10. Areas: 1 Hive, 2 Scrap belt, 3 Magma, 4 Crystal, 5 Plasma storm,

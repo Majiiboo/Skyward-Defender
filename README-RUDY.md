@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev93 (version/code=93 and version/name="1.0-dev93" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev94 (version/code=94 and version/name="1.0-dev94" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,22 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev94: six planets
+
+- The game is now 60 stages on six planets of 10: Hive World, Scrap Belt, Magma World,
+  Crystal World, Plasma Storm, Sentinel World. Each planet has two zones of 5 stages
+  with their own painted world, so the background changes every 5 stages.
+- Stage 5 of each planet ends with a mini-boss (a younger, smaller Hive Mother with 60%
+  of the health), stage 10 with the planet's boss.
+- Beating stage 10 shows AREA COMPLETE and names the next planet.
+- The first time you reach a planet, an INCOMING TRANSMISSION briefing types itself out
+  before the battle (tap Launch).
+- Home shows the planet name next to the stage number.
+- Later planets: 10 waves in zone A, 12 in zone B. They still use the Hive bugs until
+  Luna paints their own families: LUNA-BRIEF-areas.md (Scrap Belt first, plus a
+  commander portrait for the briefings). Balance past stage 10 comes with the gear
+  rework (stronger weapons and gear are needed there).
 
 ## dev93: game speed, your cards, more cards
 

@@ -591,7 +591,7 @@ func _process(_delta: float) -> void:
 func _update_stage_label() -> void:
 	var is_elite := mode == "Elite"
 	var sec := StageData.sector(stage)
-	_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STANDARD", stage, String(sec.name).to_upper()]
+	_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STANDARD", stage, String(StageData.area(stage).name).to_upper()]
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= stage_unlocked else 0.5
@@ -600,7 +600,7 @@ func _update_stage_label() -> void:
 	$AFK.set_elite(is_elite)
 	$AFK.set_stage(stage)
 	var lines := PackedStringArray(["Select Stage", ""])
-	for i in range(maxi(1, stage - 3), mini(30, stage + 3) + 1):
+	for i in range(maxi(1, stage - 3), mini(StageData.MAX_STAGE, stage + 3) + 1):
 		var tail := "  (current)" if i == stage else ("" if i <= stage_unlocked else "  [locked]")
 		lines.append("Stage %d: %s%s" % [i, StageData.stage_name(i), tail])
 	$SelectPanel/SelectLabel.text = "\n".join(lines)

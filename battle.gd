@@ -307,6 +307,7 @@ func _start_stage() -> void:
 	picking = false
 	paused = false
 	_start_wave()
+	_maybe_brief()
 
 func _start_wave() -> void:
 	wave_queue.clear()
@@ -327,6 +328,11 @@ func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
 	if id == "hive_mother":
 		e.pos = Vector2(FIELD_W * 0.5, 40.0)
+		# the mini-boss that ends zone A is a younger, smaller Hive Mother
+		if StageData.boss_kind(stage) == "mini":
+			e.mini = true
+			e.hp *= 0.6
+			e.hp_max *= 0.6
 		_boss_bar_max = e.hp_max
 	_meet(id)
 	enemies.append(e)
@@ -1510,10 +1516,16 @@ func _show_end(won: bool) -> void:
 	p.size = Vector2(280, 300)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
-	var t := UIKit.label("STAGE CLEARED" if won else "BASE LOST", 20, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite
+	var t := UIKit.label("AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST"), 20, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
 	v.add_child(UIKit.label("%s %d: %s" % ["Elite" if elite else "Stage", stage, StageData.stage_name(stage)], 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if area_done:
+		var nxt_area := StageData.area_index(stage) + 1
+		v.add_child(UIKit.label("%s cleared!" % StageData.area(stage).name, 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+		if nxt_area < StageData.AREAS.size():
+			v.add_child(UIKit.label("Next planet: %s" % StageData.AREAS[nxt_area].name, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Score %d    Kills %d" % [score, kills], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("Coins +%d    Pilot XP +%d" % [coins_earned, _xp_gain], 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	if _xp_bonus > 0:
@@ -1532,7 +1544,7 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 6)
 	v.add_child(sp)
-	if won:
+	if won and stage < StageData.MAX_STAGE:
 		var nxt := UIKit.gold_button("Next stage")
 		nxt.pressed.connect(func():
 			_write_save({"selected_stage": stage + 1})
@@ -1682,7 +1694,7 @@ func _draw_enemy(e: Dictionary) -> void:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
 			draw_circle(EnemyRig.anchor("spitter", "sac", e.pos, size, ang), size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(0.8, 0.4, 1.0, 0.25 * swell))
 	if e.type == "hive_mother":
-		EnemyRig.draw_hive_mother(self, e.pos, size * 0.5, time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
+		EnemyRig.draw_hive_mother(self, e.pos, size * (0.4 if e.get("mini", false) else 0.5), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
 	elif e.get("hatchling", false) and fold > 0.01:
 		# Luna's crumpled hatchling cross-fades into the flying Scout as its wings open
 		var ht: Texture2D = _tex["hive_hatchling"]
@@ -2067,7 +2079,7 @@ func _draw_hud() -> void:
 			draw_rect(br, Color(0.03, 0.045, 0.10, 0.7))
 			draw_rect(Rect2(br.position, Vector2(bw * clampf(e.hp / e.hp_max, 0.0, 1.0), 6)), Color(0.85, 0.35, 0.9))
 			draw_rect(br, Color(0.9, 0.7, 1.0, 0.6), false, 1.0)
-			draw_string(title_font, Vector2(FIELD_W * 0.5 - 100, by - 6), "HIVE MOTHER", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.9, 0.7, 1.0))
+			draw_string(title_font, Vector2(FIELD_W * 0.5 - 100, by - 6), "YOUNG HIVE MOTHER" if e.get("mini", false) else "HIVE MOTHER", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.9, 0.7, 1.0))
 	_draw_intro()
 
 # "NEW ENEMY" card under the top bar, the first time a player meets a bug type. It
@@ -2213,3 +2225,56 @@ func _toggle_cards() -> void:
 	_cards_view.add_child(box)
 	box.modulate.a = 0.0
 	box.create_tween().tween_property(box, "modulate:a", 1.0, 0.15)
+
+# ------------------------------------------------------------------ area briefing
+
+# The first time a player reaches a planet (its first stage), a comms message from base
+# says where they are; the battle waits until they tap Launch. Save "areas_briefed".
+func _maybe_brief() -> void:
+	if elite or StageData.area_stage(stage) != 1:
+		return
+	var ai := StageData.area_index(stage)
+	var done: Array = Array(_read_save().get("areas_briefed", []))
+	if done.has(ai):
+		return
+	done.append(ai)
+	_write_save({"areas_briefed": done})
+	paused = true
+	var panel := Control.new()
+	panel.size = get_viewport_rect().size
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.04, 0.7)
+	dim.size = panel.size
+	panel.add_child(dim)
+	var box := UIKit.panel(16)
+	box.position = Vector2(30, panel.size.y * 0.5 - 150)
+	box.custom_minimum_size = Vector2(FIELD_W - 60, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	var tag := UIKit.label("INCOMING TRANSMISSION", 11, Color(1.0, 0.6, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
+	tag.add_theme_font_override("font", title_font)
+	v.add_child(tag)
+	var a: Dictionary = StageData.area(stage)
+	var title := UIKit.label(String(a.name).to_upper(), 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", title_font)
+	v.add_child(title)
+	v.add_child(UIKit.label("Planet %d of %d" % [ai + 1, StageData.AREAS.size()], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var msg := UIKit.label("", 14, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	msg.custom_minimum_size = Vector2(FIELD_W - 100, 66)
+	v.add_child(msg)
+	var go := UIKit.gold_button("Launch")
+	go.custom_minimum_size = Vector2(0, 46)
+	go.pressed.connect(func():
+		paused = false
+		panel.queue_free())
+	v.add_child(go)
+	box.add_child(v)
+	panel.add_child(box)
+	add_child(panel)
+	# the message types itself out, like a radio transmission
+	var full: String = a.brief
+	box.modulate.a = 0.0
+	var tw := box.create_tween()
+	tw.tween_property(box, "modulate:a", 1.0, 0.25)
+	tw.tween_method(func(n: float): msg.text = full.substr(0, int(n)), 0.0, float(full.length()), full.length() * 0.025)
