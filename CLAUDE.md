@@ -154,7 +154,14 @@ Read this first. It replaces the chat history this project grew up in.
    plume, core, nozzle glow, particle; black bg, pointing down). Draw them on an
    additive layer, scaled by hover power, with flicker/scroll in code. Until they
    arrive, keep PilotSprite.draw_thruster's code flames.
-   BUILT (2026-11-03, waiting on Rudy's verdict; battle still uses PilotSprite):
+   BUILT (2026-11-03) and IN GAME behind PilotRig.ENABLED (false = painted PilotSprite
+   again): pilot_rig_view.gd (PilotRigView node: flames layer behind, solid, glow
+   layer in front) is added in battle.gd before _fx and in afk_wallpaper.gd; battle
+   feeds aim (drag direction or idle_aim_ang), draw_bank / 0.3, hover, vy; _kick()
+   triggers recoil; _muzzle_world() uses the rig muzzle. PilotRig.RIFLE = "rifle_side"
+   (Luna's side view, cut upright). Gear still shows pilot/idle.png. Rudy is playtesting;
+   then a Luna brief for whatever he notices (likely chunkier legs/arms at reference scale).
+   Details:
    tools/cut_pilot_art.gd cuts parts + flames into pilot_rig/ (parts keyed off black
    with dark insides kept solid, all at the parts sheet's pixel scale; helmet cut
    without its neck ball; left forearm = left_arm.webp below the elbow x0.575; jetpack

@@ -138,6 +138,7 @@ var aim_target_id := -2
 var facing := 1.0
 var facing_s := 1.0               # eases toward facing, so turning round squeezes instead of snapping
 var anim := PilotSprite.Anim.new()
+var _rig_view: PilotRigView        # the new cut-out pilot (PilotRig.ENABLED); null = painted PilotSprite
 
 # ---- UI ----
 var hud_font: Font = preload("res://fonts/Exo2-Variable.ttf")
@@ -167,6 +168,10 @@ func _ready() -> void:
 	var fx_mat := CanvasItemMaterial.new()
 	fx_mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
 	_fx.material = fx_mat
+	if PilotRig.ENABLED:
+		_rig_view = PilotRigView.new()
+		_rig_view.height = PILOT_HEIGHT
+		add_child(_rig_view)
 	_fx.draw.connect(_draw_fx)
 	add_child(_fx)
 	for n in ["hive_lay_1", "hive_lay_2", "hive_lay_3", "hive_lay_4", "hive_hatchling"]:
@@ -377,6 +382,17 @@ func _pilot_motion(delta: float) -> void:
 	draw_bank = bank_smooth
 	gun_sway = lerpf(gun_sway, clampf(dx * 0.025, -0.55, 0.55), minf(1.0, delta * 8.0))
 	gun_recoil = gun_recoil * exp(-delta * 12.0)
+	if _rig_view:
+		var rig_aim: float = -PI / 2.0 - 0.3          # no target: rifle held up, like Luna's reference
+		if dragging:
+			rig_aim = -PI / 2.0 + gun_sway - draw_bank
+		elif idle_aiming:
+			rig_aim = idle_aim_ang
+		var a: float = 1.0
+		if inv_t > 0.0:
+			a = lerpf(1.0, 0.55 + 0.45 * absf(cos(time_alive * PI * 4.0)), smoothstep(0.0, 0.3, inv_t))
+		_rig_view.update(delta, soldier_pos + Vector2(0, sin(time_alive * 4.0) * 2.5), rig_aim, draw_bank / 0.3,
+			clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), vy_smooth, a)
 
 # ------------------------------------------------------------------ aiming and shooting
 
@@ -394,8 +410,15 @@ func _flipped(_pose: String) -> bool:
 	return anim.mirrored()
 
 func _muzzle_world() -> Vector2:
+	if _rig_view:
+		return _rig_view.muzzle()
 	var pose := _current_pose()
 	return soldier_pos + PilotSprite.muzzle(pose, PILOT_HEIGHT, _flipped(pose)).rotated(-draw_bank * 0.6)
+
+func _kick(v: float) -> void:
+	gun_recoil = v
+	if _rig_view:
+		_rig_view.fire()
 
 func _aim_and_fire(delta: float) -> void:
 	idle_aiming = false
@@ -418,14 +441,14 @@ func _aim_and_fire(delta: float) -> void:
 		if burst_timer <= 0.0:
 			burst_timer = 0.07
 			burst_left -= 1
-			gun_recoil = 0.9
+			_kick(0.9)
 			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid)
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
 	if dragging and fire_timer <= 0.0:
 		fire_timer = interval
-		gun_recoil = 1.0
+		_kick(1.0)
 		var ang: float = -PI / 2.0 + gun_sway - draw_bank
 		var dir := Vector2(cos(ang), sin(ang))
 		_fire(muzzle_base + dir * 4.0, dir)
@@ -435,7 +458,7 @@ func _aim_and_fire(delta: float) -> void:
 		burst_tid = -2
 	elif idle_aiming and fire_timer <= 0.0 and not target.get("doomed", false) and absf(angle_difference(idle_aim_ang, aim_goal)) <= aim_ready_angle:
 		fire_timer = interval * idle_fire_ratio / idle_power
-		gun_recoil = 1.0
+		_kick(1.0)
 		var shot_ang := idle_aim_ang + rng.randf_range(-aim_error, aim_error)
 		var d2 := Vector2(cos(shot_ang), sin(shot_ang))
 		_fire(muzzle_base + d2 * 4.0, d2, int(target.get("id", -2)))
@@ -1378,8 +1401,9 @@ func _draw() -> void:
 	if inv_t > 0.0:
 		pilot_a = lerpf(1.0, 0.55 + 0.45 * absf(cos(time_alive * PI * 4.0)), smoothstep(0.0, 0.3, inv_t))
 	var turn: float = clampf(absf(facing_s), 0.15, 1.0) if pose.begins_with("aim") else 1.0
-	PilotSprite.draw(self, soldier_pos + Vector2(0, bob), PILOT_HEIGHT, pose, _flipped(pose), -draw_bank * 0.6, time_alive,
-		clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), clampf(draw_bank * 5.0, -1.0, 1.0), smoothstep(0.3, 1.0, gun_recoil), anim.mix(), turn, pilot_a)
+	if not _rig_view:
+		PilotSprite.draw(self, soldier_pos + Vector2(0, bob), PILOT_HEIGHT, pose, _flipped(pose), -draw_bank * 0.6, time_alive,
+			clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), clampf(draw_bank * 5.0, -1.0, 1.0), smoothstep(0.3, 1.0, gun_recoil), anim.mix(), turn, pilot_a)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# bullets
 	var bolt_w: float = 1.0 + (damage_mult - 1.0) * 1.6   # Heavy Bolts: thicker, brighter bolts

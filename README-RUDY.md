@@ -160,8 +160,14 @@ New pilot test (not in the game yet, nothing in battle changed):
   current painted pilot, right is the new puppet, at battle size on top and twice the
   size below. It loops through idle, aiming, leaning, firing, climbing, dropping and
   every thruster style, with the name of each step at the top.
-- You decide: if you like the new one, the next step is to put him in the battle and on
-  Home. If not, nothing needs undoing.
+- He is now IN THE GAME, in battle and on the Home screen, for you to play with. Bullets
+  leave from his rifle tip. He holds Luna's side-view rifle, so it shows in profile
+  when he aims sideways.
+- To go back to the painted pilot: in pilot_rig.gd change "const ENABLED := true" to
+  "const ENABLED := false". One line, nothing else to undo. The Gear screen still shows
+  the painted pilot picture.
+- Also fixed: the Home screen logged an error on its very first frame (the base picture
+  was drawn a moment before it was loaded). Nothing visible changes.
 - Luna's parts are cut by tools/cut_pilot_art.gd into the pilot_rig folder; the puppet
   is pilot_rig.gd.
 

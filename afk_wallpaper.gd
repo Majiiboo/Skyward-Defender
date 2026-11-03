@@ -49,6 +49,7 @@ var _turret_ang: Array[float] = [-PI / 2.0, -PI / 2.0]
 var _facing := 1.0
 var _facing_s := 1.0   # eases toward _facing so turning round squeezes, not snaps
 var _anim := PilotSprite.Anim.new()
+var _rig_view: PilotRigView   # the new cut-out pilot (PilotRig.ENABLED); null = painted PilotSprite
 var _etex := {}
 var _hit_t := 9.0
 
@@ -59,6 +60,10 @@ func _ready() -> void:
 		_etex[k] = load("res://enemies/%s.png" % k)
 	_stars = Backdrop.make_stars(80, 3)
 	_city = Backdrop.make_city(46, 7)
+	if PilotRig.ENABLED:
+		_rig_view = PilotRigView.new()
+		_rig_view.height = PILOT_H
+		add_child(_rig_view)
 
 func set_elite(value: bool) -> void:
 	elite = value
@@ -81,6 +86,10 @@ func _process(delta: float) -> void:
 	var want_dir := (_aim - _soldier).normalized() if _has_aim else Vector2.UP
 	_anim.update(PilotSprite.pose_for(false, 0.0, want_dir, _has_aim), dt)
 	_move_soldier(dt)
+	if _rig_view:
+		# calm Home pilot: rifle up when idle, aims at the bug he is shooting
+		var rig_aim: float = (_aim - _soldier).angle() if _has_aim else -PI / 2.0 - 0.3
+		_rig_view.update(dt, _soldier, rig_aim, clampf(_bank / 0.3, -1.0, 1.0), 1.0 + sin(_t * 0.6 + 1.0) * 0.15, cos(_t * 0.6) * 5.4)
 	_spawn_enemies(dt)
 	_shoot(dt)
 	_step_world(dt)
@@ -144,7 +153,7 @@ func _shoot(dt: float) -> void:
 		if absf(ax) > 12.0:
 			_facing = -1.0 if ax > 0.0 else 1.0
 	var pose := _pose()
-	var muzzle := _soldier + PilotSprite.muzzle(pose, PILOT_H, _flip(pose)).rotated(_bank)
+	var muzzle := _muzzle(pose)
 	_fire -= dt
 	if _fire <= 0.0 and _has_aim:
 		_fire = 0.32
@@ -152,6 +161,8 @@ func _shoot(dt: float) -> void:
 		var lead: Vector2 = _aim + Vector2(0, float(_enemies[idx].speed) * dist / 380.0)
 		_bullets.append({"pos": muzzle, "vel": (lead - muzzle).normalized() * 380.0, "col": CYAN})
 		_flash = 0.07
+		if _rig_view:
+			_rig_view.fire()
 	if SHOW_TURRETS:
 		for i in 2:
 			var base := _wall_turret_tip(i)
@@ -339,6 +350,11 @@ func _draw_enemies() -> void:
 		var a := clampf((e.pos.y - (fly_top - 100.0)) / 60.0, 0.0, 1.0)   # fades in as it enters
 		EnemyRig.draw_bug(self, "drifter" if e.heavy else "scout", e.pos, e.r * 2.6 * 2.0, _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
 
+func _muzzle(pose: String) -> Vector2:
+	if _rig_view:
+		return _rig_view.muzzle()
+	return _soldier + PilotSprite.muzzle(pose, PILOT_H, _flip(pose)).rotated(_bank)
+
 func _pose() -> String:
 	return _anim.pose()
 
@@ -350,7 +366,8 @@ func _flip(_pose: String) -> bool:
 func _draw_soldier() -> void:
 	var pose := _pose()
 	if _has_aim:
-		draw_line(_soldier + PilotSprite.muzzle(pose, PILOT_H, _flip(pose)).rotated(_bank), _aim, Color(CYAN, 0.08), 1.0, true)
+		draw_line(_muzzle(pose), _aim, Color(CYAN, 0.08), 1.0, true)
 	var turn: float = clampf(absf(_facing_s), 0.15, 1.0) if pose.begins_with("aim") else 1.0
-	PilotSprite.draw(self, _soldier, PILOT_H, pose, _flip(pose), _bank, _t, 1.0, clampf(_soldier_vx * 0.02, -1.0, 1.0),
-		smoothstep(0.0, 0.07, _flash), _anim.mix(), turn)
+	if not _rig_view:
+		PilotSprite.draw(self, _soldier, PILOT_H, pose, _flip(pose), _bank, _t, 1.0, clampf(_soldier_vx * 0.02, -1.0, 1.0),
+			smoothstep(0.0, 0.07, _flash), _anim.mix(), turn)

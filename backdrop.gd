@@ -30,7 +30,8 @@ static func socket_pos(i: int, width: float, bottom_y: float) -> Vector2:
 	return r.position + Vector2(s.x * r.size.x, s.y * r.size.y)
 
 static func draw_strip(c: CanvasItem, width: float, bottom_y: float) -> void:
-	c.draw_texture_rect(_strip, strip_rect(width, bottom_y), false)
+	var r := strip_rect(width, bottom_y)   # loads _strip on first use, so before it is read
+	c.draw_texture_rect(_strip, r, false)
 
 # The lit sockets: Luna's ring glow, drawn as added light on a layer with additive
 # blending. lit[i] (0..1) fades socket i's glow in.

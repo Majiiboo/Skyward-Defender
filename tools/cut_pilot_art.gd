@@ -46,6 +46,12 @@ func _initialize() -> void:
 	# jetpack without flames: its nozzles are 615 px apart there, ~271 on the sheet
 	var jet := _load("jetpack_no_flames.webp")
 	_save(_scaled(_trim(_solid(jet.get_region(Rect2i(350, 440, 900, 750)))), TEX * 0.44), OUT + "jetpack.png")
+	# side-view rifle, turned to stand muzzle-up with the grip on the left, so when
+	# he aims to the side it shows in profile with the grip and magazine underneath
+	var rs := _trim(_solid(_load("rifle_side.webp")))
+	rs.flip_x()
+	rs.rotate_90(CLOCKWISE)
+	_save(_scaled(rs, 0.38), OUT + "rifle_side.png")
 	var orb := _load("power_orb.webp")
 	_save(_scaled(_trim(_solid(orb.get_region(Rect2i(560, 600, 480, 420)))), 0.25), OUT + "orb.png")
 	_cut_flames()

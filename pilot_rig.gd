@@ -28,7 +28,13 @@ const PARTS := {
 	"pad_r":     {"s": 0.75, "pv": Vector2(0.5, 0.45)},
 	"pad_l":     {"s": 0.75, "pv": Vector2(0.5, 0.45)},
 	"rifle":     {"s": 1.30, "pv": Vector2(0.5, 0.72), "muzzle": Vector2(0.5, 0.0)},
+	"rifle_side": {"s": 1.05, "pv": Vector2(0.25, 0.67), "muzzle": Vector2(0.69, 0.0)},
 }
+# Which rifle picture he holds: "rifle_side" (Luna's side view, reads well when he aims
+# sideways) or "rifle" (the parts sheet's, seen edge-on).
+const RIFLE := "rifle_side"
+# false = battle and Home go back to the painted PilotSprite.
+const ENABLED := true
 const KNEE := Vector2(0.5, 0.86)          # knee ball on both thigh pictures
 const NOZZLES := [Vector2(0.145, 0.96), Vector2(0.855, 0.96)]   # on the jetpack picture
 const ORIGIN := Vector2(800, 820)         # reference point drawn at `pos`
@@ -156,8 +162,8 @@ static func solve(r: Rig) -> Dictionary:
 	X.upper_l = _bone("upper_l", sh_l, arm_l[0])
 	X.forearm_l = _bone("forearm_l", arm_l[0], arm_l[1])
 	X.pad_l = _place("pad_l", sh_l + Vector2(12, -4).rotated(torso_rot), torso_rot + _ang(arm_l[0] - sh_l) * 0.25 + 0.1)
-	var m: Vector2 = PARTS.rifle.muzzle
-	X.muzzle = X.rifle * local("rifle", m)
+	var m: Vector2 = PARTS[RIFLE].muzzle
+	X.muzzle = X.rifle * local(RIFLE, m)
 	X.aim_dir = aim_dir
 	return X
 
@@ -201,6 +207,10 @@ static func base_xform(r: Rig, pos: Vector2, height: float, tilt: float = 0.0) -
 	var w: float = clampf(absf(r.face), 0.3, 1.0) * signf(r.face if r.face != 0.0 else 1.0)
 	return Transform2D(tilt, Vector2(k * w, k), 0.0, pos) * Transform2D(0.0, -ORIGIN)
 
+# rifle tip on screen (for where bullets start)
+static func muzzle_screen(r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0) -> Vector2:
+	return base_xform(r, pos, height, tilt) * Vector2(X.muzzle)
+
 const ORDER := ["jetpack", "thigh_r", "thigh_l", "shin_r", "shin_l", "hips", "torso", "orb", "helmet", "visor",
 	"upper_l", "forearm_l", "pad_l", "rifle", "upper_r", "forearm_r", "pad_r"]
 
@@ -213,6 +223,8 @@ static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: flo
 			_draw_part(c, base, X.shin_r, "shin", alpha)
 		elif nm == "shin_l":
 			_draw_part(c, base, X.shin_l, "shin", alpha, true)
+		elif nm == "rifle":
+			_draw_part(c, base, X.rifle, RIFLE, alpha)
 		else:
 			_draw_part(c, base, X[nm], nm, alpha)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
