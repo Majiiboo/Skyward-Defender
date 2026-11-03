@@ -154,6 +154,13 @@ Sentry: a floating gun head (your idea):
   base stays visible and the two pieces read clearly.
 - Tune: SENTRY_GAP near the top of battle.gd (the hover height, 9 px).
 
+Turrets centred on their sockets:
+- Each turret picture had its painted body slightly off the middle of the image, so
+  turrets sat 1 to 4 pixels left of their socket ring (the Prism and Gravity Anchor
+  most). Every turret now has its own measured centre (cx in TURRET_LOOK at the top of
+  battle.gd) and lands exactly on the ring centre, in battle, when a Deploy card drops
+  a Sentry in, and on the Home screen. Checked with every turret on every socket.
+
 Battle top bar, restyled to match Home:
 - One bar across the top, built like the Home top bar: dark, flush with the top of the
   screen, one thin cyan line along its bottom that curves up into the screen edges.

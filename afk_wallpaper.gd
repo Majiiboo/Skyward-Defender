@@ -330,7 +330,9 @@ func _draw_turrets() -> void:
 		var s: float = _wall_turret_h() / tex.get_height()
 		var sz := tex.get_size() * s
 		var p := Backdrop.socket_pos(0 if i == 0 else 3, size.x, _horizon_y() + STRIP_DROP)
-		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * 0.5, -sz.y + 6.0 * size.x / 480.0), sz), false)
+		# centred on the socket by the art's visual centre (battle.gd TURRET_LOOK cx)
+		var cx: float = 0.481 if i == 0 else 0.479
+		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * cx, -sz.y + 6.0 * size.x / 480.0), sz), false)
 
 func _wall_tex(i: int) -> Texture2D:
 	if _wall_turrets.is_empty():

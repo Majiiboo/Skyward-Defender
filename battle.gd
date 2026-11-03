@@ -15,13 +15,15 @@ const DOME_RX := 300.0
 const DOME_RY := 112.0
 const PILOT_HEIGHT := 60.0
 # How each turret sits on its socket: draw height and widest width (px), where its
-# weapon tip is (fraction of the drawn height from the foot), and a hover bob (px).
+# weapon tip is (fraction of the drawn height from the foot), a hover bob (px), and cx =
+# the painted turret's visual centre across its picture (0.5 = middle), so it sits
+# centred on the socket ring (measured from the art's weight, 2026-11-03).
 const TURRET_LOOK := {
-	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0},
-	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0},
-	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0},
-	"swarm":   {"h": 72.0, "w": 72.0, "tip": 0.60, "bob": 2.5},
-	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0},
+	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0, "cx": 0.481},
+	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0, "cx": 0.479},
+	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0, "cx": 0.435},
+	"swarm":   {"h": 72.0, "w": 72.0, "tip": 0.60, "bob": 2.5, "cx": 0.501},
+	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0, "cx": 0.441},
 }
 const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above the screen's bottom edge
 const SENTRY_BASE_W := 58.0
@@ -31,6 +33,7 @@ const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a
 # few px clear, bobs and drifts, leans into its swings, and dips toward the base on
 # each shot before springing back up. On landing it powers up and lifts off the base.
 const SENTRY_GAP := 9.0
+const SENTRY_HEAD_CX := 0.468              # visual centre of the head picture across its width
 const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
@@ -1523,14 +1526,14 @@ func _draw_turret(t: Dictionary) -> void:
 		var hs: float = SENTRY_HEAD_H / ht.get_height()
 		var hsz := ht.get_size() * hs
 		draw_set_transform(g.pivot + Vector2(0, yo), g.rot, Vector2(g.face, 1.0))
-		draw_texture_rect(ht, Rect2(Vector2(-hsz.x * 0.5, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz), false, Color(1, 1, 1, a))
+		draw_texture_rect(ht, Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz), false, Color(1, 1, 1, a))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
 	var look: Dictionary = TURRET_LOOK[t.type]
 	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
 	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
-	draw_texture_rect(tex, Rect2(t.pos + Vector2(-sz.x * 0.5, -sz.y + 6.0 + yo + bob), sz), false, Color(1, 1, 1, a))
+	draw_texture_rect(tex, Rect2(t.pos + Vector2(-sz.x * float(look.cx), -sz.y + 6.0 + yo + bob), sz), false, Color(1, 1, 1, a))
 
 # The field holding the Sentry's head up: a soft glow on the base, a faint column of
 # light, and thin rings rising from base to head. It brightens when the head dips.
@@ -1575,7 +1578,7 @@ func _sentry_geo(t: Dictionary) -> Dictionary:
 	var ht: Texture2D = _tex["sentry_head"]
 	var hs: float = SENTRY_HEAD_H / ht.get_height()
 	var recoil: float = 4.0 * float(t.fire_t) / FIRE_TIME.sentry
-	var local := Vector2((0.47 - 0.5) * ht.get_width() * face, (0.04 - 0.9) * ht.get_height()) * hs + Vector2(0, recoil)
+	var local := Vector2((0.47 - SENTRY_HEAD_CX) * ht.get_width() * face, (0.04 - 0.9) * ht.get_height()) * hs + Vector2(0, recoil)
 	return {"pivot": pivot, "rot": rot, "face": face, "recoil": recoil, "muzzle": pivot + local.rotated(rot), "lift": lift, "base_top": t.pos.y - base_h * 0.28, "head_bottom": pivot.y + hs * ht.get_height() * 0.1}
 
 # The point a turret's weapon fires from.
