@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev119 (version/code=119 and version/name="1.0-dev119" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev120 (version/code=120 and version/name="1.0-dev120" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,12 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev120: Void and Nightmare chests re-cut
+
+- Luna re-rendered the Void and Nightmare chests with space between the tiers, so all six
+  chest pictures are whole now (no more straight edge through a shoulder pad).
+- tools/cut_gear3d.gd can re-cut single renders: CUT_ONLY="void-chest".
 
 ## dev119: Workshop and a tidier Gear page
 

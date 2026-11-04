@@ -4,6 +4,7 @@ extends SceneTree
 # Each render is split at the emptiest columns near its thirds, so tiers that are not on
 # an even grid still come apart.
 # Run: godot --headless --path . --script res://tools/cut_gear3d.gd
+# (CUT_ONLY="void-chest,nightmare-chest" re-cuts just those renders)
 
 const SETS := ["ion", "scavenger", "void", "nightmare", "solar", "frost"]
 const SLOTS := ["weapon", "helmet", "chest", "gauntlets", "boots", "jetpack"]
@@ -12,6 +13,9 @@ const PX := 192
 func _initialize() -> void:
 	for set_id in SETS:
 		for slot in SLOTS:
+			var only := OS.get_environment("CUT_ONLY")   # e.g. "void-chest,nightmare-chest"
+			if only != "" and not ("%s-%s" % [set_id, slot]) in only.split(","):
+				continue
 			var src := ProjectSettings.globalize_path("res://art_src/gear3d/%s-%s.webp" % [set_id, slot])
 			var img := Image.load_from_file(src)
 			if img == null:

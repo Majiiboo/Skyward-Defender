@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev119 (code 119).
+  go UP every package (same signing key, install-over). Current: dev120 (code 120).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -86,7 +86,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    railgun (rail: every bolt pierces), laser_rifle, frost_rifle; Scavenger weapon = Arc Welder
    (dual_minis). New stats: turret_dmg, turret_rate, pilot_xp (_pilot_xp_mult), shield, chill
    (frost_level >= 1). Gear text kept SHORT (Rudy): "ATK +12% -> +18%", one line per set.
-   Open: Void and Nightmare chest tiers overlap in the render (LUNA-BRIEF-chest-spacing.md);
+   Void/Nightmare chests re-rendered spaced (dev120); CUT_ONLY re-cuts single renders.
    Luna uses Canva only to edit (LUNA-GUIDE-canva.md).
    WORKSHOP (dev119): 4th Gear tab, gear.gd _refresh_workshop / _merge; Parts.MERGE (3 alloy ->
    1 cell, 3 cells -> 1 core), Parts.icon (parts/*.png from tools/cut_part_icons.gd). Next:
