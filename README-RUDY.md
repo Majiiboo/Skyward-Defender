@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev110 (version/code=110 and version/name="1.0-dev110" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev111 (version/code=111 and version/name="1.0-dev111" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,34 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev111: new screens (batch C)
+
+- Stars explained: every stage has 3 star objectives: clear the stage, keep the base
+  hull above half, lose no hearts.
+  - They show on a card when the stage starts, in the pause menu (on track / missed),
+    and on the Stage Cleared screen with a tick or cross.
+  - The old third star, "take no damage at all", was near impossible without shield
+    regeneration.
+- Pause menu, rebuilt in glass and filled with the run as it is now:
+  - the stage and planet, the wave and the time
+  - the star objectives so far
+  - your cards, with a star on overcharged ones
+  - Sound and Music switches (saved; sound itself comes later)
+  - Resume and Back to Hub at the same width, centred
+- Battle top bar in the Home glass style: a floating glass capsule, glass buttons, a
+  cyan-to-purple XP bar and a glass level chip.
+- Stage Cleared / Base Lost in glass:
+  - big stars that pop in one by one, with why each was earned or missed
+  - coins, pilot XP and kills on glass tiles
+  - unlocks, then Next stage, Play again and Back to Hub
+  - the card slides up into place
+- Modes redesigned:
+  - big cards with a painted world banner (Campaign shows the planet you're on)
+  - honest rewards (coins, pilot XP, stars)
+  - Elite starts the selected stage in Elite
+  - Horde and Boss Rush say "Coming soon" instead of starting a normal battle
+  - fixed: Modes never read your pilot level, so Elite always looked locked
 
 ## dev110: the new card list (batch B) and Luna's bolts and muzzle flash
 

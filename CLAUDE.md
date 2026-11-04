@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev110 (code 110).
+  go UP every package (same signing key, install-over). Current: dev111 (code 111).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -271,7 +271,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    dull ones, remove Wingman Drone card (drone becomes a Gear sidekick), redo fusions,
    cards that change how bolts LOOK (shape/colour/trail), not only size. Legendary
    (Nova Burst) is one-shot.
-   C (UI): pause menu in the glass style (Resume / Back to Hub centred, sound toggle
+   C DONE (dev111; Store / Quests / Gear page layouts still to redesign). Was: pause menu in the glass style (Resume / Back to Hub centred, sound toggle
    placeholder, stage info, row of your cards), battle top bar overhaul, Stage Cleared
    screen overhaul, 3 stage objectives shown at start / in pause / on the clear screen
    (stars explained), menu page layouts.

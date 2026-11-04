@@ -163,6 +163,7 @@ var _stars: Array = []
 var _city: Array = []
 var _tex := {}
 var _safe_top := 0.0              # notch / camera cutout height (SafeAreaMargin.top_inset)
+var _hearts_lost := 0             # this stage (star objective 3)
 var _vacuum_t := 0.0              # > 0: every pickup flies to the pilot (wave end)
 var _outro_t := -1.0              # >= 0: stage won, the closing flight is playing
 var _outro_lift := -1.0           # when (in _outro_t) he lifted off
@@ -408,6 +409,7 @@ func _start_stage() -> void:
 		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	_took_damage = false
+	_hearts_lost = 0
 	_stars_got = 0
 	_gems_got = 0
 	_kills_by = {}
@@ -1551,6 +1553,7 @@ func _hurt_pilot() -> void:
 		return
 	inv_t = 1.5 * _recovery
 	hearts -= 1
+	_hearts_lost += 1
 	_took_damage = true
 	shake = maxf(shake, 0.7)
 	_burst(soldier_pos, 16.0, Color(1.0, 0.35, 0.42), 10)
@@ -1609,9 +1612,10 @@ func _end_run(won: bool) -> void:
 	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
-	# stars for the stage map: 1 cleared, 2 base above half hull, 3 no damage at all
+	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull
+	# above half, no hearts lost (dev111; "no damage at all" was near impossible without regen)
 	if won and not elite:
-		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if hull >= hull_max and hearts >= max_hearts and not _took_damage else 0)
+		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if _hearts_lost == 0 else 0)
 		var st = d.get("stars", {})
 		if typeof(st) != TYPE_DICTIONARY:
 			st = {}
@@ -1658,33 +1662,8 @@ func _build_ui() -> void:
 	_cards_view = Control.new()
 	_cards_view.visible = false
 	add_child(_cards_view)
-	# pause menu: the battle dims behind a panel in the Home style; Back to Hub lives here
+	# pause menu (filled by _fill_pause each time it opens)
 	_pause_panel = Control.new()
-	_pause_panel.size = get_viewport_rect().size
-	var dim := ColorRect.new()
-	dim.color = Color(0.0, 0.01, 0.04, 0.55)
-	dim.size = _pause_panel.size
-	_pause_panel.add_child(dim)
-	var box := UIKit.panel(16)
-	box.position = Vector2(FIELD_W * 0.5 - 130, _pause_panel.size.y * 0.5 - 130)
-	box.custom_minimum_size = Vector2(260, 0)
-	var pv := VBoxContainer.new()
-	pv.add_theme_constant_override("separation", 12)
-	var title := UIKit.label("PAUSED", 22, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-	title.add_theme_font_override("font", title_font)
-	pv.add_child(title)
-	pv.add_child(UIKit.label("%d  %s" % [stage, StageData.stage_name(stage).to_upper()], 12, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-	var resume := UIKit.gold_button("Resume")
-	resume.custom_minimum_size = Vector2(0, 46)
-	resume.pressed.connect(_toggle_pause)
-	pv.add_child(resume)
-	var quit_b := UIKit.ghost_button("Back to Hub", 14)
-	quit_b.custom_minimum_size = Vector2(0, 40)
-	quit_b.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
-	pv.add_child(quit_b)
-	pv.add_child(UIKit.label("Leaving ends this run.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	box.add_child(pv)
-	_pause_panel.add_child(box)
 	_pause_panel.visible = false
 	add_child(_pause_panel)
 	# card pick panel (filled when opened)
@@ -1696,6 +1675,127 @@ func _build_ui() -> void:
 	_end_panel.visible = false
 	add_child(_end_panel)
 
+# The 3 star objectives of every stage. state: "todo" (not decided yet), "ok" (on track),
+# "done", "fail". Shown at the start, in the pause menu and on the Stage Cleared screen.
+func _objectives(won: bool = false) -> Array:
+	var hull_ok := hull >= hull_max * 0.5
+	return [
+		{"text": "Clear the stage", "state": "done" if won else "todo"},
+		{"text": "Keep the base hull above half", "state": ("done" if won else "ok") if hull_ok else "fail"},
+		{"text": "Lose no hearts", "state": ("done" if won else "ok") if _hearts_lost == 0 else "fail"},
+	]
+
+# a five-pointed star outline
+func _star_pts(c: Vector2, r: float) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	for i in 10:
+		var a := -PI / 2.0 + i * PI / 5.0
+		pts.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * 0.45))
+	return pts
+
+# At the start of a stage: a glass card with its three star objectives, for 4 s.
+func _draw_objectives_banner() -> void:
+	var t := time_alive
+	if t > 4.6 or stage_cleared or game_over:
+		return
+	var a: float = smoothstep(0.2, 0.6, t) * (1.0 - smoothstep(4.0, 4.6, t))
+	if a <= 0.01:
+		return
+	var r := Rect2(FIELD_W * 0.5 - 160, FIELD_H * 0.3, 320, 104)
+	Glass.panel(_hc, Glass.box(r, 14.0), a, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.8))
+	_hc.draw_string(title_font, r.position + Vector2(0, 24), "STAGE %d  ·  EARN 3 STARS" % stage, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 12, Color(Glass.GOLD, a))
+	var objs := _objectives()
+	for i in objs.size():
+		var y: float = r.position.y + 46.0 + i * 20.0
+		var st := _star_pts(Vector2(r.position.x + 30, y - 4), 6.5)
+		_hc.draw_colored_polygon(st, Color(Glass.GOLD, 0.85 * a))
+		_hc.draw_string(hud_font, Vector2(r.position.x + 46, y + 1), String(objs[i].text), HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color(1, 1, 1, a))
+
+# The pause menu, rebuilt every time it opens so it shows the run as it is now: the
+# stage, the wave, the star objectives so far, the cards you have, sound toggles
+# (placeholders until there is sound), then Resume and Back to Hub, the same width.
+func _fill_pause() -> void:
+	for c in _pause_panel.get_children():
+		c.queue_free()
+	var vp := get_viewport_rect().size
+	var dim := ColorRect.new()
+	dim.color = Color(0.0, 0.01, 0.04, 0.6)
+	dim.position = Vector2(0, -_safe_top)
+	dim.size = vp
+	_pause_panel.add_child(dim)
+	var box := UIKit.panel(18)
+	var w := 340.0
+	box.custom_minimum_size = Vector2(w, 0)
+	box.position = Vector2(FIELD_W * 0.5 - w * 0.5, HUD_H + 26)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	box.add_child(v)
+	var title := UIKit.label("PAUSED", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	title.add_theme_font_override("font", title_font)
+	v.add_child(title)
+	v.add_child(UIKit.label("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("%s  ·  Wave %d of %d  ·  %02d:%02d" % [String(StageData.area(stage).name), mini(wave_index + 1, waves.size()), waves.size(), int(time_alive) / 60, int(time_alive) % 60], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	# objectives
+	v.add_child(UIKit.header("STARS"))
+	for o in _objectives():
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var st: String = o.state
+		var mark := UIKit.label({"todo": "...", "ok": "on track", "done": "done", "fail": "missed"}[st], 11,
+			{"todo": UIKit.MUTED, "ok": UIKit.CYAN, "done": Color(0.5, 1.0, 0.55), "fail": Color(1.0, 0.45, 0.45)}[st], HORIZONTAL_ALIGNMENT_RIGHT)
+		var star := UIKit.label("★", 15, UIKit.GOLD if st != "fail" else Color(0.4, 0.4, 0.5))
+		row.add_child(star)
+		var tl := UIKit.label(String(o.text), 13, Color.WHITE)
+		tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(tl)
+		row.add_child(mark)
+		v.add_child(row)
+	# your cards
+	v.add_child(UIKit.header("YOUR CARDS"))
+	if card_levels.is_empty():
+		v.add_child(UIKit.label("No cards yet: collect gems to level up.", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		var grid := GridContainer.new()
+		grid.columns = 6
+		grid.add_theme_constant_override("h_separation", 6)
+		grid.add_theme_constant_override("v_separation", 4)
+		for id in card_levels:
+			var cell := VBoxContainer.new()
+			cell.add_theme_constant_override("separation", 0)
+			cell.custom_minimum_size = Vector2(46, 0)
+			cell.add_child(_card_pic(id, 34.0))
+			var lv := "F" if Cards.FUSIONS.has(id) else ("★" if Cards.overcharged(card_levels, id) else str(int(card_levels[id])))
+			cell.add_child(UIKit.label(lv, 10, Cards.COLOR[Cards.def(id).rarity], HORIZONTAL_ALIGNMENT_CENTER))
+			grid.add_child(cell)
+		var cc := CenterContainer.new()
+		cc.add_child(grid)
+		v.add_child(cc)
+	# sound and music (placeholders, saved for when sound arrives)
+	var d := _read_save()
+	var srow := HBoxContainer.new()
+	srow.add_theme_constant_override("separation", 8)
+	for spec in [["sound_on", "Sound"], ["music_on", "Music"]]:
+		var key: String = spec[0]
+		var on := bool(d.get(key, true))
+		var b := UIKit.ghost_button("%s: %s" % [spec[1], "On" if on else "Off"], 13)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.pressed.connect(func():
+			var now := not bool(_read_save().get(key, true))
+			_write_save({key: now})
+			b.text = "%s: %s" % [spec[1], "On" if now else "Off"])
+		srow.add_child(b)
+	v.add_child(srow)
+	var resume := UIKit.gold_button("Resume", 17)
+	resume.custom_minimum_size = Vector2(0, 46)
+	resume.pressed.connect(_toggle_pause)
+	v.add_child(resume)
+	var quit_b := UIKit.ghost_button("Back to Hub", 14)
+	quit_b.custom_minimum_size = Vector2(0, 42)
+	quit_b.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
+	v.add_child(quit_b)
+	v.add_child(UIKit.label("Leaving ends this run (you restart the stage).", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	_pause_panel.add_child(box)
+
 func _toggle_pause() -> void:
 	if _cards_open:
 		_toggle_cards()
@@ -1703,6 +1803,8 @@ func _toggle_pause() -> void:
 	if picking or game_over or stage_cleared:
 		return
 	paused = not paused
+	if paused:
+		_fill_pause()
 	_pause_panel.visible = paused
 	# the tap on the pause button also started a drag; drop it so he does not keep firing
 	dragging = false
@@ -2026,64 +2128,130 @@ func _draw_zaps() -> void:
 		_fx.draw_polyline(pts, Color(0.6, 0.85, 1.0, a), 2.0, true)
 		_fx.draw_polyline(pts, Color(1, 1, 1, a), 1.0, true)
 
+# Stage Cleared / Base Lost, in the glass style (Rudy, dev111): the title, three big
+# stars that pop in one by one, the objectives that earned them (or didn't), the
+# rewards on glass tiles, what unlocked, then Next stage / Play again / Hub.
 func _show_end(won: bool) -> void:
 	for c in _end_panel.get_children():
 		c.queue_free()
 	var dim := ColorRect.new()
-	dim.color = Color(0, 0, 0, 0.6)
-	dim.size = Vector2(FIELD_W, FIELD_H)
+	dim.color = Color(0.0, 0.01, 0.04, 0.68)
+	dim.position = Vector2(0, -_safe_top)
+	dim.size = get_viewport_rect().size
 	_end_panel.add_child(dim)
-	var p := UIKit.panel(16)
-	p.position = Vector2(FIELD_W * 0.5 - 140, FIELD_H * 0.5 - 150)
-	p.size = Vector2(280, 300)
+	var w := 350.0
+	var p := UIKit.panel(18)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2(FIELD_W * 0.5 - w * 0.5, HUD_H + 10)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
+	v.add_theme_constant_override("separation", 9)
 	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite
-	var t := UIKit.label("AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST"), 20, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	var t := UIKit.label("AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST"), 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
-	v.add_child(UIKit.label("%s %d: %s" % ["Elite" if elite else "Stage", stage, StageData.stage_name(stage)], 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	if won and not elite:
-		v.add_child(UIKit.label("★".repeat(_stars_got) + "☆".repeat(3 - _stars_got), 24, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("%s %d  ·  %s" % ["ELITE" if elite else "STAGE", stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	# three stars, popping in one after another
+	var got: int = _stars_got if won and not elite else 0
+	var srow := HBoxContainer.new()
+	srow.alignment = BoxContainer.ALIGNMENT_CENTER
+	srow.add_theme_constant_override("separation", 14)
+	for i in 3:
+		var s := Control.new()
+		s.custom_minimum_size = Vector2(54, 54)
+		s.pivot_offset = Vector2(27, 27)
+		var on := i < got
+		s.draw.connect(func():
+			var pts := _star_pts(Vector2(27, 29), 25.0 if i == 1 else 21.0)
+			if on:
+				s.draw_colored_polygon(pts, UIKit.GOLD)
+			else:
+				s.draw_colored_polygon(pts, Color(0.12, 0.14, 0.22, 0.9))
+			var closed := pts.duplicate()
+			closed.append(pts[0])
+			s.draw_polyline(closed, Color(1, 0.95, 0.7) if on else Color(0.4, 0.45, 0.6), 1.4, true))
+		s.scale = Vector2.ZERO
+		var tw := s.create_tween()
+		tw.tween_interval(0.25 + 0.3 * i)
+		tw.tween_property(s, "scale", Vector2(1.25, 1.25) if on else Vector2.ONE, 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(s, "scale", Vector2.ONE, 0.12)
+		srow.add_child(s)
+	if not elite:
+		v.add_child(srow)
+		# why each star was earned or missed
+		for o in _objectives(won):
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 8)
+			var ok: bool = o.state == "done" or o.state == "ok"
+			row.add_child(UIKit.label("✓" if ok and won else ("✗" if o.state == "fail" or not won else "·"), 14, Color(0.5, 1.0, 0.55) if ok and won else Color(1.0, 0.45, 0.45)))
+			var tl := UIKit.label(String(o.text), 13, Color.WHITE if ok and won else UIKit.MUTED)
+			tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(tl)
+			v.add_child(row)
 	if area_done:
 		var nxt_area := StageData.area_index(stage) + 1
 		v.add_child(UIKit.label("%s cleared!" % StageData.area(stage).name, 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 		if nxt_area < StageData.AREAS.size():
 			v.add_child(UIKit.label("Next planet: %s" % StageData.AREAS[nxt_area].name, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Score %d    Kills %d" % [score, kills], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Coins +%d    Pilot XP +%d" % [coins_earned, _xp_gain], 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	# rewards on glass tiles
+	var rw := HBoxContainer.new()
+	rw.add_theme_constant_override("separation", 8)
+	for spec in [["COINS", "+%d" % coins_earned, UIKit.GOLD], ["PILOT XP", "+%d" % _xp_gain, Color(0.85, 0.75, 1.0)], ["KILLS", str(kills), Color.WHITE]]:
+		var tile := UIKit.panel(12)
+		tile.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var tv := VBoxContainer.new()
+		tv.add_theme_constant_override("separation", 0)
+		tv.add_child(UIKit.label(spec[0], 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		tv.add_child(UIKit.label(spec[1], 18, spec[2], HORIZONTAL_ALIGNMENT_CENTER))
+		tile.add_child(tv)
+		rw.add_child(tile)
+	v.add_child(rw)
 	if _xp_bonus > 0:
-		v.add_child(UIKit.label("(first clear bonus +%d)" % _xp_bonus, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("includes first clear bonus +%d XP" % _xp_bonus, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	if _level_after > _level_before:
-		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 14, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 		for id in Turrets.TURRETS:
 			var u: int = int(Turrets.TURRETS[id].unlock)
 			if u > _level_before and u <= _level_after:
 				v.add_child(UIKit.label("%s unlocked" % Turrets.TURRETS[id].name, 12, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Waves %d / %d" % [mini(wave_index + (1 if won else 1), waves.size()), waves.size()], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if not won:
+		v.add_child(UIKit.label("Reached wave %d of %d" % [mini(wave_index + 1, waves.size()), waves.size()], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	if won and _new_mount >= 0:
 		v.add_child(UIKit.label("NEW TURRET MOUNT OPEN!", 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-		var on: String = turret_loadout[_new_mount] if _new_mount < turret_loadout.size() else ""
-		var hint := ("Your %s stands on mount %d from the next stage." % [Turrets.TURRETS[on].name, _new_mount + 1]) if on != "" and _level_after >= int(Turrets.TURRETS[on].unlock) else ("Place a turret on mount %d in Gear." % (_new_mount + 1))
+		var on_m: String = turret_loadout[_new_mount] if _new_mount < turret_loadout.size() else ""
+		var hint := ("Your %s stands on mount %d from the next stage." % [Turrets.TURRETS[on_m].name, _new_mount + 1]) if on_m != "" and _level_after >= int(Turrets.TURRETS[on_m].unlock) else ("Place a turret on mount %d in Gear." % (_new_mount + 1))
 		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 6)
+	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 4)
 	v.add_child(sp)
 	if won and stage < StageData.MAX_STAGE:
-		var nxt := UIKit.gold_button("Next stage")
+		var nxt := UIKit.gold_button("Next stage", 17)
+		nxt.custom_minimum_size = Vector2(0, 46)
 		nxt.pressed.connect(func():
 			_write_save({"selected_stage": stage + 1})
 			stage += 1
 			_start_stage())
 		v.add_child(nxt)
+	var brow := HBoxContainer.new()
+	brow.add_theme_constant_override("separation", 8)
 	var again := UIKit.teal_button("Retry" if not won else "Play again")
+	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	again.custom_minimum_size = Vector2(0, 40)
 	again.pressed.connect(func(): _start_stage())
-	v.add_child(again)
-	var home := UIKit.ghost_button("Back to Hub")
+	brow.add_child(again)
+	var home := UIKit.ghost_button("Back to Hub", 14)
+	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	home.custom_minimum_size = Vector2(0, 40)
 	home.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
-	v.add_child(home)
+	brow.add_child(home)
+	v.add_child(brow)
 	p.add_child(v)
 	_end_panel.add_child(p)
 	_end_panel.visible = true
+	# the card slides up into place
+	p.modulate.a = 0.0
+	p.position.y += 30.0
+	var pt := p.create_tween().set_parallel(true)
+	pt.tween_property(p, "modulate:a", 1.0, 0.25)
+	pt.tween_property(p, "position:y", p.position.y - 30.0, 0.35).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 
 # ------------------------------------------------------------------ drawing
 
@@ -2527,35 +2695,16 @@ func _zigzag(a: Vector2, b: Vector2, seed: int) -> PackedVector2Array:
 	pts.append(b)
 	return pts
 
-# Top bar, built like Home's (HomeFrame): flush with the top of the screen, dark fill,
-# one thin cyan outline along its bottom that curves up into the screen edges. The
-# straight part of that outline is the run's XP track; the level hangs under it on a tab.
-const HUD_H := 70.0                  # bar height (its bottom line = XP track)
+# Top bar layout (drawn by _draw_hud on the _hc layer)
+const HUD_H := 70.0                  # bar height (the XP bar runs along its bottom)
 const PAUSE_RECT := Rect2(FIELD_W - 50, 10, 36, 30)
 const SPEED_RECT := Rect2(FIELD_W - 92, 10, 36, 30)
 const CARDS_RECT := Rect2(FIELD_W - 134, 10, 36, 30)
 
-# A small chamfered frame like the pause button's (lit when active).
+# A small glass button on the top bar (lit cyan while its panel is open / active).
 func _hud_frame(p: Rect2, active: bool) -> void:
-	var cyan := Color(0.18, 0.9, 1.0)
-	var cut := 7.0
-	var frame := PackedVector2Array([p.position + Vector2(cut, 0), Vector2(p.end.x, p.position.y), Vector2(p.end.x, p.end.y - cut),
-		Vector2(p.end.x - cut, p.end.y), Vector2(p.position.x, p.end.y), p.position + Vector2(0, cut), p.position + Vector2(cut, 0)])
-	_hc.draw_colored_polygon(frame, Color(cyan, 0.16) if active else Color(0.05, 0.08, 0.16, 0.9))
-	_hc.draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
-
-func _hud_bar_points() -> PackedVector2Array:
-	var R := 20.0
-	var pts := PackedVector2Array()
-	pts.append(Vector2(0, HUD_H - R))
-	for i in range(9):
-		var a := lerpf(PI, PI * 0.5, float(i) / 8.0)
-		pts.append(Vector2(R, HUD_H - R) + Vector2(cos(a), sin(a)) * R)
-	for i in range(9):
-		var a := lerpf(PI * 0.5, 0.0, float(i) / 8.0)
-		pts.append(Vector2(FIELD_W - R, HUD_H - R) + Vector2(cos(a), sin(a)) * R)
-	pts.append(Vector2(FIELD_W, HUD_H - R))
-	return pts
+	var fill := Color(0.18 * 0.3, 0.9 * 0.3, 0.3, 0.75) if active else Color(0.035, 0.06, 0.14, 0.7)
+	Glass.panel(_hc, Glass.box(p, 9.0), 1.0, Color(Glass.CYAN, 0.9) if active else Color(0, 0, 0, 0), fill)
 
 # Luna's heart; a lost heart shows as a dark, see-through shape.
 func _draw_heart(c: Vector2, s: float, on: bool) -> void:
@@ -2564,24 +2713,24 @@ func _draw_heart(c: Vector2, s: float, on: bool) -> void:
 	var hh: float = hw * ht.get_height() / ht.get_width()
 	_hc.draw_texture_rect(ht, Rect2(c.x - hw * 0.5, c.y - hh * 0.5, hw, hh), false, Color(1, 1, 1) if on else Color(0.25, 0.28, 0.4, 0.45))
 
+# The battle's top bar in the Home Glass look (Rudy, dev111): a dark shade behind the
+# notch, a floating glass capsule with the stage, timer and glass buttons on row 1, score,
+# wave pips and hearts on row 2, then the run XP as a cyan-to-purple bar under it with
+# the run level on a glass chip.
 func _draw_hud() -> void:
 	var cyan := Color(0.18, 0.9, 1.0)
 	var muted := Color(0.62, 0.70, 0.84)
-	var pts := _hud_bar_points()
-	var shape := PackedVector2Array(pts)
-	shape.append(Vector2(FIELD_W, -2 - _safe_top))   # fill reaches up behind the notch
-	shape.append(Vector2(0, -2 - _safe_top))
-	_hc.draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
-	_hc.draw_polyline(pts, Color(cyan, 0.55), 1.2, true)
+	if _safe_top > 0.0:
+		_hc.draw_rect(Rect2(0, -_safe_top - 2.0, FIELD_W, _safe_top + 6.0), Color(0.02, 0.03, 0.08, 0.85))
+	Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
 	# row 1: stage number (white) and name (cyan), then the run time
 	var num := "%d " % stage
-	_hc.draw_string(title_font, Vector2(16, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-	var nx: float = 16.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	var name_w := 250.0 - nx
-	_hc.draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, name_w, 13, cyan)
+	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	var nx: float = 18.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+	_hc.draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
-	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
 	# cards button: three small fanned cards
 	_hud_frame(CARDS_RECT, _cards_open)
 	var cc := CARDS_RECT.get_center()
@@ -2603,9 +2752,9 @@ func _draw_hud() -> void:
 		_hc.draw_rect(Rect2(pc + Vector2(-6, -8), Vector2(3.5, 16)), Color.WHITE)
 		_hc.draw_rect(Rect2(pc + Vector2(2.5, -8), Vector2(3.5, 16)), Color.WHITE)
 	# row 2: score, waves as pips (text when there are many), hearts
-	var y2 := 55.0
-	_hc.draw_string(hud_font, Vector2(16, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	_hc.draw_string(hud_font, Vector2(56, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+	var y2 := 52.0
+	_hc.draw_string(hud_font, Vector2(18, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	_hc.draw_string(hud_font, Vector2(58, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	var wave_now := mini(wave_index + 1, waves.size())
 	var wx := 160.0
 	_hc.draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
@@ -2623,22 +2772,26 @@ func _draw_hud() -> void:
 	else:
 		_hc.draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	for i in max_hearts:
-		_draw_heart(Vector2(FIELD_W - 22 - (max_hearts - 1 - i) * 22, y2 - 2), 7.5, i < hearts)
-	# XP along the bar's bottom line, and the level on a tab hanging under it
+		_draw_heart(Vector2(FIELD_W - 24 - (max_hearts - 1 - i) * 22, y2 - 3), 7.5, i < hearts)
+	# run XP: a rounded track under the capsule, filled cyan to purple, level on a chip
 	var need := _xp_need()
-	var x0 := 20.0
-	var x1 := FIELD_W - 20.0
 	var xp := clampf(run_xp / need, 0.0, 1.0)
-	_hc.draw_line(Vector2(x0, HUD_H), Vector2(lerpf(x0, x1, xp), HUD_H), Color(0.71, 0.55, 1.0), 3.0, true)
-	if xp > 0.01:
-		_hc.draw_circle(Vector2(lerpf(x0, x1, xp), HUD_H), 2.2, Color(0.92, 0.86, 1.0))
-	var tab := PackedVector2Array([Vector2(16, HUD_H), Vector2(16, HUD_H + 14), Vector2(22, HUD_H + 20), Vector2(64, HUD_H + 20), Vector2(70, HUD_H + 14), Vector2(70, HUD_H)])
-	_hc.draw_colored_polygon(tab, Color(0.03, 0.045, 0.10, 0.82))
-	_hc.draw_polyline(tab, Color(0.71, 0.55, 1.0, 0.7), 1.0, true)
-	_hc.draw_string(hud_font, Vector2(16, HUD_H + 15), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, Color(0.88, 0.8, 1.0))
+	var track := Rect2(64, HUD_H - 1, FIELD_W - 82, 5)
+	_hc.draw_colored_polygon(Glass.box(track, 2.5).slice(0, -1), Color(0.03, 0.05, 0.12, 0.8))
+	if xp > 0.02:
+		var fr := Rect2(track.position, Vector2(track.size.x * xp, track.size.y))
+		var pts := Glass.box(fr, 2.5).slice(0, -1)
+		var cols := PackedColorArray()
+		for q in pts:
+			cols.append(Glass.CYAN.lerp(Glass.PURPLE, clampf((q.x - track.position.x) / track.size.x, 0.0, 1.0)))
+		_hc.draw_polygon(pts, cols)
+	var chip := Rect2(12, HUD_H - 8, 48, 18)
+	Glass.panel(_hc, Glass.box(chip, 8.0), 1.0, Color(Glass.PURPLE, 0.8), Color(0.08, 0.05, 0.16, 0.9))
+	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
 	for e in enemies:
 		if e.type == "hive_mother":
 			_draw_boss_bar(e)
+	_draw_objectives_banner()
 	_draw_intro()
 
 # A boss's health in stacked layers (5 for a boss, 3 for a mini-boss): the bar empties
