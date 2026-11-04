@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev124 (code 124).
+  go UP every package (same signing key, install-over). Current: dev125 (code 125).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -91,8 +91,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    WORKSHOP (dev119): 4th Gear tab, gear.gd _refresh_workshop / _merge; Parts.MERGE (3 alloy ->
    1 cell, 3 cells -> 1 core), Parts.icon (parts/*.png from tools/cut_part_icons.gd). Next:
    merging gear pieces and turret/drone modules (needs duplicates/rarities first).
-   MERGE FX (dev121): gear.gd class MergeFX (dim, additive _glow, _front), fx/ placeholders;
-   swap in Luna's white layers from LUNA-BRIEF-merge-fx.md, tinted by the result colour.
+   MERGE FX (dev125): gear.gd class MergeFX uses Luna's fx/merge_* (chamber solid under the light,
+   swirl/ring/flash/shock/rays white, tinted by the result colour); merge_sparks not delivered yet.
 8c. GEAR ON THE PILOT (dev122): PilotRig.set_gear(save) from battle, afk_wallpaper, gear.gd;
    held weapon = gear/held/<id>_t<n>.png (cut_gear3d.gd _save_held, upright + mirrored, grip and
    muzzle in gear/held/held_points.gd HeldPoints), PilotRig.gun(), HELD_LEN; front view draws it

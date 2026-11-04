@@ -910,13 +910,18 @@ func _fade_in_overlay() -> void:
 
 # The merge animation (Workshop): three copies of the part spiral into a swirling ring,
 # a flash and a shock ring, then the new part pops out with a halo and "+1 Plasma Cell".
-# Built from Luna's battle effects (fx/) for now; her own merge layers (LUNA-BRIEF-merge-fx.md)
-# replace them when they arrive. Tap to close once the result shows; closes itself at 2.4 s.
+# Luna's merge layers (fx/merge_*.png, tools/cut_merge_fx.gd): her round merge chamber with
+# its three prongs where the parts start, a charge ring and a swirl that spin up, a star
+# flash, a shock wave, light rays behind the new part. The light is white, tinted to the
+# result's colour. Tap to close once the result shows; closes itself at 2.4 s.
 class MergeFX extends Control:
-	const FX_RING := preload("res://fx/gravity_ring.png")
-	const FX_NOVA := preload("res://fx/nova.png")
-	const FX_BURST := preload("res://fx/prism_burst.png")
-	const FX_GLOW := preload("res://fx/spark.png")
+	const FX_CHAMBER := preload("res://fx/merge_chamber.png")
+	const FX_SWIRL := preload("res://fx/merge_swirl.png")
+	const FX_RING := preload("res://fx/merge_ring.png")
+	const FX_FLASH := preload("res://fx/merge_flash.png")
+	const FX_SHOCK := preload("res://fx/merge_shock.png")
+	const FX_RAYS := preload("res://fx/merge_rays.png")
+	const CHAMBER_PX := 340.0
 	var src: Texture2D
 	var dst: Texture2D
 	var col := Color.WHITE
@@ -951,7 +956,7 @@ class MergeFX extends Control:
 	func _process(delta: float) -> void:
 		t += delta
 		var lbl: Label = get_node("Title")
-		lbl.position = Vector2(size.x * 0.5 - lbl.size.x * 0.5, _center().y + 96.0)
+		lbl.position = Vector2(size.x * 0.5 - lbl.size.x * 0.5, _center().y + CHAMBER_PX * 0.5 + 14.0)
 		lbl.modulate.a = clampf((t - 1.0) / 0.25, 0.0, 1.0)
 		queue_redraw()
 		_glow.queue_redraw()
@@ -980,9 +985,15 @@ class MergeFX extends Control:
 		_front.draw_texture(tex, -tex.get_size() * 0.5, Color(1, 1, 1, a))
 		_front.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	# the dim behind everything
+	# the dim behind everything, and the chamber (solid metal) under the light
 	func _draw() -> void:
-		draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.02, 0.06, 0.78 * clampf(t / 0.25, 0.0, 1.0)))
+		var a := clampf(t / 0.25, 0.0, 1.0)
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.02, 0.06, 0.8 * a))
+		var c := _center()
+		var s := CHAMBER_PX * (0.9 + 0.1 * a) / FX_CHAMBER.get_width()
+		draw_set_transform(c, 0.0, Vector2(s, s))
+		draw_texture(FX_CHAMBER, -FX_CHAMBER.get_size() * 0.5, Color(1, 1, 1, a))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 	# front layer: the three parts flying in, then the result
 	func _draw_front() -> void:
@@ -992,7 +1003,7 @@ class MergeFX extends Control:
 			var ease_in := k * k * k
 			for i in 3:
 				var a := -PI * 0.5 + i * TAU / 3.0 + ease_in * TAU * 0.9
-				var r := 120.0 * (1.0 - ease_in)
+				var r := 100.0 * (1.0 - ease_in)   # from the chamber's prongs to the middle
 				_icon(src, c + Vector2(cos(a), sin(a)) * r, 64.0 * (1.0 - 0.45 * ease_in), 1.0 - 0.6 * maxf(0.0, k - 0.8) / 0.2, ease_in * 2.0)
 		if t > 0.85:
 			var p := clampf((t - 0.85) / 0.3, 0.0, 1.0)
@@ -1000,22 +1011,25 @@ class MergeFX extends Control:
 			var pop := 1.0 + 2.7 * pow(p - 1.0, 3) + 1.7 * pow(p - 1.0, 2)
 			_icon(dst, c + Vector2(0, sin(t * 2.4) * 4.0 * p), 118.0 * pop, 1.0)
 
-	# light layer (additive): the swirl, the flash, the shock ring, the halo
+	# light layer (additive): charge ring and swirl spinning up, the flash, the shock wave,
+	# then the rays behind the new part
 	func _draw_glow() -> void:
 		var c := _center()
 		var k := clampf(t / 0.8, 0.0, 1.0)
+		var fade := 1.0 - clampf((t - 0.8) / 0.3, 0.0, 1.0)
 		if t < 1.1:
-			var fade := 1.0 - clampf((t - 0.8) / 0.3, 0.0, 1.0)
-			_glow_tex(FX_RING, c, 90.0 + 130.0 * k, col * Color(1, 1, 1, 0.9 * minf(k * 2.0, 1.0) * fade), -t * 5.0)
-		if t > 0.8 and t < 1.3:
-			var f := (t - 0.8) / 0.5
-			_glow_tex(FX_BURST, c, 60.0 + 340.0 * f, Color(1, 1, 1, 1.0 - f), 0.0)
-		if t > 0.8 and t < 1.6:
-			var n := (t - 0.8) / 0.8
-			_glow_tex(FX_NOVA, c, 80.0 + 420.0 * n, col * Color(1, 1, 1, 1.0 - n), 0.0)
+			# the ring tightens and spins faster as the parts close in
+			_glow_tex(FX_RING, c, 300.0 - 70.0 * k * k, col * Color(1, 1, 1, minf(t * 3.0, 1.0) * fade), t * (1.0 + 4.0 * k))
+			_glow_tex(FX_SWIRL, c, 70.0 + 200.0 * k, col * Color(1, 1, 1, 0.85 * minf(k * 1.6, 1.0) * fade), -t * (3.0 + 9.0 * k * k))
+		if t > 0.8 and t < 1.25:
+			var f := (t - 0.8) / 0.45
+			_glow_tex(FX_FLASH, c, 120.0 + 380.0 * f, Color(1, 1, 1, 1.0 - f * f), f * 0.3)
+		if t > 0.8 and t < 1.55:
+			var n := (t - 0.8) / 0.75
+			_glow_tex(FX_SHOCK, c, 90.0 + 470.0 * n, col * Color(1, 1, 1, 1.0 - n), 0.0)
 		if t > 0.9:
 			var h := clampf((t - 0.9) / 0.3, 0.0, 1.0)
-			_glow_tex(FX_GLOW, c, 230.0 + sin(t * 3.0) * 14.0, col * Color(1, 1, 1, 0.55 * h), t * 0.6)
+			_glow_tex(FX_RAYS, c, 330.0 + sin(t * 3.0) * 16.0, col * Color(1, 1, 1, 0.6 * h), t * 0.35)
 
 	func _glow_tex(tex: Texture2D, c: Vector2, px: float, mod: Color, rot: float) -> void:
 		var s := px / maxf(tex.get_width(), tex.get_height())
