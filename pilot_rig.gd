@@ -341,13 +341,15 @@ static func draw_glow(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height
 	var pulse := 0.55 + 0.3 * (0.5 + 0.5 * sin(r.t * 2.2)) + 0.4 * r.recoil
 	_visor_light(c, base, X.visor, pulse * alpha)
 	if r.recoil > 0.02:
-		var f := smoothstep(0.2, 1.0, r.recoil)
-		# Luna's Ion nozzle glow doubles as the flash: a round burst stretched along the shot
-		var flare := _ft("ion_glow")
-		var s := 170.0 * (0.6 + 0.6 * f)
-		c.draw_set_transform_matrix(base * Transform2D(X.aim_dir.angle() + PI / 2.0, X.muzzle))
-		c.draw_texture_rect(flare, Rect2(-s * 0.4, -s * 1.1, s * 0.8, s * 1.4), false, Color(1, 1, 1, f * alpha))
-		c.draw_texture_rect(flare, Rect2(-s * 0.25, -s * 0.25, s * 0.5, s * 0.5), false, Color(1, 1, 1, f * alpha))
+		# Luna's muzzle flash in 4 steps as the recoil fades: star burst, big cone, fading
+		# cone, sparks (pointing along the shot)
+		var k := 1.0 - r.recoil
+		var frame := mini(int(k * 4.0), 3)
+		var fl := tex("muzzle_%d" % frame)
+		var flen: float = 330.0 * [0.7, 1.0, 0.9, 0.9][frame]
+		var hgt := flen * fl.get_height() / fl.get_width()
+		c.draw_set_transform_matrix(base * Transform2D(X.aim_dir.angle(), X.muzzle))
+		c.draw_texture_rect(fl, Rect2(-flen * 0.08, -hgt * 0.5, flen, hgt), false, Color(1, 1, 1, alpha * (1.0 if frame < 3 else 0.8)))
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 static func _visor_light(c: CanvasItem, base: Transform2D, xf: Transform2D, a: float) -> void:

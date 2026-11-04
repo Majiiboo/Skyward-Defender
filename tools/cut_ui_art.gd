@@ -59,6 +59,16 @@ const JOBS := [
 	["../cards_r1/frame-fusion", [0, 0, 9999, 9999], "cards/frame_fusion.png", 450, "solid+card"],
 	["../cards_r1/frame-overcharge", [176, 326, 924, 1336], "cards/frame_overcharge.png", 450, "solid+card"],   # frame body only (sparks outside it trimmed)
 	["../cards_r1/gear-platform-design-classic", [0, 0, 9999, 9999], "gear/platform.png", 720, "solid"],
+	# batch D (art_src/batch_d): bolt designs for the cards (pointing right, light) and the
+	# rifle muzzle flash in 4 steps (each cropped just past the barrel Luna painted in)
+	["../batch_d/bolt-designs", [30, 500, 490, 280], "fx/bolt_rail.png", 256, "light"],
+	["../batch_d/bolt-designs", [530, 440, 420, 260], "fx/bolt_spark.png", 256, "light"],
+	["../batch_d/bolt-designs", [995, 520, 430, 210], "fx/bolt_heavy.png", 256, "light"],
+	["../batch_d/bolt-designs", [1475, 560, 410, 170], "fx/bolt_twin.png", 256, "light"],
+	["../batch_d/muzzle-flash", [276, 290, 240, 300], "pilot_rig/muzzle_0.png", 160, "light"],
+	["../batch_d/muzzle-flash", [840, 140, 528, 660], "pilot_rig/muzzle_1.png", 192, "light"],
+	["../batch_d/muzzle-flash", [1658, 330, 410, 270], "pilot_rig/muzzle_2.png", 160, "light"],
+	["../batch_d/muzzle-flash", [2357, 270, 379, 380], "pilot_rig/muzzle_3.png", 160, "light"],
 ]
 
 func _initialize() -> void:

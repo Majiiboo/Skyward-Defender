@@ -16,43 +16,50 @@ const COLOR := {"common": Color(0.75, 0.78, 0.85), "uncommon": Color(0.2, 0.9, 1
 	"epic": Color(0.71, 0.55, 1.0), "legendary": Color(1.0, 0.8, 0.3), "fusion": Color(1.0, 0.45, 0.8)}
 
 const CARDS := {
+	# offence
 	"rapid_pulse":     {"name": "Rapid Pulse",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
 		"desc": "Fire rate +10%"},
 	"heavy_bolts":     {"name": "Heavy Bolts",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
-		"desc": "Bolt damage +15%"},
+		"desc": "Bolt damage +15%: bigger, hotter bolts"},
 	"burst_fire":      {"name": "Burst Fire",      "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
 		"desc": "Each trigger fires a burst: 2, then 3, then 4 bolts"},
-	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
-		"desc": "+1 heart (max 5)"},
-	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
-		"desc": "Pulls gems from further away"},
-	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 3, "icon": "chest",
-		"desc": "Base hull +25%, and repairs that much"},
+	"piercing_rounds": {"name": "Piercing Rounds", "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
+		"desc": "Bolts pass through 1 more bug per level"},
 	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
 		"desc": "Every 5th bolt sparks to 1 more bug per level"},
-	"wingman":         {"name": "Wingman Drone",   "family": "pilot",  "rarity": "epic",      "max": 3, "icon": "nav_gear",
-		"desc": "A drone flies at your side and shoots; faster each level"},
-	"quick_study":     {"name": "Quick Study",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
-		"desc": "Gems give +10% XP"},
+	"frost_rounds":    {"name": "Frost Rounds",    "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
+		"desc": "Hits slow bugs by 15% (more each level)"},
+	"turret_overclock": {"name": "Turret Overclock", "family": "base",  "rarity": "uncommon",  "max": 3, "icon": "chest", "needs_turret": true,
+		"desc": "Your turrets fire 15% faster"},
+	# defence
+	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
+		"desc": "+1 heart (max 5) and a shield of light"},
+	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 3, "icon": "chest",
+		"desc": "Base shield +30 and hull +20, repaired now"},
 	"shield_recharge": {"name": "Shield Recharge", "family": "base",   "rarity": "uncommon",  "max": 3, "icon": "chest", "from_level": 4,
 		"desc": "Base shield recharges 1% a second (more each level)"},
+	# utility
+	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
+		"desc": "Pulls gems and coins from further; gems +10% XP"},
+	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
-		"desc": "Clears every enemy on screen"},
+		"desc": "Clears every enemy on screen (one use)"},
 }
 
 # Overcharge (battle.gd _overcharge).
 const OVER_AT := 3
 const OVERCHARGE := {
-	"rapid_pulse":     "Fire rate +15% more",
+	"rapid_pulse":     "Overdrive: every 8 s, 3 s at double speed",
 	"heavy_bolts":     "6th bolt hits x3",
 	"burst_fire":      "Last burst bolt pierces",
-	"aegis":           "Heals 1 heart each new wave",
-	"magnet":          "Each gem repairs 1 shield",
-	"reinforced_hull": "Base shield +40",
+	"piercing_rounds": "+25% damage per bug pierced",
 	"chain_spark":     "Sparks hit twice as hard",
+	"frost_rounds":    "Slowed bugs take +20% damage",
+	"turret_overclock": "Turret shots +30% damage",
+	"aegis":           "Heals 1 heart each new wave",
+	"reinforced_hull": "Base shield +40",
 	"shield_recharge": "Also slowly repairs the hull",
-	"wingman":         "A second drone joins",
-	"quick_study":     "Level-ups need 15% less XP",
+	"magnet":          "Each gem repairs 1 shield",
 }
 
 # Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
@@ -63,8 +70,8 @@ const FUSIONS := {
 		"desc": "Every 10 gems fire 6 bolts at the nearest bugs"},
 	"bastion":     {"name": "Bastion",     "parts": ["reinforced_hull", "aegis"], "rarity": "fusion", "max": 1,
 		"desc": "A breaking shield blasts bugs back"},
-	"storm_wing":  {"name": "Storm Wing",  "parts": ["chain_spark", "wingman"], "rarity": "fusion", "max": 1,
-		"desc": "Drone shots spark to 2 more bugs"},
+	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "piercing_rounds"], "rarity": "fusion", "max": 1,
+		"desc": "Every bug a bolt passes through throws a spark"},
 }
 
 # the pick on which a card overcharges: the 3rd, or the last for cards that stop sooner
@@ -92,13 +99,13 @@ static func fusions_ready(levels: Dictionary) -> Array:
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 # run_level: cards with "from_level" only show up from that run level on.
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99) -> Array:
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)):
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)):
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

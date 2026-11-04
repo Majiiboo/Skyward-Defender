@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev109 (version/code=109 and version/name="1.0-dev109" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev110 (version/code=110 and version/name="1.0-dev110" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,36 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev110: the new card list (batch B) and Luna's bolts and muzzle flash
+
+- Cards now (every one worth picking, 3 levels each, the 3rd is its overcharge):
+  - Rapid Pulse: fire rate +10%. Overcharge: overdrive, 3 s at double speed every 8 s.
+  - Heavy Bolts: damage +15%, fat glowing slugs. Overcharge: every 6th bolt hits x3.
+  - Burst Fire: bursts of 2, 3, then 4 twin-strand bolts. Overcharge: the last one
+    pierces.
+  - Piercing Rounds (new): bolts pass through 1/2/3 bugs, drawn as a needle with a
+    ring. Overcharge: +25% damage for every bug passed.
+  - Chain Spark: every 5th bolt crackles and sparks to nearby bugs. Overcharge: sparks
+    hit twice as hard.
+  - Frost Rounds (new): hits slow bugs 15/30/45% for a moment, icy bolts. Overcharge:
+    slowed bugs take +20%.
+  - Turret Overclock (new, only when you have a turret): turrets work 15% faster per
+    level. Overcharge: turret shots +30%.
+  - Aegis: +1 heart and the light shield. Overcharge: heals a heart each wave.
+  - Reinforced Hull: +30 shield and +20 hull, repaired now. Overcharge: +40 shield.
+  - Shield Recharge (from your 4th card): 1/2/3% shield a second. Overcharge: slowly
+    repairs the hull.
+  - Magnet: pulls gems and coins from further, gems +10% XP. Overcharge: each gem
+    repairs 1 shield.
+  - Nova Burst (legendary): clears the screen once.
+- Removed: Wingman Drone (the drone becomes a Gear sidekick) and Quick Study (folded
+  into Magnet).
+- Fusions: Railstorm, Gem Barrage, Bastion, and the new Thunder Lance (Chain Spark +
+  Piercing Rounds: every bug a bolt passes through throws a spark).
+- Luna's art: the four bolt designs show what your cards do, and the rifle has her
+  4-step cyan muzzle flash instead of the round glow.
+- LUNA-BRIEF-redo-1.md: the drone flashes and pods to redo, and 5 new card pictures.
 
 ## dev109: turret sockets, Shield Recharge, card pacing, balance, coin report
 

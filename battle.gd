@@ -36,7 +36,7 @@ const SENTRY_GAP := 9.0
 const SENTRY_HEAD_CX := 0.498              # centre of the head's lower body (the part over the base), not the leaning barrels
 # charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
 const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0)}
-const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst", "bolt", "impact", "nova"]
+const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst", "bolt", "impact", "nova", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]
 const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
 
@@ -193,6 +193,15 @@ var _barrage := false
 var _barrage_n := 0
 var _bastion := false
 var _storm_wing := false
+# dev110 cards (batch B)
+var pierce_level := 0            # Piercing Rounds: bugs a bolt passes through
+var _pierce_bonus := false        # its overcharge: +25% damage per bug pierced
+var frost_level := 0              # Frost Rounds: hits slow bugs
+var _frost_bonus := false         # its overcharge: slowed bugs take +20%
+var _turret_rate := 1.0           # Turret Overclock: turrets run faster
+var _turret_dmg_mult := 1.0       # its overcharge
+var _overdrive := false           # Rapid Pulse overcharge: 3 s of double fire every 8 s
+var _thunder := false             # Thunder Lance fusion: every pierced bug sparks
 var zaps: Array = []              # spark arcs {a, b, life}
 
 # ---- pilot animation ----
@@ -332,6 +341,14 @@ func _start_stage() -> void:
 	_barrage_n = 0
 	_bastion = false
 	_storm_wing = false
+	pierce_level = 0
+	_pierce_bonus = false
+	frost_level = 0
+	_frost_bonus = false
+	_turret_rate = 1.0
+	_turret_dmg_mult = 1.0
+	_overdrive = false
+	_thunder = false
 	zaps.clear()
 	_boss_bar_max = 0.0
 	_boss_bar_in = 0.0
@@ -753,6 +770,8 @@ func _aim_and_fire(delta: float) -> void:
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
+	if _overdrive and fmod(time_alive, 8.0) < 3.0:
+		interval *= 0.5   # Rapid Pulse overcharged: overdrive window
 	if dragging and fire_timer <= 0.0:
 		fire_timer = interval
 		_kick(1.0)
@@ -791,7 +810,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail,
 			"pierce": pierce or rail or (_pierce5 and _shot_n % 5 == 0), "hits": [],
-			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0})
+			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
+			"frost": frost_level > 0, "rail": rail})
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -848,15 +868,28 @@ func _update_bullets(delta: float) -> void:
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 				else:
+					if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
+						dmg *= 1.2
+					if b.get("frost", false):
+						e.slow_t = 1.5
+						e.slow = minf(0.15 * frost_level, 0.45)
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
-					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6)
+					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
 				if int(b.get("spark", 0)) > 0:
 					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
 				# Void set bonus: every 5th bolt flies on through
 				hit = not b.get("pierce", false)
+				# Piercing Rounds: passes through this bug if it still has passes left
+				if hit and int(b.get("pierce_left", 0)) > 0:
+					b.pierce_left = int(b.pierce_left) - 1
+					hit = false
+					if _pierce_bonus:
+						b.dmg = float(b.dmg) * 1.25
 				if not hit:
 					b.hits.append(e.id)
+					if _thunder and not b.has("src"):
+						_chain(e, 1, dmg * 0.5)
 				stat_hits += 1
 				for k in 3:
 					sparks.append({"pos": b.pos, "vel": Vector2(rng.randf_range(-100, 100), rng.randf_range(-100, 100)), "life": 0.3, "col": Color(0.2, 0.85, 1.0)})
@@ -1022,6 +1055,10 @@ func _update_enemies(delta: float) -> void:
 					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(0.8, 0.5, 1.0))
 					_float_text(e.pos + Vector2(0, -110), "HATCHING!", Color(0.85, 0.6, 1.0), true)
 					shake = maxf(shake, 0.35)
+		# Frost Rounds: a slowed bug covers only part of its move
+		if float(e.get("slow_t", 0.0)) > 0.0:
+			e.slow_t = float(e.slow_t) - delta
+			e.pos = prev.lerp(e.pos, 1.0 - float(e.get("slow", 0.0)))
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# tilt and wing fold ease toward their targets so dives and hatches never snap
 		e.tilt_s = lerp_angle(float(e.get("tilt_s", _enemy_tilt(e))), _enemy_tilt(e), minf(1.0, delta * 10.0))
@@ -1209,7 +1246,7 @@ func _socket(i: int) -> Vector2:
 	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT)
 
 func _turret_dmg(t: Dictionary) -> float:
-	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl))
+	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl)) * _turret_dmg_mult
 
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
@@ -1230,12 +1267,12 @@ func _update_turrets(delta: float) -> void:
 			continue
 		t.fire_t = maxf(t.fire_t - delta, 0.0)
 		match String(t.type):
-			"lance": _update_lance(t, delta)
-			"storm": _update_storm(t, delta)
-			"gravity": _update_gravity(t, delta)
-			"swarm": _update_swarm(t, delta)
-			"prism": _update_prism(t, delta)
-			_: _update_sentry(t, delta)
+			"lance": _update_lance(t, delta * _turret_rate)
+			"storm": _update_storm(t, delta * _turret_rate)
+			"gravity": _update_gravity(t, delta * _turret_rate)
+			"swarm": _update_swarm(t, delta * _turret_rate)
+			"prism": _update_prism(t, delta * _turret_rate)
+			_: _update_sentry(t, delta * _turret_rate)
 	_update_drones(delta)
 
 func _update_sentry(t: Dictionary, delta: float) -> void:
@@ -1835,13 +1872,17 @@ func _pick_card(id: String) -> void:
 			hearts = mini(hearts + 1, max_hearts)
 		"magnet":
 			magnet_level += 1
-			magnet_radius = _magnet_base + 30.0 * magnet_level   # +30 px per card (on top of the boots)
+			magnet_radius = _magnet_base + 40.0 * magnet_level   # +40 px per card (on top of the boots)
+			_gem_xp_mult *= 1.1
 		"reinforced_hull":
-			hull_max += 25.0
-			hull = minf(hull + 25.0, hull_max)
+			shield_max += 30.0
+			shield = minf(shield + 30.0, shield_max)
+			hull_max += 20.0
+			hull = minf(hull + 20.0, hull_max)
 		"chain_spark": chain_level += 1
-		"wingman": wing_level += 1
-		"quick_study": _gem_xp_mult *= 1.1
+		"piercing_rounds": pierce_level += 1
+		"frost_rounds": frost_level += 1
+		"turret_overclock": _turret_rate *= 1.15
 		"shield_recharge": _shield_rate += 0.01
 		"nova_burst":
 			for e in enemies.duplicate():
@@ -1859,8 +1900,11 @@ func _pick_card(id: String) -> void:
 # The third pick of a card: its extra bonus (Cards.OVERCHARGE), with a gold flourish.
 func _overcharge(id: String) -> void:
 	match id:
-		"rapid_pulse": fire_rate_mult *= 1.15
+		"rapid_pulse": _overdrive = true
 		"heavy_bolts": _crit6 = true
+		"piercing_rounds": _pierce_bonus = true
+		"frost_rounds": _frost_bonus = true
+		"turret_overclock": _turret_dmg_mult = 1.3
 		"burst_fire": _burst_pierce = true
 		"magnet": _gem_shield = true
 		"reinforced_hull":
@@ -1868,9 +1912,7 @@ func _overcharge(id: String) -> void:
 			shield = minf(shield + 40.0, shield_max)
 		"aegis": _aegis_heal = true
 		"chain_spark": _chain_mult = 2.0
-		"quick_study": _xp_cut = 0.85
 		"shield_recharge": _hull_rate = 0.004
-		"wingman": _wing_cd[1] = 0.3   # the second drone joins (_wing_count)
 	var gold := Color(1.0, 0.82, 0.32)
 	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
 	_burst(soldier_pos, 34.0, gold, 18)
@@ -1882,7 +1924,7 @@ func _fuse(id: String) -> void:
 		"railstorm": _railstorm = true
 		"gem_barrage": _barrage = true
 		"bastion": _bastion = true
-		"storm_wing": _storm_wing = true
+		"thunder_lance": _thunder = true
 	var pink: Color = Cards.COLOR.fusion
 	_float_text(soldier_pos + Vector2(0, -80), "FUSION!", pink, true)
 	_burst(soldier_pos, 46.0, pink, 26)
@@ -1891,7 +1933,7 @@ func _fuse(id: String) -> void:
 
 # The three cards of a pick; a ready fusion takes the middle slot.
 func _offer() -> Array:
-	var picks := Cards.draw(card_levels, 3, rng, run_level)
+	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty())
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]
@@ -2342,10 +2384,29 @@ func _draw_fx() -> void:
 		if bl.col == "tracer" or bl.col == "purple":
 			continue
 		var big: float = 1.6 if bl.get("big", false) else (1.25 if bl.get("pierce", false) else 1.0)
+		# the cards change how a bolt LOOKS (Luna's bolt designs): a needle with a ring for
+		# rail / piercing shots, a crackling bolt for Chain Spark, a fat slug for Heavy Bolts,
+		# twin strands for Burst Fire; Frost Rounds tint them icy
+		var look := ""
+		if bl.get("rail", false) or pierce_level > 0:
+			look = "bolt_rail"
+		elif int(bl.get("spark", 0)) > 0:
+			look = "bolt_spark"
+		elif int(card_levels.get("heavy_bolts", 0)) > 0:
+			look = "bolt_heavy"
+		elif burst_count > 1:
+			look = "bolt_twin"
+		var tint := Color(0.78, 0.95, 1.0) if bl.get("frost", false) else Color.WHITE
+		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
+		if look != "":
+			var lt: Texture2D = _fx_tex[look]
+			var LL: float = {"bolt_rail": 38.0, "bolt_spark": 32.0, "bolt_heavy": 24.0 + 6.0 * bw, "bolt_twin": 28.0}[look] * big
+			var lh: float = LL * lt.get_height() / lt.get_width()
+			_fx.draw_texture_rect(lt, Rect2(-LL * 0.8, -lh * 0.5, LL, lh), false, tint)
+			continue
 		var BL := 26.0 * (0.85 + 0.15 * bw) * big
 		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw * (1.2 if big > 1.3 else 1.0)
-		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
-		_fx.draw_texture_rect(bt0, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false)
+		_fx.draw_texture_rect(bt0, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
 	# Swarm drones
 	var dt: Texture2D = _fx_tex["drone"]
 	for dr in drones:

@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev109 (code 109).
+  go UP every package (same signing key, install-over). Current: dev110 (code 110).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -267,7 +267,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    a flying pose and flies off the top -> Stage Cleared (no reward icons popping at the
    final kill); some bugs double-shoot in later stages; weak bugs die faster; cards stop
    being offered once maxed (every card: 3 levels, 3rd = overcharge, then gone).
-   B (cards rework, needs Rudy's OK on a new list): every card worth taking, cut the
+   B DONE (dev110, Rudy approved). Was: every card worth taking, cut the
    dull ones, remove Wingman Drone card (drone becomes a Gear sidekick), redo fusions,
    cards that change how bolts LOOK (shape/colour/trail), not only size. Legendary
    (Nova Burst) is one-shot.
