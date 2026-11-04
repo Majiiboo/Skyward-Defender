@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev112 (version/code=112 and version/name="1.0-dev112" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev113 (version/code=113 and version/name="1.0-dev113" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,19 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev113: the drone sidekick
+
+- Gear has a third tab, Drone, which unlocks at pilot level 8. The drone flies at your
+  side in every battle.
+- Bodies (Luna's art): Scout (fires 30% faster, from Lv.8), Striker (hits harder and
+  reaches further, Lv.14), Warden (also blocks an enemy shot near you every 5 s, Lv.20).
+- Weapon pods: Twin Blaster (two quick bolts, Lv.8), Beam (an instant purple beam that
+  never misses, Lv.12), Missiles (homing, bursting on nearby bugs too, Lv.16).
+- Upgrade with coins: +25% per level up to Lv.10 (140 x level coins).
+- Gear shows a big hovering preview, what it does and its numbers; Luna's pod flashes
+  light up as it fires.
+- New file drone_data.gd holds all the drone numbers.
 
 ## dev112: Luna's two-piece turrets, new card pictures
 

@@ -184,16 +184,19 @@ var _hull_rate := 0.0              # its overcharge: share of the max hull per s
 # new cards and fusions
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
-var wing_level := 0               # Wingman Drone
-var _wing_cd: Array = [0.4, 0.9]
-var _wing_aim: Array = [-PI / 2.0, -PI / 2.0]
+var _drone := {}                  # the sidekick from Gear (DroneData.read): body, pod, level
+var _drone_on := false
+var _drone_cd := 0.5
+var _drone_aim := -PI / 2.0
+var _drone_flash := 0.0
+var _drone_guard := 0.0
+var _drone_beam := {}
 var _xp_cut := 1.0                # Quick Study overcharged: levels need less XP
 var _aegis_heal := false
 var _railstorm := false
 var _barrage := false
 var _barrage_n := 0
 var _bastion := false
-var _storm_wing := false
 # dev110 cards (batch B)
 var pierce_level := 0            # Piercing Rounds: bugs a bolt passes through
 var _pierce_bonus := false        # its overcharge: +25% damage per bug pierced
@@ -248,6 +251,10 @@ func _ready() -> void:
 	# Luna's batch D turrets in two pieces: a base on the socket and a head on top
 	for n in ["lance_base", "lance_head", "storm_base", "storm_head", "gravity_base", "gravity_head", "prism_head"]:
 		_tex[n] = load("res://turrets/%s.png" % n)
+	for n in ["body_scout", "body_striker", "body_warden", "pod_blaster", "pod_beam", "pod_missile"]:
+		_tex[n] = load("res://drone/%s.png" % n)
+	for n in ["blaster", "beam", "missile"]:
+		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
 	for i in 4:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
@@ -337,14 +344,12 @@ func _start_stage() -> void:
 	_shield_rate = 0.0
 	_hull_rate = 0.0
 	_chain_mult = 1.0
-	wing_level = 0
 	_xp_cut = 1.0
 	_aegis_heal = false
 	_railstorm = false
 	_barrage = false
 	_barrage_n = 0
 	_bastion = false
-	_storm_wing = false
 	pierce_level = 0
 	_pierce_bonus = false
 	frost_level = 0
@@ -411,6 +416,15 @@ func _start_stage() -> void:
 	if open_now != seen:
 		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
+	# the drone sidekick flies along once the pilot is level 8 (Gear > Drone)
+	_drone = DroneData.read(sv)
+	if plevel < int(DroneData.BODIES[_drone.body].unlock):
+		_drone.body = "scout"
+	if plevel < int(DroneData.PODS[_drone.pod].unlock):
+		_drone.pod = "blaster"
+	_drone_on = DroneData.unlocked(plevel)
+	_drone_cd = 0.5
+	_drone_beam = {}
 	_took_damage = false
 	_hearts_lost = 0
 	_stars_got = 0
@@ -628,7 +642,7 @@ func _process(delta: float) -> void:
 		_update_outro(delta)
 	else:
 		_aim_and_fire(delta)
-	_update_wingmen(delta)
+	_update_drone(delta)
 	_update_range_ring(delta)
 	for z in zaps:
 		z.life -= delta
@@ -859,6 +873,13 @@ func _pick_aim_target(from: Vector2) -> Dictionary:
 func _update_bullets(delta: float) -> void:
 	var live: Array = []
 	for b in bullets:
+		# drone missiles steer toward their target
+		if b.has("homing"):
+			for e in enemies:
+				if int(e.id) == int(b.homing):
+					var want: Vector2 = (Vector2(e.pos) - Vector2(b.pos)).normalized() * 300.0
+					b.vel = Vector2(b.vel).lerp(want, minf(1.0, delta * 4.0))
+					break
 		b.pos += b.vel * delta
 		var hit := false
 		for e in enemies:
@@ -881,6 +902,11 @@ func _update_bullets(delta: float) -> void:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
+				if float(b.get("splash", 0.0)) > 0.0:
+					for o in enemies:
+						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
+							o.hp -= dmg * 0.6
+					_fx_add("nova", b.pos, float(b.splash) * 0.6, 0.3, 0.0, 1.8, Color(0.8, 0.5, 1.0))
 				if int(b.get("spark", 0)) > 0:
 					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
 				# Void set bonus: every 5th bolt flies on through
@@ -2103,33 +2129,95 @@ func _bastion_blast() -> void:
 	_float_text(c + Vector2(0, -150), "BASTION!", Cards.COLOR.fusion, true)
 	shake = maxf(shake, 0.5)
 
-# Wingman Drone(s): fly beside the pilot and shoot the nearest bug.
-func _wing_pos(i: int) -> Vector2:
-	var side := -1.0 if i == 0 else 1.0
-	return soldier_pos + Vector2(side * 46.0, 8.0 + sin(time_alive * 3.0 + i * 1.7) * 4.0)
+# The drone sidekick (Gear > Drone, DroneData): one drone flies beside the pilot and
+# shoots with its pod. Scout fires faster, Striker hits harder and further, Warden
+# also blocks an enemy shot near the pilot every few seconds.
+func _drone_pos() -> Vector2:
+	return soldier_pos + Vector2(-54.0, 6.0 + sin(time_alive * 3.0) * 4.0)
 
-func _wing_count() -> int:
-	return 0 if wing_level <= 0 else (2 if Cards.overcharged(card_levels, "wingman") else 1)
+func _update_drone(delta: float) -> void:
+	_drone_flash = maxf(_drone_flash - delta, 0.0)
+	_drone_beam.life = maxf(float(_drone_beam.get("life", 0.0)) - delta, 0.0)
+	if not _drone_on:
+		return
+	var body: Dictionary = DroneData.BODIES[_drone.body]
+	var pod: Dictionary = DroneData.PODS[_drone.pod]
+	var p := _drone_pos()
+	# Warden: swats one enemy shot near the pilot every few seconds
+	if body.has("guard"):
+		_drone_guard = maxf(_drone_guard - delta, 0.0)
+		if _drone_guard <= 0.0:
+			for b in enemy_bullets:
+				if b.pos.distance_to(soldier_pos) < 70.0:
+					_drone_beam = {"a": p, "b": b.pos, "life": 0.15, "col": Color(0.71, 0.55, 1.0)}
+					_burst(b.pos, 8.0, Color(0.71, 0.55, 1.0), 6)
+					b.pos = Vector2(-999, -999)
+					_drone_guard = float(body.guard)
+					break
+	var best := {}
+	var bd: float = float(body.range)
+	for e in enemies:
+		var d: float = p.distance_to(e.pos)
+		if e.pos.y > 90.0 and d < bd:
+			bd = d
+			best = e
+	if best.is_empty():
+		_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
+		return
+	_drone_aim = lerp_angle(_drone_aim, (Vector2(best.pos) - p).angle(), minf(1.0, delta * 10.0))
+	_drone_cd -= delta * float(body.rate)
+	if _drone_cd > 0.0:
+		return
+	_drone_cd = float(pod.every)
+	_drone_flash = 0.12
+	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level))
+	var dir := Vector2.from_angle(_drone_aim)
+	match String(_drone.pod):
+		"beam":
+			# instant hit: a purple line to the target
+			best.hp -= dmg
+			stat_pilot_dmg += dmg
+			_drone_beam = {"a": p + dir * 14.0, "b": best.pos, "life": 0.18, "col": Color(0.8, 0.5, 1.0)}
+			_fx_add("impact", best.pos, 24.0, 0.2, 0.0, 1.6, Color(0.85, 0.6, 1.0))
+		"missile":
+			bullets.append({"pos": p + dir * 12.0, "vel": dir * 260.0, "dmg": dmg, "r": 12.0, "tid": int(best.id), "col": "missile",
+				"big": false, "pierce": false, "hits": [], "homing": int(best.id), "splash": float(pod.splash)})
+		_:
+			for s in [-1.0, 1.0]:
+				var off: Vector2 = dir.orthogonal() * 5.0 * float(s)
+				bullets.append({"pos": p + dir * 12.0 + off, "vel": dir * 500.0, "dmg": dmg, "r": 9.0, "tid": int(best.id), "col": "cyan",
+					"big": false, "pierce": false, "hits": []})
 
-func _update_wingmen(delta: float) -> void:
-	for i in _wing_count():
-		var p := _wing_pos(i)
-		var tgt := _pick_aim_target(p)
-		if tgt.is_empty():
-			_wing_aim[i] = lerp_angle(_wing_aim[i], -PI / 2.0, delta * 4.0)
-			continue
-		_wing_aim[i] = lerp_angle(_wing_aim[i], (Vector2(tgt.pos) - p).angle(), minf(1.0, delta * 10.0))
-		_wing_cd[i] -= delta
-		if _wing_cd[i] <= 0.0:
-			_wing_cd[i] = 1.0 / (1.0 + 0.25 * (wing_level - 1))
-			var dir := Vector2.from_angle(_wing_aim[i])
-			bullets.append({"pos": p + dir * 10.0, "vel": dir * 480.0, "dmg": float(WEAPONS[weapon_id].damage) * damage_mult * 0.6,
-				"r": 10.0, "tid": int(tgt.get("id", -2)), "col": "cyan", "big": false, "pierce": false, "hits": [],
-				"spark": 2 if _storm_wing else 0})
+func _draw_drone() -> void:
+	if not _drone_on:
+		return
+	var p := _drone_pos()
+	var rot := _drone_aim + PI / 2.0   # the painted drones face up
+	var pt: Texture2D = _tex["pod_" + String(_drone.pod)]
+	var bt: Texture2D = _tex["body_" + String(_drone.body)]
+	var bw := 46.0
+	var bh: float = bw * bt.get_height() / bt.get_width()
+	var pw := 18.0
+	var ph: float = pw * pt.get_height() / pt.get_width()
+	draw_set_transform(p, rot, Vector2.ONE)
+	draw_texture_rect(pt, Rect2(-pw * 0.5, -bh * 0.35 - ph * 0.5, pw, ph), false)
+	draw_texture_rect(bt, Rect2(-bw * 0.5, -bh * 0.5, bw, bh), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-func _draw_wingmen() -> void:
-	for i in _wing_count():
-		HomeProp.draw_drone(self, _wing_pos(i), 40.0, time_alive + i * 0.7, _wing_aim[i] + PI / 2.0)
+# on the light layer: the pod's muzzle flash and beams
+func _draw_drone_light() -> void:
+	if float(_drone_beam.get("life", 0.0)) > 0.0:
+		var a: float = float(_drone_beam.life) / 0.18
+		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_fx.draw_line(_drone_beam.a, _drone_beam.b, Color(_drone_beam.col, a), 3.0, true)
+		_fx.draw_line(_drone_beam.a, _drone_beam.b, Color(1, 1, 1, a), 1.0, true)
+	if _drone_on and _drone_flash > 0.0:
+		var ft: Texture2D = _fx_tex["drone_flash_" + String(_drone.pod)]
+		var p := _drone_pos() + Vector2.from_angle(_drone_aim) * 22.0
+		var fw := 30.0
+		_fx.draw_set_transform(p, _drone_aim, Vector2.ONE)
+		_fx.draw_texture_rect(ft, Rect2(0, -fw * ft.get_height() / ft.get_width() * 0.5, fw, fw * ft.get_height() / ft.get_width()), false, Color(1, 1, 1, _drone_flash / 0.12))
+		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # spark arcs: short jagged lines on the light layer
 func _draw_zaps() -> void:
@@ -2329,7 +2417,7 @@ func _draw() -> void:
 			var k: float = (gl - 0.85) / 0.15
 			draw_line(p + Vector2(-r * 1.4 * k, -r * 0.6), p + Vector2(r * 1.4 * k, -r * 0.6), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
 			draw_line(p + Vector2(0, -r * 0.6 - r * 1.4 * k), p + Vector2(0, -r * 0.6 + r * 1.4 * k), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
-	_draw_wingmen()
+	_draw_drone()
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
 	var pose := _current_pose()
@@ -2605,6 +2693,7 @@ func _draw_fx() -> void:
 		if t.type == "sentry" and float(t.drop) >= 1.0:
 			_draw_sentry_field(t)
 	_draw_zaps()
+	_draw_drone_light()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]
@@ -2628,6 +2717,10 @@ func _draw_fx() -> void:
 	var bw: float = 1.0 + (damage_mult - 1.0) * 1.6
 	for bl in bullets:
 		if bl.col == "tracer" or bl.col == "purple":
+			continue
+		if bl.col == "missile":
+			_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
+			_fx.draw_texture_rect(bt0, Rect2(-20, -5, 24, 10), false, Color(0.85, 0.5, 1.0))
 			continue
 		var big: float = 1.6 if bl.get("big", false) else (1.25 if bl.get("pierce", false) else 1.0)
 		# the cards change how a bolt LOOKS (Luna's bolt designs): a needle with a ring for

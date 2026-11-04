@@ -15,6 +15,8 @@ var _bag_grid: GridContainer
 var _upgrade_btn: Button
 var _pilot_box: VBoxContainer
 var _turret_box: VBoxContainer
+var _drone_box: VBoxContainer
+var drone := {}            # DroneData.read(save)
 var _plat                    # PlatformFloor (set-bonus glow)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
 
@@ -57,6 +59,7 @@ func _load() -> void:
 	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
 	t_unlocked = int(data.get("stage_unlocked", 1))
 	gear = GearData.read(data)
+	drone = DroneData.read(data)
 
 func _save() -> void:
 	var data := _read()
@@ -106,7 +109,11 @@ func _build() -> void:
 	top.add_child(_power_label)
 	col.add_child(top)
 	# Pilot / Turrets switch
-	col.add_child(UIKit.tabs(["Pilot", "Turrets"], _show_page, 0))
+	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone"], _show_page, 0))
+	_drone_box = VBoxContainer.new()
+	_drone_box.add_theme_constant_override("separation", 10)
+	_drone_box.visible = false
+	col.add_child(_drone_box)
 	_turret_box = VBoxContainer.new()
 	_turret_box.add_theme_constant_override("separation", 10)
 	_turret_box.visible = false
@@ -306,10 +313,109 @@ func _on_upgrade_pressed() -> void:
 func _show_page(i: int) -> void:
 	_pilot_box.visible = i == 0
 	_turret_box.visible = i == 1
+	_drone_box.visible = i == 2
 	if i == 1:
 		_refresh_turrets()
+	elif i == 2:
+		_refresh_drone()
 	else:
 		_select(selected_slot)
+
+# ------------------------------------------------------------------ drone page
+# The drone sidekick (DroneData): a big preview, its body and weapon pod to choose,
+# what it does, and Upgrade (coins). Locked until pilot level 8.
+func _refresh_drone() -> void:
+	for c in _drone_box.get_children():
+		c.queue_free()
+	if not DroneData.unlocked(pilot_level):
+		var lp := UIKit.panel(14)
+		var lv := VBoxContainer.new()
+		lv.add_child(UIKit.label("DRONE SIDEKICK", 16, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+		var t := UIKit.label("A drone that flies beside you and shoots with you. It unlocks at pilot level %d (you are level %d)." % [DroneData.UNLOCK_LEVEL, pilot_level], 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lv.add_child(t)
+		lp.add_child(lv)
+		_drone_box.add_child(lp)
+		return
+	var body: Dictionary = DroneData.BODIES[drone.body]
+	var pod: Dictionary = DroneData.PODS[drone.pod]
+	# preview: the drone hovering, turning a little
+	var pv := Control.new()
+	pv.custom_minimum_size = Vector2(0, 170)
+	var bt: Texture2D = load("res://drone/body_%s.png" % drone.body)
+	var pt: Texture2D = load("res://drone/pod_%s.png" % drone.pod)
+	var tm := [0.0]
+	pv.draw.connect(func():
+		var c := pv.size * 0.5 + Vector2(0, sin(tm[0] * 2.0) * 5.0)
+		Glass.panel(pv, Glass.box(Rect2(Vector2.ZERO, pv.size), 16.0))
+		pv.draw_set_transform(c, sin(tm[0] * 0.8) * 0.25, Vector2.ONE)
+		var bw := 130.0
+		var bh: float = bw * bt.get_height() / bt.get_width()
+		var pw := 52.0
+		var ph: float = pw * pt.get_height() / pt.get_width()
+		pv.draw_texture_rect(pt, Rect2(-pw * 0.5, -bh * 0.35 - ph * 0.5, pw, ph), false)
+		pv.draw_texture_rect(bt, Rect2(-bw * 0.5, -bh * 0.5, bw, bh), false)
+		pv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE))
+	var tw := pv.create_tween().set_loops()
+	tw.tween_method(func(v): tm[0] = v; pv.queue_redraw(), 0.0, TAU * 2.0, 8.0)
+	_drone_box.add_child(pv)
+	var lvl: int = int(drone.level)
+	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
+	var info := UIKit.label("%s + %s  ·  Lv.%d
+%s %s
+Damage per hit %.1f  ·  fires every %.2f s" % [body.name, pod.name, lvl, body.desc, pod.desc, dmg, float(pod.every) / float(body.rate)], 12, Color(0.85, 0.92, 1.0))
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var ip := UIKit.panel(10)
+	ip.add_child(info)
+	var urow := HBoxContainer.new()
+	urow.add_theme_constant_override("separation", 10)
+	ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	urow.add_child(ip)
+	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else "Upgrade
+%d coins" % DroneData.upgrade_cost(lvl), 14)
+	up.custom_minimum_size = Vector2(118, 50)
+	up.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	up.disabled = lvl >= DroneData.MAX_LEVEL or coins < DroneData.upgrade_cost(lvl)
+	up.pressed.connect(func():
+		var cost := DroneData.upgrade_cost(int(drone.level))
+		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL:
+			coins -= cost
+			drone.level = int(drone.level) + 1
+			_save_drone()
+			_refresh_drone())
+	urow.add_child(up)
+	_drone_box.add_child(urow)
+	for spec in [["BODY", DroneData.BODIES, "body"], ["WEAPON POD", DroneData.PODS, "pod"]]:
+		_drone_box.add_child(UIKit.header(spec[0]))
+		var grid := GridContainer.new()
+		grid.columns = 3
+		grid.add_theme_constant_override("h_separation", 8)
+		for id in spec[1]:
+			var def: Dictionary = spec[1][id]
+			var open: bool = pilot_level >= int(def.unlock)
+			var on: bool = drone[spec[2]] == id
+			var sub := "Equipped" if on else ("Choose" if open else "Pilot Lv.%d" % int(def.unlock))
+			var tile := UIKit.tile(def.name, sub, "ion" if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], id]), Vector2(108, 92))
+			if not open:
+				tile.modulate = Color(0.55, 0.55, 0.65, 0.8)
+			var key: String = spec[2]
+			var pick: String = id
+			tile.pressed.connect(func():
+				if open:
+					drone[key] = pick
+					_save_drone()
+					_refresh_drone())
+			grid.add_child(tile)
+		_drone_box.add_child(grid)
+	_power_label.text = "DRONE Lv.%d  ·  %d coins" % [lvl, coins]
+
+func _save_drone() -> void:
+	var data := _read()
+	data["drone"] = drone
+	data["coins"] = coins
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
 
 # The pilot standing in the Gear screen: the same live rig as in battle, idling, his
 # rifle drifting, flames in the equipped jetpack's style.
