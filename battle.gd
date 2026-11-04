@@ -161,8 +161,14 @@ var hive_brains := true           # debug: false turns off flit, dodge and feint
 var _stars: Array = []
 var _city: Array = []
 var _tex := {}
-var _boss_bar_hp := 0.0
+var _boss_bar_hp := 0.0           # the white "damage taken" chunk that trails the boss bar
 var _boss_bar_max := 0.0
+var _boss_bar_in := 0.0           # 0 -> 1 as the boss bar slides in
+var _boss_flash := 0.0            # the bar flashes when a layer breaks
+# card overcharges (third pick of a card, Cards.OVERCHARGE)
+var _crit6 := false
+var _burst_pierce := false
+var _gem_shield := false
 
 # ---- pilot animation ----
 var prev_soldier_x := 240.0
@@ -276,6 +282,11 @@ func _start_stage() -> void:
 	run_level = 1
 	refreshes = 1
 	card_levels = {}
+	_crit6 = false
+	_burst_pierce = false
+	_gem_shield = false
+	_boss_bar_max = 0.0
+	_boss_bar_in = 0.0
 	fire_rate_mult = 1.0
 	damage_mult = 1.0
 	extra_projectiles = 0
@@ -458,6 +469,7 @@ func _process(delta: float) -> void:
 		if _intro.t > 4.0:
 			_intro = {}
 	inv_t = maxf(inv_t - delta, 0.0)
+	_boss_flash = maxf(_boss_flash - delta * 2.5, 0.0)
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
@@ -575,7 +587,7 @@ func _aim_and_fire(delta: float) -> void:
 			burst_timer = 0.07
 			burst_left -= 1
 			_kick(0.9)
-			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid)
+			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid, _burst_pierce and burst_left == 0)
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
@@ -600,7 +612,7 @@ func _aim_and_fire(delta: float) -> void:
 		burst_dir = d2
 		burst_tid = int(target.get("id", -2))
 
-func _fire(origin: Vector2, dir: Vector2, target_id: int = -2) -> void:
+func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = false) -> void:
 	var w: Dictionary = WEAPONS[weapon_id]
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
@@ -609,9 +621,11 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2) -> void:
 		if count > 1:
 			off = lerpf(-spread * 0.5, spread * 0.5, float(i) / float(count - 1))
 		_shot_n += 1
-		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed), "dmg": float(w.damage) * damage_mult,
-			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false),
-			"pierce": _pierce5 and _shot_n % 5 == 0, "hits": []})
+		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
+		var crit: bool = _crit6 and _shot_n % 6 == 0
+		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed), "dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0),
+			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit,
+			"pierce": pierce or (_pierce5 and _shot_n % 5 == 0), "hits": []})
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -839,7 +853,17 @@ func _update_enemies(delta: float) -> void:
 		var want_fold: float = 1.0 if _lunging(e) or (e.state == "hatch" and e.t < 0.45) else 0.0
 		e.fold = move_toward(float(e.get("fold", want_fold)), want_fold, delta * 5.0)
 		if e.type == "hive_mother":
-			_boss_bar_hp = e.hp
+			# the white chunk trails the real health, then catches up
+			if _boss_bar_hp < e.hp or _boss_bar_hp > e.hp_max:
+				_boss_bar_hp = e.hp
+			var layers := _boss_layers(e)
+			var was := ceili(_boss_bar_hp / e.hp_max * layers - 0.0001)
+			_boss_bar_hp = move_toward(_boss_bar_hp, maxf(e.hp, 0.0), delta * e.hp_max * 0.25)
+			if ceili(_boss_bar_hp / e.hp_max * layers - 0.0001) < was:
+				_boss_flash = 1.0   # a layer broke
+				shake = maxf(shake, 0.3)
+			if _intro.is_empty():
+				_boss_bar_in = minf(_boss_bar_in + delta * 3.0, 1.0)
 		if e.hp <= 0.0:
 			_kill(e)
 			continue
@@ -940,6 +964,8 @@ func _update_gems(delta: float) -> void:
 		if d < 16.0:
 			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult)
 			_gems_got += 1
+			if _gem_shield:
+				shield = minf(shield + 1.0, shield_max)   # Magnet overcharged
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
 			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
 			continue
@@ -1537,16 +1563,40 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	var name_l := UIKit.label(def.name, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
-	v.add_child(UIKit.label(String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)), 10, col, HORIZONTAL_ALIGNMENT_CENTER))
+	var over := Cards.overcharges(id, lvl)
+	var gold := Color(1.0, 0.82, 0.32)
+	v.add_child(UIKit.label("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)), 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
 	var d := UIKit.label(def.desc, 11, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(d)
+	if over:
+		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 11, gold, HORIZONTAL_ALIGNMENT_CENTER)
+		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(od)
+		# a thin gold edge that breathes, on top of the frame
+		var edge := Panel.new()
+		var sb := StyleBoxFlat.new()
+		sb.bg_color = Color(0, 0, 0, 0)
+		sb.border_color = gold
+		sb.set_border_width_all(1)
+		sb.set_corner_radius_all(6)
+		edge.add_theme_stylebox_override("panel", sb)
+		edge.set_anchors_preset(Control.PRESET_FULL_RECT)
+		edge.offset_left = 5; edge.offset_right = -5; edge.offset_top = 5; edge.offset_bottom = -5
+		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(edge)
+		var tw := edge.create_tween().set_loops()
+		tw.tween_property(edge, "modulate:a", 0.35, 0.6).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(edge, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
 	b.add_child(v)
 	b.pressed.connect(func(): _pick_card(id))
 	return b
 
 func _pick_card(id: String) -> void:
+	var over := Cards.overcharges(id, int(card_levels.get(id, 0)))
 	card_levels[id] = int(card_levels.get(id, 0)) + 1
+	if over:
+		_overcharge(id)
 	match id:
 		"rapid_pulse": fire_rate_mult *= 1.08
 		"heavy_bolts": damage_mult *= 1.12
@@ -1572,6 +1622,19 @@ func _pick_card(id: String) -> void:
 	_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
 	_card_panel.visible = false
 	picking = false
+
+# The third pick of a card: its extra bonus (Cards.OVERCHARGE), with a gold flourish.
+func _overcharge(id: String) -> void:
+	match id:
+		"rapid_pulse": fire_rate_mult *= 1.15
+		"heavy_bolts": _crit6 = true
+		"burst_fire": _burst_pierce = true
+		"magnet": _gem_shield = true
+		"reinforced_hull": _shield_regen *= 1.4
+	var gold := Color(1.0, 0.82, 0.32)
+	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
+	_burst(soldier_pos, 34.0, gold, 18)
+	_fx_add("nova", soldier_pos, 40.0, 0.5, 0.0, 1.6, gold)
 
 func _show_end(won: bool) -> void:
 	for c in _end_panel.get_children():
@@ -2145,14 +2208,50 @@ func _draw_hud() -> void:
 	draw_string(hud_font, Vector2(16, HUD_H + 15), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, Color(0.88, 0.8, 1.0))
 	for e in enemies:
 		if e.type == "hive_mother":
-			var bw := 220.0
-			var by := HUD_H + 40.0
-			var br := Rect2(FIELD_W * 0.5 - bw * 0.5, by, bw, 6)
-			draw_rect(br, Color(0.03, 0.045, 0.10, 0.7))
-			draw_rect(Rect2(br.position, Vector2(bw * clampf(e.hp / e.hp_max, 0.0, 1.0), 6)), Color(0.85, 0.35, 0.9))
-			draw_rect(br, Color(0.9, 0.7, 1.0, 0.6), false, 1.0)
-			draw_string(title_font, Vector2(FIELD_W * 0.5 - 100, by - 6), "YOUNG HIVE MOTHER" if e.get("mini", false) else "HIVE MOTHER", HORIZONTAL_ALIGNMENT_CENTER, 200, 11, Color(0.9, 0.7, 1.0))
+			_draw_boss_bar(e)
 	_draw_intro()
+
+# A boss's health in stacked layers (3 for a boss, 2 for a mini-boss): the bar empties
+# one colour at a time, the next colour shows underneath, "x3" counts what is left,
+# a white chunk trails each hit and the bar flashes when a layer breaks.
+const BOSS_LAYER_COLS := [Color(0.95, 0.30, 0.40), Color(1.0, 0.55, 0.25), Color(0.80, 0.40, 1.0)]
+
+func _boss_layers(e: Dictionary) -> int:
+	return 2 if e.get("mini", false) else 3
+
+func _draw_boss_bar(e: Dictionary) -> void:
+	var a: float = smoothstep(0.0, 1.0, _boss_bar_in)
+	if a <= 0.0:
+		return
+	var layers := _boss_layers(e)
+	var f := clampf(e.hp / e.hp_max, 0.0, 1.0)
+	var lag := clampf(_boss_bar_hp / e.hp_max, 0.0, 1.0)
+	var cur := maxi(ceili(f * layers - 0.0001), 1)        # layers left, counting the one in use
+	var fill := clampf(f * layers - (cur - 1), 0.0, 1.0)
+	var lag_fill := clampf(lag * layers - (cur - 1), 0.0, 1.0)
+	var bw := 260.0
+	var by := HUD_H + 34.0 - 8.0 * (1.0 - a)
+	var r := Rect2(FIELD_W * 0.5 - bw * 0.5, by, bw, 8)
+	var cut := 5.0
+	var frame := PackedVector2Array([r.position + Vector2(-cut - 3, 4), r.position + Vector2(-3, -3), Vector2(r.end.x + 3, r.position.y - 3),
+		Vector2(r.end.x + cut + 3, r.position.y + 4), Vector2(r.end.x + 3, r.end.y + 3), Vector2(r.position.x - 3, r.end.y + 3), r.position + Vector2(-cut - 3, 4)])
+	draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.85 * a))
+	var col: Color = BOSS_LAYER_COLS[(cur - 1) % BOSS_LAYER_COLS.size()]
+	# the next layer down shows under the current one
+	if cur > 1:
+		draw_rect(r, Color(BOSS_LAYER_COLS[(cur - 2) % BOSS_LAYER_COLS.size()], 0.55 * a))
+	draw_rect(Rect2(r.position, Vector2(bw * lag_fill, r.size.y)), Color(1, 1, 1, 0.75 * a))
+	draw_rect(Rect2(r.position, Vector2(bw * fill, r.size.y)), Color(col, a))
+	draw_line(r.position + Vector2(0, 1), Vector2(r.position.x + bw * fill, r.position.y + 1), Color(1, 1, 1, 0.35 * a), 1.0)   # top sheen
+	# quarter ticks
+	for k in range(1, 4):
+		var tx := r.position.x + bw * k * 0.25
+		draw_line(Vector2(tx, r.position.y), Vector2(tx, r.end.y), Color(0.03, 0.045, 0.10, 0.6 * a), 1.0)
+	var edge := Color(1, 1, 1, a).lerp(Color(col, a), 1.0 - _boss_flash)
+	draw_polyline(frame, Color(edge, (0.6 + 0.4 * _boss_flash) * a), 1.0 + _boss_flash, true)
+	var bname := "YOUNG HIVE MOTHER" if e.get("mini", false) else "HIVE MOTHER"
+	draw_string(title_font, Vector2(r.position.x, by - 7), bname, HORIZONTAL_ALIGNMENT_LEFT, bw - 40, 11, Color(1, 0.85, 0.9, a))
+	draw_string(title_font, Vector2(r.end.x - 40, by - 7), "x%d" % cur, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12 + int(4.0 * _boss_flash), Color(col.lightened(0.3), a))
 
 # "NEW ENEMY" card under the top bar, the first time a player meets a bug type. It
 # slides in, stays a few seconds and fades; the game keeps running behind it.
@@ -2287,6 +2386,8 @@ func _toggle_cards() -> void:
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cell.add_child(nl)
 		cell.add_child(UIKit.label("Lv.%d / %d" % [int(card_levels[id]), int(def.max)], 10, Cards.COLOR[def.rarity], HORIZONTAL_ALIGNMENT_CENTER))
+		if Cards.OVERCHARGE.has(id) and int(card_levels[id]) >= Cards.OVER_AT:
+			cell.add_child(UIKit.label("OVERCHARGED", 9, Color(1.0, 0.82, 0.32), HORIZONTAL_ALIGNMENT_CENTER))
 		grid.add_child(cell)
 	v.add_child(grid)
 	var close := UIKit.gold_button("Back to battle")

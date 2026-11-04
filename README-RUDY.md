@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev98 (version/code=98 and version/name="1.0-dev98" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev99 (version/code=99 and version/name="1.0-dev99" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev99: overcharged cards and boss health layers
+
+- Overcharge: picking the same power card a third time overcharges it, with a gold
+  "OVERCHARGE" card and an extra bonus on top. Rapid Pulse: fire rate +15% more. Heavy
+  Bolts: every 6th bolt is a big one doing 3x damage. Burst Fire: the last bolt of each
+  burst flies through bugs. Magnet: every gem repairs 1 shield. Reinforced Hull: shield
+  recharges 40% faster. The "your cards" panel marks overcharged cards.
+- Boss health bar: the Hive Mother's health now comes in layers (3 for a boss, 2 for the
+  young mini-boss) with an "x3" counter. Each layer empties in its own colour with the
+  next colour showing underneath, a white chunk trails every hit, and the bar flashes and
+  the screen shakes a little when a layer breaks. It slides in under the top bar.
 
 ## dev98: the store works
 

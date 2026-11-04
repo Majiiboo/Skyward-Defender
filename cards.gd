@@ -27,6 +27,20 @@ const CARDS := {
 		"desc": "Clears every enemy on screen"},
 }
 
+# Overcharge: the third pick of a card adds a bonus on top (battle.gd _overcharge).
+const OVER_AT := 3
+const OVERCHARGE := {
+	"rapid_pulse":     "Fire rate +15% more",
+	"heavy_bolts":     "Every 6th bolt x3 damage",
+	"burst_fire":      "Last burst bolt pierces",
+	"magnet":          "Each gem repairs 1 shield",
+	"reinforced_hull": "Shield recharges 40% faster",
+}
+
+# true when picking this card now (it has `lvl` picks so far) overcharges it
+static func overcharges(id: String, lvl: int) -> bool:
+	return OVERCHARGE.has(id) and lvl + 1 == OVER_AT
+
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null) -> Array:
 	if rng == null:

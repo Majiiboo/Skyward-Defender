@@ -32,7 +32,7 @@ Progression (reasons to come back)
   collected...), each with a reward and a badge to show off.
 - Collectibles: a bug codex (every enemy you have met, with its art and lore),
   thruster styles, pilot skins, base skins.
-- Card power-ups: three picks of a card unlock an overcharged version.
+- Card power-ups: three picks of a card unlock an overcharged version. (done dev99)
 - Game speed x1 / x1.5 (unlocked) / x2 (store pack).
 Store and rewards
 - In-game currencies: coins (earned), crystals (premium, also earned slowly).
