@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev107 (version/code=107 and version/name="1.0-dev107" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev108 (version/code=108 and version/name="1.0-dev108" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,38 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev108: battle feel (batch A from Rudy's stage 1-13 playtest)
+
+- Turrets:
+  - They search with a slow sweep and turn to aim at anything in range.
+  - Long-press a turret to see its range as a see-through red shape.
+  - The Sentry's head is now centred on its base.
+  - Turrets help at level 1 and get strong with upgrades: +30% per level, Lv.10 =
+    3.7x.
+- Base:
+  - The shield no longer regenerates, and the hull only takes damage once the shield
+    is gone.
+  - Shield 100, hull 80. Spitters aim every other glob at the base.
+  - The Ion 6-piece bonus is now a bigger shield (+50%), and the Reinforced Hull
+    overcharge gives +40 shield.
+- Pickups:
+  - Gems stand out on any world: a dark backing, a pulsing light ring and a glint.
+  - Bugs drop coins (gems = XP, coins = money). A boss drops 10 big coins.
+  - At the end of every wave, everything left flies to the pilot.
+- Aegis is now a slim band of light that closes in around his body, not the hexagon.
+- Hive Mother:
+  - Much bigger, with 5 health bars (3 for the young one). Same total toughness.
+  - Her hatching is obvious: a big burst and "HATCHING!".
+  - From stage 12 a young Hive Mother turns up mid-stage on every other stage.
+  - From stage 11 the boss arrives while bugs are still coming.
+- Stage end: the last pickups fly in, then he blasts off the top of the screen, behind
+  the top bar, and only then does Stage Cleared appear.
+- From stage 14 Spitters sometimes spit two globs. Scouts are a bit easier to kill.
+- Cards: every card has 3 levels at most (the third is its overcharge) and isn't
+  offered again after that. Rapid Pulse is now +10% and Heavy Bolts +15% per level.
+- Art brief for Luna: LUNA-BRIEF-batch-d.md (pilot turn-around, sidekick drone, muzzle
+  flash, bolt designs, turret heads, gear tiers).
 
 ## dev107: Rudy's Home and menu playtest fixes
 

@@ -85,7 +85,7 @@ static func stage_name(stage: int) -> String:
 # Roles (Rudy, 2026-11-03): Scout = the swarm, Drifter = the tank that bursts into spores,
 # Spitter = the shooter (the one bug that attacks the pilot), Diver = kamikaze on the base.
 const ENEMIES := {
-	"scout":   {"tex": "res://enemies/scout.png",   "size": 34.0, "hp": 2.0, "speed": 62.0, "move": "flit",
+	"scout":   {"tex": "res://enemies/scout.png",   "size": 34.0, "hp": 1.6, "speed": 62.0, "move": "flit",
 		"xp_tier": 0, "coins": 1, "traits": ["swarm"], "base_dmg": 10.0,
 		"intro": "Fast swarm bug. They come in numbers: keep firing!"},
 	"drifter": {"tex": "res://enemies/drifter.png", "size": 44.0, "hp": 4.0, "speed": 48.0, "move": "scurve",
@@ -155,6 +155,9 @@ static func waves(stage: int) -> Array:
 		if stage >= 4 and w >= 4:
 			wave.append(["diver", 1 + (w - 3) / 4 + extra / 5])   # kamikazes: few, but they hit hard
 		if stage % 5 == 0 and w == n:
+			wave.append(["hive_mother", 1])
+		# later stages: a young Hive Mother turns up halfway through (on every other stage)
+		if stage >= 12 and stage % 2 == 0 and stage % 5 != 0 and w == n / 2:
 			wave.append(["hive_mother", 1])
 		out.append(wave)
 	return out

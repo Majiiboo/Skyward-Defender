@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev107 (code 107).
+  go UP every package (same signing key, install-over). Current: dev108 (code 108).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -56,7 +56,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
   crystal refreshes later). Run level cap 12, slower picks after. Percent cards stack
   (Rapid Pulse +8%, Heavy Bolts +12%, Magnet +50% of the base 60 px range, Reinforced Hull +25%).
   Burst Fire replaces spread (spread is reserved for the dual-gun unlock).
-- Base: shield regenerates after a few seconds, hull never does. Pilot has 3 hearts
+- Base: shield 100, hull 80; NEITHER regenerates (dev108); hull only takes damage once the shield is gone. Pilot has 3 hearts
   (Aegis adds one). Your bolts destroy enemy shots.
 - Turrets: 4 mounts. Sentry, Lance Pylon, Gravity Anchor, Swarm Hive, Storm Spire,
   Prism Tower (Luna art in turrets/). Strong vs enemy traits (+50%). Damage budget at
@@ -253,6 +253,34 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    bigger, cleared stages replayable (best score / stars), the next stage pulsing.
    Light STORY (Claude's suggestion): a short comms briefing card at the start of each
    area and after its boss (commander portrait + 2-3 lines), not cutscenes.
+14. RUDY PLAYTEST dev107 (stages 1-13, 2026-11-03). Agreed plan, in batches:
+   A DONE (dev108; Luna brief LUNA-BRIEF-batch-d.md). Was: turrets track targets in range (smooth search sweep),
+   long-press a turret = red see-through range ring, turrets much stronger ("now I can
+   handle this"), Sentry centring in battle; shield does NOT regenerate, hull only takes
+   damage once the shield is gone, lower base HP / more bug damage so the base matters;
+   gems stand out on blue worlds (dark outline + bright core / pulse); Aegis = a slim
+   light that forms around his body (rim outline), not the hex box; Hive Mother much
+   bigger, 5 health layers (same total toughness), hatching made obvious; mid-wave
+   mini-bosses in later stages, more small bugs alongside bosses as stages rise; bugs drop
+   COINS too (gems = XP), everything left flies to him at the end of each wave and at
+   the end of the stage; stage end: last bug dies -> pickups vacuum in -> pilot turns to
+   a flying pose and flies off the top -> Stage Cleared (no reward icons popping at the
+   final kill); some bugs double-shoot in later stages; weak bugs die faster; cards stop
+   being offered once maxed (every card: 3 levels, 3rd = overcharge, then gone).
+   B (cards rework, needs Rudy's OK on a new list): every card worth taking, cut the
+   dull ones, remove Wingman Drone card (drone becomes a Gear sidekick), redo fusions,
+   cards that change how bolts LOOK (shape/colour/trail), not only size. Legendary
+   (Nova Burst) is one-shot.
+   C (UI): pause menu in the glass style (Resume / Back to Hub centred, sound toggle
+   placeholder, stage info, row of your cards), battle top bar overhaul, Stage Cleared
+   screen overhaul, 3 stage objectives shown at start / in pause / on the clear screen
+   (stars explained), menu page layouts.
+   D (needs Luna): drone sidekick (unlock later, upgrade + customise looks/weapon, in
+   Gear), pilot turn-around frames (no more instant mirror), muzzle flash, bolt variants
+   for cards, turret heads as separate pieces (to rotate), gear tiers that look
+   different when upgraded.
+   Answers given: leaving mid-stage restarts the stage from wave 1; Spitter goo aims at
+   the pilot (flies sideways when he is level with it).
 10. LATER idea (Rudy, 2026-11-03), not scheduled: base super weapons. The command
    dome's top emitter (the orb/ring on the new base strip) fires a super weapon. Unlocked
    and levelled outside battle; in battle a tap button shows its cooldown ring (60-90 s

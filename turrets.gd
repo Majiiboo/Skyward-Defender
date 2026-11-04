@@ -23,27 +23,27 @@ const MOUNT_OPENS_AFTER := [5, 15, 25, 40]
 const TURRETS := {
 	"sentry":  {"name": "Sentry",         "art": "sentry",  "rarity": "common",    "unlock": 5, "ready": true,
 		"strong": [], "glow": Color(0.2, 0.85, 1.0),
-		"damage": 0.9, "every": 0.85, "range": 430.0,
+		"damage": 1.0, "every": 0.55, "range": 520.0,
 		"desc": "Twin cannons, steady fire at the nearest enemy."},
 	"lance":   {"name": "Lance Pylon",    "art": "lance",   "rarity": "rare",      "unlock": 8, "ready": true,
 		"strong": ["armoured", "boss"], "glow": Color(0.75, 0.9, 1.0),
-		"damage": 1.8, "every": 2.6, "width": 26.0,
+		"damage": 3.0, "every": 2.2, "width": 26.0,
 		"desc": "Charges, then fires a spear of light straight up through its whole column."},
 	"storm":   {"name": "Storm Spire",    "art": "storm",   "rarity": "epic",      "unlock": 11, "ready": true,
 		"strong": ["swarm", "shielded"], "glow": Color(0.6, 0.55, 1.0),
-		"damage": 0.9, "every": 1.8, "chain": 2, "cloud_r": 125.0, "cloud_h": 300.0,
+		"damage": 1.1, "every": 1.5, "chain": 3, "cloud_r": 125.0, "cloud_h": 300.0,
 		"desc": "Builds a storm cloud above the base; lightning jumps between enemies inside it."},
 	"gravity": {"name": "Gravity Anchor", "art": "gravity", "rarity": "epic",      "unlock": 14, "ready": true,
 		"strong": ["swarm", "fast"], "glow": Color(0.71, 0.55, 1.0),
-		"damage": 2.0, "every": 3.2, "pull": 2.0, "radius": 115.0, "crush_r": 85.0, "height": 230.0,
+		"damage": 2.8, "every": 2.8, "pull": 2.0, "radius": 115.0, "crush_r": 85.0, "height": 230.0,
 		"desc": "Pulls nearby enemies to one point, then crushes them on a pulse."},
 	"swarm":   {"name": "Swarm Hive",     "art": "swarm",   "rarity": "rare",      "unlock": 18, "ready": true,
 		"strong": ["fast", "high"], "glow": Color(0.2, 0.85, 1.0),
-		"damage": 0.35, "every": 3.5, "count": 4, "life": 4.0, "speed": 230.0,
+		"damage": 0.5, "every": 3.0, "count": 4, "life": 4.0, "speed": 230.0,
 		"desc": "Releases micro-drones that chase enemies for a few seconds."},
 	"prism":   {"name": "Prism Tower",    "art": "prism",   "rarity": "legendary", "unlock": 22, "ready": true,
 		"strong": ["wide"], "glow": Color(1.0, 0.85, 0.6),
-		"damage": 0.5, "every": 3.0, "beams": 5, "spread": 1.0, "split_h": 300.0,
+		"damage": 0.7, "every": 2.6, "beams": 5, "spread": 1.0, "split_h": 300.0,
 		"desc": "Splits one bright shot into a fan of beams across the screen."},
 }
 
@@ -62,8 +62,10 @@ static func mounts_open(stage_unlocked: int) -> int:
 	return n
 
 # Damage multiplier for a turret level: +15% per level.
+# Each level adds 30% (Lv.10 = 3.7x): a new turret helps, an upgraded one carries
+# (Rudy, dev108: turrets should not do most of the damage at the start).
 static func level_mult(level: int) -> float:
-	return 1.0 + 0.15 * (level - 1)
+	return 1.0 + 0.3 * (level - 1)
 
 # Coins to go from `level` to level + 1 (same rule as Gear: Lv.1 to Lv.2 costs 150).
 static func upgrade_cost(level: int) -> int:

@@ -22,7 +22,7 @@ const SLOT_STAT := {
 
 const SETS := {
 	"ion":       {"name": "Ion", "color": Color(0.2, 0.85, 1.0), "unlock_stage": 1,
-		"minor": "gem XP +3% per piece", "bonus3": "Gem XP +15%", "bonus6": "Shield recharges 50% faster",
+		"minor": "gem XP +3% per piece", "bonus3": "Gem XP +15%", "bonus6": "Base shield +50%",
 		"thruster": "flame", "weapon": "laser_pistol"},
 	"scavenger": {"name": "Scavenger", "color": Color(0.45, 1.0, 0.35), "unlock_stage": 11,
 		"minor": "coins +4% per piece", "bonus3": "Coins from kills +20%", "bonus6": "+1 free card refresh per run",

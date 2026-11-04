@@ -33,7 +33,7 @@ const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a
 # few px clear, bobs and drifts, leans into its swings, and dips toward the base on
 # each shot before springing back up. On landing it powers up and lifts off the base.
 const SENTRY_GAP := 9.0
-const SENTRY_HEAD_CX := 0.468              # visual centre of the head picture across its width
+const SENTRY_HEAD_CX := 0.498              # centre of the head's lower body (the part over the base), not the leaning barrels
 # charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
 const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0)}
 const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst", "bolt", "impact", "nova"]
@@ -144,6 +144,7 @@ var _level_after := 1
 var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
 var fxs: Array = []               # short effect sprites {tex, pos, size, rot, life, max, grow, col}
 var _fx: Node2D                   # additive effect layer
+var _hc: Node2D                   # top bar layer (_draw_hud draws on it)
 var _fx_tex := {}
 var stat_pilot_dmg := 0.0
 var stat_turret_dmg := 0.0
@@ -162,6 +163,12 @@ var _stars: Array = []
 var _city: Array = []
 var _tex := {}
 var _safe_top := 0.0              # notch / camera cutout height (SafeAreaMargin.top_inset)
+var _vacuum_t := 0.0              # > 0: every pickup flies to the pilot (wave end)
+var _outro_t := -1.0              # >= 0: stage won, the closing flight is playing
+var _outro_lift := -1.0           # when (in _outro_t) he lifted off
+var _press := {}                 # finger down: {pos, t, moved} (long-press on a turret shows its range)
+var _range_mount := -1           # turret whose range ring is showing
+var _range_a := 0.0
 var _boss_bar_hp := 0.0           # the white "damage taken" chunk that trails the boss bar
 var _boss_bar_max := 0.0
 var _boss_bar_in := 0.0           # 0 -> 1 as the boss bar slides in
@@ -231,6 +238,7 @@ func _ready() -> void:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
 	_tex["goo"] = load("res://fx/goo.png")
 	_tex["ui_heart"] = load("res://icons/ui_heart.png")
+	_tex["ui_coin"] = load("res://icons/ui_coin.png")
 	for n in ["lid_closed", "lid_half", "lid_open"]:
 		_tex[n] = load("res://base/%s.png" % n)
 	for n in FX_NAMES:
@@ -247,6 +255,11 @@ func _ready() -> void:
 	_fx.draw.connect(_draw_fx)
 	HomeProp.load_drone()   # Wingman Drone card
 	add_child(_fx)
+	# the top bar (and boss bar, NEW ENEMY card) on a layer above the pilot and effects but
+	# below the menus, so he flies BEHIND it when he leaves the stage
+	_hc = Node2D.new()
+	_hc.draw.connect(_draw_hud)
+	add_child(_hc)
 	for n in ["hive_lay_1", "hive_lay_2", "hive_lay_3", "hive_lay_4", "hive_hatchling"]:
 		_tex[n] = load("res://enemies/%s.png" % n)
 	_load()
@@ -284,11 +297,14 @@ func _start_stage() -> void:
 	waves = StageData.waves(stage)
 	wave_index = 0
 	stage_cleared = false
+	_vacuum_t = 0.0
+	_outro_t = -1.0
+	_outro_lift = -1.0
 	game_over = false
 	hearts = 3
 	max_hearts = 3
-	shield_max = 150.0
-	hull_max = 100.0
+	shield_max = 100.0
+	hull_max = 80.0
 	shield = shield_max
 	hull = hull_max
 	score = 0
@@ -350,6 +366,9 @@ func _start_stage() -> void:
 	_coin_mult = gs.coins
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
+	# the shield never regenerates (Rudy, dev108); the Ion 6-piece bonus makes it bigger instead
+	shield_max *= _shield_regen
+	shield = shield_max
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
 	_shot_n = 0
@@ -404,7 +423,11 @@ func _start_wave() -> void:
 	# the boss always comes last
 	if wave_queue.has("hive_mother"):
 		wave_queue.erase("hive_mother")
-		wave_queue.append("hive_mother")
+		# from stage 11 the boss comes in a third of the way through, with bugs still arriving
+		if stage >= 11:
+			wave_queue.insert(wave_queue.size() / 3, "hive_mother")
+		else:
+			wave_queue.append("hive_mother")
 	wave_spawn_t = 0.6
 	_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 
@@ -412,11 +435,12 @@ func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
 	if id == "hive_mother":
 		e.pos = Vector2(FIELD_W * 0.5, 40.0)
-		# the mini-boss that ends zone A is a younger, smaller Hive Mother
-		if StageData.boss_kind(stage) == "mini":
+		# a younger, smaller Hive Mother: the zone-A mini-boss, or one arriving mid-stage
+		if StageData.boss_kind(stage) == "mini" or wave_index < waves.size() - 1:
 			e.mini = true
 			e.hp *= 0.6
 			e.hp_max *= 0.6
+		e.r = float(e.r) * (1.4 if e.get("mini", false) else 1.8)   # drawn much bigger now (dev108)
 		_boss_bar_max = e.hp_max
 	_meet(id)
 	enemies.append(e)
@@ -442,8 +466,15 @@ func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
-	if paused or picking or game_over or stage_cleared:
+	if paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
+	# long-press tracking for the turret range ring (where the finger went down, how far it moved)
+	if (event is InputEventScreenTouch or event is InputEventMouseButton) and event.pressed:
+		_press = {"pos": event.position - Vector2(0, _safe_top), "t": time_alive, "moved": 0.0}
+	elif (event is InputEventScreenTouch or event is InputEventMouseButton) and not event.pressed:
+		_press = {}
+	elif (event is InputEventScreenDrag or event is InputEventMouseMotion) and not _press.is_empty():
+		_press.moved = float(_press.moved) + event.relative.length()
 	if event is InputEventScreenTouch:
 		if event.pressed and not dragging:
 			dragging = true
@@ -465,6 +496,58 @@ func _input(event: InputEvent) -> void:
 			last_touch = event.position
 	elif event is InputEventMouseButton and not event.pressed and dragging:
 		dragging = false
+
+# Long-press (0.4 s, finger still) on a turret: its range shows as a see-through red
+# shape until the finger lifts.
+func _update_range_ring(delta: float) -> void:
+	var want := -1
+	if not _press.is_empty() and float(_press.moved) < 14.0 and time_alive - float(_press.t) > 0.4:
+		for t in turrets:
+			if float(t.drop) >= 1.0 and Vector2(_press.pos).distance_to(t.pos + Vector2(0, -30)) < 52.0:
+				want = int(t.mount)
+	if want >= 0:
+		_range_mount = want
+	_range_a = move_toward(_range_a, 1.0 if want >= 0 else 0.0, delta * 6.0)
+
+func _draw_range_ring() -> void:
+	if _range_mount < 0 or _range_a <= 0.01:
+		return
+	var t: Dictionary = {}
+	for tt in turrets:
+		if int(tt.mount) == _range_mount:
+			t = tt
+	if t.is_empty():
+		return
+	var def: Dictionary = Turrets.TURRETS[t.type]
+	var fill := Color(1.0, 0.25, 0.25, 0.12 * _range_a)
+	var edge := Color(1.0, 0.35, 0.35, 0.6 * _range_a)
+	var p: Vector2 = t.pos
+	match String(t.type):
+		"lance":
+			var w: float = float(def.width)
+			var r := Rect2(p.x - w * 0.5, 0.0, w, p.y)
+			draw_rect(r, fill)
+			draw_rect(r, edge, false, 1.2)
+		"storm":
+			_ring_shape(Vector2(p.x, p.y - float(def.cloud_h) * 0.5), float(def.cloud_r), float(def.cloud_h) * 0.5, fill, edge)
+		"gravity":
+			_ring_shape(Vector2(p.x, p.y - float(def.height)), float(def.radius), float(def.radius), fill, edge)
+		"swarm":
+			var rr: float = float(def.speed) * float(def.life) * 0.4
+			_ring_shape(p, rr, rr, fill, edge)
+		"prism":
+			_ring_shape(p, float(def.split_h), float(def.split_h), fill, edge)
+		_:
+			_ring_shape(p, float(def.get("range", 300.0)), float(def.get("range", 300.0)), fill, edge)
+	draw_string(hud_font, p + Vector2(-60, -70), "%s RANGE" % String(def.name).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 120, 11, Color(1, 0.6, 0.6, _range_a))
+
+func _ring_shape(c: Vector2, rx: float, ry: float, fill: Color, edge: Color) -> void:
+	var pts := PackedVector2Array()
+	for i in 49:
+		var a := TAU * i / 48.0
+		pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+	draw_colored_polygon(pts.slice(0, 48), fill)
+	draw_polyline(pts, edge, 1.2, true)
 
 func _drag_by(d: Vector2) -> void:
 	soldier_pos.x = clampf(soldier_pos.x + d.x, 24.0, FIELD_W - 24.0)
@@ -508,11 +591,13 @@ func _process(delta: float) -> void:
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
-	# shield regenerates after 4 s without a hit
-	if hit_t > 4.5 and shield < shield_max:
-		shield = minf(shield + 6.0 * _shield_regen * delta, shield_max)
-	_aim_and_fire(delta)
+	_vacuum_t = maxf(_vacuum_t - delta, 0.0)
+	if _outro_t >= 0.0:
+		_update_outro(delta)
+	else:
+		_aim_and_fire(delta)
 	_update_wingmen(delta)
+	_update_range_ring(delta)
 	for z in zaps:
 		z.life -= delta
 	zaps = zaps.filter(func(z): return z.life > 0.0)
@@ -526,10 +611,11 @@ func _process(delta: float) -> void:
 	anim.update(_wanted_pose(), delta)
 	if hearts <= 0 or hull <= 0.0:
 		_end_run(false)
-	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared:
+	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared and _outro_t < 0.0:
 		wave_index += 1
+		_vacuum_t = 1.4   # what is left flies to him
 		if wave_index >= waves.size():
-			_end_run(true)
+			_outro_t = 0.0   # the stage ends with a short flight off the top (_update_outro)
 		else:
 			_start_wave()
 	queue_redraw()
@@ -577,6 +663,10 @@ func _pilot_motion(delta: float) -> void:
 			a = lerpf(1.0, 0.55 + 0.45 * absf(cos(time_alive * PI * 4.0)), smoothstep(0.0, 0.3, inv_t))
 		_rig_view.update(delta, soldier_pos + Vector2(0, sin(time_alive * 4.0) * 2.5), rig_aim, draw_bank / 0.3,
 			clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), vy_smooth, a)
+		# Aegis: light hugging his outline (brighter with the 2nd Aegis, flares when he is hit)
+		var lv_a := int(card_levels.get("aegis", 0))
+		_rig_view.shield = 0.0 if lv_a <= 0 else minf(0.55 + 0.25 * lv_a + _aegis_flash + 0.6 * smoothstep(0.0, 0.3, inv_t), 1.6)
+		_rig_view.shield_form = minf(_rig_view.shield_form + delta * 1.6, 1.0)
 
 # ------------------------------------------------------------------ aiming and shooting
 
@@ -603,6 +693,29 @@ func _kick(v: float) -> void:
 	gun_recoil = v
 	if _rig_view:
 		_rig_view.fire()
+
+# Stage won (Rudy, dev108): the last pickups fly in, then he turns to the sky and blasts
+# off the top of the screen, and only then does Stage Cleared show.
+func _update_outro(delta: float) -> void:
+	_outro_t += delta
+	dragging = false
+	if _outro_lift < 0.0:
+		# everything left flies to him (at least 0.8 s, at most 2.5 s) while he settles
+		_vacuum_t = maxf(_vacuum_t, 0.2)
+		soldier_pos.x = lerpf(soldier_pos.x, FIELD_W * 0.5, minf(1.0, delta * 2.0))
+		if (gems.is_empty() and _outro_t > 0.8) or _outro_t > 2.5:
+			_outro_lift = _outro_t
+		return
+	var k: float = _outro_t - _outro_lift
+	soldier_pos.x = lerpf(soldier_pos.x, FIELD_W * 0.5, minf(1.0, delta * 3.0))
+	soldier_pos.y -= (80.0 + 900.0 * k * k) * delta   # slow lift-off, then a rush upward
+	if k < 0.05:
+		_burst(soldier_pos + Vector2(0, 30), 24.0, Color(0.55, 0.85, 1.0), 14)
+		_float_text(Vector2(FIELD_W * 0.5, FIELD_H * 0.35), "STAGE CLEAR", Color(0.75, 0.97, 1.0), true)
+	if soldier_pos.y < -90.0 or k > 2.2:
+		_outro_t = -1.0
+		_outro_lift = -1.0
+		_end_run(true)
 
 func _aim_and_fire(delta: float) -> void:
 	idle_aiming = false
@@ -755,7 +868,7 @@ func _update_bullets(delta: float) -> void:
 			score += 10
 			continue
 		if Backdrop.inside_field(Vector2(FIELD_W / 2, BASE_Y), DOME_RX, DOME_RY, b.pos):
-			_hurt_base(6.0)
+			_hurt_base(8.0)
 			_burst(b.pos, 6.0, Color(0.18, 0.9, 1.0), 4)
 			continue
 		if b.pos.distance_to(soldier_pos) < 14.0:
@@ -821,11 +934,15 @@ func _update_enemies(delta: float) -> void:
 					e.fire_t = float(def.fire_every)
 					e.shots = int(e.get("shots", 0)) + 1
 					# every other shot goes for the base instead of the pilot
-					var aim_at: Vector2 = soldier_pos if e.shots % 4 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
+					var aim_at: Vector2 = soldier_pos if e.shots % 2 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
 					# a goo glob leaves the mouth of the sac on the art
 					var mouth := EnemyRig.anchor("spitter", "muzzle", e.pos, float(def.size) * 1.35, float(e.get("tilt_s", 0.0)))
 					var dir: Vector2 = (aim_at - mouth).normalized()
 					enemy_bullets.append({"pos": mouth + dir * 4.0, "vel": dir * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
+					# from stage 14 a Spitter sometimes spits two globs in a small V
+					if stage >= 14 and rng.randf() < 0.5:
+						var d2 := dir.rotated(0.22 if rng.randf() < 0.5 else -0.22)
+						enemy_bullets.append({"pos": mouth + d2 * 4.0, "vel": d2 * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
 					for k in 4:
 						sparks.append({"pos": mouth, "vel": dir.rotated(rng.randf_range(-0.8, 0.8)) * rng.randf_range(30, 80), "life": 0.3, "col": Color(0.75, 0.4, 1.0)})
 			"dive":
@@ -855,7 +972,7 @@ func _update_enemies(delta: float) -> void:
 				e.pos += e.vel * delta + Vector2(sin(e.t * 2.3 + e.ph) * 14.0 * delta, 0.0)
 			"boss":
 				var enraged: bool = e.hp < e.hp_max * 0.5
-				var hover_y := 165.0 + (90.0 if enraged else 0.0)
+				var hover_y := 210.0 + (80.0 if enraged else 0.0)
 				if e.pos.y < hover_y:
 					e.pos.y += e.speed * delta
 				else:
@@ -884,14 +1001,17 @@ func _update_enemies(delta: float) -> void:
 					# the sac bursts: scouts crawl out of it, unfold, then fly
 					e.hatched = true
 					for k in (4 if e.hp < e.hp_max * 0.5 else 3):
-						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 22.0, -30.0),
+						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 36.0, -54.0),
 							"hp": 2.0 * StageData.hp_mult(stage, elite), "hp_max": 2.0 * StageData.hp_mult(stage, elite),
 							"speed": 62.0 * StageData.speed_mult(stage), "r": 13.6, "ph": rng.randf() * TAU,
 							"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 45.0, -70.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
 							"hatchling": true, "fold": 1.0}
 						next_enemy_id += 1
 						live.append(s)
-					_burst(e.pos + Vector2(0, -32), 22.0, Color(0.71, 0.55, 1.0), 12)   # the sacs on her back burst
+					_burst(e.pos + Vector2(0, -58), 40.0, Color(0.71, 0.55, 1.0), 22)   # the sacs on her back burst
+					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(0.8, 0.5, 1.0))
+					_float_text(e.pos + Vector2(0, -110), "HATCHING!", Color(0.85, 0.6, 1.0), true)
+					shake = maxf(shake, 0.35)
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# tilt and wing fold ease toward their targets so dives and hatches never snap
 		e.tilt_s = lerp_angle(float(e.get("tilt_s", _enemy_tilt(e))), _enemy_tilt(e), minf(1.0, delta * 10.0))
@@ -968,8 +1088,6 @@ func _kill(e: Dictionary) -> void:
 	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
 	kills += 1
-	_coins_f += float(def.coins) * _coin_mult
-	coins_earned = int(_coins_f)
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
 	if e.type == "hive_mother":
@@ -992,20 +1110,32 @@ func _kill(e: Dictionary) -> void:
 	for i in count:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-16, 16), rng.randf_range(-10, 10)), "tier": tier, "life": 16.0,
 			"vel": Vector2(rng.randf_range(-30, 30), rng.randf_range(-60, -20))})
+	# coins drop as pickups too (Rudy, dev108: gems = XP, coins = money); the boss showers them
+	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
+	for i in ncoins:
+		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
+			"value": float(def.coins) / float(ncoins),
+			"vel": Vector2(rng.randf_range(-45, 45), rng.randf_range(-75, -30))})
 
 func _update_gems(delta: float) -> void:
 	var live: Array = []
 	for g in gems:
 		g.life -= delta
 		var d: float = g.pos.distance_to(soldier_pos)
-		g.pull = d < magnet_radius
+		g.pull = d < magnet_radius or _vacuum_t > 0.0   # end of a wave: everything flies in
 		if g.pull:
-			g.pos = g.pos.move_toward(soldier_pos, (320.0 + (magnet_radius - d) * 4.0) * delta)
+			# (faster the closer it gets; never negative, so far-off pickups also come in)
+			g.pos = g.pos.move_toward(soldier_pos, (320.0 + maxf(magnet_radius - d, 0.0) * 4.0 + (380.0 if _vacuum_t > 0.0 else 0.0)) * delta)
 		else:
 			g.vel.y = minf(g.vel.y + 70.0 * delta, 55.0)
 			g.vel.x *= 0.98
 			g.pos += g.vel * delta
 
+		if d < 16.0 and g.get("coin", false):
+			_coins_f += float(g.get("value", 1.0)) * _coin_mult
+			coins_earned = int(_coins_f)
+			_fx_add("spark", g.pos, 18.0, 0.2, 0.0, 1.7, Color(1.0, 0.85, 0.35))
+			continue
 		if d < 16.0:
 			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult)
 			_gems_got += 1
@@ -1019,7 +1149,7 @@ func _update_gems(delta: float) -> void:
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
 			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
 			continue
-		if g.life <= 0.0 or g.pos.y > BASE_Y - DOME_RY * 0.5:
+		if (g.life <= 0.0 or g.pos.y > BASE_Y - DOME_RY * 0.5) and _vacuum_t <= 0.0:
 			continue
 		live.append(g)
 	gems = live
@@ -1126,7 +1256,12 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			var dir := Vector2.from_angle(t.ang)
 			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type})
 	else:
-		t.swing = lerpf(float(t.get("swing", 0.0)), 0.0, 0.2)
+		# nothing in range: the head sweeps slowly from side to side, searching
+		var search: float = -PI / 2.0 + sin(time_alive * 0.7 + float(t.mount) * 1.3) * 0.9
+		t.ang = lerp_angle(t.ang, search, minf(1.0, delta * 2.0))
+		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
+		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 3.0)
+		t.cd = maxf(float(t.cd) - delta, 0.0)
 
 func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
 	return absf(e.pos.x - t.pos.x) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 100.0 and e.pos.y < t.pos.y
@@ -1677,12 +1812,14 @@ func _pick_card(id: String) -> void:
 	if over:
 		_overcharge(id)
 	match id:
-		"rapid_pulse": fire_rate_mult *= 1.08
-		"heavy_bolts": damage_mult *= 1.12
+		"rapid_pulse": fire_rate_mult *= 1.10
+		"heavy_bolts": damage_mult *= 1.15
 		"burst_fire": burst_count += 1
 		"aegis":
 			max_hearts = mini(max_hearts + 1, 5)
 			_aegis_flash = 1.0
+			if _rig_view:
+				_rig_view.shield_form = 0.0   # the band closes in around him
 			hearts = mini(hearts + 1, max_hearts)
 		"magnet":
 			magnet_level += 1
@@ -1713,7 +1850,9 @@ func _overcharge(id: String) -> void:
 		"heavy_bolts": _crit6 = true
 		"burst_fire": _burst_pierce = true
 		"magnet": _gem_shield = true
-		"reinforced_hull": _shield_regen *= 1.4
+		"reinforced_hull":
+			shield_max += 40.0
+			shield = minf(shield + 40.0, shield_max)
 		"aegis": _aegis_heal = true
 		"chain_spark": _chain_mult = 2.0
 		"quick_study": _xp_cut = 0.85
@@ -1911,10 +2050,23 @@ func _draw() -> void:
 	_draw_turret_back()
 	# gems
 	for g in gems:
-		var c: Color = StageData.GEM_COLORS[g.tier]
+		var c: Color = StageData.GEM_COLORS[g.tier] if not g.get("coin", false) else Color(1.0, 0.82, 0.3)
 		var p: Vector2 = g.pos
 		var r: float = 4.0 + g.tier * 1.2
 		var blink: float = 1.0 if g.life > 2.0 else (0.4 + 0.6 * absf(sin(g.life * 10.0)))
+		if g.get("coin", false):
+			# Luna's coin, flipping as it falls
+			var ctx: Texture2D = _tex["ui_coin"]
+			var cs: float = 14.0 / ctx.get_width()
+			draw_set_transform(p, 0.0, Vector2(cs * (0.35 + 0.65 * absf(cos(time_alive * 5.0 + p.x))), cs))
+			draw_texture_rect(ctx, Rect2(-ctx.get_size() * 0.5, ctx.get_size()), false, Color(1, 1, 1, blink))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			continue
+		# stand out on any world (Rudy: blue gems vanished on blue skies): a dark backing,
+		# a thin light ring that pulses, then the gem and a white glint
+		draw_circle(p, r * 2.3, Color(0.0, 0.01, 0.05, 0.55 * blink))
+		var pulse: float = 0.5 + 0.5 * sin(time_alive * 5.0 + p.x * 0.1)
+		draw_arc(p, r * (2.0 + 0.4 * pulse), 0.0, TAU, 20, Color(c.lightened(0.5), (0.35 + 0.35 * pulse) * blink), 1.2, true)
 		if g.get("pull", false):
 			# flying to the pilot: a short fading streak behind it
 			var back: Vector2 = (p - soldier_pos).normalized() * (10.0 + 3.0 * g.tier)
@@ -1928,6 +2080,11 @@ func _draw() -> void:
 		draw_set_transform(p + Vector2(0, sin(time_alive * 4.0 + p.x) * 1.2), 0.0, Vector2(gs * spin, gs))
 		draw_texture_rect(gtx, Rect2(-gtx.get_size() * 0.5, gtx.get_size()), false, Color(1, 1, 1, blink))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var gl: float = maxf(0.0, sin(time_alive * 2.2 + p.x * 0.37))
+		if gl > 0.85:
+			var k: float = (gl - 0.85) / 0.15
+			draw_line(p + Vector2(-r * 1.4 * k, -r * 0.6), p + Vector2(r * 1.4 * k, -r * 0.6), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
+			draw_line(p + Vector2(0, -r * 0.6 - r * 1.4 * k), p + Vector2(0, -r * 0.6 + r * 1.4 * k), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
 	_draw_wingmen()
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
@@ -1986,7 +2143,8 @@ func _draw() -> void:
 	for f in (floaters if not picking else []):
 		var big: bool = f.get("big", false)
 		draw_string(title_font if big else hud_font, f.pos + Vector2(-40 if big else -14, 0), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18 if big else 14, Color(f.col, clampf(f.life * 1.5, 0.0, 1.0)))
-	_draw_hud()
+	_draw_range_ring()
+	_hc.queue_redraw()   # the top bar lives on its own layer above the pilot (_hc)
 	_fx.queue_redraw()
 
 func _draw_enemy(e: Dictionary) -> void:
@@ -2024,7 +2182,7 @@ func _draw_enemy(e: Dictionary) -> void:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
 			draw_circle(EnemyRig.anchor("spitter", "sac", e.pos, size, ang), size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(0.8, 0.4, 1.0, 0.25 * swell))
 	if e.type == "hive_mother":
-		EnemyRig.draw_hive_mother(self, e.pos, size * (0.4 if e.get("mini", false) else 0.5), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
+		EnemyRig.draw_hive_mother(self, e.pos, size * (0.68 if e.get("mini", false) else 0.9), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
 	elif e.get("hatchling", false) and fold > 0.01:
 		# Luna's crumpled hatchling cross-fades into the flying Scout as its wings open
 		var ht: Texture2D = _tex["hive_hatchling"]
@@ -2112,7 +2270,7 @@ func _sentry_geo(t: Dictionary) -> Dictionary:
 	var face: float = signf(t.face) * maxf(absf(t.face), 0.15) if t.face != 0.0 else 0.15
 	var art_dir: float = SENTRY_ART_DIR if t.face >= 0.0 else PI - SENTRY_ART_DIR
 	var lean: float = clampf(float(t.get("swing", 0.0)) * 0.06, -0.12, 0.12) + sin(time_alive * 1.3 + ph) * 0.025 * lift
-	var rot: float = clampf(angle_difference(art_dir, t.ang), -0.6, 0.6) + lean
+	var rot: float = clampf(angle_difference(art_dir, t.ang), -1.1, 1.1) + lean   # turns well out to each side
 	var ht: Texture2D = _tex["sentry_head"]
 	var hs: float = SENTRY_HEAD_H / ht.get_height()
 	var recoil: float = 4.0 * float(t.fire_t) / FIRE_TIME.sentry
@@ -2131,30 +2289,6 @@ func _turret_tip(t: Dictionary) -> Vector2:
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
 	fxs.append({"tex": name, "pos": pos, "size": size, "rot": rot, "life": life, "max": life, "grow": grow, "col": col})
 
-# Aegis: a thin hexagonal shell round the pilot on the light layer. Faint at rest, a
-# bright band sweeps down it every couple of seconds, and it flares when the card is
-# picked or when he takes a hit.
-func _draw_aegis() -> void:
-	var lv := int(card_levels.get("aegis", 0))
-	if lv <= 0:
-		return
-	var c := soldier_pos + Vector2(0, sin(time_alive * 4.0) * 2.5 - 2.0)
-	var rx := 40.0 + 6.0 * _aegis_flash
-	var ry := 48.0 + 6.0 * _aegis_flash
-	var sy: float = lerpf(-ry * 1.4, ry * 1.4, fmod(time_alive * 0.45, 1.0))
-	var base_a: float = 0.08 + 0.05 * lv + 0.6 * _aegis_flash + 0.35 * smoothstep(0.0, 0.3, inv_t)
-	var col := Color(0.55, 0.85, 1.0)
-	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	for k in 6:
-		var a0 := -PI / 2.0 + k * PI / 3.0
-		var p0 := Vector2(cos(a0) * rx, sin(a0) * ry)
-		var p1 := Vector2(cos(a0 + PI / 3.0) * rx, sin(a0 + PI / 3.0) * ry)
-		for s in 4:
-			var q0 := p0.lerp(p1, s / 4.0)
-			var q1 := p0.lerp(p1, (s + 1) / 4.0)
-			var band: float = exp(-pow(((q0.y + q1.y) * 0.5 - sy) / 12.0, 2.0))
-			_fx.draw_line(c + q0, c + q1, Color(col, minf(base_a + 0.5 * band, 1.0)), 1.2, true)
-
 # The additive light layer: Luna's shot and hit sprites (painted on black, so they
 # only add light), turret charge glows and beams.
 func _draw_fx() -> void:
@@ -2168,7 +2302,6 @@ func _draw_fx() -> void:
 	for t in turrets:
 		if t.type == "sentry" and float(t.drop) >= 1.0:
 			_draw_sentry_field(t)
-	_draw_aegis()
 	_draw_zaps()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
@@ -2333,8 +2466,8 @@ func _hud_frame(p: Rect2, active: bool) -> void:
 	var cut := 7.0
 	var frame := PackedVector2Array([p.position + Vector2(cut, 0), Vector2(p.end.x, p.position.y), Vector2(p.end.x, p.end.y - cut),
 		Vector2(p.end.x - cut, p.end.y), Vector2(p.position.x, p.end.y), p.position + Vector2(0, cut), p.position + Vector2(cut, 0)])
-	draw_colored_polygon(frame, Color(cyan, 0.16) if active else Color(0.05, 0.08, 0.16, 0.9))
-	draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
+	_hc.draw_colored_polygon(frame, Color(cyan, 0.16) if active else Color(0.05, 0.08, 0.16, 0.9))
+	_hc.draw_polyline(frame, Color(cyan, 0.75), 1.2, true)
 
 func _hud_bar_points() -> PackedVector2Array:
 	var R := 20.0
@@ -2354,7 +2487,7 @@ func _draw_heart(c: Vector2, s: float, on: bool) -> void:
 	var ht: Texture2D = _tex["ui_heart"]
 	var hw := s * 2.3
 	var hh: float = hw * ht.get_height() / ht.get_width()
-	draw_texture_rect(ht, Rect2(c.x - hw * 0.5, c.y - hh * 0.5, hw, hh), false, Color(1, 1, 1) if on else Color(0.25, 0.28, 0.4, 0.45))
+	_hc.draw_texture_rect(ht, Rect2(c.x - hw * 0.5, c.y - hh * 0.5, hw, hh), false, Color(1, 1, 1) if on else Color(0.25, 0.28, 0.4, 0.45))
 
 func _draw_hud() -> void:
 	var cyan := Color(0.18, 0.9, 1.0)
@@ -2363,44 +2496,44 @@ func _draw_hud() -> void:
 	var shape := PackedVector2Array(pts)
 	shape.append(Vector2(FIELD_W, -2 - _safe_top))   # fill reaches up behind the notch
 	shape.append(Vector2(0, -2 - _safe_top))
-	draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
-	draw_polyline(pts, Color(cyan, 0.55), 1.2, true)
+	_hc.draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
+	_hc.draw_polyline(pts, Color(cyan, 0.55), 1.2, true)
 	# row 1: stage number (white) and name (cyan), then the run time
 	var num := "%d " % stage
-	draw_string(title_font, Vector2(16, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	_hc.draw_string(title_font, Vector2(16, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 	var nx: float = 16.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
 	var name_w := 250.0 - nx
-	draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, name_w, 13, cyan)
+	_hc.draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, name_w, 13, cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
-	draw_string(hud_font, Vector2(CARDS_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 92, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
 	# cards button: three small fanned cards
 	_hud_frame(CARDS_RECT, _cards_open)
 	var cc := CARDS_RECT.get_center()
 	for k in 3:
-		draw_set_transform(cc + Vector2((k - 1) * 4.0, 2.0), (k - 1) * 0.28, Vector2.ONE)
-		draw_rect(Rect2(-5, -8, 10, 14), Color(0.05, 0.08, 0.16))
-		draw_rect(Rect2(-5, -8, 10, 14), Color(0.85, 0.75, 1.0) if k == 1 else Color(cyan, 0.9), false, 1.2)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_hc.draw_set_transform(cc + Vector2((k - 1) * 4.0, 2.0), (k - 1) * 0.28, Vector2.ONE)
+		_hc.draw_rect(Rect2(-5, -8, 10, 14), Color(0.05, 0.08, 0.16))
+		_hc.draw_rect(Rect2(-5, -8, 10, 14), Color(0.85, 0.75, 1.0) if k == 1 else Color(cyan, 0.9), false, 1.2)
+	_hc.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# game speed
 	_hud_frame(SPEED_RECT, game_speed > 1.0)
-	draw_string(title_font, SPEED_RECT.position + Vector2(0, 20), "x%s" % (str(game_speed) if game_speed != 1.0 else "1"), HORIZONTAL_ALIGNMENT_CENTER, SPEED_RECT.size.x, 11, Color.WHITE if _speeds().size() > 1 else Color(1, 1, 1, 0.5))
+	_hc.draw_string(title_font, SPEED_RECT.position + Vector2(0, 20), "x%s" % (str(game_speed) if game_speed != 1.0 else "1"), HORIZONTAL_ALIGNMENT_CENTER, SPEED_RECT.size.x, 11, Color.WHITE if _speeds().size() > 1 else Color(1, 1, 1, 0.5))
 	# pause button: two thin bars (a play arrow while paused)
 	var p := PAUSE_RECT
 	_hud_frame(p, paused)
 	var pc := p.get_center()
 	if paused:
-		draw_colored_polygon(PackedVector2Array([pc + Vector2(-5, -8), pc + Vector2(8, 0), pc + Vector2(-5, 8)]), Color.WHITE)
+		_hc.draw_colored_polygon(PackedVector2Array([pc + Vector2(-5, -8), pc + Vector2(8, 0), pc + Vector2(-5, 8)]), Color.WHITE)
 	else:
-		draw_rect(Rect2(pc + Vector2(-6, -8), Vector2(3.5, 16)), Color.WHITE)
-		draw_rect(Rect2(pc + Vector2(2.5, -8), Vector2(3.5, 16)), Color.WHITE)
+		_hc.draw_rect(Rect2(pc + Vector2(-6, -8), Vector2(3.5, 16)), Color.WHITE)
+		_hc.draw_rect(Rect2(pc + Vector2(2.5, -8), Vector2(3.5, 16)), Color.WHITE)
 	# row 2: score, waves as pips (text when there are many), hearts
 	var y2 := 55.0
-	draw_string(hud_font, Vector2(16, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	draw_string(hud_font, Vector2(56, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+	_hc.draw_string(hud_font, Vector2(16, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	_hc.draw_string(hud_font, Vector2(56, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	var wave_now := mini(wave_index + 1, waves.size())
 	var wx := 160.0
-	draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	_hc.draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
 	wx += 36.0
 	if waves.size() <= 10:
 		for i in waves.size():
@@ -2408,12 +2541,12 @@ func _draw_hud() -> void:
 			var dia := PackedVector2Array([Vector2(r.get_center().x, r.position.y), Vector2(r.end.x, r.get_center().y),
 				Vector2(r.get_center().x, r.end.y), Vector2(r.position.x, r.get_center().y), Vector2(r.get_center().x, r.position.y)])
 			if i < wave_now - 1:
-				draw_colored_polygon(dia, Color(cyan, 0.85))
+				_hc.draw_colored_polygon(dia, Color(cyan, 0.85))
 			elif i == wave_now - 1:
-				draw_colored_polygon(dia, Color.WHITE)
-			draw_polyline(dia, Color(cyan, 0.6), 1.0, true)
+				_hc.draw_colored_polygon(dia, Color.WHITE)
+			_hc.draw_polyline(dia, Color(cyan, 0.6), 1.0, true)
 	else:
-		draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		_hc.draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	for i in max_hearts:
 		_draw_heart(Vector2(FIELD_W - 22 - (max_hearts - 1 - i) * 22, y2 - 2), 7.5, i < hearts)
 	# XP along the bar's bottom line, and the level on a tab hanging under it
@@ -2421,25 +2554,25 @@ func _draw_hud() -> void:
 	var x0 := 20.0
 	var x1 := FIELD_W - 20.0
 	var xp := clampf(run_xp / need, 0.0, 1.0)
-	draw_line(Vector2(x0, HUD_H), Vector2(lerpf(x0, x1, xp), HUD_H), Color(0.71, 0.55, 1.0), 3.0, true)
+	_hc.draw_line(Vector2(x0, HUD_H), Vector2(lerpf(x0, x1, xp), HUD_H), Color(0.71, 0.55, 1.0), 3.0, true)
 	if xp > 0.01:
-		draw_circle(Vector2(lerpf(x0, x1, xp), HUD_H), 2.2, Color(0.92, 0.86, 1.0))
+		_hc.draw_circle(Vector2(lerpf(x0, x1, xp), HUD_H), 2.2, Color(0.92, 0.86, 1.0))
 	var tab := PackedVector2Array([Vector2(16, HUD_H), Vector2(16, HUD_H + 14), Vector2(22, HUD_H + 20), Vector2(64, HUD_H + 20), Vector2(70, HUD_H + 14), Vector2(70, HUD_H)])
-	draw_colored_polygon(tab, Color(0.03, 0.045, 0.10, 0.82))
-	draw_polyline(tab, Color(0.71, 0.55, 1.0, 0.7), 1.0, true)
-	draw_string(hud_font, Vector2(16, HUD_H + 15), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, Color(0.88, 0.8, 1.0))
+	_hc.draw_colored_polygon(tab, Color(0.03, 0.045, 0.10, 0.82))
+	_hc.draw_polyline(tab, Color(0.71, 0.55, 1.0, 0.7), 1.0, true)
+	_hc.draw_string(hud_font, Vector2(16, HUD_H + 15), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, 54, 11, Color(0.88, 0.8, 1.0))
 	for e in enemies:
 		if e.type == "hive_mother":
 			_draw_boss_bar(e)
 	_draw_intro()
 
-# A boss's health in stacked layers (3 for a boss, 2 for a mini-boss): the bar empties
+# A boss's health in stacked layers (5 for a boss, 3 for a mini-boss): the bar empties
 # one colour at a time, the next colour shows underneath, "x3" counts what is left,
 # a white chunk trails each hit and the bar flashes when a layer breaks.
-const BOSS_LAYER_COLS := [Color(0.95, 0.30, 0.40), Color(1.0, 0.55, 0.25), Color(0.80, 0.40, 1.0)]
+const BOSS_LAYER_COLS := [Color(0.95, 0.30, 0.40), Color(1.0, 0.55, 0.25), Color(1.0, 0.85, 0.3), Color(0.45, 0.9, 0.5), Color(0.80, 0.40, 1.0)]
 
 func _boss_layers(e: Dictionary) -> int:
-	return 2 if e.get("mini", false) else 3
+	return 3 if e.get("mini", false) else 5
 
 func _draw_boss_bar(e: Dictionary) -> void:
 	var a: float = smoothstep(0.0, 1.0, _boss_bar_in)
@@ -2457,23 +2590,23 @@ func _draw_boss_bar(e: Dictionary) -> void:
 	var cut := 5.0
 	var frame := PackedVector2Array([r.position + Vector2(-cut - 3, 4), r.position + Vector2(-3, -3), Vector2(r.end.x + 3, r.position.y - 3),
 		Vector2(r.end.x + cut + 3, r.position.y + 4), Vector2(r.end.x + 3, r.end.y + 3), Vector2(r.position.x - 3, r.end.y + 3), r.position + Vector2(-cut - 3, 4)])
-	draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.85 * a))
+	_hc.draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.85 * a))
 	var col: Color = BOSS_LAYER_COLS[(cur - 1) % BOSS_LAYER_COLS.size()]
 	# the next layer down shows under the current one
 	if cur > 1:
-		draw_rect(r, Color(BOSS_LAYER_COLS[(cur - 2) % BOSS_LAYER_COLS.size()], 0.55 * a))
-	draw_rect(Rect2(r.position, Vector2(bw * lag_fill, r.size.y)), Color(1, 1, 1, 0.75 * a))
-	draw_rect(Rect2(r.position, Vector2(bw * fill, r.size.y)), Color(col, a))
-	draw_line(r.position + Vector2(0, 1), Vector2(r.position.x + bw * fill, r.position.y + 1), Color(1, 1, 1, 0.35 * a), 1.0)   # top sheen
+		_hc.draw_rect(r, Color(BOSS_LAYER_COLS[(cur - 2) % BOSS_LAYER_COLS.size()], 0.55 * a))
+	_hc.draw_rect(Rect2(r.position, Vector2(bw * lag_fill, r.size.y)), Color(1, 1, 1, 0.75 * a))
+	_hc.draw_rect(Rect2(r.position, Vector2(bw * fill, r.size.y)), Color(col, a))
+	_hc.draw_line(r.position + Vector2(0, 1), Vector2(r.position.x + bw * fill, r.position.y + 1), Color(1, 1, 1, 0.35 * a), 1.0)   # top sheen
 	# quarter ticks
 	for k in range(1, 4):
 		var tx := r.position.x + bw * k * 0.25
-		draw_line(Vector2(tx, r.position.y), Vector2(tx, r.end.y), Color(0.03, 0.045, 0.10, 0.6 * a), 1.0)
+		_hc.draw_line(Vector2(tx, r.position.y), Vector2(tx, r.end.y), Color(0.03, 0.045, 0.10, 0.6 * a), 1.0)
 	var edge := Color(1, 1, 1, a).lerp(Color(col, a), 1.0 - _boss_flash)
-	draw_polyline(frame, Color(edge, (0.6 + 0.4 * _boss_flash) * a), 1.0 + _boss_flash, true)
+	_hc.draw_polyline(frame, Color(edge, (0.6 + 0.4 * _boss_flash) * a), 1.0 + _boss_flash, true)
 	var bname := "YOUNG HIVE MOTHER" if e.get("mini", false) else "HIVE MOTHER"
-	draw_string(title_font, Vector2(r.position.x, by - 7), bname, HORIZONTAL_ALIGNMENT_LEFT, bw - 40, 11, Color(1, 0.85, 0.9, a))
-	draw_string(title_font, Vector2(r.end.x - 40, by - 7), "x%d" % cur, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12 + int(4.0 * _boss_flash), Color(col.lightened(0.3), a))
+	_hc.draw_string(title_font, Vector2(r.position.x, by - 7), bname, HORIZONTAL_ALIGNMENT_LEFT, bw - 40, 11, Color(1, 0.85, 0.9, a))
+	_hc.draw_string(title_font, Vector2(r.end.x - 40, by - 7), "x%d" % cur, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12 + int(4.0 * _boss_flash), Color(col.lightened(0.3), a))
 
 # "NEW ENEMY" card under the top bar, the first time a player meets a bug type. It
 # slides in, stays a few seconds and fades; the game keeps running behind it.
@@ -2487,17 +2620,17 @@ func _draw_intro() -> void:
 	var cut := 10.0
 	var frame := PackedVector2Array([r.position + Vector2(cut, 0), Vector2(r.end.x, r.position.y), Vector2(r.end.x, r.end.y - cut),
 		Vector2(r.end.x - cut, r.end.y), Vector2(r.position.x, r.end.y), r.position + Vector2(0, cut), r.position + Vector2(cut, 0)])
-	draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.88 * a))
-	draw_polyline(frame, Color(1.0, 0.55, 0.35, 0.8 * a), 1.2, true)
+	_hc.draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.88 * a))
+	_hc.draw_polyline(frame, Color(1.0, 0.55, 0.35, 0.8 * a), 1.2, true)
 	# the bug itself, small, on the left
 	var icon := r.position + Vector2(38.0, 37.0)
 	if id == "hive_mother":
-		EnemyRig.draw_hive_mother(self, icon, 26.0, time_alive, 0.0, false)
+		EnemyRig.draw_hive_mother(_hc, icon, 26.0, time_alive, 0.0, false)
 	else:
-		EnemyRig.draw_bug(self, id, icon, 46.0, time_alive, 0.0, 0.0, 0.0, 1.0, a)
-	draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
-	draw_string(hud_font, r.position + Vector2(76.0, 38.0), id.replace("_", " ").capitalize(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
-	draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), String(StageData.ENEMIES[id].intro), HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
+		EnemyRig.draw_bug(_hc, id, icon, 46.0, time_alive, 0.0, 0.0, 0.0, 1.0, a)
+	_hc.draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
+	_hc.draw_string(hud_font, r.position + Vector2(76.0, 38.0), id.replace("_", " ").capitalize(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
+	_hc.draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), String(StageData.ENEMIES[id].intro), HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
 
 # Luna's armoured hatch over a locked socket. On the first run after a mount opens,
 # the hatch tips up (closed -> half -> open, standing behind the socket) with a cyan

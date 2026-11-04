@@ -3,7 +3,8 @@ extends RefCounted
 # Power cards offered on each run level. A card is one entry here; battle.gd
 # applies "effect" to its run stats. Rarity sets draw weight and the frame.
 # Four tiers: common 60%, uncommon 28%, epic 10%, legendary 2%.
-# Overcharge: the third pick of a card (the last pick for a card that stops at 2) adds
+# Every card has at most 3 levels (dev108); the third pick (the last for a card that stops
+# at 2) is its overcharge, and a card at its max is never offered again. Overcharge adds
 # a bonus on top. Fusion: two overcharged cards of a pair unlock a fusion card that
 # keeps both powers and adds its own (FUSIONS; offered in the middle slot of a pick).
 
@@ -15,23 +16,23 @@ const COLOR := {"common": Color(0.75, 0.78, 0.85), "uncommon": Color(0.2, 0.9, 1
 	"epic": Color(0.71, 0.55, 1.0), "legendary": Color(1.0, 0.8, 0.3), "fusion": Color(1.0, 0.45, 0.8)}
 
 const CARDS := {
-	"rapid_pulse":     {"name": "Rapid Pulse",     "family": "pilot",  "rarity": "common",    "max": 5, "icon": "nav_battle",
-		"desc": "Fire rate +8%"},
-	"heavy_bolts":     {"name": "Heavy Bolts",     "family": "pilot",  "rarity": "common",    "max": 5, "icon": "nav_battle",
-		"desc": "Bolt damage +12%"},
+	"rapid_pulse":     {"name": "Rapid Pulse",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
+		"desc": "Fire rate +10%"},
+	"heavy_bolts":     {"name": "Heavy Bolts",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
+		"desc": "Bolt damage +15%"},
 	"burst_fire":      {"name": "Burst Fire",      "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
 		"desc": "Each trigger fires a burst: 2, then 3, then 4 bolts"},
 	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
 		"desc": "+1 heart (max 5)"},
-	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 4, "icon": "gem",
+	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Pulls gems from further away"},
-	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 4, "icon": "chest",
+	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 3, "icon": "chest",
 		"desc": "Base hull +25%, and repairs that much"},
-	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 4, "icon": "event",
+	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
 		"desc": "Every 5th bolt sparks to 1 more bug per level"},
-	"wingman":         {"name": "Wingman Drone",   "family": "pilot",  "rarity": "epic",      "max": 4, "icon": "nav_gear",
+	"wingman":         {"name": "Wingman Drone",   "family": "pilot",  "rarity": "epic",      "max": 3, "icon": "nav_gear",
 		"desc": "A drone flies at your side and shoots; faster each level"},
-	"quick_study":     {"name": "Quick Study",     "family": "pilot",  "rarity": "common",    "max": 4, "icon": "gem",
+	"quick_study":     {"name": "Quick Study",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Gems give +10% XP"},
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen"},
@@ -45,7 +46,7 @@ const OVERCHARGE := {
 	"burst_fire":      "Last burst bolt pierces",
 	"aegis":           "Heals 1 heart each new wave",
 	"magnet":          "Each gem repairs 1 shield",
-	"reinforced_hull": "Shield recharges 40% faster",
+	"reinforced_hull": "Base shield +40",
 	"chain_spark":     "Sparks hit twice as hard",
 	"wingman":         "A second drone joins",
 	"quick_study":     "Level-ups need 15% less XP",

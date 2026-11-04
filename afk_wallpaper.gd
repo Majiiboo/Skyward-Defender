@@ -416,7 +416,7 @@ func _draw_turrets() -> void:
 # just above it and turning to its target (mirrored for targets on the right).
 const SENTRY_BASE_W := 58.0
 const SENTRY_HEAD_H := 66.0
-const SENTRY_HEAD_CX := 0.468
+const SENTRY_HEAD_CX := 0.498
 const SENTRY_ART_DIR := -PI / 2.0 - 0.26
 var _sentry_tex := {"base": preload("res://turrets/sentry_base.png"), "head": preload("res://turrets/sentry_head.png")}
 
@@ -439,7 +439,7 @@ func _draw_wall_sentry(i: int, bottom: float) -> void:
 	var ang: float = _turret_ang[i]
 	var face := -1.0 if cos(ang) > 0.1 else 1.0
 	var art_dir: float = SENTRY_ART_DIR if face > 0.0 else PI - SENTRY_ART_DIR
-	var rot: float = clampf(angle_difference(art_dir, ang), -0.6, 0.6)
+	var rot: float = clampf(angle_difference(art_dir, ang), -1.1, 1.1)
 	var ht: Texture2D = _sentry_tex.head
 	var hsz := ht.get_size() * (SENTRY_HEAD_H * k / ht.get_height())
 	draw_set_transform(_sentry_pivot(i, bottom), rot, Vector2(face, 1.0))
