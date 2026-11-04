@@ -47,6 +47,12 @@ const WEAPONS := {
 	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.6, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0},
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
 	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.38, "speed": 470.0, "damage": 1.75, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true},
+	# Nightmare set: slow rail bolts that pierce every bug in their line
+	"railgun": {"name": "Railgun", "interval": 0.45, "speed": 640.0, "damage": 1.5, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0, "rail": true},
+	# Solar set: fast, long-range bolts
+	"laser_rifle": {"name": "Laser Rifle", "interval": 0.2, "speed": 720.0, "damage": 0.92, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0},
+	# Frost set: rapid small bolts
+	"frost_rifle": {"name": "Frost Rifle", "interval": 0.14, "speed": 560.0, "damage": 0.64, "projectiles": 1, "spread": 0.03, "hit_radius": 18.0},
 }
 var weapon_id := "laser_pistol"
 
@@ -134,6 +140,7 @@ var _magnet_base := MAGNET_BASE
 var _recovery := 1.0
 var _gem_xp_mult := 1.0
 var _coin_mult := 1.0
+var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
 var _coins_f := 0.0
 var _shield_regen := 1.0
 var _pierce5 := false
@@ -398,10 +405,15 @@ func _start_stage() -> void:
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
 	# the shield never regenerates (Rudy, dev108); the Ion 6-piece bonus makes it bigger instead
-	shield_max *= _shield_regen
+	shield_max *= gs.shield
 	shield = shield_max
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
+	_turret_dmg_mult = gs.turret_dmg
+	_turret_rate = gs.turret_rate
+	_pilot_xp_mult = gs.pilot_xp
+	if gs.chill:
+		frost_level = maxi(frost_level, 1)
 	_shot_n = 0
 	weapon_id = gs.weapon
 	PilotSprite.style = gs.thruster
@@ -827,12 +839,13 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		var crit: bool = _crit6 and _shot_n % 6 == 0
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
+		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail,
-			"pierce": pierce or rail or (_pierce5 and _shot_n % 5 == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % 5 == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
-			"frost": frost_level > 0, "rail": rail})
+			"frost": frost_level > 0, "rail": rail or rail_gun})
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -1664,7 +1677,7 @@ func _end_run(won: bool) -> void:
 	var was := int(d.get("stage_unlocked", 1))
 	var old_xp := int(d.get("pilot_xp", 0))
 	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and stage >= was else 0
-	_xp_gain = int(score / 50) + _xp_bonus
+	_xp_gain = int(score / 50 * _pilot_xp_mult) + _xp_bonus
 	_level_before = Turrets.pilot_level(old_xp)
 	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
@@ -2075,7 +2088,7 @@ func _overcharge(id: String) -> void:
 		"heavy_bolts": _crit6 = true
 		"piercing_rounds": _pierce_bonus = true
 		"frost_rounds": _frost_bonus = true
-		"turret_overclock": _turret_dmg_mult = 1.3
+		"turret_overclock": _turret_dmg_mult *= 1.3
 		"burst_fire": _burst_pierce = true
 		"magnet": _gem_shield = true
 		"reinforced_hull":

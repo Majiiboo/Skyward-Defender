@@ -74,8 +74,10 @@ func _save() -> void:
 func _lvl(id: String) -> int:
 	return GearData.level(gear, id)
 
+# Luna's picture of the piece at its upgrade tier (the old painted one as a fallback)
 func _pic(id: String) -> Texture2D:
-	return load("res://gear/%s.png" % id)
+	var p := "res://gear/%s_t%d.png" % [id, GearData.tier(_lvl(id))]
+	return load(p) if ResourceLoader.exists(p) else load("res://gear/%s.png" % id)
 
 # ------------------------------------------------------------------ build
 
@@ -245,12 +247,11 @@ func _select(slot: String) -> void:
 	var lv := _lvl(id)
 	var st: Dictionary = GearData.SLOT_STAT[slot]
 	var set_info: Dictionary = GearData.SETS[info.set]
-	var next_txt := _stat_text(slot, lv + 1) if lv < GearData.MAX_LEVEL else "max level"
-	_detail.text = "%s  (%s set)  Lv.%d\n%s: %s  ->  %s\nSet stat: %s" % [info.name, set_info.name, lv, st.text, _stat_text(slot, lv), next_txt, set_info.minor]
+	# short and plain (Rudy): name, the main stat with its next level, the set's extra
+	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < GearData.MAX_LEVEL else "  (max)"
+	_detail.text = "%s  Lv.%d\n%s %s%s\n%s" % [info.name, lv, st.text, _stat_text(slot, lv), next_txt, set_info.minor]
 	if slot == "Weapon":
-		_detail.text += "\nWeapon: %s" % {"laser_pistol": "steady single bolts", "dual_minis": "two bolts side by side", "pulse_cannon": "slow, heavy bolts"}[set_info.weapon]
-	if slot == "Jetpack":
-		_detail.text += "\nThruster: %s" % PilotSprite.THRUSTERS[set_info.thruster].name
+		_detail.text += "\n" + GearData.WEAPON_TEXT[set_info.weapon]
 	var cost := GearData.upgrade_cost(lv)
 	_upgrade_btn.disabled = lv >= GearData.MAX_LEVEL or coins < cost
 	_upgrade_btn.text = "MAX" if lv >= GearData.MAX_LEVEL else _upgrade_text(cost, lv)
@@ -261,8 +262,10 @@ func _select(slot: String) -> void:
 		if n == 0:
 			continue
 		var s: Dictionary = GearData.SETS[set_id]
-		lines.append("%s %d/6:  %s %s  ·  %s %s" % [s.name, n, "ON" if n >= 3 else "(3)", s.bonus3, "ON" if n >= 6 else "(6)", s.bonus6])
-	_bonus.text = "SET BONUSES\n" + "\n".join(lines)
+		var b3: String = s.bonus3 if n >= 3 else "3: " + s.bonus3
+		var b6: String = s.bonus6 if n >= 6 else "6: " + s.bonus6
+		lines.append("%s %d/6  ·  %s  ·  %s" % [s.name, n, b3, b6])
+	_bonus.text = "SETS\n" + "\n".join(lines)
 	# the platform's buildings light up in the colour of your strongest set
 	if _plat:
 		var best := ""
@@ -283,7 +286,7 @@ func _stat_text(slot: String, lv: int) -> String:
 			return "+%d px" % int(per * lv)
 		"Chest":
 			var hearts := (1 if lv >= 5 else 0) + (1 if lv >= 10 else 0)
-			return "+%d%%%s" % [int(per * lv * 100.0), (", +%d heart" % hearts) if hearts > 0 else ""]
+			return "+%d%%%s" % [int(per * lv * 100.0), ("  +%d heart%s" % [hearts, "s" if hearts > 1 else ""]) if hearts > 0 else ""]
 	return "+%d%%" % int(round(per * lv * 100.0))
 
 func _equip(id: String) -> void:

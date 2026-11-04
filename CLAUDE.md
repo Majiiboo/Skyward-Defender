@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev117 (code 117).
+  go UP every package (same signing key, install-over). Current: dev118 (code 118).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -79,6 +79,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun
    port or emitter, a charge frame).
+8b. 3D GEAR DONE (dev118): six sets (ion 1, scavenger 11, void 21, nightmare 31, solar 41, frost 51
+   = unlock_stage), 36 ITEMS, Luna 3D renders art_src/gear3d/<set>-<slot>.webp cut by
+   tools/cut_gear3d.gd into gear/<id>_t1..t3.png; GearData.tier(level) picks Lv.1-3/4-7/8-10;
+   gear.gd _pic falls back to the old painted gear/<id>.png. New weapons in battle.gd WEAPONS:
+   railgun (rail: every bolt pierces), laser_rifle, frost_rifle; Scavenger weapon = Arc Welder
+   (dual_minis). New stats: turret_dmg, turret_rate, pilot_xp (_pilot_xp_mult), shield, chill
+   (frost_level >= 1). Gear text kept SHORT (Rudy): "ATK +12% -> +18%", one line per set.
+   Open: Void and Nightmare chest tiers overlap in the render (LUNA-BRIEF-chest-spacing.md);
+   Luna uses Canva only to edit (LUNA-GUIDE-canva.md).
 8. GEAR REWORK DONE (dev97): gear_data.gd (GearData: SLOTS, SETS ion/scavenger/void unlocked at
    stages 1/11/21, ITEMS 18, stats() -> battle, read() maps old saves), gear/ cut by
    tools/cut_gear_art.gd, WEAPONS dual_minis + pulse_cannon, Void pierce5, Gear page

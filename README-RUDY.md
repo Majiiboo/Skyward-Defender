@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev117 (version/code=117 and version/name="1.0-dev117" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev118 (version/code=118 and version/name="1.0-dev118" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev118: six 3D gear sets
+
+- All 36 of Luna's 3D gear pieces are in the Gear page, each with 3 pictures: Lv.1-3,
+  Lv.4-7 and Lv.8-10 show Tier 1, 2 and 3, so an upgrade you can see.
+- Three new sets: Nightmare (opens after stage 30), Solar (after 40) and Frost (after 50).
+  - Nightmare: Railgun (piercing shots); 3 pieces = Turret ATK +15%, 6 = turrets fire 20% faster.
+  - Solar: Sun Rifle (fast shots); 3 = Pilot XP +20%, 6 = +1 heart.
+  - Frost: Frost Rifle (rapid shots); 3 = Shield +20%, 6 = every shot slows bugs.
+- The Scavenger weapon is now the Arc Welder (still twin shots).
+- Gear text is short now: "ATK +12% -> +18%", one line per set.
+- Art cutter: tools/cut_gear3d.gd (art_src/gear3d -> gear/<set>_<slot>_t1..t3.png).
 
 ## dev117: a chunkier pilot in battle
 
