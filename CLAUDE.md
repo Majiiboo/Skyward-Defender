@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev108 (code 108).
+  go UP every package (same signing key, install-over). Current: dev109 (code 109).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -53,7 +53,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 - Waves 5/10/20/30 by stage band; mini-boss end of 5-wave stages, later mini every 5,
   big every 10. Sectors: Hive (insects), Scrap drones, Magma, Crystal, Plasma, Sentinel AI.
 - Cards: common 60/uncommon 28/epic 10/legendary 2. 3 per pick, 1 free refresh (ad and
-  crystal refreshes later). Run level cap 12, slower picks after. Percent cards stack
+  crystal refreshes later). Run level cap 18 (dev109), slower picks after; cards and level build over the whole stage, reset per stage. Percent cards stack
   (Rapid Pulse +8%, Heavy Bolts +12%, Magnet +50% of the base 60 px range, Reinforced Hull +25%).
   Burst Fire replaces spread (spread is reserved for the dual-gun unlock).
 - Base: shield 100, hull 80; NEITHER regenerates (dev108); hull only takes damage once the shield is gone. Pilot has 3 hearts

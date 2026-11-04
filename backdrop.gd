@@ -12,7 +12,8 @@ const PURPLE := Color(0.71, 0.55, 1.0)
 
 # ---- Luna's base strip (base/base_strip.png, cut by tools/cut_battle_art.gd) ----
 # Socket ring centres as fractions of the strip picture (x across, y down).
-const STRIP_SOCKETS := [Vector2(0.144, 0.53), Vector2(0.297, 0.524), Vector2(0.701, 0.523), Vector2(0.857, 0.533)]
+# socket ring centres measured on the painted strip (dev109; sockets 1/4 and 2/3 mirror each other)
+const STRIP_SOCKETS := [Vector2(0.128, 0.565), Vector2(0.284, 0.565), Vector2(0.714, 0.565), Vector2(0.871, 0.565)]
 static var _strip: Texture2D
 static var _strip_glow: Texture2D
 

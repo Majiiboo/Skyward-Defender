@@ -34,6 +34,8 @@ const CARDS := {
 		"desc": "A drone flies at your side and shoots; faster each level"},
 	"quick_study":     {"name": "Quick Study",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Gems give +10% XP"},
+	"shield_recharge": {"name": "Shield Recharge", "family": "base",   "rarity": "uncommon",  "max": 3, "icon": "chest", "from_level": 4,
+		"desc": "Base shield recharges 1% a second (more each level)"},
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen"},
 }
@@ -48,6 +50,7 @@ const OVERCHARGE := {
 	"magnet":          "Each gem repairs 1 shield",
 	"reinforced_hull": "Base shield +40",
 	"chain_spark":     "Sparks hit twice as hard",
+	"shield_recharge": "Also slowly repairs the hull",
 	"wingman":         "A second drone joins",
 	"quick_study":     "Level-ups need 15% less XP",
 }
@@ -88,13 +91,14 @@ static func fusions_ready(levels: Dictionary) -> Array:
 	return out
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null) -> Array:
+# run_level: cards with "from_level" only show up from that run level on.
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max):
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)):
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

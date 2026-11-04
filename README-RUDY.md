@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev108 (version/code=108 and version/name="1.0-dev108" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev109 (version/code=109 and version/name="1.0-dev109" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,29 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev109: turret sockets, Shield Recharge, card pacing, balance, coin report
+
+- Turrets now sit dead centre in their sockets, in battle and on Home. The socket
+  positions in the code were off from the rings Luna painted (up to 5 pixels); they
+  are now measured from her strip.
+- New card, Shield Recharge (uncommon, from your 4th card on): the base shield
+  recharges 1% a second, 2% and 3% with more picks; its overcharge also slowly repairs
+  the hull. Picture requested from Luna.
+- Cards and level build up over the whole stage (never reset per wave). Cards now come
+  a bit faster (one about every 10-14 s) and keep coming up to level 18.
+- Balance:
+  - Base shield 140, hull 100 (no regeneration).
+  - Every third Spitter glob goes for the base.
+  - Fewer extra Spitters in later stages; double-shot Spitters only from stage 25.
+  - Bug toughness grows 4.5% per stage after stage 10 (was 6%).
+  - The boss arriving with bugs still coming, and mid-stage young Hive Mothers, now
+    start on planet 3 (stage 21+).
+  - Autopilot results: stages 1-18 are won; stage 21 is winnable and stage 25 is hard
+    with level-1 gear, which upgrades will answer.
+- ECONOMY.md: how many coins each wave, stage and boss pays, against what Gear and
+  turret upgrades cost, plus suggestions (a stage-clear bonus, bigger boss coins on
+  later planets).
 
 ## dev108: battle feel (batch A from Rudy's stage 1-13 playtest)
 

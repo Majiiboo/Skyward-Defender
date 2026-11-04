@@ -67,3 +67,6 @@ Upgrading a gear piece should change its look. As a test, please paint the **Ion
 - **Tier 3:** gold trim, a glowing orb, small floating energy shards.
 
 If Rudy likes it, we'll do the other pieces the same way.
+
+## 7. One more card picture
+Shield Recharge (a new card): the base dome with a ring of cyan light flowing back over it, like a battery refilling. Same size and style as your other card pictures.

@@ -113,7 +113,7 @@ static func hp_mult(stage: int, elite: bool) -> float:
 	# gentle through the first planet (+7% a stage), a little steeper after it (+8%), when
 	# the player has turrets and upgrades to answer with
 	# (beyond the first planet +6% a stage; gear and turret upgrades carry the player there)
-	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.06, maxi(stage - 10, 0)) * (1.85 if elite else 1.0)
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.045, maxi(stage - 10, 0)) * (1.85 if elite else 1.0)
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4
@@ -151,13 +151,13 @@ static func waves(stage: int) -> Array:
 			wave.append(["drifter", 1 + w / 3 + extra / 3])
 		# Spitters make you move: from wave 3 of stage 3, more later
 		if stage >= 3 and w >= (3 if stage == 3 else 2):
-			wave.append(["spitter", 1 + (w - 1) / (4 if stage == 3 else 3) + extra / 4])
+			wave.append(["spitter", 1 + (w - 1) / (4 if stage == 3 else 3) + extra / 6])
 		if stage >= 4 and w >= 4:
 			wave.append(["diver", 1 + (w - 3) / 4 + extra / 5])   # kamikazes: few, but they hit hard
 		if stage % 5 == 0 and w == n:
 			wave.append(["hive_mother", 1])
-		# later stages: a young Hive Mother turns up halfway through (on every other stage)
-		if stage >= 12 and stage % 2 == 0 and stage % 5 != 0 and w == n / 2:
+		# from planet 3 (stage 22): a young Hive Mother turns up halfway through, every other stage
+		if stage >= 22 and stage % 2 == 0 and stage % 5 != 0 and w == n / 2:
 			wave.append(["hive_mother", 1])
 		out.append(wave)
 	return out

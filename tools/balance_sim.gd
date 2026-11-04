@@ -23,7 +23,7 @@ extends SceneTree
 const DT := 1.0 / 30.0
 const MAX_T := 600.0
 # cards a sensible player takes first
-const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "wingman", "burst_fire", "chain_spark", "aegis", "reinforced_hull", "nova_burst", "quick_study", "magnet"]
+const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "wingman", "burst_fire", "chain_spark", "aegis", "shield_recharge", "reinforced_hull", "nova_burst", "quick_study", "magnet"]
 
 var stages: Array = []
 var runs := 3

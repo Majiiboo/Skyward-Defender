@@ -178,6 +178,8 @@ var _aegis_flash := 0.0           # the Aegis shell flares when the card is pick
 var _crit6 := false
 var _burst_pierce := false
 var _gem_shield := false
+var _shield_rate := 0.0            # Shield Recharge card: share of the max shield restored per second
+var _hull_rate := 0.0              # its overcharge: share of the max hull per second
 # new cards and fusions
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
@@ -303,8 +305,8 @@ func _start_stage() -> void:
 	game_over = false
 	hearts = 3
 	max_hearts = 3
-	shield_max = 100.0
-	hull_max = 80.0
+	shield_max = 140.0
+	hull_max = 100.0
 	shield = shield_max
 	hull = hull_max
 	score = 0
@@ -319,6 +321,8 @@ func _start_stage() -> void:
 	_burst_pierce = false
 	_gem_shield = false
 	chain_level = 0
+	_shield_rate = 0.0
+	_hull_rate = 0.0
 	_chain_mult = 1.0
 	wing_level = 0
 	_xp_cut = 1.0
@@ -423,8 +427,8 @@ func _start_wave() -> void:
 	# the boss always comes last
 	if wave_queue.has("hive_mother"):
 		wave_queue.erase("hive_mother")
-		# from stage 11 the boss comes in a third of the way through, with bugs still arriving
-		if stage >= 11:
+		# from planet 3 (stage 21) the boss comes in a third of the way through, with bugs still arriving
+		if stage >= 21:
 			wave_queue.insert(wave_queue.size() / 3, "hive_mother")
 		else:
 			wave_queue.append("hive_mother")
@@ -591,6 +595,12 @@ func _process(delta: float) -> void:
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
+	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
+	if hit_t > 2.5:
+		if _shield_rate > 0.0:
+			shield = minf(shield + shield_max * _shield_rate * delta, shield_max)
+		if _hull_rate > 0.0:
+			hull = minf(hull + hull_max * _hull_rate * delta, hull_max)
 	_vacuum_t = maxf(_vacuum_t - delta, 0.0)
 	if _outro_t >= 0.0:
 		_update_outro(delta)
@@ -934,13 +944,13 @@ func _update_enemies(delta: float) -> void:
 					e.fire_t = float(def.fire_every)
 					e.shots = int(e.get("shots", 0)) + 1
 					# every other shot goes for the base instead of the pilot
-					var aim_at: Vector2 = soldier_pos if e.shots % 2 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
+					var aim_at: Vector2 = soldier_pos if e.shots % 3 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
 					# a goo glob leaves the mouth of the sac on the art
 					var mouth := EnemyRig.anchor("spitter", "muzzle", e.pos, float(def.size) * 1.35, float(e.get("tilt_s", 0.0)))
 					var dir: Vector2 = (aim_at - mouth).normalized()
 					enemy_bullets.append({"pos": mouth + dir * 4.0, "vel": dir * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
-					# from stage 14 a Spitter sometimes spits two globs in a small V
-					if stage >= 14 and rng.randf() < 0.5:
+					# from stage 25 a Spitter sometimes spits two globs in a small V
+					if stage >= 25 and rng.randf() < 0.3:
 						var d2 := dir.rotated(0.22 if rng.randf() < 0.5 else -0.22)
 						enemy_bullets.append({"pos": mouth + d2 * 4.0, "vel": d2 * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
 					for k in 4:
@@ -1164,9 +1174,11 @@ func _gain_xp(amount: float) -> void:
 		_open_cards()
 
 func _xp_need() -> float:
-	var base := 4.0 + 3.5 * (run_level - 1)   # the first card after 2 kills, then about one every 12-15 s
-	if run_level > 12:
-		base *= pow(2.0, run_level - 12)   # past the cap, picks keep coming but much slower
+	# the first card after 2 kills, then one about every 10-14 s; cards build up over the
+	# whole stage (they reset only when a new stage starts). Past level 18 they slow down.
+	var base := 4.0 + 3.0 * (run_level - 1)
+	if run_level > 18:
+		base *= pow(1.6, run_level - 18)
 	return base * _xp_cut
 
 # ------------------------------------------------------------------ turrets
@@ -1830,6 +1842,7 @@ func _pick_card(id: String) -> void:
 		"chain_spark": chain_level += 1
 		"wingman": wing_level += 1
 		"quick_study": _gem_xp_mult *= 1.1
+		"shield_recharge": _shield_rate += 0.01
 		"nova_burst":
 			for e in enemies.duplicate():
 				if e.type != "hive_mother":
@@ -1856,6 +1869,7 @@ func _overcharge(id: String) -> void:
 		"aegis": _aegis_heal = true
 		"chain_spark": _chain_mult = 2.0
 		"quick_study": _xp_cut = 0.85
+		"shield_recharge": _hull_rate = 0.004
 		"wingman": _wing_cd[1] = 0.3   # the second drone joins (_wing_count)
 	var gold := Color(1.0, 0.82, 0.32)
 	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
@@ -1877,7 +1891,7 @@ func _fuse(id: String) -> void:
 
 # The three cards of a pick; a ready fusion takes the middle slot.
 func _offer() -> Array:
-	var picks := Cards.draw(card_levels, 3, rng)
+	var picks := Cards.draw(card_levels, 3, rng, run_level)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]
