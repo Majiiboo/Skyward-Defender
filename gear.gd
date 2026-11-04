@@ -16,6 +16,8 @@ var _upgrade_btn: Button
 var _pilot_box: VBoxContainer
 var _turret_box: VBoxContainer
 var _drone_box: VBoxContainer
+var _workshop_box: VBoxContainer
+var _ws_icons := {}        # part kind -> its TextureRect (merge pop)
 var drone := {}            # DroneData.read(save)
 var _plat                    # PlatformFloor (set-bonus glow)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
@@ -111,7 +113,11 @@ func _build() -> void:
 	top.add_child(_power_label)
 	col.add_child(top)
 	# Pilot / Turrets switch
-	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone"], _show_page, 0))
+	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, 0))
+	_workshop_box = VBoxContainer.new()
+	_workshop_box.add_theme_constant_override("separation", 10)
+	_workshop_box.visible = false
+	col.add_child(_workshop_box)
 	_drone_box = VBoxContainer.new()
 	_drone_box.add_theme_constant_override("separation", 10)
 	_drone_box.visible = false
@@ -157,13 +163,7 @@ func _build() -> void:
 			var tb: Button = _slot_tiles[GearData.SLOTS[i]]
 			tb.position.x = stage.size.x - SLOT_PX if i >= 3 else 0.0)
 	plat.tiles = _slot_tiles
-	# set bonuses you have
-	var bp := UIKit.panel(10)
-	_bonus = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
-	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	bp.add_child(_bonus)
-	col.add_child(bp)
-	# selected piece: stats + upgrade
+	# selected piece: stats + upgrade, right under the pilot (used most)
 	var up_row := HBoxContainer.new()
 	up_row.add_theme_constant_override("separation", 10)
 	var dp := UIKit.panel(10)
@@ -178,13 +178,19 @@ func _build() -> void:
 	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	up_row.add_child(_upgrade_btn)
 	col.add_child(up_row)
-	# the three pieces for this slot
+	# the six pieces for this slot (one per set)
 	col.add_child(UIKit.header("CHOOSE"))
 	_bag_grid = GridContainer.new()
 	_bag_grid.columns = 3
 	_bag_grid.add_theme_constant_override("h_separation", 8)
 	_bag_grid.add_theme_constant_override("v_separation", 8)
 	col.add_child(_bag_grid)
+	# set bonuses you have, last
+	var bp := UIKit.panel(10)
+	_bonus = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
+	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	bp.add_child(_bonus)
+	col.add_child(bp)
 
 # A slot tile: the piece's picture, slot name and level, in its set's colour.
 func _paint_slot(s: String) -> void:
@@ -225,8 +231,10 @@ func _fill_bag() -> void:
 		var info: Dictionary = GearData.ITEMS[id]
 		var open := GearData.set_unlocked(set_id, t_unlocked)
 		var is_on: bool = gear.equipped[selected_slot] == id
-		var sub := "Wearing" if is_on else ("Lv.%d" % _lvl(id) if open else "Clear stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
-		var t := UIKit.tile(info.name, sub, set_id, GearData.SETS[set_id].name, _pic(id), Vector2(108, 96))
+		var sub := "Wearing" if is_on else ("Lv.%d" % _lvl(id) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
+		var t := UIKit.tile(info.name, sub, set_id, GearData.SETS[set_id].name, _pic(id) if open else load("res://icons/ui_padlock.png"), Vector2(108, 88))
+		if not open:
+			t.tooltip_text = "Clear stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
 		if not open:
 			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
 		var item: String = id
@@ -318,12 +326,96 @@ func _show_page(i: int) -> void:
 	_pilot_box.visible = i == 0
 	_turret_box.visible = i == 1
 	_drone_box.visible = i == 2
+	_workshop_box.visible = i == 3
 	if i == 1:
 		_refresh_turrets()
 	elif i == 2:
 		_refresh_drone()
+	elif i == 3:
+		_refresh_workshop()
 	else:
 		_select(selected_slot)
+
+# ------------------------------------------------------------------ workshop page
+# Merging (Rudy): 3 of a part -> 1 of the next (Parts.MERGE). Your parts in a row, then
+# one card per merge with Merge (one) and All. Gear and turret merging come later.
+func _refresh_workshop(pop: String = "") -> void:
+	for c in _workshop_box.get_children():
+		c.queue_free()
+	_ws_icons = {}
+	var have := Parts.read(_read())
+	_workshop_box.add_child(UIKit.header("YOUR PARTS"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	for k in Parts.ORDER:
+		var p := UIKit.panel(10)
+		p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 2)
+		var tr := _part_icon(k, 52)
+		_ws_icons[k] = tr
+		v.add_child(tr)
+		v.add_child(UIKit.label(String(Parts.KINDS[k].name), 11, Parts.KINDS[k].color, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("x%d" % int(have[k]), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+		p.add_child(v)
+		row.add_child(p)
+	_workshop_box.add_child(row)
+	_workshop_box.add_child(UIKit.header("MERGE"))
+	for k in Parts.MERGE:
+		var to: String = Parts.MERGE[k]
+		var n: int = int(have[k]) / Parts.MERGE_COST
+		var p := UIKit.panel(10)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 6)
+		h.alignment = BoxContainer.ALIGNMENT_CENTER
+		h.add_child(_part_icon(k, 40))
+		h.add_child(UIKit.label("x%d" % Parts.MERGE_COST, 16, Color.WHITE))
+		h.add_child(UIKit.label("  ->  ", 16, UIKit.MUTED))
+		h.add_child(_part_icon(to, 40))
+		h.add_child(UIKit.label("x1", 16, Color.WHITE))
+		var sp := Control.new()
+		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(sp)
+		var one := UIKit.gold_button("Merge", 14)
+		one.custom_minimum_size = Vector2(84, 40)
+		one.disabled = n <= 0
+		var kind: String = k
+		one.pressed.connect(func(): _merge(kind, 1))
+		h.add_child(one)
+		var all := UIKit.ghost_button("All (%d)" % n, 13)
+		all.custom_minimum_size = Vector2(70, 40)
+		all.disabled = n <= 1
+		all.pressed.connect(func(): _merge(kind, -1))
+		h.add_child(all)
+		p.add_child(h)
+		_workshop_box.add_child(p)
+	_workshop_box.add_child(UIKit.label("Gear and turret merging: coming soon", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if pop != "" and _ws_icons.has(pop):
+		var tr: TextureRect = _ws_icons[pop]
+		await get_tree().process_frame
+		tr.pivot_offset = tr.size * 0.5
+		var tw := tr.create_tween()
+		tw.tween_property(tr, "scale", Vector2(1.35, 1.35), 0.1)
+		tw.tween_property(tr, "scale", Vector2.ONE, 0.3).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+func _part_icon(kind: String, px: float) -> TextureRect:
+	var tr := TextureRect.new()
+	tr.texture = Parts.icon(kind)
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return tr
+
+func _merge(kind: String, times: int) -> void:
+	var data := _read()
+	if Parts.merge(data, kind, times) <= 0:
+		return
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()
+	_refresh_workshop(Parts.MERGE[kind])
 
 # ------------------------------------------------------------------ drone page
 # The drone sidekick (DroneData): a big preview, its body and weapon pod to choose,

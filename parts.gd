@@ -7,7 +7,7 @@ extends RefCounted
 
 const KINDS := {
 	"alloy": {"name": "Alloy Scrap", "color": Color(0.55, 0.9, 1.0), "crystals": 2, "desc": "Common: bugs sometimes drop it."},
-	"cell":  {"name": "Plasma Cell", "color": Color(0.7, 0.55, 1.0), "crystals": 6, "desc": "Rare: from mini-bosses and stage clears."},
+	"cell":  {"name": "Plasma Cell", "color": Color(0.35, 0.95, 0.9), "crystals": 6, "desc": "Rare: from mini-bosses and stage clears."},
 	"core":  {"name": "Void Core",   "color": Color(1.0, 0.8, 0.35), "crystals": 15, "desc": "Epic: from bosses."},
 }
 const ORDER := ["alloy", "cell", "core"]
@@ -71,3 +71,27 @@ static func pay(save: Dictionary, coins: int, needs: Dictionary, allow_crystals:
 		have[k] = maxi(0, int(have[k]) - int(needs[k]))
 	save["parts"] = have
 	return ""
+
+# The Workshop (Gear page): 3 of a part -> 1 of the next (Rudy: merging, starting with parts).
+const MERGE := {"alloy": "cell", "cell": "core"}
+const MERGE_COST := 3
+
+static func icon(kind: String) -> Texture2D:
+	var p := "res://parts/%s.png" % kind
+	return load(p) if ResourceLoader.exists(p) else null
+
+# Merge `kind` up to `times` times (-1 = as many as possible). Changes `save` in place;
+# returns how many merges were made.
+static func merge(save: Dictionary, kind: String, times: int = 1) -> int:
+	if not MERGE.has(kind):
+		return 0
+	var have := read(save)
+	var n: int = int(have[kind]) / MERGE_COST
+	if times >= 0:
+		n = mini(n, times)
+	if n <= 0:
+		return 0
+	have[kind] = int(have[kind]) - n * MERGE_COST
+	have[MERGE[kind]] = int(have[MERGE[kind]]) + n
+	save["parts"] = have
+	return n

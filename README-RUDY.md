@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev118 (version/code=118 and version/name="1.0-dev118" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev119 (version/code=119 and version/name="1.0-dev119" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev119: Workshop and a tidier Gear page
+
+- Gear has a 4th tab, Workshop: your parts at the top (Luna's Alloy, Cell and Core
+  pictures), then merging: 3 Alloy -> 1 Cell, 3 Cells -> 1 Core. Merge one, or All.
+- Pilot page order: pilot, then the selected piece with Upgrade, then the six pieces to
+  choose, then your set bonuses at the bottom.
+- Locked sets show a padlock and the stage to clear, e.g. "Stage 40".
 
 ## dev118: six 3D gear sets
 
