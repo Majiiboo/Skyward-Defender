@@ -83,7 +83,8 @@ class Rig:
 			face_target = -1.0
 		elif dx < -0.25:
 			face_target = 1.0
-		face = move_toward(face, face_target, delta * 12.0)
+		# turning takes about half a second, passing through the front view (draw_front)
+		face = move_toward(face, face_target, delta * (4.0 if PilotRig.front_ready() else 12.0))
 		aim = lerp_angle(aim, aim_angle, 1.0 - exp(-delta * 16.0))
 		lean = lerpf(lean, lean_in, 1.0 - exp(-delta * 8.0))
 		hover = lerpf(hover, hover_in, 1.0 - exp(-delta * 6.0))
@@ -358,3 +359,52 @@ static func _visor_light(c: CanvasItem, base: Transform2D, xf: Transform2D, a: f
 	var pv: Vector2 = PARTS.visor.pv
 	c.draw_set_transform_matrix(base * xf)
 	c.draw_texture_rect(tx, Rect2(-pv * sz, sz), false, Color(1, 1, 1, a))
+
+# ------------------------------------------------------------------ front view (turn)
+# Luna's front-facing parts (pilot_front/, batch D). While he turns from one side to the
+# other, the rig passes through this front pose instead of mirroring on the spot.
+# FRONT: part -> [centre in front px (origin at the chest like the side rig, y down), scale, mirror].
+# The pose is about as tall as the side rig (FRONT_K matches their heights).
+const FRONT_K := 1.0
+const FRONT := [
+	["jet", Vector2(-182, 10), 0.85, false], ["jet", Vector2(182, 10), 0.85, true],
+	["thigh_r", Vector2(-70, 350), 0.85, false], ["thigh_l", Vector2(70, 355), 0.85, false],
+	["shin", Vector2(-72, 580), 0.85, false], ["shin", Vector2(72, 580), 0.85, true],
+	["hips", Vector2(0, 210), 1.05, false],
+	["torso", Vector2(0, 40), 1.1, false],
+	["rifle", Vector2(-200, 140), 0.75, false],
+	["upper", Vector2(-185, 60), 0.7, false], ["upper", Vector2(185, 60), 0.7, true],
+	["forearm_fist", Vector2(-192, 270), 0.7, false], ["forearm_open", Vector2(195, 280), 0.7, true],
+	["pad_r", Vector2(-165, -50), 0.95, false], ["pad_l", Vector2(165, -50), 0.95, false],
+	["helmet", Vector2(0, -370), 1.6, false],
+]
+static var _ftex := {}
+
+static func front_ready() -> bool:
+	return ResourceLoader.exists("res://pilot_front/helmet.png")
+
+static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
+	var k := height / BODY_H * FRONT_K
+	var breath := sin(r.t * TAU / 2.6)
+	var col := Color(lift.r, lift.g, lift.b, alpha)
+	for part in FRONT:
+		var nm: String = part[0]
+		if not _ftex.has(nm):
+			_ftex[nm] = load("res://pilot_front/%s.png" % nm)
+		var tx: Texture2D = _ftex[nm]
+		var s: float = float(part[2])
+		var sz := tx.get_size() * s
+		var at: Vector2 = part[1]
+		# a little life: he breathes, the helmet nods, the hands sway
+		if nm == "helmet":
+			at += Vector2(0, breath * 6.0)
+		elif nm.begins_with("forearm") or nm == "rifle":
+			at += Vector2(0, sin(r.t * 2.1) * 4.0)
+		c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(k * (-1.0 if part[3] else 1.0), k))
+		var p := Vector2((-at.x if part[3] else at.x), at.y) - sz * 0.5
+		c.draw_texture_rect(tx, Rect2(p, sz), false, col)
+	c.draw_set_transform_matrix(Transform2D.IDENTITY)
+
+# How much of the front pose shows (0 side view, 1 facing the camera), from rig.face.
+static func front_weight(r: Rig) -> float:
+	return 1.0 - smoothstep(0.42, 0.52, absf(r.face))

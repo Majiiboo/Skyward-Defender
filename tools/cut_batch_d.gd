@@ -20,6 +20,9 @@ const SHEETS := {
 	"drone-bodies": ["solid", 256, ["drone/body_scout", "drone/body_striker", "drone/body_warden"]],
 	"drone-pods-top": ["solid", 128, ["drone/pod_blaster", "drone/pod_beam", "drone/pod_missile"]],
 	"drone-flashes-only": ["light", 128, ["drone/flash_blaster", "drone/flash_beam", "drone/flash_missile"], "largest"],
+	"pilot-front-parts": ["solid", 0, ["pilot_front/helmet", "pilot_front/torso", "pilot_front/hips", "pilot_front/pad_r", "pilot_front/pad_l",
+		"pilot_front/upper", "pilot_front/forearm_fist", "pilot_front/forearm_open", "", "pilot_front/rifle",
+		"pilot_front/thigh_r", "pilot_front/thigh_l", "pilot_front/shin", "pilot_front/jet", ""]],
 	"turret-heads": ["solid", 256, ["turrets/lance_base", "turrets/lance_head", "turrets/storm_base", "turrets/storm_head",
 		"turrets/gravity_base", "turrets/gravity_head", "turrets/prism_base", "turrets/prism_head"],
 		[Rect2i(410, 30, 460, 320), Rect2i(985, 5, 575, 305), Rect2i(410, 355, 460, 255), Rect2i(945, 225, 605, 395),
@@ -27,7 +30,7 @@ const SHEETS := {
 }
 
 func _initialize() -> void:
-	for d in ["cards", "drone", "turrets"]:
+	for d in ["cards", "drone", "turrets", "pilot_front"]:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://" + d))
 	for sheet in SHEETS:
 		var spec: Array = SHEETS[sheet]
@@ -56,7 +59,8 @@ func _initialize() -> void:
 				continue
 			var cell := img.get_region(boxes[i])
 			var out: Image = _light(cell) if spec[0] == "light" else _trim(_only_largest(_solid(cell)) if typeof(how) == TYPE_ARRAY else _solid(cell))
-			out = _fit(out, int(spec[1]))
+			if int(spec[1]) > 0:   # 0 = keep the painted size (rig parts must stay in scale)
+				out = _fit(out, int(spec[1]))
 			out.save_png(ProjectSettings.globalize_path("res://%s.png" % names[i]))
 			print("  %-28s %s -> %dx%d" % [names[i], boxes[i], out.get_width(), out.get_height()])
 	quit()

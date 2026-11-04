@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev113 (code 113).
+  go UP every package (same signing key, install-over). Current: dev114 (code 114).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -275,7 +275,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    placeholder, stage info, row of your cards), battle top bar overhaul, Stage Cleared
    screen overhaul, 3 stage objectives shown at start / in pause / on the clear screen
    (stars explained), menu page layouts.
-   D (needs Luna): drone sidekick (unlock later, upgrade + customise looks/weapon, in
+   D DONE dev112-114 (two-piece turrets, drone sidekick drone_data.gd, front-view turn PilotRig.draw_front; gear tier art waits on Rudy). Was: drone sidekick (unlock later, upgrade + customise looks/weapon, in
    Gear), pilot turn-around frames (no more instant mirror), muzzle flash, bolt variants
    for cards, turret heads as separate pieces (to rotate), gear tiers that look
    different when upgraded.

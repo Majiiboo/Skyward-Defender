@@ -79,16 +79,33 @@ func muzzle() -> Vector2:
 		X = PilotRig.solve(rig)
 	return PilotRig.muzzle_screen(rig, X, pos, height * PilotRig.SIZE)
 
+# The pilot: the side rig, and while he turns, the front pose taking over (Luna's
+# front parts) so he swings round through facing the camera instead of mirroring.
+func _side_a() -> float:
+	return alpha * (smoothstep(0.38, 0.47, absf(rig.face)) if PilotRig.front_ready() else 1.0)
+
+func _front_a() -> float:
+	return alpha * PilotRig.front_weight(rig) if PilotRig.front_ready() else 0.0
+
+func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> void:
+	var h := height * PilotRig.SIZE
+	var sa := _side_a()
+	var fa := _front_a()
+	if sa > 0.01:
+		PilotRig.draw(c, rig, X, at, h, 0.0, sa, lift)
+	if fa > 0.01:
+		PilotRig.draw_front(c, rig, at, h, fa, lift)
+
 func _draw() -> void:
 	if not X.is_empty():
-		PilotRig.draw(self, rig, X, pos, height * PilotRig.SIZE, 0.0, alpha)
+		_draw_figure(self, pos)
 
 func _draw_rim() -> void:
 	if X.is_empty():
 		return
 	var d := maxf(1.0, height * PilotRig.SIZE / 60.0)
 	for o in [Vector2(0, -d), Vector2(-d, 0), Vector2(d, 0), Vector2(0, d * 0.6)]:
-		PilotRig.draw(_rim, rig, X, pos + o, height * PilotRig.SIZE, 0.0, alpha, Color(1, 1, 1))
+		_draw_figure(_rim, pos + o, Color(1, 1, 1))
 
 func _draw_shield() -> void:
 	if X.is_empty() or shield <= 0.01:
@@ -101,7 +118,7 @@ func _draw_shield() -> void:
 	(_shield.material as ShaderMaterial).set_shader_parameter("col", Color(shield_col, 0.32 * a))
 	for k in 8:
 		var o := Vector2.from_angle(TAU * k / 8.0) * d
-		PilotRig.draw(_shield, rig, X, pos + o, h, 0.0, alpha, Color(1, 1, 1))
+		_draw_figure(_shield, pos + o, Color(1, 1, 1))
 
 func _draw_behind() -> void:
 	if not X.is_empty():
