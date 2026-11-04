@@ -409,13 +409,22 @@ func _part_icon(kind: String, px: float) -> TextureRect:
 
 func _merge(kind: String, times: int) -> void:
 	var data := _read()
-	if Parts.merge(data, kind, times) <= 0:
+	var made := Parts.merge(data, kind, times)
+	if made <= 0:
 		return
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
 		out.store_string(JSON.stringify(data))
 		out.close()
-	_refresh_workshop(Parts.MERGE[kind])
+	var to: String = Parts.MERGE[kind]
+	var fx := MergeFX.new()
+	fx.src = Parts.icon(kind)
+	fx.dst = Parts.icon(to)
+	fx.col = Parts.KINDS[to].color
+	fx.title = "+%d %s%s" % [made, Parts.KINDS[to].name, "s" if made > 1 else ""]
+	add_child(fx)
+	await fx.finished
+	_refresh_workshop(to)
 
 # ------------------------------------------------------------------ drone page
 # The drone sidekick (DroneData): a big preview, its body and weapon pod to choose,
@@ -898,3 +907,118 @@ func _fade_in_overlay() -> void:
 	var tw := create_tween()
 	tw.tween_property(overlay, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(func(): overlay.queue_free())
+
+# The merge animation (Workshop): three copies of the part spiral into a swirling ring,
+# a flash and a shock ring, then the new part pops out with a halo and "+1 Plasma Cell".
+# Built from Luna's battle effects (fx/) for now; her own merge layers (LUNA-BRIEF-merge-fx.md)
+# replace them when they arrive. Tap to close once the result shows; closes itself at 2.4 s.
+class MergeFX extends Control:
+	const FX_RING := preload("res://fx/gravity_ring.png")
+	const FX_NOVA := preload("res://fx/nova.png")
+	const FX_BURST := preload("res://fx/prism_burst.png")
+	const FX_GLOW := preload("res://fx/spark.png")
+	var src: Texture2D
+	var dst: Texture2D
+	var col := Color.WHITE
+	var title := ""
+	var t := 0.0
+	var _glow: Control
+	var _front: Control
+	signal finished
+
+	func _ready() -> void:
+		set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+		_glow = Control.new()
+		_glow.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_glow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_glow.material = add
+		_glow.draw.connect(_draw_glow)
+		add_child(_glow)
+		_front = Control.new()   # the parts, drawn over the light
+		_front.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		_front.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_front.draw.connect(_draw_front)
+		add_child(_front)
+		var lbl := UIKit.label(title, 22, col, HORIZONTAL_ALIGNMENT_CENTER)
+		lbl.name = "Title"
+		lbl.set_anchors_preset(Control.PRESET_CENTER)
+		lbl.modulate.a = 0.0
+		add_child(lbl)
+
+	func _process(delta: float) -> void:
+		t += delta
+		var lbl: Label = get_node("Title")
+		lbl.position = Vector2(size.x * 0.5 - lbl.size.x * 0.5, _center().y + 96.0)
+		lbl.modulate.a = clampf((t - 1.0) / 0.25, 0.0, 1.0)
+		queue_redraw()
+		_glow.queue_redraw()
+		_front.queue_redraw()
+		if t > 2.4:
+			_close()
+
+	func _gui_input(e: InputEvent) -> void:
+		if t > 1.0 and ((e is InputEventMouseButton and e.pressed) or (e is InputEventScreenTouch and e.pressed)):
+			_close()
+
+	func _close() -> void:
+		if is_queued_for_deletion():
+			return
+		finished.emit()
+		queue_free()
+
+	func _center() -> Vector2:
+		return Vector2(size.x * 0.5, size.y * 0.42)
+
+	func _icon(tex: Texture2D, c: Vector2, px: float, a: float, rot: float = 0.0) -> void:
+		if tex == null or px <= 0.5:
+			return
+		var s := px / maxf(tex.get_width(), tex.get_height())
+		_front.draw_set_transform(c, rot, Vector2(s, s))
+		_front.draw_texture(tex, -tex.get_size() * 0.5, Color(1, 1, 1, a))
+		_front.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+	# the dim behind everything
+	func _draw() -> void:
+		draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.02, 0.06, 0.78 * clampf(t / 0.25, 0.0, 1.0)))
+
+	# front layer: the three parts flying in, then the result
+	func _draw_front() -> void:
+		var c := _center()
+		if t < 0.85:
+			var k := clampf(t / 0.8, 0.0, 1.0)
+			var ease_in := k * k * k
+			for i in 3:
+				var a := -PI * 0.5 + i * TAU / 3.0 + ease_in * TAU * 0.9
+				var r := 120.0 * (1.0 - ease_in)
+				_icon(src, c + Vector2(cos(a), sin(a)) * r, 64.0 * (1.0 - 0.45 * ease_in), 1.0 - 0.6 * maxf(0.0, k - 0.8) / 0.2, ease_in * 2.0)
+		if t > 0.85:
+			var p := clampf((t - 0.85) / 0.3, 0.0, 1.0)
+			# overshoot pop (ease out back), then a slow bob
+			var pop := 1.0 + 2.7 * pow(p - 1.0, 3) + 1.7 * pow(p - 1.0, 2)
+			_icon(dst, c + Vector2(0, sin(t * 2.4) * 4.0 * p), 118.0 * pop, 1.0)
+
+	# light layer (additive): the swirl, the flash, the shock ring, the halo
+	func _draw_glow() -> void:
+		var c := _center()
+		var k := clampf(t / 0.8, 0.0, 1.0)
+		if t < 1.1:
+			var fade := 1.0 - clampf((t - 0.8) / 0.3, 0.0, 1.0)
+			_glow_tex(FX_RING, c, 90.0 + 130.0 * k, col * Color(1, 1, 1, 0.9 * minf(k * 2.0, 1.0) * fade), -t * 5.0)
+		if t > 0.8 and t < 1.3:
+			var f := (t - 0.8) / 0.5
+			_glow_tex(FX_BURST, c, 60.0 + 340.0 * f, Color(1, 1, 1, 1.0 - f), 0.0)
+		if t > 0.8 and t < 1.6:
+			var n := (t - 0.8) / 0.8
+			_glow_tex(FX_NOVA, c, 80.0 + 420.0 * n, col * Color(1, 1, 1, 1.0 - n), 0.0)
+		if t > 0.9:
+			var h := clampf((t - 0.9) / 0.3, 0.0, 1.0)
+			_glow_tex(FX_GLOW, c, 230.0 + sin(t * 3.0) * 14.0, col * Color(1, 1, 1, 0.55 * h), t * 0.6)
+
+	func _glow_tex(tex: Texture2D, c: Vector2, px: float, mod: Color, rot: float) -> void:
+		var s := px / maxf(tex.get_width(), tex.get_height())
+		_glow.draw_set_transform(c, rot, Vector2(s, s))
+		_glow.draw_texture(tex, -tex.get_size() * 0.5, mod)
+		_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev120 (code 120).
+  go UP every package (same signing key, install-over). Current: dev121 (code 121).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -91,6 +91,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    WORKSHOP (dev119): 4th Gear tab, gear.gd _refresh_workshop / _merge; Parts.MERGE (3 alloy ->
    1 cell, 3 cells -> 1 core), Parts.icon (parts/*.png from tools/cut_part_icons.gd). Next:
    merging gear pieces and turret/drone modules (needs duplicates/rarities first).
+   MERGE FX (dev121): gear.gd class MergeFX (dim, additive _glow, _front), fx/ placeholders;
+   swap in Luna's white layers from LUNA-BRIEF-merge-fx.md, tinted by the result colour.
+15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
+   the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
+   spotlight the one button to tap (only it works), a small animated box "Tap here" with
+   the tiny chibi pilot beside it, step by step across screens; saved so each shows once.
 8. GEAR REWORK DONE (dev97): gear_data.gd (GearData: SLOTS, SETS ion/scavenger/void unlocked at
    stages 1/11/21, ITEMS 18, stats() -> battle, read() maps old saves), gear/ cut by
    tools/cut_gear_art.gd, WEAPONS dual_minis + pulse_cannon, Void pierce5, Gear page
