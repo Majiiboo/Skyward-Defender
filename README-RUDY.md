@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev101 (version/code=101 and version/name="1.0-dev101" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev102 (version/code=102 and version/name="1.0-dev102" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,26 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev102: fusion cards and three new cards
+
+- Three new power cards:
+  - Chain Spark: every 5th bolt sparks lightning to nearby bugs.
+  - Wingman Drone: a small drone flies beside you and shoots the nearest bug.
+  - Quick Study: gems give more XP.
+  Each has its own overcharge on the third pick (Chain Spark sparks twice as hard, a
+  second drone joins, levels need less XP). Aegis now overcharges on its second pick
+  (heals 1 heart each new wave).
+- Fusion cards: overcharge both cards of a pair and a pink FUSION card appears in the
+  middle of your next pick. It keeps both powers and adds a new one:
+  - Railstorm (Rapid Pulse + Heavy Bolts): every 4th bolt is a rail shot, double
+    damage, pierces the whole line.
+  - Gem Barrage (Burst Fire + Magnet): every 10 gems fire a burst of 6 bolts.
+  - Bastion (Reinforced Hull + Aegis): when the shield breaks it blasts outward,
+    hurting and pushing back bugs.
+  - Storm Wing (Chain Spark + Wingman Drone): drone shots chain lightning.
+- Until Luna's pictures arrive, the new cards borrow icons and a fusion shows its two
+  parent pictures side by side. Brief: LUNA-BRIEF-cards.md.
 
 ## dev101: Aegis shield shimmer
 

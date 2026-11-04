@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev101 (code 101).
+  go UP every package (same signing key, install-over). Current: dev102 (code 102).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -71,9 +71,9 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 2. (done dev86: Hive brains. Scout move "flit", _spitter_dodge, Diver "feint" state,
    goo globs from EnemyRig.anchor(kind, "muzzle"). hive_brains=false in battle.gd turns
    them off for simulator comparisons.)
-3. (done dev101: card visuals. Nova ring = Luna fx, Aegis = _draw_aegis hex shell; bolt thickness, hot muzzle and
+3. CARDS: overcharge (Cards.OVERCHARGE, 3rd pick or last for max-2 cards) dev99; FUSIONS dev102 (Cards.FUSIONS, battle _offer puts a ready fusion in the middle slot, _fuse; new cards chain_spark, wingman (HomeProp.draw_drone), quick_study; Luna art: LUNA-BRIEF-cards.md). (done dev101: card visuals. Nova ring = Luna fx, Aegis = _draw_aegis hex shell; bolt thickness, hot muzzle and
    magnet ring are done).
-4. Modernise the top bar, nav bar and edge tabs (Rudy finds them flat; mock options first).
+4. Modernise the top bar, nav bar and edge tabs (Rudy finds them flat). Rudy picked the GLASS direction (2026-11-03); variants A1 cut glass, A2 split dock, A3 full-width, A4 colour-coded shown, waiting for his pick.
    Battle HUD done (2026-11-03): battle.gd _draw_hud draws a Home-style top bar (HUD_H,
    PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun

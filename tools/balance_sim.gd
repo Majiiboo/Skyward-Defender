@@ -23,7 +23,7 @@ extends SceneTree
 const DT := 1.0 / 30.0
 const MAX_T := 600.0
 # cards a sensible player takes first
-const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "burst_fire", "aegis", "reinforced_hull", "nova_burst", "magnet"]
+const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "wingman", "burst_fire", "chain_spark", "aegis", "reinforced_hull", "nova_burst", "quick_study", "magnet"]
 
 var stages: Array = []
 var runs := 3
@@ -157,10 +157,13 @@ func _step() -> bool:
 	return b.time_alive < MAX_T
 
 func _pick() -> void:
-	var offer: Array = Cards.draw(b.card_levels, 3, b.rng)
+	var offer: Array = b._offer()
 	var best: String = offer[0]
 	var bi := 99
 	for id in offer:
+		if Cards.FUSIONS.has(id):
+			best = id   # a fusion always wins
+			break
 		var k := CARD_PRIORITY.find(id)
 		if k >= 0 and k < bi:
 			bi = k

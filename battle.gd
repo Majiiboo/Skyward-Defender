@@ -170,6 +170,20 @@ var _aegis_flash := 0.0           # the Aegis shell flares when the card is pick
 var _crit6 := false
 var _burst_pierce := false
 var _gem_shield := false
+# new cards and fusions
+var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
+var _chain_mult := 1.0
+var wing_level := 0               # Wingman Drone
+var _wing_cd: Array = [0.4, 0.9]
+var _wing_aim: Array = [-PI / 2.0, -PI / 2.0]
+var _xp_cut := 1.0                # Quick Study overcharged: levels need less XP
+var _aegis_heal := false
+var _railstorm := false
+var _barrage := false
+var _barrage_n := 0
+var _bastion := false
+var _storm_wing := false
+var zaps: Array = []              # spark arcs {a, b, life}
 
 # ---- pilot animation ----
 var prev_soldier_x := 240.0
@@ -230,6 +244,7 @@ func _ready() -> void:
 		_rig_view.height = PILOT_HEIGHT
 		add_child(_rig_view)
 	_fx.draw.connect(_draw_fx)
+	HomeProp.load_drone()   # Wingman Drone card
 	add_child(_fx)
 	for n in ["hive_lay_1", "hive_lay_2", "hive_lay_3", "hive_lay_4", "hive_hatchling"]:
 		_tex[n] = load("res://enemies/%s.png" % n)
@@ -286,6 +301,17 @@ func _start_stage() -> void:
 	_crit6 = false
 	_burst_pierce = false
 	_gem_shield = false
+	chain_level = 0
+	_chain_mult = 1.0
+	wing_level = 0
+	_xp_cut = 1.0
+	_aegis_heal = false
+	_railstorm = false
+	_barrage = false
+	_barrage_n = 0
+	_bastion = false
+	_storm_wing = false
+	zaps.clear()
 	_boss_bar_max = 0.0
 	_boss_bar_in = 0.0
 	fire_rate_mult = 1.0
@@ -367,6 +393,9 @@ func _start_wave() -> void:
 	wave_queue.clear()
 	if wave_index >= waves.size():
 		return
+	if _aegis_heal and wave_index > 0 and hearts < max_hearts:
+		hearts += 1   # Aegis overcharged
+		_float_text(soldier_pos + Vector2(0, -40), "+1 HEART", Color(1.0, 0.5, 0.6))
 	for entry in waves[wave_index]:
 		for i in int(entry[1]):
 			wave_queue.append(entry[0])
@@ -479,6 +508,10 @@ func _process(delta: float) -> void:
 	if hit_t > 4.5 and shield < shield_max:
 		shield = minf(shield + 6.0 * _shield_regen * delta, shield_max)
 	_aim_and_fire(delta)
+	_update_wingmen(delta)
+	for z in zaps:
+		z.life -= delta
+	zaps = zaps.filter(func(z): return z.life > 0.0)
 	_spawn_step(delta)
 	_update_bullets(delta)
 	_update_enemies(delta)
@@ -625,9 +658,13 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		_shot_n += 1
 		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
 		var crit: bool = _crit6 and _shot_n % 6 == 0
-		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed), "dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0),
-			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit,
-			"pierce": pierce or (_pierce5 and _shot_n % 5 == 0), "hits": []})
+		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
+		var rail: bool = _railstorm and _shot_n % 4 == 0
+		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
+			"dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0),
+			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail,
+			"pierce": pierce or rail or (_pierce5 and _shot_n % 5 == 0), "hits": [],
+			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0})
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -687,6 +724,8 @@ func _update_bullets(delta: float) -> void:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6)
 				e.hp -= dmg
+				if int(b.get("spark", 0)) > 0:
+					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
 				# Void set bonus: every 5th bolt flies on through
 				hit = not b.get("pierce", false)
 				if not hit:
@@ -968,6 +1007,11 @@ func _update_gems(delta: float) -> void:
 			_gems_got += 1
 			if _gem_shield:
 				shield = minf(shield + 1.0, shield_max)   # Magnet overcharged
+			if _barrage:
+				_barrage_n += 1
+				if _barrage_n >= 10:
+					_barrage_n = 0
+					_gem_barrage()
 			_burst(soldier_pos, 4.0, StageData.GEM_COLORS[g.tier], 3)
 			_fx_add("spark", g.pos, 20.0 + 4.0 * g.tier, 0.2, 0.0, 1.7, StageData.GEM_COLORS[g.tier])   # pop
 			continue
@@ -989,7 +1033,7 @@ func _xp_need() -> float:
 	var base := 4.0 + 3.5 * (run_level - 1)   # the first card after 2 kills, then about one every 12-15 s
 	if run_level > 12:
 		base *= pow(2.0, run_level - 12)   # past the cap, picks keep coming but much slower
-	return base
+	return base * _xp_cut
 
 # ------------------------------------------------------------------ turrets
 
@@ -1309,6 +1353,8 @@ func _hurt_base(amount: float) -> void:
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
 	if shield > 0.0:
 		shield = maxf(shield - amount, 0.0)
+		if _bastion and shield <= 0.0:
+			_bastion_blast()
 	else:
 		hull = maxf(hull - amount, 0.0)
 
@@ -1494,7 +1540,7 @@ func _open_cards() -> void:
 	sub.position = Vector2(0, FIELD_H * 0.5 - 222)
 	sub.size = Vector2(FIELD_W, 20)
 	_card_panel.add_child(sub)
-	var picks := Cards.draw(card_levels, 3, rng)
+	var picks := _offer()
 	var cw := 136.0
 	var ch := 204.0
 	var gap := 10.0
@@ -1523,8 +1569,39 @@ func _open_cards() -> void:
 	_card_panel.add_child(refresh)
 	_card_panel.visible = true
 
+# A card's picture: Luna's cards/pic_<id>.png, else a menu icon. A fusion without its
+# own picture shows its two parts side by side, overlapping.
+func _card_pic(id: String, h: float) -> Control:
+	if Cards.FUSIONS.has(id) and not ResourceLoader.exists("res://cards/pic_%s.png" % id):
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", -int(h * 0.3))
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for part in Cards.FUSIONS[id].parts:
+			var p := _card_pic(part, h)
+			p.custom_minimum_size = Vector2(h, h)
+			row.add_child(p)
+		return row
+	var icon := TextureRect.new()
+	var pic_path := "res://cards/pic_%s.png" % id
+	if ResourceLoader.exists(pic_path):
+		icon.texture = load(pic_path)
+		icon.custom_minimum_size = Vector2(0, h)
+		if id == "nova_burst":
+			var add := CanvasItemMaterial.new()
+			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
+			icon.material = add
+	else:
+		icon.texture = Icons.get_icon(String(Cards.def(id).get("icon", "event")))
+		icon.custom_minimum_size = Vector2(0, h * 0.76)
+	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	return icon
+
 func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
-	var def: Dictionary = Cards.CARDS[id]
+	var def: Dictionary = Cards.def(id)
+	var fusion := Cards.FUSIONS.has(id)
 	var lvl: int = int(card_levels.get(id, 0))
 	var col: Color = Cards.COLOR[def.rarity]
 	var b := Button.new()
@@ -1533,7 +1610,10 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	var frame := TextureRect.new()
-	frame.texture = load(Cards.FRAME[def.rarity])
+	var fpath: String = Cards.FRAME[def.rarity]
+	if fusion and ResourceLoader.exists("res://cards/frame_fusion.png"):
+		fpath = "res://cards/frame_fusion.png"   # Luna's fusion frame, once it arrives
+	frame.texture = load(fpath)
 	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	frame.stretch_mode = TextureRect.STRETCH_SCALE
@@ -1545,29 +1625,14 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon := TextureRect.new()
-	# Luna's card picture (cards/pic_<id>.png) when there is one, else the menu icon
-	var pic_path := "res://cards/pic_%s.png" % id
-	if ResourceLoader.exists(pic_path):
-		icon.texture = load(pic_path)
-		icon.custom_minimum_size = Vector2(0, 74)
-		if id == "nova_burst":
-			var add := CanvasItemMaterial.new()
-			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
-			icon.material = add
-	else:
-		icon.texture = Icons.get_icon(def.icon)
-		icon.custom_minimum_size = Vector2(0, 56)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(icon)
+	v.add_child(_card_pic(id, 56.0 if fusion else 74.0))
 	var name_l := UIKit.label(def.name, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
-	var over := Cards.overcharges(id, lvl)
+	var over := not fusion and Cards.overcharges(id, lvl)
 	var gold := Color(1.0, 0.82, 0.32)
-	v.add_child(UIKit.label("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)), 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
+	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)))
+	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
 	var d := UIKit.label(def.desc, 11, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(d)
@@ -1575,11 +1640,12 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 11, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(od)
+	if over or fusion:
 		# a thin gold edge that breathes, on top of the frame
 		var edge := Panel.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = gold
+		sb.border_color = gold if over else col
 		sb.set_border_width_all(1)
 		sb.set_corner_radius_all(6)
 		edge.add_theme_stylebox_override("panel", sb)
@@ -1595,6 +1661,12 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	return b
 
 func _pick_card(id: String) -> void:
+	if Cards.FUSIONS.has(id):
+		card_levels[id] = 1
+		_fuse(id)
+		_card_panel.visible = false
+		picking = false
+		return
 	var over := Cards.overcharges(id, int(card_levels.get(id, 0)))
 	card_levels[id] = int(card_levels.get(id, 0)) + 1
 	if over:
@@ -1613,6 +1685,9 @@ func _pick_card(id: String) -> void:
 		"reinforced_hull":
 			hull_max += 25.0
 			hull = minf(hull + 25.0, hull_max)
+		"chain_spark": chain_level += 1
+		"wingman": wing_level += 1
+		"quick_study": _gem_xp_mult *= 1.1
 		"nova_burst":
 			for e in enemies.duplicate():
 				if e.type != "hive_mother":
@@ -1634,10 +1709,122 @@ func _overcharge(id: String) -> void:
 		"burst_fire": _burst_pierce = true
 		"magnet": _gem_shield = true
 		"reinforced_hull": _shield_regen *= 1.4
+		"aegis": _aegis_heal = true
+		"chain_spark": _chain_mult = 2.0
+		"quick_study": _xp_cut = 0.85
+		"wingman": _wing_cd[1] = 0.3   # the second drone joins (_wing_count)
 	var gold := Color(1.0, 0.82, 0.32)
 	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
 	_burst(soldier_pos, 34.0, gold, 18)
 	_fx_add("nova", soldier_pos, 40.0, 0.5, 0.0, 1.6, gold)
+
+# A fusion card (Cards.FUSIONS): both parts were overcharged; it adds its own power.
+func _fuse(id: String) -> void:
+	match id:
+		"railstorm": _railstorm = true
+		"gem_barrage": _barrage = true
+		"bastion": _bastion = true
+		"storm_wing": _storm_wing = true
+	var pink: Color = Cards.COLOR.fusion
+	_float_text(soldier_pos + Vector2(0, -80), "FUSION!", pink, true)
+	_burst(soldier_pos, 46.0, pink, 26)
+	_fx_add("nova", soldier_pos, 60.0, 0.6, 0.0, 2.2, pink)
+	shake = maxf(shake, 0.35)
+
+# The three cards of a pick; a ready fusion takes the middle slot.
+func _offer() -> Array:
+	var picks := Cards.draw(card_levels, 3, rng)
+	var ready := Cards.fusions_ready(card_levels)
+	if not ready.is_empty():
+		var f: String = ready[rng.randi() % ready.size()]
+		if picks.size() >= 2:
+			picks[1] = f
+		else:
+			picks.append(f)
+	return picks
+
+# Chain Spark: lightning jumps from a hit bug to the nearest others.
+func _chain(from: Dictionary, count: int, dmg: float) -> void:
+	var near: Array = []
+	for o in enemies:
+		if o.id != from.id and o.hp > 0.0 and o.pos.distance_to(from.pos) < 160.0:
+			near.append(o)
+	near.sort_custom(func(a, b): return a.pos.distance_squared_to(from.pos) < b.pos.distance_squared_to(from.pos))
+	for i in mini(count, near.size()):
+		var o: Dictionary = near[i]
+		o.hp -= dmg
+		stat_pilot_dmg += dmg
+		zaps.append({"a": from.pos, "b": o.pos, "life": 0.22, "seed": rng.randf() * 100.0})
+		_fx_add("spark", o.pos, 26.0, 0.2, rng.randf() * TAU, 1.6, Color(0.7, 0.9, 1.0))
+
+# Gem Barrage: a fan of bolts at the nearest bugs.
+func _gem_barrage() -> void:
+	var from := _muzzle_world()
+	var targets: Array = enemies.filter(func(e): return e.pos.y > 80.0)
+	targets.sort_custom(func(a, b): return a.pos.distance_squared_to(from) < b.pos.distance_squared_to(from))
+	for k in 6:
+		var dir := Vector2.UP.rotated(lerpf(-0.5, 0.5, k / 5.0))
+		if not targets.is_empty():
+			dir = (Vector2(targets[k % targets.size()].pos) - from).normalized()
+		_fire(from + dir * 4.0, dir)
+	_burst(from, 18.0, Cards.COLOR.fusion, 8)
+
+# Bastion: the shield breaks outward, hurting and shoving back every bug near the dome.
+func _bastion_blast() -> void:
+	var c := Vector2(FIELD_W / 2, BASE_Y)
+	for e in enemies:
+		if e.pos.distance_to(c) < 330.0:
+			e.hp -= 6.0 * damage_mult
+			if e.type != "hive_mother":
+				e.pos += (e.pos - c).normalized() * 70.0
+	_fx_add("nova", c + Vector2(0, -60), 220.0, 0.6, 0.0, 1.8, Color(0.55, 0.85, 1.0))
+	_float_text(c + Vector2(0, -150), "BASTION!", Cards.COLOR.fusion, true)
+	shake = maxf(shake, 0.5)
+
+# Wingman Drone(s): fly beside the pilot and shoot the nearest bug.
+func _wing_pos(i: int) -> Vector2:
+	var side := -1.0 if i == 0 else 1.0
+	return soldier_pos + Vector2(side * 46.0, 8.0 + sin(time_alive * 3.0 + i * 1.7) * 4.0)
+
+func _wing_count() -> int:
+	return 0 if wing_level <= 0 else (2 if Cards.overcharged(card_levels, "wingman") else 1)
+
+func _update_wingmen(delta: float) -> void:
+	for i in _wing_count():
+		var p := _wing_pos(i)
+		var tgt := _pick_aim_target(p)
+		if tgt.is_empty():
+			_wing_aim[i] = lerp_angle(_wing_aim[i], -PI / 2.0, delta * 4.0)
+			continue
+		_wing_aim[i] = lerp_angle(_wing_aim[i], (Vector2(tgt.pos) - p).angle(), minf(1.0, delta * 10.0))
+		_wing_cd[i] -= delta
+		if _wing_cd[i] <= 0.0:
+			_wing_cd[i] = 1.0 / (1.0 + 0.25 * (wing_level - 1))
+			var dir := Vector2.from_angle(_wing_aim[i])
+			bullets.append({"pos": p + dir * 10.0, "vel": dir * 480.0, "dmg": float(WEAPONS[weapon_id].damage) * damage_mult * 0.6,
+				"r": 10.0, "tid": int(tgt.get("id", -2)), "col": "cyan", "big": false, "pierce": false, "hits": [],
+				"spark": 2 if _storm_wing else 0})
+
+func _draw_wingmen() -> void:
+	for i in _wing_count():
+		HomeProp.draw_drone(self, _wing_pos(i), 40.0, time_alive + i * 0.7, _wing_aim[i] + PI / 2.0)
+
+# spark arcs: short jagged lines on the light layer
+func _draw_zaps() -> void:
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for z in zaps:
+		var a: float = clampf(z.life / 0.22, 0.0, 1.0)
+		var pts := PackedVector2Array()
+		var n := 6
+		for k in n + 1:
+			var t := float(k) / n
+			var p: Vector2 = Vector2(z.a).lerp(z.b, t)
+			if k > 0 and k < n:
+				var nrm: Vector2 = (Vector2(z.b) - Vector2(z.a)).orthogonal().normalized()
+				p += nrm * sin(z.seed + k * 2.3 + time_alive * 40.0) * 7.0
+			pts.append(p)
+		_fx.draw_polyline(pts, Color(0.6, 0.85, 1.0, a), 2.0, true)
+		_fx.draw_polyline(pts, Color(1, 1, 1, a), 1.0, true)
 
 func _show_end(won: bool) -> void:
 	for c in _end_panel.get_children():
@@ -1736,6 +1923,7 @@ func _draw() -> void:
 		draw_set_transform(p + Vector2(0, sin(time_alive * 4.0 + p.x) * 1.2), 0.0, Vector2(gs * spin, gs))
 		draw_texture_rect(gtx, Rect2(-gtx.get_size() * 0.5, gtx.get_size()), false, Color(1, 1, 1, blink))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	_draw_wingmen()
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
 	var pose := _current_pose()
@@ -1976,6 +2164,7 @@ func _draw_fx() -> void:
 		if t.type == "sentry" and float(t.drop) >= 1.0:
 			_draw_sentry_field(t)
 	_draw_aegis()
+	_draw_zaps()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]
@@ -2396,25 +2585,16 @@ func _toggle_cards() -> void:
 	grid.add_theme_constant_override("h_separation", 8)
 	grid.add_theme_constant_override("v_separation", 8)
 	for id in card_levels:
-		var def: Dictionary = Cards.CARDS[id]
+		var def: Dictionary = Cards.def(id)
 		var cell := VBoxContainer.new()
 		cell.custom_minimum_size = Vector2(92, 0)
-		var pic := TextureRect.new()
-		var pp := "res://cards/pic_%s.png" % id
-		pic.texture = load(pp) if ResourceLoader.exists(pp) else Icons.get_icon(def.icon)
-		if id == "nova_burst":
-			var add := CanvasItemMaterial.new()
-			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
-			pic.material = add
-		pic.custom_minimum_size = Vector2(0, 56)
-		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		cell.add_child(pic)
+		cell.add_child(_card_pic(id, 56.0 if not Cards.FUSIONS.has(id) else 40.0))
 		var nl := UIKit.label(def.name, 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cell.add_child(nl)
-		cell.add_child(UIKit.label("Lv.%d / %d" % [int(card_levels[id]), int(def.max)], 10, Cards.COLOR[def.rarity], HORIZONTAL_ALIGNMENT_CENTER))
-		if Cards.OVERCHARGE.has(id) and int(card_levels[id]) >= Cards.OVER_AT:
+		var lv_text := "FUSION" if Cards.FUSIONS.has(id) else "Lv.%d / %d" % [int(card_levels[id]), int(def.max)]
+		cell.add_child(UIKit.label(lv_text, 10, Cards.COLOR[def.rarity], HORIZONTAL_ALIGNMENT_CENTER))
+		if Cards.CARDS.has(id) and Cards.overcharged(card_levels, id):
 			cell.add_child(UIKit.label("OVERCHARGED", 9, Color(1.0, 0.82, 0.32), HORIZONTAL_ALIGNMENT_CENTER))
 		grid.add_child(cell)
 	v.add_child(grid)

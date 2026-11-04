@@ -18,6 +18,7 @@ const ROTORS := [Vector2(0.13, 0.17), Vector2(0.87, 0.17), Vector2(0.15, 0.80), 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	load_drone()
 	for n in ["drone_body", "drone_prop", "drone_thrust", "chest3d_body", "chest3d_lid", "chest3d_burst"]:
 		_tex[n] = load("res://icons/%s.png" % n)
 	_light = Node2D.new()
@@ -50,29 +51,42 @@ func _draw() -> void:
 		_draw_chest()
 
 func _draw_drone() -> void:
-	var body: Texture2D = _tex.drone_body
-	var w := size.x * 1.05
+	draw_drone(self, size * 0.5, size.x * 1.05, t)
+
+# Load the drone pictures before the first draw (a texture loaded mid-draw shows white).
+static var _drone := {}
+static func load_drone() -> void:
+	if _drone.is_empty():
+		for n in ["drone_body", "drone_prop", "drone_thrust"]:
+			_drone[n] = load("res://icons/%s.png" % n)
+
+# The patrol drone drawn anywhere (also the battle's Wingman Drone card): centre, width,
+# time, and an extra turn (radians) on top of its gentle sway.
+static func draw_drone(ci: CanvasItem, centre: Vector2, w: float, t: float, turn: float = 0.0) -> void:
+	if _drone.is_empty():
+		return
+	var body: Texture2D = _drone.drone_body
 	var h := w * body.get_height() / body.get_width()
-	var c := size * 0.5 + Vector2(0, sin(t * 2.4) * 1.6)
-	var tilt := sin(t * 1.3) * 0.06
-	draw_set_transform(c, tilt, Vector2.ONE)
+	var c := centre + Vector2(0, sin(t * 2.4) * w * 0.015)
+	var tilt := sin(t * 1.3) * 0.06 + turn
+	ci.draw_set_transform(c, tilt, Vector2.ONE)
 	var r := Rect2(-w * 0.5, -h * 0.5, w, h)
 	# thruster glow under the body (drawn faint: this node is not additive)
-	var th: Texture2D = _tex.drone_thrust
+	var th: Texture2D = _drone.drone_thrust
 	var tw := w * 0.16
-	draw_texture_rect(th, Rect2(-tw * 0.5, h * 0.05, tw, tw * th.get_height() / th.get_width()), false, Color(1, 1, 1, 0.35 + 0.15 * sin(t * 9.0)))
-	draw_texture_rect(body, r, false)
+	ci.draw_texture_rect(th, Rect2(-tw * 0.5, h * 0.05, tw, tw * th.get_height() / th.get_width()), false, Color(1, 1, 1, 0.35 + 0.15 * sin(t * 9.0)))
+	ci.draw_texture_rect(body, r, false)
 	# rotors: blades spinning in the rings, seen from above at a slant (squashed)
-	var prop: Texture2D = _tex.drone_prop
+	var prop: Texture2D = _drone.drone_prop
 	var pw := w * 0.24
 	var ph := pw * prop.get_height() / prop.get_width()
 	for i in ROTORS.size():
 		var p: Vector2 = r.position + ROTORS[i] * r.size
 		for k in 2:
 			var a := t * 26.0 * (1.0 if i % 2 == 0 else -1.0) + k * 1.1 + i
-			draw_set_transform_matrix(Transform2D(tilt, c + p.rotated(tilt)) * Transform2D(0.0, Vector2(1.0, 0.55), 0.0, Vector2.ZERO) * Transform2D(a, Vector2.ZERO))
-			draw_texture_rect(prop, Rect2(-pw * 0.5, -ph * 0.5, pw, ph), false, Color(1, 1, 1, 0.55 if k == 0 else 0.3))
-	draw_set_transform_matrix(Transform2D.IDENTITY)
+			ci.draw_set_transform_matrix(Transform2D(tilt, c + p.rotated(tilt)) * Transform2D(0.0, Vector2(1.0, 0.55), 0.0, Vector2.ZERO) * Transform2D(a, Vector2.ZERO))
+			ci.draw_texture_rect(prop, Rect2(-pw * 0.5, -ph * 0.5, pw, ph), false, Color(1, 1, 1, 0.55 if k == 0 else 0.3))
+	ci.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # light from inside the chest while the lid is up (Luna's burst, added as light)
 func _draw_light() -> void:
