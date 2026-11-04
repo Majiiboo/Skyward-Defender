@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev111 (version/code=111 and version/name="1.0-dev111" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev112 (version/code=112 and version/name="1.0-dev112" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,20 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev112: Luna's two-piece turrets, new card pictures
+
+- Lance, Storm Spire, Gravity Anchor and Prism Tower now use Luna's new art: a base in
+  the socket and a separate head on top, in battle and on Home.
+  - Lance: a long cannon that turns toward the nearest bug (sweeping while it waits)
+    and fires its beam along that line, instead of only straight up its own column.
+  - Storm Spire: its spiked lightning orb floats and pulses over the base.
+  - Gravity Anchor: its swirling rings float and pulse over the base.
+  - Prism Tower: the crystal in its gimbal leans a little toward its target.
+- Card pictures for Piercing Rounds, Frost Rounds, Turret Overclock, Shield Recharge
+  and Thunder Lance.
+- tools/cut_batch_d.gd cuts all of Luna's batch D pieces (turrets, drone bodies, pods,
+  flashes, card pictures).
 
 ## dev111: new screens (batch C)
 

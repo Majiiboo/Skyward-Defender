@@ -245,6 +245,9 @@ func _ready() -> void:
 	for id in Turrets.TURRETS:
 		_tex[Turrets.TURRETS[id].art + "_idle"] = load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art)
 	_tex["sentry_head"] = load("res://turrets/sentry_head.png")
+	# Luna's batch D turrets in two pieces: a base on the socket and a head on top
+	for n in ["lance_base", "lance_head", "storm_base", "storm_head", "gravity_base", "gravity_head", "prism_head"]:
+		_tex[n] = load("res://turrets/%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
 	for i in 4:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
@@ -1314,14 +1317,29 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 3.0)
 		t.cd = maxf(float(t.cd) - delta, 0.0)
 
+# is the bug on the Lance's firing line (from its tip along t.ang)?
 func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
-	return absf(e.pos.x - t.pos.x) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 100.0 and e.pos.y < t.pos.y
+	var tip := _turret_tip(t)
+	var dir := Vector2.from_angle(float(t.ang))
+	var rel: Vector2 = e.pos - tip
+	var along := rel.dot(dir)
+	return along > 0.0 and absf(rel.cross(dir)) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 90.0
 
-# Lance Pylon: charges, then holds the charge until something is in its column,
-# and fires a spear of light straight up that hits everything in that column
-# (enemy shots included).
+# Lance: turns its cannon toward the nearest bug in range (sweeping slowly while it
+# waits), charges, and fires a spear of light along that line that hits everything on
+# it (enemy shots included).
 func _update_lance(t: Dictionary, delta: float) -> void:
 	var def: Dictionary = Turrets.TURRETS.lance
+	var best := -1
+	var bd := 650.0
+	for i in enemies.size():
+		var d: float = t.pos.distance_to(enemies[i].pos)
+		if enemies[i].pos.y > 90.0 and d < bd:
+			bd = d
+			best = i
+	var want: float = (enemies[best].pos - _turret_tip(t)).angle() if best >= 0 else -PI / 2.0 + sin(time_alive * 0.6 + float(t.mount)) * 0.7
+	want = clampf(want, -PI + 0.15, -0.15)   # never aims down into the base
+	t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * (5.0 if best >= 0 else 1.5)))
 	t.charge = minf(t.charge + delta, float(def.every))
 	if t.charge < float(def.every):
 		return
@@ -1340,8 +1358,10 @@ func _update_lance(t: Dictionary, delta: float) -> void:
 			_turret_hit(t, e, dmg)
 			for k in 3:
 				_fx_add("lance_flare", e.pos, 44.0, 0.3, 0.0, 1.4)
+	var tip := _turret_tip(t)
+	var dir := Vector2.from_angle(float(t.ang))
 	var half: float = float(def.width) * 0.5
-	enemy_bullets = enemy_bullets.filter(func(b): return absf(b.pos.x - t.pos.x) > half)
+	enemy_bullets = enemy_bullets.filter(func(b): return (b.pos - tip).dot(dir) < 0.0 or absf((b.pos - tip).cross(dir)) > half)
 
 func _storm_centre(t: Dictionary) -> Vector2:
 	var def: Dictionary = Turrets.TURRETS.storm
@@ -2422,6 +2442,56 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w * clampf(e.hp / e.hp_max, 0.0, 1.0), 3), Color(1.0, 0.5, 0.4))
 
+# Batch D turrets (Luna's bases and heads). base_w: base width on screen; head_h: head
+# height; gap: how far the head floats above the base's top; art_dir: where the painted
+# head points (radians) for the ones that turn (Lance), 0 for round heads that hover.
+const SPLIT_LOOK := {
+	"lance":   {"base_w": 60.0, "head_h": 34.0, "gap": 2.0, "art_dir": 2.68, "turns": true},
+	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": 10.0, "art_dir": 0.0, "turns": false},
+	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": 8.0, "art_dir": 0.0, "turns": false},
+	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
+}
+
+func _split_geo(t: Dictionary) -> Dictionary:
+	var look: Dictionary = SPLIT_LOOK[t.type]
+	var base_h := 0.0
+	if float(look.base_w) > 0.0:
+		var bt: Texture2D = _tex[t.type + "_base"]
+		base_h = bt.get_height() * float(look.base_w) / bt.get_width()
+	var ph: float = float(t.mount) * 1.3
+	var bob: float = sin(time_alive * 2.0 + ph) * (2.0 if not look.turns else 0.6)
+	var ht: Texture2D = _tex[t.type + "_head"]
+	var hh: float = float(look.head_h)
+	var hw: float = ht.get_width() * hh / ht.get_height()
+	var centre: Vector2 = t.pos + Vector2(0, -base_h * 0.55 - float(look.gap) - hh * 0.5 + bob)
+	if t.type == "prism":
+		centre = t.pos + Vector2(0, 6.0 - hh * 0.5)
+	return {"base_h": base_h, "centre": centre, "hw": hw, "hh": hh}
+
+func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
+	var look: Dictionary = SPLIT_LOOK[t.type]
+	if float(look.base_w) > 0.0:
+		var bt: Texture2D = _tex[t.type + "_base"]
+		var bs := bt.get_size() * (float(look.base_w) / bt.get_width())
+		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.55 + yo), bs), false, Color(1, 1, 1, a))
+	var g := _split_geo(t)
+	var ht: Texture2D = _tex[t.type + "_head"]
+	var rot := 0.0
+	var sx := 1.0
+	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
+	if look.turns:
+		# the cannon turns to its target; mirrored when it aims to the right
+		var face: float = -1.0 if cos(float(t.ang)) > 0.05 else 1.0
+		var art: float = float(look.art_dir) if face > 0.0 else PI - float(look.art_dir)
+		rot = angle_difference(art, float(t.ang))
+		sx = face
+	elif t.type == "prism":
+		rot = clampf(angle_difference(-PI / 2.0, float(t.ang)) * 0.25, -0.3, 0.3)   # leans toward its target
+	var pulse: float = 1.0 + 0.06 * kick + (0.03 * sin(time_alive * 3.0 + float(t.mount)) if not look.turns else 0.0)
+	draw_set_transform(g.centre + Vector2(0, yo), rot, Vector2(sx, 1.0) * pulse)
+	draw_texture_rect(ht, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func _draw_turret(t: Dictionary) -> void:
 	# Luna's turret sits in its socket with a soft shadow; it falls in from above
 	# when mounted (drop 0 -> 1) and lands with a flash.
@@ -2433,6 +2503,9 @@ func _draw_turret(t: Dictionary) -> void:
 	draw_set_transform(t.pos + Vector2(0, 3), 0.0, Vector2(1.0, 0.32))
 	draw_circle(Vector2.ZERO, 30.0, Color(0, 0, 0, 0.45 * k))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if SPLIT_LOOK.has(t.type):
+		_draw_split_turret(t, yo, a)
+		return
 	if t.type == "sentry":
 		var bt: Texture2D = _tex["sentry_base"]
 		var bs := bt.get_size() * (SENTRY_BASE_W / bt.get_width())
@@ -2505,6 +2578,11 @@ func _sentry_geo(t: Dictionary) -> Dictionary:
 func _turret_tip(t: Dictionary) -> Vector2:
 	if t.type == "sentry":
 		return _sentry_geo(t).muzzle
+	if SPLIT_LOOK.has(t.type):
+		var g := _split_geo(t)
+		if t.type == "lance":
+			return g.centre + Vector2.from_angle(float(t.ang)) * g.hw * 0.48
+		return g.centre if t.type != "prism" else g.centre + Vector2(0, -g.hh * 0.1)
 	var look: Dictionary = TURRET_LOOK[t.type]
 	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
 	var h: float = tex.get_height() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
@@ -2603,8 +2681,8 @@ func _draw_fx() -> void:
 				if t.fire_t > 0.0:
 					var kf: float = t.fire_t / FIRE_TIME.lance
 					var bt: Texture2D = _fx_tex["lance_beam"]
-					_fx.draw_set_transform(tip, -PI / 2.0, Vector2.ONE)
-					_fx.draw_texture_rect(bt, Rect2(0, -14.0 * kf, tip.y + 20.0, 28.0 * kf), false)
+					_fx.draw_set_transform(tip, float(t.ang), Vector2.ONE)
+					_fx.draw_texture_rect(bt, Rect2(0, -14.0 * kf, 900.0, 28.0 * kf), false)
 					_fx_sprite("lance_flare", tip, 70.0 * kf, kf)
 			"gravity":
 				var pulling: float = smoothstep(0.0, 1.0, float(t.get("well_a", 0.0)))

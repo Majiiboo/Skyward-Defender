@@ -406,6 +406,9 @@ func _draw_turrets() -> void:
 		if w.id == "sentry":
 			_draw_wall_sentry(i, bottom)
 			continue
+		if WALL_SPLIT.has(w.id):
+			_draw_wall_split(i, bottom)
+			continue
 		var tex: Texture2D = w.tex
 		var s: float = _wall_turret_h() / tex.get_height()
 		var sz := tex.get_size() * s
@@ -446,7 +449,55 @@ func _draw_wall_sentry(i: int, bottom: float) -> void:
 	draw_texture_rect(ht, Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9), hsz), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
+# Luna's two-piece turrets (same sizes as battle.gd SPLIT_LOOK): the base on the socket,
+# the head floating above it; the Lance cannon turns to its target.
+const WALL_SPLIT := {
+	"lance":   {"base_w": 60.0, "head_h": 34.0, "gap": 2.0, "art_dir": 2.68},
+	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": 10.0, "art_dir": 0.0},
+	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": 8.0, "art_dir": 0.0},
+	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0},
+}
+var _split_tex := {}
+
+func _split_head_centre(i: int, bottom: float) -> Vector2:
+	var id: String = _wall_turrets[i].id
+	var look: Dictionary = WALL_SPLIT[id]
+	var k := size.x / 480.0
+	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
+	if id == "prism":
+		return p + Vector2(0, (6.0 - float(look.head_h) * 0.5) * k)
+	var bt: Texture2D = _split_tex[id + "_base"]
+	var base_h: float = bt.get_height() * float(look.base_w) * k / bt.get_width()
+	return p + Vector2(0, -base_h * 0.55 - (float(look.gap) + float(look.head_h) * 0.5) * k + sin(_t * 2.0 + i * 1.3) * 2.0 * k)
+
+func _draw_wall_split(i: int, bottom: float) -> void:
+	var id: String = _wall_turrets[i].id
+	var look: Dictionary = WALL_SPLIT[id]
+	var k := size.x / 480.0
+	for n in [id + "_base", id + "_head"]:
+		if not _split_tex.has(n) and ResourceLoader.exists("res://turrets/%s.png" % n):
+			_split_tex[n] = load("res://turrets/%s.png" % n)
+	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
+	if float(look.base_w) > 0.0:
+		var bt: Texture2D = _split_tex[id + "_base"]
+		var bs := bt.get_size() * (float(look.base_w) * k / bt.get_width())
+		draw_texture_rect(bt, Rect2(p + Vector2(-bs.x * 0.5, -bs.y * 0.55), bs), false)
+	var ht: Texture2D = _split_tex[id + "_head"]
+	var hh: float = float(look.head_h) * k
+	var hw: float = ht.get_width() * hh / ht.get_height()
+	var rot := 0.0
+	var sx := 1.0
+	if id == "lance":
+		var ang: float = clampf(_turret_ang[i], -PI + 0.15, -0.15)
+		sx = -1.0 if cos(ang) > 0.05 else 1.0
+		rot = angle_difference(float(look.art_dir) if sx > 0.0 else PI - float(look.art_dir), ang)
+	draw_set_transform(_split_head_centre(i, bottom), rot, Vector2(sx, 1.0))
+	draw_texture_rect(ht, Rect2(-hw * 0.5, -hh * 0.5, hw, hh), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func _wall_turret_tip(i: int) -> Vector2:
+	if WALL_SPLIT.has(_wall_turrets[i].id):
+		return _split_head_centre(i, _horizon_y() + STRIP_DROP)
 	if _wall_turrets[i].id == "sentry":
 		return _sentry_pivot(i, _horizon_y() + STRIP_DROP) + Vector2(0, -SENTRY_HEAD_H * 0.6 * size.x / 480.0)
 	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, _horizon_y() + STRIP_DROP)
