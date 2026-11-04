@@ -253,7 +253,7 @@ func _select(slot: String) -> void:
 		_detail.text += "\nThruster: %s" % PilotSprite.THRUSTERS[set_info.thruster].name
 	var cost := GearData.upgrade_cost(lv)
 	_upgrade_btn.disabled = lv >= GearData.MAX_LEVEL or coins < cost
-	_upgrade_btn.text = "MAX" if lv >= GearData.MAX_LEVEL else "Upgrade\n%d coins" % cost
+	_upgrade_btn.text = "MAX" if lv >= GearData.MAX_LEVEL else _upgrade_text(cost, lv)
 	_power_label.text = "POWER %d  ·  %d coins" % [GearData.power(gear), coins]
 	var lines: Array = []
 	for set_id in GearData.SETS:
@@ -297,7 +297,8 @@ func _on_upgrade_pressed() -> void:
 	var cost := GearData.upgrade_cost(lv)
 	if lv >= GearData.MAX_LEVEL or coins < cost:
 		return
-	coins -= cost
+	if not await _pay_upgrade(cost, lv):
+		return
 	gear.levels[id] = lv + 1
 	_save()
 	_select(selected_slot)
@@ -371,15 +372,13 @@ Damage per hit %.1f  ·  fires every %.2f s" % [body.name, pod.name, lvl, body.d
 	urow.add_theme_constant_override("separation", 10)
 	ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	urow.add_child(ip)
-	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else "Upgrade
-%d coins" % DroneData.upgrade_cost(lvl), 14)
+	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else _upgrade_text(DroneData.upgrade_cost(lvl), lvl), 13)
 	up.custom_minimum_size = Vector2(118, 50)
 	up.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	up.disabled = lvl >= DroneData.MAX_LEVEL or coins < DroneData.upgrade_cost(lvl)
 	up.pressed.connect(func():
 		var cost := DroneData.upgrade_cost(int(drone.level))
-		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL:
-			coins -= cost
+		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL and await _pay_upgrade(cost, int(drone.level)):
 			drone.level = int(drone.level) + 1
 			_save_drone()
 			_refresh_drone())
@@ -684,7 +683,7 @@ func _refresh_turret_detail() -> void:
 	var cost := Turrets.upgrade_cost(lvl)
 	var usable: bool = not locked and def.ready
 	_t_upgrade.disabled = not usable or lvl >= Turrets.MAX_LEVEL or coins < cost
-	_t_upgrade.text = "MAX" if lvl >= Turrets.MAX_LEVEL else "Upgrade  (%d)" % cost
+	_t_upgrade.text = "MAX" if lvl >= Turrets.MAX_LEVEL else _upgrade_text(cost, lvl)
 	var here: bool = t_loadout[t_mount] == t_focus
 	_t_place.disabled = not usable
 	_t_place.text = "Remove" if here else "Place on %d" % (t_mount + 1)
@@ -711,10 +710,85 @@ func _on_turret_upgrade() -> void:
 	var cost := Turrets.upgrade_cost(lvl)
 	if t_focus == "" or coins < cost or lvl >= Turrets.MAX_LEVEL:
 		return
-	coins -= cost
+	if not await _pay_upgrade(cost, lvl):
+		return
 	t_levels[t_focus] = lvl + 1
 	_save_turrets()
 	_refresh_turrets()
+
+# ------------------------------------------------------------------ upgrade costs
+# Every upgrade: coins, and from Lv.5 also parts (Parts.need). The button shows both,
+# with what you have; short of parts, it offers crystals for the rest.
+func _upgrade_text(coin_cost: int, level: int) -> String:
+	var needs := Parts.need(level)
+	if needs.is_empty():
+		return "Upgrade
+%d coins" % coin_cost
+	return "Upgrade
+%d coins
+%s" % [coin_cost, Parts.text(needs)]
+
+# Pays for an upgrade (coins + parts, or crystals for missing parts after asking).
+# Returns true when paid; the save already has the new coins, crystals and parts.
+func _pay_upgrade(coin_cost: int, level: int) -> bool:
+	var data := _read()
+	var needs := Parts.need(level)
+	var have := Parts.read(data)
+	var use_crystals := false
+	if not Parts.has_all(have, needs):
+		var c := Parts.crystals_for_missing(have, needs)
+		var lines: Array = []
+		for k in needs:
+			lines.append("%s: %d / %d" % [Parts.KINDS[k].name, int(have.get(k, 0)), int(needs[k])])
+		use_crystals = await _confirm("NOT ENOUGH PARTS", "
+".join(lines) + "
+
+Use %d crystals for the missing parts?
+(You have %d.)" % [c, int(data.get("crystals", 0))],
+			"Use %d crystals" % c, int(data.get("crystals", 0)) >= c)
+		if not use_crystals:
+			return false
+	var why := Parts.pay(data, coin_cost, needs, use_crystals)
+	if why != "":
+		return false
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()   # before anything re-reads the save
+	coins = int(data.get("coins", 0))
+	return true
+
+# A small glass yes/no box over the screen; returns true on yes.
+signal _confirm_done(yes: bool)
+func _confirm(title: String, body: String, yes_text: String, yes_ok: bool) -> bool:
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0.01, 0.04, 0.6)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.add_child(dim)
+	var p := UIKit.panel(16)
+	p.custom_minimum_size = Vector2(300, 0)
+	p.position = Vector2(size.x * 0.5 - 150, size.y * 0.3)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(UIKit.label(title, 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var b := UIKit.label(body, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(b)
+	var yes := UIKit.gold_button(yes_text if yes_ok else "Not enough crystals", 14)
+	yes.disabled = not yes_ok
+	yes.pressed.connect(func(): _confirm_done.emit(true))
+	v.add_child(yes)
+	var no := UIKit.ghost_button("Cancel", 13)
+	no.pressed.connect(func(): _confirm_done.emit(false))
+	v.add_child(no)
+	p.add_child(v)
+	layer.add_child(p)
+	add_child(layer)
+	var ans: bool = await _confirm_done
+	layer.queue_free()
+	return ans
 
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://hub.tscn")

@@ -184,6 +184,7 @@ var _hull_rate := 0.0              # its overcharge: share of the max hull per s
 # new cards and fusions
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
+var _parts_got := {}              # upgrade parts picked up this run (Parts)
 var _drone := {}                  # the sidekick from Gear (DroneData.read): body, pod, level
 var _drone_on := false
 var _drone_cd := 0.5
@@ -427,6 +428,7 @@ func _start_stage() -> void:
 	_drone_beam = {}
 	_took_damage = false
 	_hearts_lost = 0
+	_parts_got = {}
 	_stars_got = 0
 	_gems_got = 0
 	_kills_by = {}
@@ -1188,6 +1190,10 @@ func _kill(e: Dictionary) -> void:
 	for i in count:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-16, 16), rng.randf_range(-10, 10)), "tier": tier, "life": 16.0,
 			"vel": Vector2(rng.randf_range(-30, 30), rng.randf_range(-60, -20))})
+	var drops := _part_drops(e, def)
+	for kind in drops:
+		gems.append({"pos": e.pos + Vector2(rng.randf_range(-18, 18), rng.randf_range(-10, 10)), "tier": 0, "part": kind, "life": 18.0,
+			"vel": Vector2(rng.randf_range(-40, 40), rng.randf_range(-70, -30))})
 	# coins drop as pickups too (Rudy, dev108: gems = XP, coins = money); the boss showers them
 	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
 	for i in ncoins:
@@ -1209,6 +1215,11 @@ func _update_gems(delta: float) -> void:
 			g.vel.x *= 0.98
 			g.pos += g.vel * delta
 
+		if d < 16.0 and g.has("part"):
+			_parts_got[g.part] = int(_parts_got.get(g.part, 0)) + 1
+			_float_text(soldier_pos + Vector2(0, -40), "+1 %s" % Parts.KINDS[g.part].name, Parts.KINDS[g.part].color)
+			_fx_add("spark", g.pos, 26.0, 0.25, 0.0, 1.8, Parts.KINDS[g.part].color)
+			continue
 		if d < 16.0 and g.get("coin", false):
 			_coins_f += float(g.get("value", 1.0)) * _coin_mult
 			coins_earned = int(_coins_f)
@@ -1668,6 +1679,16 @@ func _end_run(won: bool) -> void:
 		st[str(stage)] = maxi(int(st.get(str(stage), 0)), got)
 		patch["stars"] = st
 		_stars_got = got
+	# stage clear: 2 Alloy (+1 per 10 stages), a Plasma Cell on every 5th stage, all kept
+	# with what was picked up (parts are kept even when the base falls)
+	if won:
+		_parts_got["alloy"] = int(_parts_got.get("alloy", 0)) + 2 + stage / 10
+		if stage % 5 == 0:
+			_parts_got["cell"] = int(_parts_got.get("cell", 0)) + 1
+	var owned := Parts.read(d)
+	for k in _parts_got:
+		owned[k] = int(owned.get(k, 0)) + int(_parts_got[k])
+	patch["parts"] = owned
 	if won:
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
@@ -2315,6 +2336,12 @@ func _show_end(won: bool) -> void:
 	v.add_child(rw)
 	if _xp_bonus > 0:
 		v.add_child(UIKit.label("includes first clear bonus +%d XP" % _xp_bonus, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if not _parts_got.is_empty():
+		var bits: Array = []
+		for k in Parts.ORDER:
+			if int(_parts_got.get(k, 0)) > 0:
+				bits.append("+%d %s" % [int(_parts_got[k]), Parts.KINDS[k].name])
+		v.add_child(UIKit.label("Parts:  " + "   ".join(bits), 12, Color(0.7, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 		for id in Turrets.TURRETS:
@@ -2386,6 +2413,9 @@ func _draw() -> void:
 		var p: Vector2 = g.pos
 		var r: float = 4.0 + g.tier * 1.2
 		var blink: float = 1.0 if g.life > 2.0 else (0.4 + 0.6 * absf(sin(g.life * 10.0)))
+		if g.has("part"):
+			_draw_part_pickup(p, String(g.part), blink)
+			continue
 		if g.get("coin", false):
 			# Luna's coin, flipping as it falls
 			var ctx: Texture2D = _tex["ui_coin"]
@@ -3198,3 +3228,49 @@ func _maybe_brief() -> void:
 	var tw := box.create_tween()
 	tw.tween_property(box, "modulate:a", 1.0, 0.25)
 	tw.tween_method(func(n: float): msg.text = full.substr(0, int(n)), 0.0, float(full.length()), full.length() * 0.025)
+
+# An upgrade part lying on the field: Luna's icon (parts/<kind>.png) when it arrives,
+# else a small faceted shape in the part's colour with a slow turn.
+func _draw_part_pickup(p: Vector2, kind: String, a: float) -> void:
+	var col: Color = Parts.KINDS[kind].color
+	var path := "res://parts/%s.png" % kind
+	draw_circle(p, 13.0, Color(0.0, 0.01, 0.05, 0.55 * a))
+	draw_arc(p, 12.0 + sin(time_alive * 5.0) * 1.0, 0.0, TAU, 20, Color(col, 0.8 * a), 1.4, true)
+	if ResourceLoader.exists(path):
+		var tx: Texture2D = load(path)
+		draw_texture_rect(tx, Rect2(p - Vector2(11, 11), Vector2(22, 22)), false, Color(1, 1, 1, a))
+		return
+	var sides: int = {"alloy": 4, "cell": 6, "core": 8}[kind]
+	var pts := PackedVector2Array()
+	for i in sides:
+		var ang := time_alive * 1.5 + TAU * i / sides
+		pts.append(p + Vector2(cos(ang), sin(ang) * 0.8) * 7.0)
+	draw_colored_polygon(pts, Color(col.darkened(0.3), a))
+	pts.append(pts[0])
+	draw_polyline(pts, Color(col.lightened(0.4), a), 1.2, true)
+
+# Which upgrade parts a dying bug drops (Parts; Rudy: modes and later stages give more
+# and rarer parts). Bugs: now and then Alloy Scrap, more often on later stages; from
+# planet 3 they can drop a Plasma Cell. Young Hive Mother: Alloy + a Cell. Boss: Alloy,
+# 2 Cells, and from stage 20 a 35-60% chance of a Void Core (Boss Rush, when built, is
+# the Core mode). Rarer parts only come in on later stages (Rudy, dev115).
+# Elite: everything doubles and bugs can drop Cells from the start.
+func _part_drops(e: Dictionary, def: Dictionary) -> Array:
+	var out: Array = []
+	var later: float = clampf(float(stage) / 60.0, 0.0, 1.0)
+	if e.type == "hive_mother":
+		if e.get("mini", false):
+			out = ["alloy", "alloy", "alloy", "cell"]
+		else:
+			out = ["alloy", "alloy", "alloy", "alloy", "cell", "cell"]
+			if stage >= 20 and rng.randf() < 0.35 + 0.25 * later:   # rare parts only on later planets
+				out.append("core")
+	elif e.type != "spore":
+		var tough: bool = int(def.xp_tier) >= 1 or def.has("fire_every")
+		if rng.randf() < (0.05 if tough else 0.025) * (1.0 + 1.5 * later):
+			out.append("alloy")
+		if (stage >= 21 or elite) and rng.randf() < 0.004 + 0.008 * later:
+			out.append("cell")
+	if elite:
+		out.append_array(out.duplicate())
+	return out

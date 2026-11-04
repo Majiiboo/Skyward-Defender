@@ -7,16 +7,16 @@ extends Control
 const MODES := [
 	{"id": "standard", "name": "Campaign", "banner": "", "tint": Color(0.2, 0.85, 1.0), "unlock": 0,
 		"desc": "Clear stages across six planets, one boss at a time. Earn up to 3 stars per stage.",
-		"rewards": ["Coins", "Pilot XP", "Stars"]},
+		"rewards": ["Coins", "Parts", "Stars"]},
 	{"id": "elite", "name": "Elite", "banner": "sentinel", "tint": Color(0.71, 0.45, 1.0), "unlock": 10,
 		"desc": "Stages you have cleared, much tougher: bugs have 1.85x health. For geared pilots.",
-		"rewards": ["Coins", "Pilot XP"]},
+		"rewards": ["Coins", "Double parts", "Plasma Cells"]},
 	{"id": "horde", "name": "Horde", "banner": "magma", "tint": Color(1.0, 0.55, 0.25), "unlock": 5, "soon": true,
 		"desc": "Endless waves with no stage end. Survive as long as you can and chase the high score.",
 		"rewards": ["Score", "Crystals"]},
 	{"id": "boss", "name": "Boss Rush", "banner": "plasma", "tint": Color(1.0, 0.35, 0.5), "unlock": 20, "soon": true,
 		"desc": "Every boss you have beaten, back to back, with no waves in between.",
-		"rewards": ["Crystals", "Trophies"]},
+		"rewards": ["Void Cores", "Crystals"]},
 ]
 var player_level := 1
 var selected_stage := 1

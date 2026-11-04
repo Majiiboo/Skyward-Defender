@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev114 (version/code=114 and version/name="1.0-dev114" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev115 (version/code=115 and version/name="1.0-dev115" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,25 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev115: upgrade parts
+
+- Upgrades to Lv.1-4 cost coins only. From Lv.5, gear, turret and drone upgrades also
+  need parts: Alloy Scrap (common), Plasma Cells (rare, from Lv.7) and Void Cores
+  (epic, from Lv.9). The Upgrade button shows the coins and parts needed.
+- Short of parts? A box offers crystals for the missing ones (Alloy 2, Cell 6, Core 15
+  crystals each).
+- Where parts come from:
+  - Bugs drop parts now and then (more on later stages).
+  - Young Hive Mothers drop Cells.
+  - Bosses from stage 20 can drop a Void Core.
+  - Stage clears give Alloy, and every 5th stage a Cell.
+  - Rarer parts only start on later stages. Elite doubles every drop.
+  - Boss Rush will be the Void Core mode.
+- Parts float as small spinning shapes in their colour until Luna's icons arrive. They
+  show on the Stage Cleared screen and are kept even if the base falls.
+- Luna brief: LUNA-BRIEF-gear-tiers.md (18 gear pieces x 3 tiers, starting with Ion, plus
+  the 3 part icons).
 
 ## dev114: the pilot turns around
 

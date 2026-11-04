@@ -60,3 +60,29 @@ The biggest wave per stage is the boss wave on stages 5, 10, 15 and so on.
 2. **Boss coins that grow with the planet:** 40 × planet number (planet 6 boss: 240).
 3. **Replays pay half** of the first-clear coins, so farming works but doesn't replace progress.
 4. **Early costs stay as they are.** Later, make the steps from Lv.6 to Lv.10 steeper and add crystals as a second cost for the top levels.
+
+## Upgrade parts (dev115)
+Higher upgrade levels also need parts (`parts.gd`). Crystals can stand in for missing parts: Alloy 2, Cell 6, Core 15 crystals each.
+
+| Upgrade | Coins | Parts |
+|---|---|---|
+| Lv.1 to 4 | coins only | none |
+| Lv.4 to 5 | coins | 3 Alloy |
+| Lv.5 to 6 | coins | 6 Alloy |
+| Lv.6 to 7 | coins | 9 Alloy + 1 Cell |
+| Lv.7 to 8 | coins | 12 Alloy + 2 Cells |
+| Lv.8 to 9 | coins | 15 Alloy + 3 Cells + 1 Core |
+| Lv.9 to 10 | coins | 18 Alloy + 4 Cells + 2 Cores |
+
+Where parts come from:
+- **Alloy Scrap:**
+  - Bugs drop it now and then: about 2.5% per kill, rising on later stages.
+  - A stage clear gives 2, plus 1 per 10 stages.
+- **Plasma Cell:**
+  - A young Hive Mother drops 1, and a boss drops 2.
+  - Every 5th stage clear gives 1.
+  - From stage 21, regular bugs drop them rarely.
+- **Void Core:** a boss on stage 20 or later (35–60% chance). Boss Rush will be the main source once it's built.
+- **Elite:** every drop is doubled, and bugs can drop Cells on any stage.
+
+Autopilot sample: stages 10 and 22 together gave 18 Alloy and 4 Cells.
