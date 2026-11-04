@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev125 (version/code=125 and version/name="1.0-dev125" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev126 (version/code=126 and version/name="1.0-dev126" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev126: rookie suit and the Commander armour
+
+- New players start in Luna's plainer rookie suit (grey padded flight suit, few plates,
+  cyan only), in battle, on Home and in Gear.
+- Beating the Area 1 boss (stage 10) earns the Commander armour (the suit he wore
+  before): "NEW SUIT: COMMANDER ARMOUR" on the Area Complete screen, worn from then on.
+- Gear page: a Suit button on the platform steps switches Rookie / Commander (shows
+  "Commander suit: stage 10" until earned). Saves that are past stage 10 keep Commander.
+- Cutters: SUIT=starter for tools/cut_pilot_art.gd and tools/cut_batch_d.gd.
 
 ## dev125: Luna's merge animation
 

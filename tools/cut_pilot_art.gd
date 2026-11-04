@@ -9,8 +9,11 @@ extends SceneTree
 # are shrunk to the sheet's scale here.
 # Flames stay on black (drawn as added light); boxes around glows are faded out.
 
-const SRC := "res://art_src/pilot/"
-const OUT := "res://pilot_rig/"
+# SUIT=starter: the rookie starter suit (art_src/starter, LUNA-BRIEF-starter-suit.md) into
+# pilot_rig_starter/ (helmet, visor, torso, hips, jetpack only; the rest is shared).
+var SUIT := OS.get_environment("SUIT")
+var SRC := "res://art_src/starter/" if SUIT == "starter" else "res://art_src/pilot/"
+var OUT := "res://pilot_rig_starter/" if SUIT == "starter" else "res://pilot_rig/"
 const TEX := 1.0                    # saved pixels per sheet pixel
 
 # name: sheet rect (x, y, w, h)
@@ -33,6 +36,14 @@ const SHEET_PARTS := {
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
 	var sheet := _load("parts_sheet.webp")
+	if SUIT == "starter":
+		for n in ["helmet", "visor", "torso", "hips"]:
+			_save(_scaled(_trim(_solid(sheet.get_region(SHEET_PARTS[n]))), TEX), OUT + n + ".png")
+		_save(_scaled(_visor_light(sheet.get_region(SHEET_PARTS["visor"])), TEX), OUT + "visor_light.png")
+		var sj := _load("jetpack_no_flames.webp")
+		_save(_scaled(_trim(_solid(sj.get_region(Rect2i(350, 440, 900, 750)))), TEX * 0.44), OUT + "jetpack.png")
+		quit()
+		return
 	for n in SHEET_PARTS:
 		var img := _solid(sheet.get_region(SHEET_PARTS[n]))
 		_save(_scaled(_trim(img), TEX), OUT + n + ".png")

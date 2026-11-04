@@ -18,6 +18,7 @@ var _turret_box: VBoxContainer
 var _drone_box: VBoxContainer
 var _workshop_box: VBoxContainer
 var _ws_icons := {}        # part kind -> its TextureRect (merge pop)
+var _suit_btn: Button
 var drone := {}            # DroneData.read(save)
 var _plat                    # PlatformFloor (set-bonus glow)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
@@ -165,6 +166,13 @@ func _build() -> void:
 			var tb: Button = _slot_tiles[GearData.SLOTS[i]]
 			tb.position.x = stage.size.x - SLOT_PX if i >= 3 else 0.0)
 	plat.tiles = _slot_tiles
+	# the suit switch (Rookie / Commander) on the platform steps
+	_suit_btn = UIKit.ghost_button("", 11)
+	_suit_btn.custom_minimum_size = Vector2(160, 28)
+	_suit_btn.pressed.connect(_toggle_suit)
+	stage.add_child(_suit_btn)
+	stage.resized.connect(func(): _suit_btn.position = Vector2(stage.size.x * 0.5 - 80.0, stage.size.y - 30.0))
+	_paint_suit()
 	# selected piece: stats + upgrade, right under the pilot (used most)
 	var up_row := HBoxContainer.new()
 	up_row.add_theme_constant_override("separation", 10)
@@ -193,6 +201,28 @@ func _build() -> void:
 	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bp.add_child(_bonus)
 	col.add_child(bp)
+
+# The suit (PilotRig.suit_for): Rookie, or the Commander armour once the Area 1 boss is beaten.
+func _paint_suit() -> void:
+	var data := _read()
+	if PilotRig.commander_unlocked(data):
+		_suit_btn.text = "Suit: Commander" if PilotRig.suit_for(data) == "commander" else "Suit: Rookie"
+		_suit_btn.disabled = false
+	else:
+		_suit_btn.text = "Commander suit: stage %d" % PilotRig.COMMANDER_STAGE
+		_suit_btn.disabled = true
+
+func _toggle_suit() -> void:
+	var data := _read()
+	data["suit"] = "starter" if PilotRig.suit_for(data) == "commander" else "commander"
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()
+	PilotRig.set_gear(data)
+	_paint_suit()
+	if _plat:
+		_plat.flash()
 
 # A slot tile: the piece's picture, slot name and level, in its set's colour.
 func _paint_slot(s: String) -> void:

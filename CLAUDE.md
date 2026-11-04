@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev125 (code 125).
+  go UP every package (same signing key, install-over). Current: dev126 (code 126).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -99,6 +99,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    mirrored at the fist. PilotRig.tinted(tex, set) recolours cyan/purple light (clear_mipmaps,
    recolour, generate_mipmaps: the small mip copies kept the old colours) for visor, helmet
    (side + front), orb and battle bolts (_bolt_set). Starter suit art: LUNA-BRIEF-starter-suit.md.
+8d. SUITS (dev126): PilotRig.suit "starter" (pilot_rig_starter/, pilot_front_starter/, art_src/starter,
+   SUIT=starter in cut_pilot_art.gd + cut_batch_d.gd; STARTER_FIX knee, STARTER_LIFT) or "commander"
+   (save stage_unlocked > COMMANDER_STAGE 10; save "suit" = player choice; suit_for(save) in
+   set_gear). Gear _suit_btn toggles; battle Area Complete says NEW SUIT once ("commander_seen").
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

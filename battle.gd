@@ -2343,6 +2343,13 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label("%s cleared!" % StageData.area(stage).name, 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 		if nxt_area < StageData.AREAS.size():
 			v.add_child(UIKit.label("Next planet: %s" % StageData.AREAS[nxt_area].name, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		# the Area 1 boss earns the Commander suit (PilotRig.COMMANDER_STAGE), said once
+		if stage == PilotRig.COMMANDER_STAGE and not bool(_read_save().get("commander_seen", false)):
+			_write_save({"commander_seen": true})
+			var suit_l := UIKit.label("NEW SUIT: COMMANDER ARMOUR", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+			suit_l.add_theme_font_override("font", title_font)
+			v.add_child(suit_l)
+			v.add_child(UIKit.label("Switch suits in Gear", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# rewards on glass tiles
 	var rw := HBoxContainer.new()
 	rw.add_theme_constant_override("separation", 8)

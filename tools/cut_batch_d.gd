@@ -6,7 +6,16 @@ extends SceneTree
 #   as added light).
 # Run: godot --headless --path . --script res://tools/cut_batch_d.gd
 
-const SRC := "res://art_src/batch_d/"
+var SRC := "res://art_src/batch_d/"
+# SUIT=starter: only the rookie starter suit (art_src/starter) into pilot_front_starter/ and
+# pilot_rig_starter/ (its sheets have no glows, so the parts are found as blobs; the front
+# sheet has no rifle cells).
+const STARTER_SHEETS := {
+	"pilot-front-parts": ["solid", 0, ["pilot_front_starter/helmet", "pilot_front_starter/torso", "pilot_front_starter/hips", "pilot_front_starter/pad_r", "pilot_front_starter/pad_l",
+		"pilot_front_starter/upper", "pilot_front_starter/forearm_fist", "pilot_front_starter/forearm_open",
+		"pilot_front_starter/thigh_r", "pilot_front_starter/thigh_l", "pilot_front_starter/shin", "pilot_front_starter/jet", ""]],
+	"pilot-round3-limbs": ["solid", 0, ["pilot_rig_starter/r3_upper", "pilot_rig_starter/r3_forearm_fist", "", "pilot_rig_starter/r3_forearm_open", "pilot_rig_starter/r3_thigh", "pilot_rig_starter/r3_shin"]],
+}
 
 # sheet -> [mode, longest side px, [names in reading order ("" = skip that blob)], how]
 # how: "whole" = the whole picture is one object; "largest" = keep only the biggest blobs
@@ -33,10 +42,14 @@ const SHEETS := {
 }
 
 func _initialize() -> void:
-	for d in ["cards", "drone", "turrets", "pilot_front"]:
+	var starter := OS.get_environment("SUIT") == "starter"
+	if starter:
+		SRC = "res://art_src/starter/"
+	var sheets: Dictionary = STARTER_SHEETS if starter else SHEETS
+	for d in ["cards", "drone", "turrets", "pilot_front", "pilot_front_starter", "pilot_rig_starter"]:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://" + d))
-	for sheet in SHEETS:
-		var spec: Array = SHEETS[sheet]
+	for sheet in sheets:
+		var spec: Array = sheets[sheet]
 		var img := Image.load_from_file(ProjectSettings.globalize_path(SRC + sheet + ".webp"))
 		if img == null:
 			print("missing ", sheet)

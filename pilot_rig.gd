@@ -50,7 +50,30 @@ static func _parts() -> Dictionary:
 	if CHUNKY and ResourceLoader.exists("res://pilot_rig/r3_upper.png"):
 		for k in CHUNKY_PARTS:
 			p[k].merge(CHUNKY_PARTS[k], true)
+	if suit == "starter":
+		for k in STARTER_FIX:
+			p[k].merge(STARTER_FIX[k], true)
 	return p
+
+# The suit he wears (Rudy, dev126): "starter" = Luna's plainer rookie suit (pilot_rig_starter/,
+# pilot_front_starter/; any part missing there falls back to the main folder), "commander" =
+# the armour he always wore, earned by beating the Area 1 boss (suit_for(save)).
+static var suit := "commander"
+# the rookie's thighs carry their knee pad, so the knee sits higher up the picture
+const STARTER_FIX := {"thigh_r": {"knee": Vector2(0.55, 0.72)}, "thigh_l": {"knee": Vector2(0.55, 0.72)}}
+const COMMANDER_STAGE := 10   # beat this stage (the Area 1 boss) to earn the Commander suit
+
+static func commander_unlocked(save: Dictionary) -> bool:
+	return int(save.get("stage_unlocked", 1)) > COMMANDER_STAGE
+
+# the suit the save asks for; Commander once earned unless the player picked the rookie suit
+static func suit_for(save: Dictionary) -> String:
+	if not commander_unlocked(save):
+		return "starter"
+	return "starter" if String(save.get("suit", "commander")) == "starter" else "commander"
+
+static func _dir(front: bool) -> String:
+	return ("pilot_front" if front else "pilot_rig") + ("_starter" if suit == "starter" else "")
 
 # Which rifle picture he holds: "rifle_side" (Luna's side view, reads well when he aims
 # sideways) or "rifle" (the parts sheet's, seen edge-on).
@@ -72,6 +95,12 @@ static func gun() -> String:
 
 # Dress him from the save: weapon in hand, visor and chest orb in their sets' colours.
 static func set_gear(save: Dictionary) -> void:
+	var want := suit_for(save)
+	if want != suit:
+		suit = want
+		PARTS = _parts()
+		_tex.clear()
+		_ftex.clear()
 	var g := GearData.read(save)
 	var wid: String = g.equipped["Weapon"]
 	var key := "%s_t%d" % [wid, GearData.tier(GearData.level(g, wid))]
@@ -91,7 +120,8 @@ static func set_gear(save: Dictionary) -> void:
 		tex(nm)   # recolour now: a picture made in the middle of a draw shows the old one
 	_ftex.erase("helmet")
 	if front_ready():
-		_ftex["helmet"] = tinted(load("res://pilot_front/helmet.png"), visor_set)
+		var fh := "res://%s/helmet.png" % _dir(true)
+		_ftex["helmet"] = tinted(load(fh if ResourceLoader.exists(fh) else "res://pilot_front/helmet.png"), visor_set)
 
 # Luna's cyan / blue / purple light recoloured to a set's colour (Ion keeps hers).
 static func tinted(tx: Texture2D, set_id: String) -> Texture2D:
@@ -139,7 +169,10 @@ static var _tex := {}
 static func tex(name: String) -> Texture2D:
 	if not _tex.has(name):
 		var file: String = String(PARTS[name].get("tex", name)) if PARTS.has(name) else name
-		var t: Texture2D = load("res://pilot_rig/%s.png" % file)
+		var path := "res://%s/%s.png" % [_dir(false), file]
+		if not ResourceLoader.exists(path):
+			path = "res://pilot_rig/%s.png" % file
+		var t: Texture2D = load(path)
 		if name == "visor" or name == "visor_light" or name == "helmet":
 			t = tinted(t, visor_set)
 		elif name == "orb":
@@ -322,9 +355,15 @@ const ORDER := ["jetpack", "thigh_r", "thigh_l", "shin_r", "shin_l", "hips", "to
 
 # The solid pilot. Call draw_light() on an additive layer drawn BEHIND him for the
 # flames, and draw_glow() on an additive layer in FRONT for visor light and muzzle flash.
+# The contrast lift is made for the dark Commander armour; the lighter rookie grey gets less.
+const STARTER_LIFT := Color(1.08, 1.08, 1.12)
+static func _lift_col(lift: Color, alpha: float) -> Color:
+	var l := STARTER_LIFT if suit == "starter" and lift == LIFT else lift
+	return Color(l.r, l.g, l.b, alpha)
+
 static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0, alpha: float = 1.0, lift: Color = LIFT) -> void:
 	var base := base_xform(r, pos, height, tilt)
-	var col := Color(lift.r, lift.g, lift.b, alpha)
+	var col := _lift_col(lift, alpha)
 	for nm in ORDER:
 		if nm == "shin_r":
 			_draw_part(c, base, X.shin_r, "shin", col)
@@ -481,11 +520,14 @@ static func front_ready() -> bool:
 static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
 	var k := height / BODY_H * FRONT_K
 	var breath := sin(r.t * TAU / 2.6)
-	var col := Color(lift.r, lift.g, lift.b, alpha)
+	var col := _lift_col(lift, alpha)
 	for part in FRONT:
 		var nm: String = part[0]
 		if not _ftex.has(nm):
-			var ft: Texture2D = load("res://pilot_front/%s.png" % nm)
+			var fp := "res://%s/%s.png" % [_dir(true), nm]
+			if not ResourceLoader.exists(fp):
+				fp = "res://pilot_front/%s.png" % nm
+			var ft: Texture2D = load(fp)
 			_ftex[nm] = tinted(ft, visor_set) if nm == "helmet" else ft
 		var tx: Texture2D = _ftex[nm]
 		var s: float = float(part[2])
