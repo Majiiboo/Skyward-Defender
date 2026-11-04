@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev102 (code 102).
+  go UP every package (same signing key, install-over). Current: dev103 (code 103).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -73,7 +73,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    them off for simulator comparisons.)
 3. CARDS: overcharge (Cards.OVERCHARGE, 3rd pick or last for max-2 cards) dev99; FUSIONS dev102 (Cards.FUSIONS, battle _offer puts a ready fusion in the middle slot, _fuse; new cards chain_spark, wingman (HomeProp.draw_drone), quick_study; Luna art: LUNA-BRIEF-cards.md). (done dev101: card visuals. Nova ring = Luna fx, Aegis = _draw_aegis hex shell; bolt thickness, hot muzzle and
    magnet ring are done).
-4. Modernise the top bar, nav bar and edge tabs (Rudy finds them flat). Rudy picked the GLASS direction (2026-11-03); variants A1 cut glass, A2 split dock, A3 full-width, A4 colour-coded shown, waiting for his pick.
+4. GLASS LOOK DONE (dev103, from Luna's Home mockups): glass.gd (Glass.panel/box/rounded: fill, sheen, cyan-to-purple edge); home_frame.gd docks (0 top capsule, -1/1 edge tabs, 2 free tile); nav_dock.gd floating glass bar + lit tile (gold on Battle), all tab names shown (hub NAV_NAMES, _paint_nav_label); hub _pilot_block (name + XP bar). Gear Pilot page: PilotShowcase on PlatformFloor (gear/platform.png when Luna sends it, LUNA-BRIEF-gear-platform.md), slot tiles 3 left / 3 right. Later: real background blur if it runs well on phones; Store/Quests/Modes screens in glass.
    Battle HUD done (2026-11-03): battle.gd _draw_hud draws a Home-style top bar (HUD_H,
    PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun

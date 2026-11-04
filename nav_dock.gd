@@ -1,29 +1,17 @@
 class_name NavDock
 extends Control
-# The bottom bar, drawn as ONE shape: fill + outline + the active-tab notch.
-#
-# Why one shape: the old bar was three separate pieces (bar border, notch
-# picture, cover strip) that had to line up perfectly while moving, so seams
-# showed. Here the notch is part of the outline itself:
-#   - on a middle tab the notch rises out of the bar with soft blended corners
-#   - on the Store / Quests edge tabs the notch's outer curve IS the corner,
-#     so the bar flows up into the tab with no free-floating piece
+# The bottom bar in the Glass look (glass.gd): a floating glass capsule with a lit
+# glass tile under the active tab (gold on Battle) that glides between tabs.
 #
 # How it is used (hub.gd does this for you):
 #   dock.setup(nav_bar_node)                 # follow that bar's rectangle
-#   dock.snap_to_tab(button, edge)           # place the notch instantly
-#   dock.slide_to_tab(button, edge)          # glide the notch there
-# edge: -1 = left edge tab (Store), 0 = middle tab, 1 = right edge tab (Quests)
+#   dock.snap_to_tab(button, edge)           # place the tile instantly
+#   dock.slide_to_tab(button, edge)          # glide the tile there
+# edge is kept for older callers; the tile always centres on its tab.
 
-@export var bump_h := 14.0          # how far the notch rises above the bar
-@export var bump_w := 92.0          # notch width
-@export var bar_corner := 20.0      # the bar's own top corner radius
-@export var fillet := 6.0           # soft blend where notch meets the bar top
-@export var tab_corner := 8.0       # notch's own top corners (middle tabs)
-@export var edge_corner := 14.0     # outer curve of the notch on edge tabs
-@export var fill_color := Color(0.03, 0.045, 0.10, 0.82)
-@export var line_color := Color(0.0, 0.898, 1.0, 1.0)
-@export var line_width := 1.2
+@export var bump_h := 14.0          # how far the lit tile rises above the bar
+@export var bump_w := 70.0          # lit tile width
+@export var bar_corner := 20.0      # the glass bar's corner radius
 @export var slide_time := 0.30
 
 # Left edge of the notch in this node's own pixels. Setting it redraws.
@@ -84,82 +72,22 @@ func _follow_bar() -> void:
 
 func _target_x() -> float:
 	var max_x := maxf(size.x - bump_w, 0.0)
-	if _edge < 0:
-		return 0.0
-	if _edge > 0:
-		return max_x
+	# the lit tile sits centred on its tab, edge tabs included (the glass bar floats)
 	var cx := _tab.get_global_rect().get_center().x - global_position.x
 	return clampf(cx - bump_w * 0.5, 0.0, max_x)
 
 # ---- drawing -------------------------------------------------------------
 
-func _arc(pts: PackedVector2Array, c: Vector2, r: float, a0: float, a1: float) -> void:
-	if r < 0.1:
-		return
-	var steps := 10
-	for i in range(steps + 1):
-		var a := lerpf(a0, a1, float(i) / float(steps))
-		pts.append(c + Vector2(cos(a), sin(a)) * r)
-
-func _build_outline() -> PackedVector2Array:
-	# Local coordinates: y = 0 is the top of the notch, the bar top is y = bump_h.
-	var w := size.x
-	var top := bump_h
-	var left := notch_x
-	var right := w - notch_x - bump_w
-	var edge_l := left < 0.5
-	var edge_r := right < 0.5
-	var pts := PackedVector2Array()
-	var rt := tab_corner
-	var er := minf(edge_corner, bump_h)
-
-	# ---- left side, bottom to top ----
-	if edge_l:
-		pts.append(Vector2(0, er))
-		_arc(pts, Vector2(er, er), er, PI, 1.5 * PI)
-	else:
-		var rl := minf(bar_corner, left * 0.5)
-		var fl := minf(fillet, maxf(left - rl, 0.0))
-		pts.append(Vector2(0, top + rl))
-		_arc(pts, Vector2(rl, top + rl), rl, PI, 1.5 * PI)
-		pts.append(Vector2(left - fl, top))
-		_arc(pts, Vector2(left - fl, top - fl), fl, 0.5 * PI, 0.0)
-		pts.append(Vector2(left, rt))
-		_arc(pts, Vector2(left + rt, rt), rt, PI, 1.5 * PI)
-
-	# ---- right side, top to bottom ----
-	if edge_r:
-		pts.append(Vector2(w - er, 0))
-		_arc(pts, Vector2(w - er, er), er, 1.5 * PI, 2.0 * PI)
-		pts.append(Vector2(w, er))
-	else:
-		var rr := minf(bar_corner, right * 0.5)
-		var fr := minf(fillet, maxf(right - rr, 0.0))
-		var nr := left + bump_w
-		pts.append(Vector2(nr - rt, 0))
-		_arc(pts, Vector2(nr - rt, rt), rt, 1.5 * PI, 2.0 * PI)
-		pts.append(Vector2(nr, top - fr))
-		_arc(pts, Vector2(nr + fr, top - fr), fr, PI, 0.5 * PI)
-		pts.append(Vector2(w - rr, top))
-		_arc(pts, Vector2(w - rr, top + rr), rr, 1.5 * PI, 2.0 * PI)
-		pts.append(Vector2(w, top + rr))
-	return _dedupe(pts)
-
-func _dedupe(pts: PackedVector2Array) -> PackedVector2Array:
-	var out := PackedVector2Array()
-	for p in pts:
-		if out.is_empty() or out[out.size() - 1].distance_to(p) > 0.05:
-			out.append(p)
-	return out
+const INSET := 8.0          # the glass bar floats this far from the screen sides and bottom
 
 func _draw() -> void:
 	if size.x < 10.0 or size.y < 10.0:
 		return
-	var line := _build_outline()
-	# Fill = outline + the two bottom corners (bar is flush with the screen bottom).
-	var shape := PackedVector2Array(line)
-	shape.append(Vector2(size.x, size.y))
-	shape.append(Vector2(0, size.y))
-	draw_colored_polygon(shape, fill_color)
-	# One crisp line, no glow: the notch is the only highlight.
-	draw_polyline(line, Color(line_color, 0.55), line_width, true)
+	# the bar: one glass capsule
+	var bar := Rect2(INSET, bump_h, size.x - INSET * 2.0, size.y - bump_h - INSET)
+	Glass.panel(self, Glass.box(bar, bar_corner))
+	# the active tab: a lit glass tile rising out of the bar (gold on Battle)
+	var tile := Rect2(notch_x, 2.0, bump_w, size.y - INSET - 6.0)
+	var battle: bool = _tab != null and String(_tab.name) == "NavBattle"
+	var col: Color = Glass.GOLD if battle else Glass.CYAN
+	Glass.panel(self, Glass.box(tile, 14.0), 1.0, Color(col, 0.9), Color(col.r * 0.22, col.g * 0.22, col.b * 0.3, 0.78))

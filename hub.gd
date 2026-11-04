@@ -23,6 +23,7 @@ const GLASS_LINE := Color(1, 1, 1, 0.10)
 # Add or remove node names here to try different combinations.
 const LABELED := ["ChestButton", "PatrolButton", "StarterButton", "GiftsButton"]
 
+const NAV_NAMES := {"NavStore": "Store", "NavGear": "Gear", "NavBattle": "Battle", "NavModes": "Modes", "NavQuests": "Quests"}
 const NAV_ICONS := {"NavStore": "nav_store", "NavGear": "nav_gear", "NavBattle": "nav_battle",
 	"NavModes": "nav_modes", "NavQuests": "nav_quests"}
 
@@ -54,6 +55,7 @@ var stage := 1
 var mode := "Normal"
 var elite_unlocked := false
 var level := 1
+var pilot_xp := 0
 var coins := 0
 var crystals := 0
 var best_score := 0
@@ -115,8 +117,8 @@ func _load_save() -> void:
 				stage_unlocked = int(data.get("stage_unlocked", 1))
 				stage = clampi(int(data.get("selected_stage", 1)), 1, stage_unlocked)
 				mode = "Elite" if bool(data.get("selected_elite", false)) else "Normal"
-				var px := int(data.get("pilot_xp", 0))
-				level = Turrets.pilot_level(px)
+				pilot_xp = int(data.get("pilot_xp", 0))
+				level = Turrets.pilot_level(pilot_xp)
 				elite_unlocked = level >= 10
 
 # ---------------------------------------------------------------- styles
@@ -173,6 +175,28 @@ func _add_dot(b: Control) -> void:
 	d.offset_bottom = 13.0
 	b.add_child(d)
 
+# "Pilot 7" with a thin XP bar under it (cyan to purple) toward the next level.
+func _pilot_block() -> Control:
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 2)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var name_l := _small_label("Pilot %d" % level, 14, Color.WHITE)
+	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(name_l)
+	var lo := Turrets.xp_for_level(level)
+	var hi := Turrets.xp_for_level(level + 1)
+	var f := clampf(float(pilot_xp - lo) / maxf(float(hi - lo), 1.0), 0.0, 1.0)
+	var bar := Control.new()
+	bar.custom_minimum_size = Vector2(62, 4)
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.draw.connect(func():
+		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), Color(1, 1, 1, 0.12))
+		if f > 0.0:
+			bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bar.size.x * f, bar.size.y)), CYAN.lerp(PURPLE, f)))
+	v.add_child(bar)
+	return v
+
 func _small_label(text: String, size_px: int, col: Color) -> Label:
 	var l := Label.new()
 	l.text = text
@@ -190,6 +214,7 @@ func _rail_item(def: Dictionary) -> Control:
 	b.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	b.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
 	box.add_child(b)
+	_frame.add_dock(b, 2, Vector2(-5, -5))   # a glass tile behind it
 	if def.dot:
 		_add_dot(b)
 	if def.id in LABELED:
@@ -207,6 +232,9 @@ func _build_home() -> void:
 	top.add_theme_constant_override("separation", 8)
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top.offset_left = 10.0
+	top.offset_right = -8.0
+	top.offset_top = 4.0
 	home.add_child(top)
 	# Left dock group: profile + currencies sit in one tab attached to the left edge
 	var dockL := HBoxContainer.new()
@@ -215,18 +243,9 @@ func _build_home() -> void:
 	dockL.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(dockL)
 	var profile := _icon_button("ProfileButton", "profile", 44.0, 38.0, 30, Color(PURPLE, 0.7))
-	var lv := _small_label(str(level), 11, Color.WHITE)
-	lv.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
-	lv.offset_left = -17.0
-	lv.offset_top = -17.0
-	lv.offset_right = -1.0
-	lv.offset_bottom = -1.0
-	lv.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	var lv_style := _glass(8.0, CYAN, Color(0.04, 0.06, 0.17, 0.95))
-	lv.add_theme_stylebox_override("normal", lv_style)
-	profile.add_child(lv)
 	profile.pressed.connect(func(): _side_popup("PROFILE", "Pilot\nLevel %d\nProfile and account\nsettings will live here." % level))
 	dockL.add_child(profile)
+	dockL.add_child(_pilot_block())
 	_coin_btn = _pill_button("CoinButton", "ui_coin", _fmt(coins))
 	_coin_btn.pressed.connect(func(): _side_popup("COINS", "Coins: earned by defeating enemies.\nYou keep them between runs."))
 	dockL.add_child(_coin_btn)
@@ -236,7 +255,7 @@ func _build_home() -> void:
 	var open := _icon_button("OpenCurrencyButton", "plus", 36.0, 26.0, 14, Color(CYAN, 0.4))
 	open.pressed.connect(func(): _side_popup("RESOURCES", "Room for one more resource\nor currency later."))
 	dockL.add_child(open)
-	_frame.add_dock(top, 0, Vector2(0, 3))
+	_frame.add_dock(top, 0, Vector2(0, 4))
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -307,7 +326,7 @@ func _build_home() -> void:
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.set_anchors_preset(Control.PRESET_TOP_LEFT)
 	left.offset_top = 124.0
-	left.offset_left = -4.0
+	left.offset_left = 8.0
 	home.add_child(left)
 	for d in LEFT_RAIL:
 		left.add_child(_rail_item(d))
@@ -318,7 +337,7 @@ func _build_home() -> void:
 	right.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	right.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	right.offset_top = 124.0
-	right.offset_right = 4.0
+	right.offset_right = -8.0
 	home.add_child(right)
 	for d in RIGHT_RAIL:
 		right.add_child(_rail_item(d))
@@ -489,9 +508,9 @@ func _setup_nav() -> void:
 	# The bar's look is drawn by nav_dock.gd; the PanelContainer only keeps padding.
 	var bar_box := StyleBoxEmpty.new()
 	bar_box.content_margin_top = 10
-	bar_box.content_margin_bottom = 8
-	bar_box.content_margin_left = 8
-	bar_box.content_margin_right = 8
+	bar_box.content_margin_bottom = 14
+	bar_box.content_margin_left = 14
+	bar_box.content_margin_right = 14
 	$NavBar.add_theme_stylebox_override("panel", bar_box)
 	$NavBar/NavVBox.add_theme_constant_override("separation", -8)
 	_nav_empty = StyleBoxEmpty.new()
@@ -501,10 +520,10 @@ func _setup_nav() -> void:
 			nb.add_theme_stylebox_override(state, _nav_empty)
 		nb.expand_icon = true
 		var nl := _nav_label(tab)
-		nl.add_theme_font_size_override("font_size", 12)
-		nl.add_theme_color_override("font_color", GOLD)
+		nl.add_theme_font_size_override("font_size", 11)
 		nl.custom_minimum_size.y = 16
-	_nav_label("NavBattle").modulate.a = 0.0
+		nl.text = NAV_NAMES[tab]
+		_paint_nav_label(tab, tab == "NavBattle")
 	for tab in NAV_TABS:
 		var btn := _nav_btn(tab)
 		var path := ""
@@ -544,9 +563,6 @@ func _animate_nav_in() -> void:
 		b.position.y = NAV_LIFT if on else 0.0
 		b.scale = Vector2.ONE * (1.08 if on else 1.0)
 	_nav_dock.snap_to_tab(_nav_btn("NavBattle"), 0)
-	var tw := create_tween()
-	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
-	tw.tween_property(_nav_label("NavBattle"), "modulate:a", 1.0, 0.30)
 	_start_nav_pulse()
 
 # ------------------------------------------------------------ per frame
@@ -693,13 +709,7 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 		tw.tween_property(b, "modulate", Color.WHITE if on else NAV_DIM, 0.25)
 		tw.tween_property(b, "position:y", NAV_LIFT if on else 0.0, 0.30).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(b, "scale", Vector2.ONE * (1.08 if on else 1.0), 0.30).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
-		var l := _nav_label(tab)
-		if on:
-			l.text = tab.substr(3).to_upper()
-			l.modulate.a = 0.0
-			tw.tween_property(l, "modulate:a", 1.0, 0.25)
-		elif l.modulate.a > 0.0:
-			tw.tween_property(l, "modulate:a", 0.0, 0.2)   # fades out instead of vanishing
+		_paint_nav_label(tab, on)
 	_nav_active = tapped
 	_refresh_nav_layers(tapped)
 	await tw.finished
@@ -841,6 +851,13 @@ func _fade_in_overlay() -> void:
 	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_OUT)
 	tw.tween_property(overlay, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(func(): overlay.queue_free())
+
+# Every tab keeps its name under it (Luna's mockup): the active one bright (gold on
+# Battle, cyan elsewhere), the others muted.
+func _paint_nav_label(tab: String, on: bool) -> void:
+	var l := _nav_label(tab)
+	l.add_theme_color_override("font_color", (GOLD if tab == "NavBattle" else CYAN) if on else MUTED)
+	l.modulate.a = 1.0 if on else 0.7
 
 func _nav_btn(tab: String) -> Button:
 	return $NavBar/NavVBox/NavRow.get_node("Slot%s/%s" % [tab.substr(3), tab]) as Button

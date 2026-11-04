@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev102 (version/code=102 and version/name="1.0-dev102" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev103 (version/code=103 and version/name="1.0-dev103" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,21 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev103: the Glass look on Home and a new Gear screen
+
+- Home, from Luna's mockups:
+  - The top bar is one floating glass capsule with "Pilot 7" and a thin XP bar toward
+    your next level, then coins and crystals.
+  - The side buttons sit on glass tiles, and Chest and Patrol on glass tabs at the
+    screen edges.
+  - The bottom nav bar is a floating glass bar. Every tab shows its name, and the
+    active tab rises as a lit glass tile (gold on Battle) that glides when you switch.
+  - All glass has one thin edge that shades from cyan to purple. No glow.
+- Gear screen: the pilot now stands on a round platform with the six gear slots around
+  him (Weapon, Helmet, Chest on the left; Gauntlets, Boots, Jetpack on the right) as
+  glass tiles, lit in the set's colour when selected. The platform is a stand-in until
+  Luna paints hers (LUNA-BRIEF-gear-platform.md); it switches over by itself.
 
 ## dev102: fusion cards and three new cards
 

@@ -1,9 +1,10 @@
 class_name HomeFrame
 extends Control
-# The Home screen's "frame": docks attached to the screen edges (behind the top
-# bar, the menu button, Chest and Patrol) and a thin line down both edges that
-# flows into the nav bar outline, so the buttons read as part of one piece.
-# hub.gd registers each docked control with add_dock(control, side, pad).
+# The Home screen's "frame": Glass panels (glass.gd) behind the top bar, Chest and
+# Patrol (flush with the screen edges) and the side rail tiles, so the buttons read
+# as part of one glass set with the nav bar.
+# hub.gd registers each control with add_dock(control, side, pad): side 0 = top bar,
+# -1 / 1 = left / right edge tab, 2 = free tile.
 
 const CYAN := Color(0.18, 0.9, 1.0)
 
@@ -25,27 +26,6 @@ func _process(_d: float) -> void:
 		position = Vector2.ZERO
 	queue_redraw()
 
-func _dock_shape(r: Rect2, side: int, _radius: float) -> PackedVector2Array:
-	# A tab flush with the screen edge, with an angled cut on its inner top corner
-	# and a short chamfer on the bottom, so it reads as a hangar panel rather than a box.
-	var cut := minf(14.0, r.size.y * 0.4)
-	var pts := PackedVector2Array()
-	if side < 0:
-		pts.append(Vector2(0, r.position.y))
-		pts.append(Vector2(r.end.x - cut, r.position.y))
-		pts.append(Vector2(r.end.x, r.position.y + cut))
-		pts.append(Vector2(r.end.x, r.end.y - 6.0))
-		pts.append(Vector2(r.end.x - 6.0, r.end.y))
-		pts.append(Vector2(0, r.end.y))
-	else:
-		pts.append(Vector2(size.x, r.end.y))
-		pts.append(Vector2(r.position.x + 6.0, r.end.y))
-		pts.append(Vector2(r.position.x, r.end.y - 6.0))
-		pts.append(Vector2(r.position.x, r.position.y + cut))
-		pts.append(Vector2(r.position.x + cut, r.position.y))
-		pts.append(Vector2(size.x, r.position.y))
-	return pts
-
 func _draw() -> void:
 	if size.x < 10.0:
 		return
@@ -57,32 +37,16 @@ func _draw() -> void:
 		var pad: Vector2 = d.pad
 		var r := Rect2(g.position - pad - global_position, g.size + pad * 2.0)
 		var side: int = d.side
-		if side == 0:
-			# Top bar: a mirror of the nav bar. Flush with the top of the screen, one
-			# outline along its bottom that curves up into the screen edges.
-			var R := 20.0
-			var yb := r.end.y
-			var pts := PackedVector2Array()
-			pts.append(Vector2(0, yb - R))
-			for i in range(9):
-				var a2 := lerpf(PI, PI * 0.5, float(i) / 8.0)
-				pts.append(Vector2(R, yb - R) + Vector2(cos(a2), sin(a2)) * R)
-			for i in range(9):
-				var a3 := lerpf(PI * 0.5, 0.0, float(i) / 8.0)
-				pts.append(Vector2(size.x - R, yb - R) + Vector2(cos(a3), sin(a3)) * R)
-			pts.append(Vector2(size.x, yb - R))
-			var shape := PackedVector2Array(pts)
-			shape.append(Vector2(size.x, -2))
-			shape.append(Vector2(0, -2))
-			draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
-			draw_polyline(pts, Color(CYAN, 0.55), 1.2, true)
-			continue
-		if side < 0:
-			r = Rect2(Vector2(0, r.position.y), Vector2(r.end.x, r.size.y))
-		else:
-			r = Rect2(Vector2(r.position.x, r.position.y), Vector2(size.x - r.position.x, r.size.y))
-		var radius: float = minf(16.0, r.size.y * 0.45)
-		var shape := _dock_shape(r, side, radius)
-		draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
-		var edge := PackedVector2Array(shape)
-		draw_polyline(edge, Color(CYAN, 0.5), 1.2, true)
+		var a: float = ctrl.modulate.a
+		match side:
+			0:
+				# top bar: one floating glass capsule across the screen
+				Glass.panel(self, Glass.box(Rect2(6.0, r.position.y, size.x - 12.0, r.size.y), 18.0), a)
+			-1:
+				# a glass tab flush with the left edge, rounded on its inner side
+				Glass.panel(self, Glass.rounded(Rect2(-2.0, r.position.y, r.end.x + 2.0, r.size.y), [0, 14, 14, 0]), a)
+			1:
+				Glass.panel(self, Glass.rounded(Rect2(r.position.x, r.position.y, size.x - r.position.x + 2.0, r.size.y), [14, 0, 0, 14]), a)
+			_:
+				# a free glass tile (side rail buttons)
+				Glass.panel(self, Glass.box(r, 12.0), a)

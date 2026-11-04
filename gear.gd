@@ -15,6 +15,7 @@ var _bag_grid: GridContainer
 var _upgrade_btn: Button
 var _pilot_box: VBoxContainer
 var _turret_box: VBoxContainer
+const SLOT_PX := 84.0       # gear slot tiles around the pilot
 
 # ---- turrets page ----
 var coins := 0
@@ -114,28 +115,36 @@ func _build() -> void:
 	_pilot_box.add_theme_constant_override("separation", 10)
 	col.add_child(_pilot_box)
 	col = _pilot_box
-	# the pilot (live rig) beside the six slots
-	var hero_row := HBoxContainer.new()
-	hero_row.add_theme_constant_override("separation", 10)
-	var hero_panel := UIKit.panel()
-	hero_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
+	var stage := Control.new()
+	stage.custom_minimum_size = Vector2(0, 292)
+	col.add_child(stage)
+	var plat := PlatformFloor.new()
+	plat.set_anchors_preset(Control.PRESET_FULL_RECT)
+	plat.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(plat)
 	var hero := PilotShowcase.new()
-	hero.custom_minimum_size = Vector2(0, 210)
-	hero_panel.add_child(hero)
-	hero_row.add_child(hero_panel)
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	for s in GearData.SLOTS:
+	hero.set_anchors_preset(Control.PRESET_FULL_RECT)
+	hero.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stage.add_child(hero)
+	for i in GearData.SLOTS.size():
+		var s: String = GearData.SLOTS[i]
 		var b := Button.new()
-		b.custom_minimum_size = Vector2(104, 66)
+		b.size = Vector2(SLOT_PX, SLOT_PX)
+		var right := i >= 3
+		b.position = Vector2(-SLOT_PX if right else 0.0, (i % 3) * (SLOT_PX + 12.0) + 6.0)
+		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+			b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 		var slot: String = s
 		b.pressed.connect(func(): _select(slot))
-		grid.add_child(b)
+		b.draw.connect(func(): _draw_slot(b, slot))
+		stage.add_child(b)
 		_slot_tiles[s] = b
-	hero_row.add_child(grid)
-	col.add_child(hero_row)
+	stage.resized.connect(func():
+		for i in GearData.SLOTS.size():
+			var tb: Button = _slot_tiles[GearData.SLOTS[i]]
+			tb.position.x = stage.size.x - SLOT_PX if i >= 3 else 0.0)
+	plat.tiles = _slot_tiles
 	# set bonuses you have
 	var bp := UIKit.panel(10)
 	_bonus = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
@@ -171,11 +180,7 @@ func _paint_slot(s: String) -> void:
 	for c in b.get_children():
 		c.queue_free()
 	var id: String = gear.equipped[s]
-	var set_id: String = GearData.ITEMS[id].set
-	var col: Color = UIKit.RARITY[set_id]
-	var on := s == selected_slot
-	UIKit._style_btn(b, UIKit.box(Color(col, 0.25 if on else 0.12), Color.WHITE if on else Color(col, 0.8), 10, 2 if on else 1),
-		UIKit.box(Color(col, 0.35), Color.WHITE, 10), Color.WHITE)
+	b.queue_redraw()
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -183,13 +188,22 @@ func _paint_slot(s: String) -> void:
 	v.add_theme_constant_override("separation", 0)
 	var tr := TextureRect.new()
 	tr.texture = _pic(id)
-	tr.custom_minimum_size = Vector2(0, 36)
+	tr.custom_minimum_size = Vector2(0, 42)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(tr)
-	v.add_child(UIKit.label("%s  Lv.%d" % [s, _lvl(id)], 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label(s, 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("Lv.%d" % _lvl(id), 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 	b.add_child(v)
+
+# the tile itself: a glass square, lit in its set's colour when selected
+func _draw_slot(b: Button, s: String) -> void:
+	var on := s == selected_slot
+	var col: Color = UIKit.RARITY[GearData.ITEMS[gear.equipped[s]].set]
+	var edge := Color(col, 0.95) if on else Color(col, 0.45)
+	var fill := Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.8) if on else Glass.FILL
+	Glass.panel(b, Glass.box(Rect2(Vector2.ZERO, b.size), 12.0), 1.0, edge, fill)
 
 func _fill_bag() -> void:
 	for c in _bag_grid.get_children():
@@ -287,12 +301,72 @@ class PilotShowcase extends Control:
 	func _ready() -> void:
 		clip_contents = true
 		view = PilotRigView.new()
-		view.height = 150.0
+		view.height = 170.0
 		add_child(view)
 	func _process(delta: float) -> void:
 		t += delta
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
-		view.update(delta, size * 0.5 + Vector2(0, 8 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+		# hovering just above the platform floor (PlatformFloor.FLOOR_UP)
+		view.update(delta, Vector2(size.x * 0.5, size.y - PlatformFloor.FLOOR_UP - 96.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+
+# The round platform he stands on. Luna's painted platform (gear/platform.png) when it
+# arrives; until then a simple stand-in: a glass disc with rings and a floor grid. Thin
+# lines link each slot tile to the platform.
+class PlatformFloor extends Control:
+	const FLOOR_UP := 34.0     # disc centre, up from the bottom of the stage
+	var tiles := {}
+	var t := 0.0
+	var _tex: Texture2D
+	func _ready() -> void:
+		if ResourceLoader.exists("res://gear/platform.png"):
+			_tex = load("res://gear/platform.png")
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+	func _draw() -> void:
+		var c := Vector2(size.x * 0.5, size.y - FLOOR_UP)
+		var rx := minf(size.x * 0.3, 130.0)
+		var ry := rx * 0.24
+		# links from the tiles to the platform rim
+		for s in tiles:
+			var b: Button = tiles[s]
+			var left: bool = b.position.x < size.x * 0.5
+			var from := Vector2(b.position.x + (b.size.x if left else 0.0), b.position.y + b.size.y * 0.5)
+			var to := c + Vector2((-rx if left else rx) * 0.8, -ry * 0.4)
+			draw_line(from, from.lerp(to, 0.35), Color(Glass.CYAN, 0.25), 1.0, true)
+		if _tex:
+			var w := rx * 2.4
+			var h := w * _tex.get_height() / _tex.get_width()
+			draw_texture_rect(_tex, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false)
+			return
+		# stand-in: side band, top disc, rings, grid, and a slow light sweeping round
+		_ellipse(c + Vector2(0, 9), rx, ry, Color(0.03, 0.05, 0.11, 0.95))
+		_ellipse(c, rx, ry, Color(0.06, 0.1, 0.2, 0.95))
+		for k in 3:
+			_ring(c, rx * (1.0 - k * 0.22), ry * (1.0 - k * 0.22), Color(Glass.CYAN, 0.55 - k * 0.15))
+		for k in range(-3, 4):
+			var x := k * rx * 0.22
+			var hy := ry * sqrt(maxf(0.0, 1.0 - pow(x / (rx * 0.78), 2.0))) * 0.78
+			draw_line(c + Vector2(x, -hy), c + Vector2(x, hy), Color(Glass.CYAN, 0.12), 1.0, true)
+		var a := t * 0.8
+		var sweep := PackedVector2Array()
+		for i in 13:
+			var k := a + 0.9 * i / 12.0
+			sweep.append(c + Vector2(cos(k) * rx, sin(k) * ry))
+		draw_polyline(sweep, Color(Glass.PURPLE, 0.7), 2.0, true)
+		_ring(c + Vector2(0, 9), rx, ry, Color(Glass.PURPLE, 0.35))
+	func _ellipse(c: Vector2, rx: float, ry: float, col: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 40:
+			var a := TAU * i / 40.0
+			pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+		draw_colored_polygon(pts, col)
+	func _ring(c: Vector2, rx: float, ry: float, col: Color) -> void:
+		var pts := PackedVector2Array()
+		for i in 41:
+			var a := TAU * i / 40.0
+			pts.append(c + Vector2(cos(a) * rx, sin(a) * ry))
+		draw_polyline(pts, col, 1.2, true)
 
 # ------------------------------------------------------------------ turrets page
 func _save_turrets() -> void:
