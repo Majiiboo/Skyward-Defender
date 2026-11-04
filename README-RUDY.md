@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev115 (version/code=115 and version/name="1.0-dev115" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev116 (version/code=116 and version/name="1.0-dev116" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev116: Gear pilot, platform, card text, quiet parts
+
+- Gear: the pilot now faces you in his chunky chibi front pose (big helmet). Before, he
+  was stuck half-turned, so he looked squeezed and skinny.
+- Gear platform toned down: the deck and its grid lines glow much less.
+- Power cards: the text stays inside the frame. Bigger margins and shorter descriptions,
+  and an Overcharge card shows only its new bonus.
+- Upgrade parts no longer drop on the field. They're counted quietly and shown on the
+  Stage Cleared screen.
 
 ## dev115: upgrade parts
 

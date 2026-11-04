@@ -1190,10 +1190,10 @@ func _kill(e: Dictionary) -> void:
 	for i in count:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-16, 16), rng.randf_range(-10, 10)), "tier": tier, "life": 16.0,
 			"vel": Vector2(rng.randf_range(-30, 30), rng.randf_range(-60, -20))})
-	var drops := _part_drops(e, def)
-	for kind in drops:
-		gems.append({"pos": e.pos + Vector2(rng.randf_range(-18, 18), rng.randf_range(-10, 10)), "tier": 0, "part": kind, "life": 18.0,
-			"vel": Vector2(rng.randf_range(-40, 40), rng.randf_range(-70, -30))})
+	# upgrade parts are counted quietly and shown on the Stage Cleared screen (Rudy: no
+	# need to show them dropping)
+	for kind in _part_drops(e, def):
+		_parts_got[kind] = int(_parts_got.get(kind, 0)) + 1
 	# coins drop as pickups too (Rudy, dev108: gems = XP, coins = money); the boss showers them
 	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
 	for i in ncoins:
@@ -1980,22 +1980,24 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.add_child(frame)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 16; v.offset_right = -16; v.offset_top = 22; v.offset_bottom = -18
+	v.offset_left = 24; v.offset_right = -24; v.offset_top = 24; v.offset_bottom = -22   # text kept well inside the frame
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_card_pic(id, 56.0 if fusion or over else 74.0))
-	var name_l := UIKit.label(def.name, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(_card_pic(id, 50.0 if fusion or over else 62.0))
+	var name_l := UIKit.label(def.name, 12, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
 	var gold := Color(1.0, 0.82, 0.32)
 	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)))
 	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
-	var d := UIKit.label(def.desc, 11, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
-	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(d)
+	# an overcharge card shows only its new bonus (the card itself is known by now)
+	if not over:
+		var d := UIKit.label(def.desc, 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(d)
 	if over:
-		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 11, gold, HORIZONTAL_ALIGNMENT_CENTER)
+		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(od)
 	if (over or fusion) and not own_frame:

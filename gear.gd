@@ -425,6 +425,7 @@ class PilotShowcase extends Control:
 	func _ready() -> void:
 		view = PilotRigView.new()
 		view.height = 156.0
+		view.front_only = true   # facing you, chunky and big-headed (Rudy)
 		add_child(view)
 	func _process(delta: float) -> void:
 		t += delta
@@ -490,7 +491,7 @@ class PlatformFloor extends Control:
 		var r := _tex_rect()
 		_light_layer.draw_texture_rect(_lights, r, false, Color(glow_col, k))
 		if _floor_lights:
-			_light_layer.draw_texture_rect(_floor_lights, r, false, Color(glow_col, k * 0.35))
+			_light_layer.draw_texture_rect(_floor_lights, r, false, Color(glow_col, k * 0.12))
 	func _tex_rect() -> Rect2:
 		var h := TEX_W * _tex.get_height() / _tex.get_width()
 		return Rect2(size.x * 0.5 - TEX_W * 0.5, size.y - h, TEX_W, h)
@@ -514,9 +515,9 @@ class PlatformFloor extends Control:
 			# the lit lines and windows are repainted in the set colour (over Luna's cyan)
 			var tr := _tex_rect()
 			var k := _glow_k()
-			draw_texture_rect(_tex, tr, false)
+			draw_texture_rect(_tex, tr, false, Color(0.56, 0.58, 0.66))   # toned down: the grid was too bright (Rudy)
 			if _floor_lights and k > 0.01:
-				draw_texture_rect(_floor_lights, tr, false, Color(glow_col, 0.8 * k))
+				draw_texture_rect(_floor_lights, tr, false, Color(glow_col, 0.45 * k))
 			if _rim:
 				draw_texture_rect(_rim, tr, false)
 			if _lights and k > 0.01:

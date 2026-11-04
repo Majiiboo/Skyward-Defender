@@ -18,6 +18,7 @@ var _shield: Node2D
 var shield := 0.0          # 0 off .. 1 full strength (brighter with more Aegis, flares on hits)
 var shield_form := 1.0     # 0 -> 1 as the band closes in around him after the card is picked
 var shield_col := Color(0.55, 0.85, 1.0)
+var front_only := false     # always face the camera (Gear showcase): the chunky chibi front pose
 
 func _init() -> void:
 	# rim: his whole outline in one flat cool colour, nudged a pixel each way, behind him
@@ -64,6 +65,8 @@ func update(delta: float, at: Vector2, aim: float, lean: float, hover: float, vy
 	pos = at
 	alpha = a
 	rig.update(delta, aim, lean, hover, vy)
+	if front_only and PilotRig.front_ready():
+		rig.face = 0.0
 	X = PilotRig.solve(rig)
 	queue_redraw()
 	_rim.queue_redraw()

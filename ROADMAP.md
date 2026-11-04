@@ -66,3 +66,9 @@ through one function, so the inbox and codes can call it later.
 - Google Play first (Luna already builds signed APKs; Play needs an AAB build, a
   Play Console account, store listing art from Luna, a privacy policy, content rating).
 - Soft launch in a few countries, watch retention (D1, D7), tune, then wide launch.
+
+## Campaign mode (Rudy, 2026-11-04, planned)
+- A story campaign, separate from the stage list: a Candy Crush-style trail of levels, each one a single level with its own waves, then on to the next.
+- A written story told through the briefings (the commander) between levels.
+- Planet order and enemy families follow the 6 planets: Hive, Scrap Belt, Magma, Crystal, Plasma, Sentinel.
+- To decide with Rudy: how it differs from today's stages (story beats, set pieces, unique bosses) and whether the stage list becomes "Endless / Free play".

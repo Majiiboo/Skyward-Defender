@@ -22,7 +22,7 @@ const CARDS := {
 	"heavy_bolts":     {"name": "Heavy Bolts",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
 		"desc": "Bolt damage +15%: bigger, hotter bolts"},
 	"burst_fire":      {"name": "Burst Fire",      "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
-		"desc": "Each trigger fires a burst: 2, then 3, then 4 bolts"},
+		"desc": "Fires bursts of 2, then 3, then 4 bolts"},
 	"piercing_rounds": {"name": "Piercing Rounds", "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
 		"desc": "Bolts pass through 1 more bug per level"},
 	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
@@ -37,10 +37,10 @@ const CARDS := {
 	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 3, "icon": "chest",
 		"desc": "Base shield +30 and hull +20, repaired now"},
 	"shield_recharge": {"name": "Shield Recharge", "family": "base",   "rarity": "uncommon",  "max": 3, "icon": "chest", "from_level": 4,
-		"desc": "Base shield recharges 1% a second (more each level)"},
+		"desc": "Shield recharges 1%/s, more per level"},
 	# utility
 	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
-		"desc": "Pulls gems and coins from further; gems +10% XP"},
+		"desc": "Pulls gems and coins from further, +10% XP"},
 	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen (one use)"},
@@ -65,13 +65,13 @@ const OVERCHARGE := {
 # Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
 const FUSIONS := {
 	"railstorm":   {"name": "Railstorm",   "parts": ["rapid_pulse", "heavy_bolts"], "rarity": "fusion", "max": 1,
-		"desc": "Every 4th bolt is a piercing rail shot (x2 damage)"},
+		"desc": "Every 4th bolt: a piercing rail shot, x2"},
 	"gem_barrage": {"name": "Gem Barrage", "parts": ["burst_fire", "magnet"], "rarity": "fusion", "max": 1,
 		"desc": "Every 10 gems fire 6 bolts at the nearest bugs"},
 	"bastion":     {"name": "Bastion",     "parts": ["reinforced_hull", "aegis"], "rarity": "fusion", "max": 1,
 		"desc": "A breaking shield blasts bugs back"},
 	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "piercing_rounds"], "rarity": "fusion", "max": 1,
-		"desc": "Every bug a bolt passes through throws a spark"},
+		"desc": "Bugs a bolt passes through throw sparks"},
 }
 
 # the pick on which a card overcharges: the 3rd, or the last for cards that stop sooner
