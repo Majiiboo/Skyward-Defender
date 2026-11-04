@@ -62,6 +62,7 @@ func _load() -> void:
 	t_unlocked = int(data.get("stage_unlocked", 1))
 	gear = GearData.read(data)
 	drone = DroneData.read(data)
+	PilotRig.set_gear(data)
 
 func _save() -> void:
 	var data := _read()
@@ -72,6 +73,7 @@ func _save() -> void:
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
 		out.store_string(JSON.stringify(data))
+	PilotRig.set_gear(data)   # the showcase pilot holds the new weapon at once
 
 func _lvl(id: String) -> int:
 	return GearData.level(gear, id)

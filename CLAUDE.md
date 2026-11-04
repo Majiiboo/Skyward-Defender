@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev121 (code 121).
+  go UP every package (same signing key, install-over). Current: dev122 (code 122).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -93,6 +93,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    merging gear pieces and turret/drone modules (needs duplicates/rarities first).
    MERGE FX (dev121): gear.gd class MergeFX (dim, additive _glow, _front), fx/ placeholders;
    swap in Luna's white layers from LUNA-BRIEF-merge-fx.md, tinted by the result colour.
+8c. GEAR ON THE PILOT (dev122): PilotRig.set_gear(save) from battle, afk_wallpaper, gear.gd;
+   held weapon = gear/held/<id>_t<n>.png (cut_gear3d.gd _save_held, upright + mirrored, grip and
+   muzzle in gear/held/held_points.gd HeldPoints), PilotRig.gun(), HELD_LEN; front view draws it
+   mirrored at the fist. PilotRig.tinted(tex, set) recolours cyan/purple light (clear_mipmaps,
+   recolour, generate_mipmaps: the small mip copies kept the old colours) for visor, helmet
+   (side + front), orb and battle bolts (_bolt_set). Starter suit art: LUNA-BRIEF-starter-suit.md.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

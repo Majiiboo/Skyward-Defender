@@ -55,6 +55,71 @@ static func _parts() -> Dictionary:
 # Which rifle picture he holds: "rifle_side" (Luna's side view, reads well when he aims
 # sideways) or "rifle" (the parts sheet's, seen edge-on).
 const RIFLE := "rifle_side"
+
+# ---- gear on the pilot (set_gear) ----
+# He holds the equipped weapon at its tier (gear/held/<id>_t<n>.png, grip and muzzle from
+# HeldPoints, cut by tools/cut_gear3d.gd). held = that weapon's id, "" = rifle_side.
+static var held := ""
+# how long each weapon is held, in reference px (rifle_side is ~820)
+const HELD_LEN := {"ion_weapon": 560.0, "scavenger_weapon": 620.0, "void_weapon": 660.0,
+	"nightmare_weapon": 920.0, "solar_weapon": 760.0, "frost_weapon": 840.0}
+static var visor_set := "ion"   # helmet's set: the visor light takes its colour
+static var orb_set := "ion"     # chest's set: the power orb takes its colour
+static var _recolored := {}
+
+static func gun() -> String:
+	return "held" if held != "" else RIFLE
+
+# Dress him from the save: weapon in hand, visor and chest orb in their sets' colours.
+static func set_gear(save: Dictionary) -> void:
+	var g := GearData.read(save)
+	var wid: String = g.equipped["Weapon"]
+	var key := "%s_t%d" % [wid, GearData.tier(GearData.level(g, wid))]
+	var path := "res://gear/held/%s.png" % key
+	held = ""
+	if HeldPoints.POINTS.has(key) and ResourceLoader.exists(path):
+		var tx: Texture2D = load(path)
+		var p: Dictionary = HeldPoints.POINTS[key]
+		PARTS["held"] = {"s": float(HELD_LEN.get(wid, 760.0)) / tx.get_height(),
+			"pv": Vector2(p.grip[0], p.grip[1]), "muzzle": Vector2(p.muzzle[0], p.muzzle[1])}
+		_tex["held"] = tx
+		held = wid
+	visor_set = GearData.ITEMS[g.equipped["Helmet"]].set
+	orb_set = GearData.ITEMS[g.equipped["Chest"]].set
+	for nm in ["visor", "visor_light", "orb", "helmet"]:
+		_tex.erase(nm)
+		tex(nm)   # recolour now: a picture made in the middle of a draw shows the old one
+	_ftex.erase("helmet")
+	if front_ready():
+		_ftex["helmet"] = tinted(load("res://pilot_front/helmet.png"), visor_set)
+
+# Luna's cyan / blue / purple light recoloured to a set's colour (Ion keeps hers).
+static func tinted(tx: Texture2D, set_id: String) -> Texture2D:
+	if set_id == "ion" or tx == null:
+		return tx
+	var key := "%s|%s" % [tx.resource_path, set_id]
+	if _recolored.has(key):
+		return _recolored[key]
+	var col: Color = GearData.SETS[set_id].color
+	var img: Image = tx.get_image().duplicate()
+	if img.is_compressed():
+		img.decompress()
+	# the imported pictures carry mipmaps (small copies used when he is drawn small): drop
+	# them, recolour, then rebuild them, or the battle-size pilot keeps the old colours
+	img.clear_mipmaps()
+	img.convert(Image.FORMAT_RGBA8)
+	for y in img.get_height():
+		for x in img.get_width():
+			var c: Color = img.get_pixel(x, y)
+			# coloured light, and the bright pale glow around it (a visor core is nearly white)
+			var lit := (c.s > 0.3 and c.v > 0.2) or (c.s > 0.08 and c.v > 0.55)
+			if c.a > 0.02 and lit and c.h > 0.42 and c.h < 0.9:
+				var s := minf(maxf(c.s * 1.4, 0.35 if c.v > 0.55 else c.s), col.s + 0.15)
+				img.set_pixel(x, y, Color.from_hsv(col.h, s, c.v, c.a))
+	img.generate_mipmaps()
+	var out := ImageTexture.create_from_image(img)
+	_recolored[key] = out
+	return out
 # false = battle and Home go back to the painted PilotSprite.
 const ENABLED := true
 # Contrast on the dark sky (code only, Luna's art untouched): parts drawn a little
@@ -74,7 +139,12 @@ static var _tex := {}
 static func tex(name: String) -> Texture2D:
 	if not _tex.has(name):
 		var file: String = String(PARTS[name].get("tex", name)) if PARTS.has(name) else name
-		_tex[name] = load("res://pilot_rig/%s.png" % file)
+		var t: Texture2D = load("res://pilot_rig/%s.png" % file)
+		if name == "visor" or name == "visor_light" or name == "helmet":
+			t = tinted(t, visor_set)
+		elif name == "orb":
+			t = tinted(t, orb_set)
+		_tex[name] = t
 	return _tex[name]
 
 static func size_of(name: String) -> Vector2:
@@ -198,8 +268,8 @@ static func solve(r: Rig) -> Dictionary:
 	X.upper_l = _bone("upper_l", sh_l, arm_l[0])
 	X.forearm_l = _bone("forearm_l", arm_l[0], arm_l[1])
 	X.pad_l = _place("pad_l", sh_l + Vector2(12, -4).rotated(torso_rot), torso_rot + _ang(arm_l[0] - sh_l) * 0.25 + 0.1)
-	var m: Vector2 = PARTS[RIFLE].muzzle
-	X.muzzle = X.rifle * local(RIFLE, m)
+	var m: Vector2 = PARTS[gun()].muzzle
+	X.muzzle = X.rifle * local(gun(), m)
 	X.aim_dir = aim_dir
 	return X
 
@@ -261,7 +331,7 @@ static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: flo
 		elif nm == "shin_l":
 			_draw_part(c, base, X.shin_l, "shin", col, true)
 		elif nm == "rifle":
-			_draw_part(c, base, X.rifle, RIFLE, col)
+			_draw_part(c, base, X.rifle, gun(), col)
 		elif nm.begins_with("pad") and PARTS.upper_r.has("tex"):
 			continue   # chunky upper arms carry their own shoulder pads
 		else:
@@ -415,11 +485,23 @@ static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha
 	for part in FRONT:
 		var nm: String = part[0]
 		if not _ftex.has(nm):
-			_ftex[nm] = load("res://pilot_front/%s.png" % nm)
+			var ft: Texture2D = load("res://pilot_front/%s.png" % nm)
+			_ftex[nm] = tinted(ft, visor_set) if nm == "helmet" else ft
 		var tx: Texture2D = _ftex[nm]
 		var s: float = float(part[2])
 		var sz := tx.get_size() * s
 		var at: Vector2 = part[1]
+		if nm == "rifle" and held != "":
+			# the equipped weapon, upright, its grip in his fist (as long as the front rifle
+			# times how long this weapon is held)
+			var ht := tex("held")
+			var hs: float = 485.0 * float(HELD_LEN.get(held, 760.0)) / 820.0 / ht.get_height()
+			var hsz := ht.get_size() * hs
+			# mirrored, so the barrel side faces away from his body
+			var grip := Vector2(206, 300 + sin(r.t * 2.1) * 4.0)
+			c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(-k, k))
+			c.draw_texture_rect(ht, Rect2(grip - Vector2(PARTS.held.pv) * hsz, hsz), false, col)
+			continue
 		# a little life: he breathes, the helmet nods, the hands sway
 		if nm == "helmet":
 			at += Vector2(0, breath * 6.0)

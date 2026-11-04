@@ -141,6 +141,7 @@ var _recovery := 1.0
 var _gem_xp_mult := 1.0
 var _coin_mult := 1.0
 var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
+var _bolt_set := "ion"             # the weapon's set: its colour on the pilot's bolts (Luna's bolts recoloured)
 var _coins_f := 0.0
 var _shield_regen := 1.0
 var _pierce5 := false
@@ -390,6 +391,12 @@ func _start_stage() -> void:
 	_speed_pack = bool(sv.get("speed_pack", false))
 	# the pilot's gear: every slot boosts a battle stat, sets add bonuses (gear_data.gd)
 	var gs := GearData.stats(sv)
+	PilotRig.set_gear(sv)   # he holds the equipped weapon; visor and orb in the gear colours
+	var wset: String = GearData.ITEMS[GearData.read(sv).equipped["Weapon"]].set
+	_bolt_set = wset
+	for bk in ["bolt", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]:
+		if _fx_tex.has(bk):
+			PilotRig.tinted(_fx_tex[bk], _bolt_set)   # made now, not in the middle of a draw
 	damage_mult = gs.damage
 	fire_rate_mult = gs.fire_rate
 	aim_error = 0.05 / gs.aim
@@ -2783,14 +2790,14 @@ func _draw_fx() -> void:
 		var tint := Color(0.78, 0.95, 1.0) if bl.get("frost", false) else Color.WHITE
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		if look != "":
-			var lt: Texture2D = _fx_tex[look]
+			var lt: Texture2D = PilotRig.tinted(_fx_tex[look], _bolt_set)
 			var LL: float = {"bolt_rail": 38.0, "bolt_spark": 32.0, "bolt_heavy": 24.0 + 6.0 * bw, "bolt_twin": 28.0}[look] * big
 			var lh: float = LL * lt.get_height() / lt.get_width()
 			_fx.draw_texture_rect(lt, Rect2(-LL * 0.8, -lh * 0.5, LL, lh), false, tint)
 			continue
 		var BL := 26.0 * (0.85 + 0.15 * bw) * big
 		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw * (1.2 if big > 1.3 else 1.0)
-		_fx.draw_texture_rect(bt0, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
+		_fx.draw_texture_rect(PilotRig.tinted(bt0, _bolt_set), Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
 	# Swarm drones
 	var dt: Texture2D = _fx_tex["drone"]
 	for dr in drones:

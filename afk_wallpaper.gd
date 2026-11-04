@@ -389,6 +389,7 @@ func _load_wall_turrets() -> void:
 			if typeof(parsed) == TYPE_DICTIONARY:
 				d = parsed
 	_wall_unlocked = int(d.get("stage_unlocked", 1))
+	PilotRig.set_gear(d)   # his weapon, visor and orb follow the gear (re-read when Home shows)
 	var loadout: Array = Turrets.read(d).loadout
 	var plevel := Turrets.pilot_level(int(d.get("pilot_xp", 0)))
 	for i in Turrets.MOUNTS:

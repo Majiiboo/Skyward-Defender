@@ -37,12 +37,60 @@ func _initialize() -> void:
 				var s2 := float(PX * 2) / maxi(part.get_width(), part.get_height())
 				part.resize(maxi(1, roundi(part.get_width() * s2)), maxi(1, roundi(part.get_height() * s2)), Image.INTERPOLATE_LANCZOS)
 				part = _solid(part)
+				if slot == "weapon":
+					_save_held(part, "%s_weapon_t%d" % [set_id, t + 1])
 				var s := float(PX) / maxi(part.get_width(), part.get_height())
 				part.resize(maxi(1, roundi(part.get_width() * s)), maxi(1, roundi(part.get_height() * s)), Image.INTERPOLATE_LANCZOS)
 				var out := "res://gear/%s_%s_t%d.png" % [set_id, slot, t + 1]
 				part.save_png(ProjectSettings.globalize_path(out))
 				print("%-34s %3dx%3d  cut %d-%d" % [out, part.get_width(), part.get_height(), cuts[t], cuts[t + 1]])
+	if not _held.is_empty():
+		var f := FileAccess.open(ProjectSettings.globalize_path(HELD_GD), FileAccess.WRITE)
+		f.store_string("class_name HeldPoints\nextends RefCounted\n# Written by tools/cut_gear3d.gd: grip and muzzle (0..1) on each gear/held picture.\nconst POINTS := " + JSON.stringify(_held, "\t") + "\n")
+		f.close()
 	quit()
+
+# The weapon the pilot holds (PilotRig.set_weapon): the side-on picture turned upright with
+# the barrel up and mirrored so the grip is on the left like his rifle_side, saved larger
+# (gear/held/<id>.png), plus where the grip and muzzle are (0..1) in gear/held/held_points.gd
+# (a script, so it ships in the phone build).
+const HELD_GD := "res://gear/held/held_points.gd"
+var _held := {}
+func _save_held(img: Image, key: String) -> void:
+	if _held.is_empty() and FileAccess.file_exists(ProjectSettings.globalize_path(HELD_GD)):
+		var txt := FileAccess.get_file_as_string(ProjectSettings.globalize_path(HELD_GD))
+		var old = JSON.parse_string(txt.substr(txt.find("{")))
+		if typeof(old) == TYPE_DICTIONARY:
+			_held = old
+	var w := img.get_width()
+	var h := img.get_height()
+	# muzzle: the middle of the opaque rows in the front 5% of the gun
+	var ys := 0.0
+	var n := 0
+	for x in range(int(w * 0.95), w):
+		for y in h:
+			if img.get_pixel(x, y).a > 0.5:
+				ys += y
+				n += 1
+	var yb := (ys / n) / h if n > 0 else 0.4
+	# grip: the column in the back half that reaches lowest (the handle), held halfway down it
+	var gx := int(w * 0.3)
+	var low := 0
+	for x in range(int(w * 0.08), int(w * 0.55)):
+		for y in range(h - 1, -1, -1):
+			if img.get_pixel(x, y).a > 0.5:
+				if y > low:
+					low = y
+					gx = x
+				break
+	var gy := (yb + float(low) / h) * 0.5
+	var up := img.duplicate()
+	up.rotate_90(COUNTERCLOCKWISE)
+	up.flip_x()
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://gear/held"))
+	up.save_png(ProjectSettings.globalize_path("res://gear/held/%s.png" % key))
+	# (x, y) on the side-on picture -> (1 - y, 1 - x) on the upright one
+	_held[key] = {"grip": [1.0 - gy, 1.0 - float(gx) / w], "muzzle": [1.0 - yb, 0.0]}
 
 # the emptiest column within 12% of the width around x (middle of the widest empty run)
 func _split(img: Image, x: float) -> int:
