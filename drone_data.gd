@@ -11,19 +11,19 @@ const MAX_LEVEL := 10
 
 const BODIES := {
 	"scout":   {"name": "Scout",   "unlock": 8,  "rate": 1.3, "dmg": 0.8, "range": 380.0,
-		"desc": "Small and quick: fires 30% faster."},
+		"desc": "Fire rate +30%"},
 	"striker": {"name": "Striker", "unlock": 14, "rate": 1.0, "dmg": 1.15, "range": 520.0,
-		"desc": "Hits harder and reaches further."},
+		"desc": "Harder hits, longer range"},
 	"warden":  {"name": "Warden",  "unlock": 20, "rate": 0.8, "dmg": 1.0, "range": 420.0, "guard": 5.0,
-		"desc": "Slower, but every 5 s it blocks an enemy shot near you."},
+		"desc": "Blocks a shot every 5 s"},
 }
 const PODS := {
 	"blaster": {"name": "Twin Blaster", "unlock": 8,  "every": 0.7, "damage": 0.45,
-		"desc": "Two quick bolts at the nearest bug."},
+		"desc": "Twin quick bolts"},
 	"beam":    {"name": "Beam",         "unlock": 12, "every": 1.4, "damage": 1.4,
-		"desc": "An instant purple beam: never misses."},
+		"desc": "Instant beam, never misses"},
 	"missile": {"name": "Missiles",     "unlock": 16, "every": 2.2, "damage": 1.6, "splash": 55.0,
-		"desc": "A homing missile that bursts on nearby bugs too."},
+		"desc": "Homing missile with splash"},
 }
 
 static func read(save: Dictionary) -> Dictionary:

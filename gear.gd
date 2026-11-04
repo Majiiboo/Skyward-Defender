@@ -468,9 +468,7 @@ func _refresh_drone() -> void:
 	_drone_box.add_child(pv)
 	var lvl: int = int(drone.level)
 	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
-	var info := UIKit.label("%s + %s  ·  Lv.%d
-%s %s
-Damage per hit %.1f  ·  fires every %.2f s" % [body.name, pod.name, lvl, body.desc, pod.desc, dmg, float(pod.every) / float(body.rate)], 12, Color(0.85, 0.92, 1.0))
+	var info := UIKit.label("%s + %s  Lv.%d\nATK %.1f  ·  every %.2f s\n%s  ·  %s" % [body.name, pod.name, lvl, dmg, float(pod.every) / float(body.rate), body.desc, pod.desc], 12, Color(0.85, 0.92, 1.0))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var ip := UIKit.panel(10)
 	ip.add_child(info)
@@ -763,14 +761,14 @@ func _refresh_turrets() -> void:
 
 func _refresh_turret_detail() -> void:
 	if t_focus == "" and not Turrets.mount_open(t_mount, t_unlocked):
-		_t_detail.text = "Mount %d opens after you clear stage %d." % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]]
+		_t_detail.text = "Mount %d opens after stage %d" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]]
 		_t_upgrade.disabled = true
 		_t_upgrade.text = "Upgrade"
 		_t_place.disabled = true
 		_t_place.text = "Locked"
 		return
 	if t_focus == "":
-		_t_detail.text = "Mount %d is empty.\nPick a turret below, then Place." % (t_mount + 1)
+		_t_detail.text = "Mount %d is empty\nPick a turret, then Place" % (t_mount + 1)
 		_t_upgrade.disabled = true
 		_t_upgrade.text = "Upgrade"
 		_t_place.disabled = true
@@ -781,11 +779,11 @@ func _refresh_turret_detail() -> void:
 	var locked: bool = pilot_level < int(def.unlock)
 	var lines := "%s  Lv.%d  (%s)\n%s" % [def.name, lvl, Turrets.strong_text(t_focus), def.desc]
 	if locked:
-		lines += "\nUnlocks at pilot level %d (you are %d)." % [def.unlock, pilot_level]
+		lines += "\nNeeds pilot Lv.%d" % def.unlock
 	elif not def.ready:
-		lines += "\nIn development: coming in a later build."
+		lines += "\nComing soon"
 	elif lvl < Turrets.MAX_LEVEL:
-		lines += "\nDamage x%.2f now, x%.2f at Lv.%d." % [Turrets.level_mult(lvl), Turrets.level_mult(lvl + 1), lvl + 1]
+		lines += "\nATK x%.2f  ->  x%.2f" % [Turrets.level_mult(lvl), Turrets.level_mult(lvl + 1)]
 	_t_detail.text = lines
 	var cost := Turrets.upgrade_cost(lvl)
 	var usable: bool = not locked and def.ready
@@ -795,7 +793,7 @@ func _refresh_turret_detail() -> void:
 	_t_place.disabled = not usable
 	_t_place.text = "Remove" if here else "Place on %d" % (t_mount + 1)
 	if not Turrets.mount_open(t_mount, t_unlocked):
-		_t_detail.text = "Mount %d opens after you clear stage %d.\n\n" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]] + lines
+		_t_detail.text = "Mount %d opens after stage %d\n\n" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]] + lines
 		_t_place.disabled = true
 		_t_place.text = "Locked"
 

@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev123 (version/code=123 and version/name="1.0-dev123" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev124 (version/code=124 and version/name="1.0-dev124" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,13 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev124: menu tidy-up
+
+- Modes: all four modes fit on one screen (shorter banners, one short line each).
+- Turrets: short lines ("Twin cannons, steady fire", "ATK x1.60 -> x1.90", "Needs pilot Lv.11").
+- Drone: "ATK 0.4 · every 0.54 s" and a short line for body and weapon pod.
+- Quests: the bonus line is now "All 5 done: +200 coins + 10 crystals · 5 left today".
 
 ## dev123: new Store
 

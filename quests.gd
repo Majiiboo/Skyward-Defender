@@ -64,7 +64,7 @@ func _fill() -> void:
 			for m in ms:
 				if m.claimed:
 					left -= 1
-			_note.text = "New missions every day. Finish all five for a bonus: %s. (%d left today)" % [Progress.reward_text(Progress.DAILY_ALL_BONUS), left]
+			_note.text = "All 5 done: +%s  ·  %d left today" % [Progress.reward_text(Progress.DAILY_ALL_BONUS), left]
 			for m in ms:
 				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); _fill())
 		1:

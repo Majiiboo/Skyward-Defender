@@ -6,16 +6,16 @@ extends Control
 
 const MODES := [
 	{"id": "standard", "name": "Campaign", "banner": "", "tint": Color(0.2, 0.85, 1.0), "unlock": 0,
-		"desc": "Clear stages across six planets, one boss at a time. Earn up to 3 stars per stage.",
+		"desc": "6 planets · bosses · up to 3 stars a stage",
 		"rewards": ["Coins", "Parts", "Stars"]},
 	{"id": "elite", "name": "Elite", "banner": "sentinel", "tint": Color(0.71, 0.45, 1.0), "unlock": 10,
-		"desc": "Stages you have cleared, much tougher: bugs have 1.85x health. For geared pilots.",
+		"desc": "Cleared stages, bugs x1.85 tougher",
 		"rewards": ["Coins", "Double parts", "Plasma Cells"]},
 	{"id": "horde", "name": "Horde", "banner": "magma", "tint": Color(1.0, 0.55, 0.25), "unlock": 5, "soon": true,
-		"desc": "Endless waves with no stage end. Survive as long as you can and chase the high score.",
+		"desc": "Endless waves · beat your best score",
 		"rewards": ["Score", "Crystals"]},
 	{"id": "boss", "name": "Boss Rush", "banner": "plasma", "tint": Color(1.0, 0.35, 0.5), "unlock": 20, "soon": true,
-		"desc": "Every boss you have beaten, back to back, with no waves in between.",
+		"desc": "Every boss you beat, back to back",
 		"rewards": ["Void Cores", "Crystals"]},
 ]
 var player_level := 1
@@ -88,7 +88,7 @@ func _card(m: Dictionary) -> Control:
 	p.add_child(v)
 	# banner: a painted world, the title over its lower edge, a status chip at the right
 	var banner := Control.new()
-	banner.custom_minimum_size = Vector2(0, 108)
+	banner.custom_minimum_size = Vector2(0, 84)
 	banner.clip_contents = true
 	var key: String = m.banner if m.banner != "" else String(StageData.sector(selected_stage).get("bg", "hive_a"))
 	var tex: Texture2D = load("res://backdrops/%s.webp" % key)
@@ -121,7 +121,7 @@ func _card(m: Dictionary) -> Control:
 	banner.add_child(shade)
 	var title := UIKit.label(String(m.name).to_upper(), 22, Color.WHITE)
 	title.add_theme_font_override("font", load("res://fonts/Orbitron-Variable.ttf"))
-	title.position = Vector2(12, 70)
+	title.position = Vector2(12, 48)
 	banner.add_child(title)
 	var chip_text := "COMING SOON" if soon else ("UNLOCKS AT PILOT LV.%d" % int(m.unlock) if locked else ("STAGE %d" % selected_stage if m.id != "boss" else "READY"))
 	var chip := UIKit.chip(chip_text, UIKit.GOLD if (locked or soon) else tint)
