@@ -72,3 +72,9 @@ through one function, so the inbox and codes can call it later.
 - A written story told through the briefings (the commander) between levels.
 - Planet order and enemy families follow the 6 planets: Hive, Scrap Belt, Magma, Crystal, Plasma, Sentinel.
 - To decide with Rudy: how it differs from today's stages (story beats, set pieces, unique bosses) and whether the stage list becomes "Endless / Free play".
+
+## Merging (Rudy, 2026-11-04, queued)
+- Merge 3 of the same item into 1 of the next rarity: Common, Uncommon, Rare, Epic, Legendary.
+- For: parts (3 Alloy into 1 Cell-tier), gear pieces, turret upgrade modules and drone parts.
+- Proposal: a Workshop screen (its own Home button or a Gear tab) for all merging; Gear stays for equipping and upgrading.
+- Needs before building: Rudy to OK the rarity ladder per system; Luna to paint rarity frames and a merge animation.

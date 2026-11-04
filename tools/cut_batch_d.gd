@@ -23,6 +23,9 @@ const SHEETS := {
 	"pilot-front-parts": ["solid", 0, ["pilot_front/helmet", "pilot_front/torso", "pilot_front/hips", "pilot_front/pad_r", "pilot_front/pad_l",
 		"pilot_front/upper", "pilot_front/forearm_fist", "pilot_front/forearm_open", "", "pilot_front/rifle",
 		"pilot_front/thigh_r", "pilot_front/thigh_l", "pilot_front/shin", "pilot_front/jet", ""]],
+	# round 3 chunky limbs (side view) for the side rig (PilotRig CHUNKY)
+	"pilot-round3-limbs": ["solid", 0, ["pilot_rig/r3_upper", "pilot_rig/r3_forearm_fist", "pilot_rig/r3_forearm_open", "pilot_rig/r3_thigh", "pilot_rig/r3_shin"],
+		[Rect2i(515, 95, 260, 295), Rect2i(1005, 60, 410, 265), Rect2i(1075, 435, 470, 295), Rect2i(525, 785, 280, 292), Rect2i(1095, 770, 330, 500)]],
 	"turret-heads": ["solid", 256, ["turrets/lance_base", "turrets/lance_head", "turrets/storm_base", "turrets/storm_head",
 		"turrets/gravity_base", "turrets/gravity_head", "turrets/prism_base", "turrets/prism_head"],
 		[Rect2i(410, 30, 460, 320), Rect2i(985, 5, 575, 305), Rect2i(410, 355, 460, 255), Rect2i(945, 225, 605, 395),
@@ -58,7 +61,7 @@ func _initialize() -> void:
 			if names[i] == "":
 				continue
 			var cell := img.get_region(boxes[i])
-			var out: Image = _light(cell) if spec[0] == "light" else _trim(_only_largest(_solid(cell)) if typeof(how) == TYPE_ARRAY else _solid(cell))
+			var out: Image = _light(cell) if spec[0] == "light" else _trim(_only_largest(_solid(cell, 14.0, 34.0, 6)) if typeof(how) == TYPE_ARRAY else _solid(cell))
 			if int(spec[1]) > 0:   # 0 = keep the painted size (rig parts must stay in scale)
 				out = _fit(out, int(spec[1]))
 			out.save_png(ProjectSettings.globalize_path("res://%s.png" % names[i]))
@@ -161,9 +164,20 @@ func _light(img: Image) -> Image:
 	return img
 
 # black -> alpha with soft edges; dark parts inside the object stay solid
-func _solid(img: Image, lo: float = 14.0, span: float = 34.0) -> Image:
+func _solid(img: Image, lo: float = 14.0, span: float = 34.0, close: int = 3) -> Image:
 	var w := img.get_width(); var h := img.get_height()
 	var d := img.get_data()
+	var grown := PackedByteArray(); grown.resize(w * h)
+	for i in w * h:
+		grown[i] = 1 if maxf(maxf(d[i * 4], d[i * 4 + 1]), d[i * 4 + 2]) > lo + span * 0.5 else 0
+	for _k in close:
+		var g2 := grown.duplicate()
+		for y in h:
+			for x in w:
+				var i := y * w + x
+				if grown[i] == 0 and ((x > 0 and grown[i - 1] == 1) or (x < w - 1 and grown[i + 1] == 1) or (y > 0 and grown[i - w] == 1) or (y < h - 1 and grown[i + w] == 1)):
+					g2[i] = 1
+		grown = g2
 	var outside := PackedByteArray(); outside.resize(w * h)
 	var stack: Array = []
 	for x in w:
@@ -172,9 +186,7 @@ func _solid(img: Image, lo: float = 14.0, span: float = 34.0) -> Image:
 		stack.append(y * w); stack.append(y * w + w - 1)
 	while not stack.is_empty():
 		var p: int = stack.pop_back()
-		if outside[p] == 1:
-			continue
-		if maxf(maxf(d[p * 4], d[p * 4 + 1]), d[p * 4 + 2]) > lo + span * 0.5:
+		if outside[p] == 1 or grown[p] == 1:
 			continue
 		outside[p] = 1
 		var x := p % w
@@ -184,9 +196,19 @@ func _solid(img: Image, lo: float = 14.0, span: float = 34.0) -> Image:
 		if p < w * (h - 1): stack.append(p + w)
 	for i in w * h:
 		var m: float = maxf(maxf(d[i * 4], d[i * 4 + 1]), d[i * 4 + 2])
-		var a: float = clampf((m - lo) / span, 0.0, 1.0) if outside[i] == 1 else 1.0
-		if outside[i] == 1 and a > 0.0 and a < 1.0:
+		var a: float = clampf((m - lo) / span, 0.0, 1.0)
+		if outside[i] == 0:
+			var x := i % w; var y := i / w
+			var near_out := false
+			for r in range(1, close + 2):
+				if (x - r >= 0 and outside[i - r] == 1) or (x + r < w and outside[i + r] == 1) or (y - r >= 0 and outside[i - r * w] == 1) or (y + r < h and outside[i + r * w] == 1):
+					near_out = true
+					break
+			if not near_out:
+				a = 1.0
+		elif a > 0.0 and a < 1.0:
 			for c in 3:
 				d[i * 4 + c] = int(clampf(d[i * 4 + c] / a, 0.0, 255.0))
 		d[i * 4 + 3] = int(a * 255.0)
 	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, d)
+

@@ -11,7 +11,7 @@ extends RefCounted
 # the texture (0..1), at = where that pivot sits on the reference (rest pose).
 # Arms are placed by aim (two-bone IK), so their `at` is only the shoulder/elbow.
 
-const PARTS := {
+const BASE_PARTS := {
 	"jetpack":   {"s": 1.40, "pv": Vector2(0.5, 0.30), "at": Vector2(804, 850)},
 	"thigh_r":   {"s": 0.80, "pv": Vector2(0.5, 0.14), "at": Vector2(690, 1150)},
 	"thigh_l":   {"s": 0.80, "pv": Vector2(0.5, 0.12), "at": Vector2(910, 1150)},
@@ -30,6 +30,28 @@ const PARTS := {
 	"rifle":     {"s": 1.30, "pv": Vector2(0.5, 0.72), "muzzle": Vector2(0.5, 0.0)},
 	"rifle_side": {"s": 1.05, "pv": Vector2(0.25, 0.67), "muzzle": Vector2(0.69, 0.0)},
 }
+# Chunky limbs (Rudy, dev117: he looked too thin): Luna's round-3 side-view arms and legs
+# (pilot_rig/r3_*.png, tools/cut_batch_d.gd) replace the long thin ones. "tex" = picture,
+# pv / end = the joints in the picture, "knee" on thighs. The separate shoulder pads go
+# (the new upper arms carry their own). false = the round-1 limbs again.
+const CHUNKY := true
+const CHUNKY_PARTS := {
+	"upper_r":   {"tex": "r3_upper", "s": 0.95, "pv": Vector2(0.52, 0.16), "end": Vector2(0.62, 0.9)},
+	"upper_l":   {"tex": "r3_upper", "s": 0.9, "pv": Vector2(0.52, 0.16), "end": Vector2(0.62, 0.9)},
+	"forearm_r": {"tex": "r3_forearm_fist", "s": 0.8, "pv": Vector2(0.92, 0.33), "end": Vector2(0.12, 0.62)},
+	"forearm_l": {"tex": "r3_forearm_open", "s": 0.66, "pv": Vector2(0.05, 0.3), "end": Vector2(0.9, 0.5)},
+	"thigh_r":   {"tex": "r3_thigh", "s": 0.82, "pv": Vector2(0.42, 0.08), "knee": Vector2(0.58, 0.93)},
+	"thigh_l":   {"tex": "r3_thigh", "s": 0.82, "pv": Vector2(0.42, 0.08), "knee": Vector2(0.58, 0.93)},
+	"shin":      {"tex": "r3_shin", "s": 0.6, "pv": Vector2(0.33, 0.05)},
+}
+static var PARTS := _parts()
+static func _parts() -> Dictionary:
+	var p := BASE_PARTS.duplicate(true)
+	if CHUNKY and ResourceLoader.exists("res://pilot_rig/r3_upper.png"):
+		for k in CHUNKY_PARTS:
+			p[k].merge(CHUNKY_PARTS[k], true)
+	return p
+
 # Which rifle picture he holds: "rifle_side" (Luna's side view, reads well when he aims
 # sideways) or "rifle" (the parts sheet's, seen edge-on).
 const RIFLE := "rifle_side"
@@ -51,7 +73,8 @@ static var _tex := {}
 
 static func tex(name: String) -> Texture2D:
 	if not _tex.has(name):
-		_tex[name] = load("res://pilot_rig/%s.png" % name)
+		var file: String = String(PARTS[name].get("tex", name)) if PARTS.has(name) else name
+		_tex[name] = load("res://pilot_rig/%s.png" % file)
 	return _tex[name]
 
 static func size_of(name: String) -> Vector2:
@@ -148,7 +171,7 @@ static func solve(r: Rig) -> Dictionary:
 		var sg: float = side[1]
 		var th_rot: float = body_rot + r.leg_swing + sg * r.spread + sway
 		X[nm] = _place(nm, X.hips * _rel(nm, "hips"), th_rot)
-		var knee: Vector2 = X[nm] * local(nm, KNEE)
+		var knee: Vector2 = X[nm] * local(nm, PARTS[nm].get("knee", KNEE))
 		var sh_rot: float = th_rot + r.leg_swing * 0.6 - sg * r.spread * 0.5 + sin(t * 2.1 - 0.7) * 0.05
 		X["shin_" + nm.substr(6)] = _place("shin", knee, sh_rot)
 	# rifle arm: the grip sits out to the side of the body and swings round with the aim
@@ -156,15 +179,15 @@ static func solve(r: Rig) -> Dictionary:
 	var grip: Vector2 = sh_r + Vector2(-225, 40).rotated(body_rot) + aim_dir * 150.0 - aim_dir * kick * 34.0
 	var rifle_rot := aim + PI / 2.0 + kick * 0.14 * maxf(-cos(aim), 0.0)
 	X.rifle = _place("rifle", grip, rifle_rot)
-	var a_r := (PARTS.upper_r.end - PARTS.upper_r.pv).y * tex("upper_r").get_height() * float(PARTS.upper_r.s)
-	var b_r := (PARTS.forearm_r.end - PARTS.forearm_r.pv).y * tex("forearm_r").get_height() * float(PARTS.forearm_r.s)
+	var a_r: float = ((PARTS.upper_r.end - PARTS.upper_r.pv) * tex("upper_r").get_size() * float(PARTS.upper_r.s)).length()
+	var b_r: float = ((PARTS.forearm_r.end - PARTS.forearm_r.pv) * tex("forearm_r").get_size() * float(PARTS.forearm_r.s)).length()
 	var arm_r := _ik(sh_r, grip, a_r, b_r, -1.0)
 	X.upper_r = _bone("upper_r", sh_r, arm_r[0])
 	X.forearm_r = _bone("forearm_r", arm_r[0], grip)
 	X.pad_r = _place("pad_r", sh_r + Vector2(-12, -4).rotated(torso_rot), torso_rot + _ang(arm_r[0] - sh_r) * 0.25 - 0.1)
 	# free arm: out to the side for balance, swinging toward the aim and with the lean
 	var sh_l: Vector2 = X.torso * _rel("upper_l", "torso")
-	var a_l := (PARTS.upper_l.end - PARTS.upper_l.pv).y * tex("upper_l").get_height() * float(PARTS.upper_l.s)
+	var a_l: float = ((PARTS.upper_l.end - PARTS.upper_l.pv) * tex("upper_l").get_size() * float(PARTS.upper_l.s)).length()
 	var fl: Vector2 = PARTS.forearm_l.end - PARTS.forearm_l.pv
 	var b_l := (fl * tex("forearm_l").get_size() * float(PARTS.forearm_l.s)).length()
 	var swing := clampf((aim + PI / 2.0) * 0.18, -0.2, 0.2)
@@ -239,6 +262,8 @@ static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: flo
 			_draw_part(c, base, X.shin_l, "shin", col, true)
 		elif nm == "rifle":
 			_draw_part(c, base, X.rifle, RIFLE, col)
+		elif nm.begins_with("pad") and PARTS.upper_r.has("tex"):
+			continue   # chunky upper arms carry their own shoulder pads
 		else:
 			_draw_part(c, base, X[nm], nm, col)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)

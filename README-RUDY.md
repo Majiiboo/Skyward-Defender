@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev116 (version/code=116 and version/name="1.0-dev116" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev117 (version/code=117 and version/name="1.0-dev117" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev117: a chunkier pilot in battle
+
+- The side-view pilot (battle and Home) now uses Luna's round-3 chunky arms and legs:
+  thick armoured upper arms with their shoulder pads, a heavy fist on the rifle arm, a
+  big open glove, and solid thighs and boots. pilot_rig.gd CHUNKY = false switches back.
+- The arm maths now measures each bone along its own direction (the new forearms are
+  painted sideways).
 
 ## dev116: Gear pilot, platform, card text, quiet parts
 
