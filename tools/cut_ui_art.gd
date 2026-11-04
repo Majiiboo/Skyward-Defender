@@ -87,6 +87,7 @@ func _initialize() -> void:
 			_save(out, "res://" + j[2])
 			continue
 		_save(_fit(out, j[3]), "res://" + j[2])
+	_platform_layers()
 	quit()
 
 func _save(img: Image, path: String) -> void:
@@ -173,3 +174,59 @@ func _solid(img: Image, lo: float = 14.0, span: float = 34.0, close: int = 3) ->
 				d[i * 4 + c] = int(clampf(d[i * 4 + c] / a, 0.0, 255.0))
 		d[i * 4 + 3] = int(a * 255.0)
 	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, d)
+
+# Luna's two-layer Gear platform (art_src/cards_r1/platform_floor_classic.png on black,
+# platform_rim_classic.png already see-through, same canvas): both cropped to the same
+# box and scaled alike -> gear/platform_floor.png, gear/platform_rim.png, plus
+# gear/platform_rim_lights.png = only the lit windows and antenna tips of the rim, in
+# white, for the set-bonus glow (gear.gd PlatformFloor tints and adds it).
+func _platform_layers() -> void:
+	var floor_src := Image.load_from_file(ProjectSettings.globalize_path("res://art_src/cards_r1/platform_floor_classic.png"))
+	var rim := Image.load_from_file(ProjectSettings.globalize_path("res://art_src/cards_r1/platform_rim_classic.png"))
+	if floor_src == null or rim == null:
+		return
+	floor_src.convert(Image.FORMAT_RGBA8)
+	rim.convert(Image.FORMAT_RGBA8)
+	var floor_img := _solid(floor_src)
+	var box := floor_img.get_used_rect().merge(rim.get_used_rect()).grow(3).intersection(Rect2i(Vector2i.ZERO, rim.get_size()))
+	# the floor picture keeps faint dark ghosts of the buildings above the deck: clear
+	# everything above the deck's back edge (the rim layer covers that strip)
+	var cut_y := box.position.y + int(box.size.y * 0.17)
+	for y in range(0, cut_y):
+		for x in floor_img.get_width():
+			floor_img.set_pixel(x, y, Color(0, 0, 0, 0))
+	var s := 720.0 / maxi(box.size.x, box.size.y)
+	var size := Vector2i(roundi(box.size.x * s), roundi(box.size.y * s))
+	var pairs := [[floor_img.get_region(box), "gear/platform_floor.png"], [rim.get_region(box), "gear/platform_rim.png"],
+		[_lights_mask(rim.get_region(box), 10), "gear/platform_rim_lights.png"], [_lights_mask(floor_img.get_region(box), 3), "gear/platform_floor_lights.png"]]
+	for pair in pairs:
+		var im: Image = pair[0]
+		im.resize(size.x, size.y, Image.INTERPOLATE_LANCZOS)
+		_save(im, "res://" + pair[1])
+
+# White mask of what is lit in a picture (bright and coloured: cyan / purple light, not
+# grey metal), plus a soft halo `halo` px wide, for tinted additive glows.
+func _lights_mask(src: Image, halo: int) -> Image:
+	var w := src.get_width(); var h := src.get_height()
+	var d := src.get_data()
+	var m := PackedByteArray(); m.resize(w * h * 4)
+	for i in w * h:
+		var r: float = d[i * 4] / 255.0
+		var g: float = d[i * 4 + 1] / 255.0
+		var b: float = d[i * 4 + 2] / 255.0
+		var mx := maxf(r, maxf(g, b))
+		var sat := mx - minf(r, minf(g, b))
+		var k := smoothstep(0.45, 0.8, mx) * smoothstep(0.15, 0.4, sat) * (d[i * 4 + 3] / 255.0)
+		m[i * 4] = 255; m[i * 4 + 1] = 255; m[i * 4 + 2] = 255
+		m[i * 4 + 3] = int(k * 255.0)
+	var sharp := Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, m)
+	if halo <= 0:
+		return sharp
+	# halo: shrink and grow back (a cheap blur), then keep the brighter of the two
+	var soft: Image = sharp.duplicate()
+	soft.resize(maxi(1, w / halo), maxi(1, h / halo), Image.INTERPOLATE_BILINEAR)
+	soft.resize(w, h, Image.INTERPOLATE_BILINEAR)
+	var sd := soft.get_data()
+	for i in w * h:
+		m[i * 4 + 3] = maxi(m[i * 4 + 3], mini(255, int(sd[i * 4 + 3] * 2.2)))
+	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, m)

@@ -15,6 +15,7 @@ var _bag_grid: GridContainer
 var _upgrade_btn: Button
 var _pilot_box: VBoxContainer
 var _turret_box: VBoxContainer
+var _plat                    # PlatformFloor (set-bonus glow)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
 
 # ---- turrets page ----
@@ -123,6 +124,7 @@ func _build() -> void:
 	plat.set_anchors_preset(Control.PRESET_FULL_RECT)
 	plat.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(plat)
+	_plat = plat
 	var hero := PilotShowcase.new()
 	hero.plat = plat
 	hero.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -254,6 +256,18 @@ func _select(slot: String) -> void:
 		var s: Dictionary = GearData.SETS[set_id]
 		lines.append("%s %d/6:  %s %s  ·  %s %s" % [s.name, n, "ON" if n >= 3 else "(3)", s.bonus3, "ON" if n >= 6 else "(6)", s.bonus6])
 	_bonus.text = "SET BONUSES\n" + "\n".join(lines)
+	# the platform's buildings light up in the colour of your strongest set
+	if _plat:
+		var best := ""
+		var best_n := 0
+		for set_id in GearData.SETS:
+			var n := GearData.set_count(gear, set_id)
+			if n > best_n:
+				best = set_id
+				best_n = n
+		_plat.glow = 1.0 if best_n >= 6 else (0.5 if best_n >= 3 else 0.0)
+		if best != "":
+			_plat.glow_col = UIKit.RARITY[best]
 
 func _stat_text(slot: String, lv: int) -> String:
 	var per: float = float(GearData.SLOT_STAT[slot].per)
@@ -280,6 +294,9 @@ func _on_upgrade_pressed() -> void:
 	gear.levels[id] = lv + 1
 	_save()
 	_select(selected_slot)
+	if _plat:
+		_plat.glow_col = UIKit.RARITY[GearData.ITEMS[id].set] if _plat.glow <= 0.0 else _plat.glow_col
+		_plat.flash()
 	var b: Button = _slot_tiles[selected_slot]
 	b.pivot_offset = b.size * 0.5
 	var tw := b.create_tween()
@@ -311,22 +328,64 @@ class PilotShowcase extends Control:
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
 		view.update(delta, Vector2(size.x * 0.5, feet - 84.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
 
-# The round platform he stands on. Luna's painted platform (gear/platform.png) when it
-# arrives; until then a simple stand-in: a glass disc with rings and a floor grid. Thin
-# lines link each slot tile to the platform.
+# The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
+# buildings on the back rim, platform_rim.png), else her single picture (platform.png),
+# else a code stand-in. Thin lines link each slot tile to the platform. Set-bonus glow:
+# with 3 pieces of one set the rim's windows light up in that set's colour, with all 6
+# they glow fully and breathe (platform_rim_lights.png on an additive layer); flash()
+# makes them flare when a piece is upgraded.
 class PlatformFloor extends Control:
 	const FLOOR_UP := 34.0     # stand-in disc centre, up from the bottom of the stage
 	const TEX_W := 262.0       # Luna's platform: drawn width, bottom on the stage bottom
 	const TEX_FEET := 0.56     # where he stands, as a share of her picture's height
 	var tiles := {}
 	var t := 0.0
-	var _tex: Texture2D
+	var _tex: Texture2D        # the floor (or the single picture)
+	var _rim: Texture2D
+	var _lights: Texture2D       # rim windows (with halo)
+	var _floor_lights: Texture2D # the deck's grid lines
+	var _light_layer: Control
+	var glow := 0.0               # 0 no set bonus, 0.5 three pieces, 1.0 all six
+	var glow_col := Glass.CYAN
+	var _flash := 0.0
 	func _ready() -> void:
-		if ResourceLoader.exists("res://gear/platform.png"):
+		if ResourceLoader.exists("res://gear/platform_floor.png") and ResourceLoader.exists("res://gear/platform_rim.png"):
+			_tex = load("res://gear/platform_floor.png")
+			_rim = load("res://gear/platform_rim.png")
+			if ResourceLoader.exists("res://gear/platform_rim_lights.png"):
+				_lights = load("res://gear/platform_rim_lights.png")
+			if ResourceLoader.exists("res://gear/platform_floor_lights.png"):
+				_floor_lights = load("res://gear/platform_floor_lights.png")
+		elif ResourceLoader.exists("res://gear/platform.png"):
 			_tex = load("res://gear/platform.png")
+		_light_layer = Control.new()
+		_light_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_light_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_light_layer.material = add
+		_light_layer.draw.connect(_draw_lights)
+		add_child(_light_layer)
+	func flash() -> void:
+		_flash = 1.0
 	func _process(delta: float) -> void:
 		t += delta
+		_flash = maxf(_flash - delta * 1.5, 0.0)
 		queue_redraw()
+		_light_layer.queue_redraw()
+	# how strongly the set colour shows: steady at 3 pieces, breathing at 6, a flare on
+	# upgrade
+	func _glow_k() -> float:
+		return minf(glow * (0.75 + 0.25 * sin(t * 2.4) if glow >= 1.0 else 1.0) + _flash, 1.0)
+	# light added on top: the rim windows' halo, a little on the deck lines
+	func _draw_lights() -> void:
+		var k := _glow_k()
+		if _lights == null or not _tex or k <= 0.01:
+			return
+		var r := _tex_rect()
+		_light_layer.draw_texture_rect(_lights, r, false, Color(glow_col, k))
+		if _floor_lights:
+			_light_layer.draw_texture_rect(_floor_lights, r, false, Color(glow_col, k * 0.35))
 	func _tex_rect() -> Rect2:
 		var h := TEX_W * _tex.get_height() / _tex.get_width()
 		return Rect2(size.x * 0.5 - TEX_W * 0.5, size.y - h, TEX_W, h)
@@ -347,7 +406,16 @@ class PlatformFloor extends Control:
 			var to := c + Vector2((-rx if left else rx) * 0.8, -ry * 0.4)
 			draw_line(from, from.lerp(to, 0.35), Color(Glass.CYAN, 0.25), 1.0, true)
 		if _tex:
-			draw_texture_rect(_tex, _tex_rect(), false)
+			# the lit lines and windows are repainted in the set colour (over Luna's cyan)
+			var tr := _tex_rect()
+			var k := _glow_k()
+			draw_texture_rect(_tex, tr, false)
+			if _floor_lights and k > 0.01:
+				draw_texture_rect(_floor_lights, tr, false, Color(glow_col, 0.8 * k))
+			if _rim:
+				draw_texture_rect(_rim, tr, false)
+			if _lights and k > 0.01:
+				draw_texture_rect(_lights, tr, false, Color(glow_col, 0.6 * k))
 			return
 		# stand-in: side band, top disc, rings, grid, and a slow light sweeping round
 		_ellipse(c + Vector2(0, 9), rx, ry, Color(0.03, 0.05, 0.11, 0.95))
