@@ -10,7 +10,7 @@ extends RefCounted
 const WEIGHTS := {"common": 60.0, "uncommon": 28.0, "epic": 10.0, "legendary": 2.0}
 const FRAME := {"common": "res://cards/frame_common.png", "uncommon": "res://cards/frame_uncommon.png",
 	"epic": "res://cards/frame_epic.png", "legendary": "res://cards/frame_legendary.png",
-	"fusion": "res://cards/frame_legendary.png"}   # until Luna paints a fusion frame
+	"fusion": "res://cards/frame_legendary.png"}   # battle.gd uses cards/frame_fusion.png when present
 const COLOR := {"common": Color(0.75, 0.78, 0.85), "uncommon": Color(0.2, 0.9, 1.0),
 	"epic": Color(0.71, 0.55, 1.0), "legendary": Color(1.0, 0.8, 0.3), "fusion": Color(1.0, 0.45, 0.8)}
 
@@ -41,7 +41,7 @@ const CARDS := {
 const OVER_AT := 3
 const OVERCHARGE := {
 	"rapid_pulse":     "Fire rate +15% more",
-	"heavy_bolts":     "Every 6th bolt x3 damage",
+	"heavy_bolts":     "6th bolt hits x3",
 	"burst_fire":      "Last burst bolt pierces",
 	"aegis":           "Heals 1 heart each new wave",
 	"magnet":          "Each gem repairs 1 shield",
@@ -54,13 +54,13 @@ const OVERCHARGE := {
 # Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
 const FUSIONS := {
 	"railstorm":   {"name": "Railstorm",   "parts": ["rapid_pulse", "heavy_bolts"], "rarity": "fusion", "max": 1,
-		"desc": "Every 4th bolt is a rail shot: double damage, pierces the whole line"},
+		"desc": "Every 4th bolt is a piercing rail shot (x2 damage)"},
 	"gem_barrage": {"name": "Gem Barrage", "parts": ["burst_fire", "magnet"], "rarity": "fusion", "max": 1,
-		"desc": "Every 10 gems fire a burst of 6 bolts at the nearest bugs"},
+		"desc": "Every 10 gems fire 6 bolts at the nearest bugs"},
 	"bastion":     {"name": "Bastion",     "parts": ["reinforced_hull", "aegis"], "rarity": "fusion", "max": 1,
-		"desc": "When the shield breaks it blasts outward, hurting and pushing back bugs"},
+		"desc": "A breaking shield blasts bugs back"},
 	"storm_wing":  {"name": "Storm Wing",  "parts": ["chain_spark", "wingman"], "rarity": "fusion", "max": 1,
-		"desc": "Every drone shot sparks to 2 more bugs"},
+		"desc": "Drone shots spark to 2 more bugs"},
 }
 
 # the pick on which a card overcharges: the 3rd, or the last for cards that stop sooner

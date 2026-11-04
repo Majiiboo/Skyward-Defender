@@ -117,13 +117,14 @@ func _build() -> void:
 	col = _pilot_box
 	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
 	var stage := Control.new()
-	stage.custom_minimum_size = Vector2(0, 292)
+	stage.custom_minimum_size = Vector2(0, 318)
 	col.add_child(stage)
 	var plat := PlatformFloor.new()
 	plat.set_anchors_preset(Control.PRESET_FULL_RECT)
 	plat.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(plat)
 	var hero := PilotShowcase.new()
+	hero.plat = plat
 	hero.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hero.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(hero)
@@ -297,23 +298,26 @@ func _show_page(i: int) -> void:
 # rifle drifting, flames in the equipped jetpack's style.
 class PilotShowcase extends Control:
 	var view: PilotRigView
+	var plat   # PlatformFloor: where his feet go
 	var t := 0.0
 	func _ready() -> void:
-		clip_contents = true
 		view = PilotRigView.new()
-		view.height = 170.0
+		view.height = 156.0
 		add_child(view)
 	func _process(delta: float) -> void:
 		t += delta
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
-		# hovering just above the platform floor (PlatformFloor.FLOOR_UP)
-		view.update(delta, Vector2(size.x * 0.5, size.y - PlatformFloor.FLOOR_UP - 96.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+		# hovering just above the platform floor
+		var feet: float = plat.feet_y() if plat else size.y - 40.0
+		view.update(delta, Vector2(size.x * 0.5, feet - 84.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
 
 # The round platform he stands on. Luna's painted platform (gear/platform.png) when it
 # arrives; until then a simple stand-in: a glass disc with rings and a floor grid. Thin
 # lines link each slot tile to the platform.
 class PlatformFloor extends Control:
-	const FLOOR_UP := 34.0     # disc centre, up from the bottom of the stage
+	const FLOOR_UP := 34.0     # stand-in disc centre, up from the bottom of the stage
+	const TEX_W := 262.0       # Luna's platform: drawn width, bottom on the stage bottom
+	const TEX_FEET := 0.56     # where he stands, as a share of her picture's height
 	var tiles := {}
 	var t := 0.0
 	var _tex: Texture2D
@@ -323,6 +327,14 @@ class PlatformFloor extends Control:
 	func _process(delta: float) -> void:
 		t += delta
 		queue_redraw()
+	func _tex_rect() -> Rect2:
+		var h := TEX_W * _tex.get_height() / _tex.get_width()
+		return Rect2(size.x * 0.5 - TEX_W * 0.5, size.y - h, TEX_W, h)
+	func feet_y() -> float:
+		if _tex:
+			var r := _tex_rect()
+			return r.position.y + r.size.y * TEX_FEET
+		return size.y - FLOOR_UP
 	func _draw() -> void:
 		var c := Vector2(size.x * 0.5, size.y - FLOOR_UP)
 		var rx := minf(size.x * 0.3, 130.0)
@@ -335,9 +347,7 @@ class PlatformFloor extends Control:
 			var to := c + Vector2((-rx if left else rx) * 0.8, -ry * 0.4)
 			draw_line(from, from.lerp(to, 0.35), Color(Glass.CYAN, 0.25), 1.0, true)
 		if _tex:
-			var w := rx * 2.4
-			var h := w * _tex.get_height() / _tex.get_width()
-			draw_texture_rect(_tex, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false)
+			draw_texture_rect(_tex, _tex_rect(), false)
 			return
 		# stand-in: side band, top disc, rings, grid, and a slow light sweeping round
 		_ellipse(c + Vector2(0, 9), rx, ry, Color(0.03, 0.05, 0.11, 0.95))

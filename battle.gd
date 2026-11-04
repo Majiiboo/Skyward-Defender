@@ -1609,10 +1609,12 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.size = size
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	var over := not fusion and Cards.overcharges(id, lvl)
 	var frame := TextureRect.new()
-	var fpath: String = Cards.FRAME[def.rarity]
-	if fusion and ResourceLoader.exists("res://cards/frame_fusion.png"):
-		fpath = "res://cards/frame_fusion.png"   # Luna's fusion frame, once it arrives
+	# Luna's fusion and overcharge frames; the rarity frame otherwise
+	var special := "res://cards/frame_fusion.png" if fusion else ("res://cards/frame_overcharge.png" if over else "")
+	var own_frame := special != "" and ResourceLoader.exists(special)
+	var fpath: String = special if own_frame else Cards.FRAME[def.rarity]
 	frame.texture = load(fpath)
 	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
 	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
@@ -1625,11 +1627,10 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_card_pic(id, 56.0 if fusion else 74.0))
+	v.add_child(_card_pic(id, 56.0 if fusion or over else 74.0))
 	var name_l := UIKit.label(def.name, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
-	var over := not fusion and Cards.overcharges(id, lvl)
 	var gold := Color(1.0, 0.82, 0.32)
 	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)))
 	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
@@ -1640,8 +1641,8 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 11, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(od)
-	if over or fusion:
-		# a thin gold edge that breathes, on top of the frame
+	if (over or fusion) and not own_frame:
+		# without its own frame: a thin edge that breathes, on top of the rarity frame
 		var edge := Panel.new()
 		var sb := StyleBoxFlat.new()
 		sb.bg_color = Color(0, 0, 0, 0)

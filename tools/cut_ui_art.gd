@@ -7,6 +7,8 @@ extends SceneTree
 #   icons/ui_*.png            coin, crystal, energy, heart, badge, padlock
 #   base/lid_closed|half|open.png   locked socket hatch
 #   icons/chest3d_*.png, icons/drone_*.png   Home Chest and Patrol layers
+#   dev104 (art_src/cards_r1): new card + fusion pictures, frame_fusion / frame_overcharge,
+#   gear/platform.png (the Gear screen platform)
 # Run: godot --headless --path . --script res://tools/cut_ui_art.gd
 
 const SRC := "res://art_src/dev87/"
@@ -46,10 +48,21 @@ const JOBS := [
 	["patrol_drone", [90, 94, 1744, 1088], "icons/drone_body.png", 192, "solid"],
 	["home_buttons_v1", [730, 300, 464, 96], "icons/drone_prop.png", 128, "solid"],
 	["home_buttons_v1", [1450, 176, 184, 384], "icons/drone_thrust.png", 96, "light"],
+	# dev104 (art_src/cards_r1): new card pictures, fusion pictures, frames, Gear platform
+	["../cards_r1/pic-chain-spark", [0, 0, 9999, 9999], "cards/pic_chain_spark.png", 256, "solid"],
+	["../cards_r1/pic-wingman-redo", [0, 0, 9999, 9999], "cards/pic_wingman.png", 256, "solid"],
+	["../cards_r1/pic-quick-study", [0, 0, 9999, 9999], "cards/pic_quick_study.png", 256, "solid"],
+	["../cards_r1/pic-railstorm", [0, 0, 9999, 9999], "cards/pic_railstorm.png", 256, "solid"],
+	["../cards_r1/pic-gem-barrage", [0, 0, 9999, 9999], "cards/pic_gem_barrage.png", 256, "solid"],
+	["../cards_r1/pic-bastion", [0, 0, 9999, 9999], "cards/pic_bastion.png", 256, "solid"],
+	["../cards_r1/pic-storm-wing", [0, 0, 9999, 9999], "cards/pic_storm_wing.png", 256, "solid"],
+	["../cards_r1/frame-fusion", [0, 0, 9999, 9999], "cards/frame_fusion.png", 450, "solid+card"],
+	["../cards_r1/frame-overcharge", [176, 326, 924, 1336], "cards/frame_overcharge.png", 450, "solid+card"],   # frame body only (sparks outside it trimmed)
+	["../cards_r1/gear-platform-design-classic", [0, 0, 9999, 9999], "gear/platform.png", 720, "solid"],
 ]
 
 func _initialize() -> void:
-	for d in ["pickups", "fx", "cards", "icons", "base"]:
+	for d in ["pickups", "fx", "cards", "icons", "base", "gear"]:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://" + d))
 	var sheets := {}
 	for j in JOBS:
@@ -69,6 +82,10 @@ func _initialize() -> void:
 			out = _trim(_solid(cell))
 		if mode.ends_with("+flip"):
 			out.flip_x()
+		if mode.ends_with("+card"):
+			out.resize(300, 450, Image.INTERPOLATE_LANCZOS)   # same size as the other card frames
+			_save(out, "res://" + j[2])
+			continue
 		_save(_fit(out, j[3]), "res://" + j[2])
 	quit()
 
