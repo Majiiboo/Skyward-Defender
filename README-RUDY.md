@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev122 (version/code=122 and version/name="1.0-dev122" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev123 (version/code=123 and version/name="1.0-dev123" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev123: new Store
+
+- Four tabs that each fit on one screen: Offers, Chests, Parts, Packs. Big pictures,
+  big numbers, prices with the crystal icon, coins and crystals shown as icons on top.
+- Offers: the Daily Gift across the top, then the coin offers and the x2 Speed Pack.
+- Chests: the coin range and the crystal jackpot chance on each chest.
+- Parts (new): buy Alloy, Cells and Cores with crystals, at the same rate crystals
+  already cover missing parts when upgrading.
+- Codes moved into a small "Have a code?" pop-up.
 
 ## dev122: your gear shows on the pilot
 

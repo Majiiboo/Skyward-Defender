@@ -81,6 +81,12 @@ static func grant(d: Dictionary, reward: Dictionary) -> Dictionary:
 	d["coins"] = int(d.get("coins", 0)) + int(reward.get("coins", 0))
 	d["crystals"] = int(d.get("crystals", 0)) + int(reward.get("crystals", 0))
 	d["pilot_xp"] = int(d.get("pilot_xp", 0)) + int(reward.get("pilot_xp", 0))
+	# upgrade parts (Store, chests)
+	for k in Parts.ORDER:
+		if int(reward.get(k, 0)) > 0:
+			var p: Dictionary = Parts.read(d)
+			p[k] = int(p[k]) + int(reward[k])
+			d["parts"] = p
 	return d
 
 static func reward_text(reward: Dictionary) -> String:
@@ -91,6 +97,9 @@ static func reward_text(reward: Dictionary) -> String:
 		parts.append("%d crystals" % int(reward.crystals))
 	if int(reward.get("pilot_xp", 0)) > 0:
 		parts.append("%d XP" % int(reward.pilot_xp))
+	for k in Parts.ORDER:
+		if int(reward.get(k, 0)) > 0:
+			parts.append("%d %s" % [int(reward[k]), Parts.KINDS[k].name])
 	return " + ".join(parts)
 
 # ------------------------------------------------------------------ stats
