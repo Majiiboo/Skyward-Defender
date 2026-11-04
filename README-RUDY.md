@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev99 (version/code=99 and version/name="1.0-dev99" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev100 (version/code=100 and version/name="1.0-dev100" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,13 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev100: Home shows the stage's bugs
+
+- The live battle behind Home now uses the bugs of the stage you have selected: stage 1
+  shows only Scouts, later stages add Drifters, Spitters and Divers as they appear in
+  that stage. On a mini-boss or boss stage (5, 10, 15...) the Hive Mother hangs in the
+  sky above the fight, drifting slowly, so you can see what is waiting for you.
 
 ## dev99: overcharged cards and boss health layers
 

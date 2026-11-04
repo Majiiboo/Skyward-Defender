@@ -76,11 +76,23 @@ func set_elite(value: bool) -> void:
 # The selected stage picks the painted world behind Home (its sector's "bg"); flipping
 # stages cross-fades from the old world to the new one.
 var stage := 1
+var _roster: Array = ["scout"]
+var _boss := ""   # "mini" / "boss" on stages that end with a Hive Mother
 var _world := ""
 var _world_prev := ""
 var _world_fade := 1.0
 func set_stage(value: int) -> void:
 	stage = value
+	# the bugs of this stage fly in the Home battle (the boss only looms on boss stages)
+	_roster.clear()
+	for wave in StageData.waves(stage):
+		for entry in wave:
+			var kind: String = entry[0]
+			if kind != "hive_mother" and not _roster.has(kind) and EnemyRig.PARTS.has(kind):
+				_roster.append(kind)
+	if _roster.is_empty():
+		_roster = ["scout"]
+	_boss = StageData.boss_kind(stage)
 	var key := String(StageData.sector(stage).get("bg", ""))
 	if key != _world:
 		_world_prev = _world
@@ -146,8 +158,16 @@ func _spawn_enemies(dt: float) -> void:
 			_enemies.append(_make_enemy(Vector2(randf_range(70.0, size.x - 70.0), fly_top - 110.0), 24.0, true))
 
 func _make_enemy(pos: Vector2, speed: float, heavy: bool) -> Dictionary:
-	return {"pos": pos, "speed": speed, "hp": 7 if heavy else 2, "heavy": heavy,
-		"r": 13.0 if heavy else 7.0, "ph": randf() * TAU}
+	var kind := "scout"
+	if heavy:
+		kind = "drifter" if _roster.has("drifter") else "scout"
+	else:
+		var light := _roster.filter(func(k): return k != "drifter")
+		if not light.is_empty():
+			kind = light[randi() % light.size()]
+	var sz: float = float(StageData.ENEMIES[kind].size) * 1.07
+	return {"pos": pos, "speed": speed, "hp": 7 if heavy else 2, "heavy": heavy, "kind": kind,
+		"r": sz * 0.19, "size": sz, "ph": randf() * TAU}
 
 func _nearest_enemy(from: Vector2, max_dist: float) -> int:
 	var best := -1
@@ -313,6 +333,7 @@ func _draw() -> void:
 		draw_line(s.pos, s.pos - s.vel.normalized() * 34.0, Color(1, 1, 1, clampf(s.life, 0.0, 0.8)), 1.5, true)
 	_draw_ship()
 	_draw_rocks()
+	_draw_boss()
 	if _world == "":
 		Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
 	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
@@ -395,10 +416,18 @@ func _wall_turret_tip(i: int) -> Vector2:
 func _wall_turret_h() -> float:
 	return WALL_TURRET_H * size.x / 480.0
 
+# On a boss stage the Hive Mother hangs high in the sky, out of reach, drifting slowly.
+func _draw_boss() -> void:
+	if _boss == "":
+		return
+	var sz: float = float(StageData.ENEMIES["hive_mother"].size) * 1.35 * (0.4 if _boss == "mini" else 0.5)
+	var p := Vector2(size.x * 0.5 + sin(_t * 0.35) * size.x * 0.18, fly_top + 40.0 + sin(_t * 0.9) * 8.0)
+	EnemyRig.draw_hive_mother(self, p, sz, _t, 0.0, false)
+
 func _draw_enemies() -> void:
 	for e in _enemies:
 		var a := clampf((e.pos.y - (fly_top - 100.0)) / 60.0, 0.0, 1.0)   # fades in as it enters
-		EnemyRig.draw_bug(self, "drifter" if e.heavy else "scout", e.pos, e.r * 2.6 * 2.0, _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
+		EnemyRig.draw_bug(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
 
 func _muzzle(pose: String) -> Vector2:
 	if _rig_view:
