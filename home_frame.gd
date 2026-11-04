@@ -40,8 +40,13 @@ func _draw() -> void:
 		var a: float = ctrl.modulate.a
 		match side:
 			0:
-				# top bar: one floating glass capsule across the screen
-				Glass.panel(self, Glass.box(Rect2(6.0, r.position.y, size.x - 12.0, r.size.y), 18.0), a)
+				# top bar: no box (Rudy, dev107), the buttons float free over a soft shade
+				# that fades out below them, so they read on any world
+				var y1: float = r.end.y + 26.0
+				var top := Color(0.0, 0.01, 0.04, 0.6 * a)
+				var clear := Color(0.0, 0.01, 0.04, 0.0)
+				draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, y1), Vector2(0, y1)]),
+					PackedColorArray([top, top, clear, clear]))
 			-1:
 				# a glass tab flush with the left edge, rounded on its inner side
 				Glass.panel(self, Glass.rounded(Rect2(-2.0, r.position.y, r.end.x + 2.0, r.size.y), [0, 14, 14, 0]), a)

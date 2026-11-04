@@ -9,10 +9,11 @@ extends Control
 #   dock.slide_to_tab(button, edge)          # glide the tile there
 # edge is kept for older callers; the tile always centres on its tab.
 
-@export var bump_h := 14.0          # how far the lit tile rises above the bar
-@export var bump_w := 70.0          # lit tile width
+@export var bump_h := 4.0           # space kept above the bar
+@export var bump_w := 74.0          # lit tile width
 @export var bar_corner := 20.0      # the glass bar's corner radius
 @export var slide_time := 0.30
+var play_mode := false           # Home is showing: the Battle tile is the Play button
 
 # Left edge of the notch in this node's own pixels. Setting it redraws.
 var notch_x := 0.0:
@@ -86,8 +87,13 @@ func _draw() -> void:
 	# the bar: one glass capsule
 	var bar := Rect2(INSET, bump_h, size.x - INSET * 2.0, size.y - bump_h - INSET)
 	Glass.panel(self, Glass.box(bar, bar_corner))
-	# the active tab: a lit glass tile rising out of the bar (gold on Battle)
-	var tile := Rect2(notch_x, 2.0, bump_w, size.y - INSET - 6.0)
+	# the active tab: a lit tile set INTO the bar (Rudy, dev107: no bar line behind it,
+	# nothing sticking out above), gold on Battle, breathing gently when it is Play
+	var tile := Rect2(notch_x, bar.position.y + 4.0, bump_w, bar.size.y - 8.0)
 	var battle: bool = _tab != null and String(_tab.name) == "NavBattle"
 	var col: Color = Glass.GOLD if battle else Glass.CYAN
-	Glass.panel(self, Glass.box(tile, 14.0), 1.0, Color(col, 0.9), Color(col.r * 0.22, col.g * 0.22, col.b * 0.3, 0.78))
+	var breathe: float = 0.5 + 0.5 * sin(Time.get_ticks_msec() * 0.004) if play_mode and battle else 0.0
+	var fill := Color(col.r * 0.25, col.g * 0.25, col.b * 0.32, 0.85 + 0.1 * breathe)
+	Glass.panel(self, Glass.box(tile, bar_corner - 4.0), 1.0, Color(col, 0.75 + 0.25 * breathe), fill)
+	if play_mode and battle:
+		queue_redraw()

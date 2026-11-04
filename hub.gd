@@ -9,8 +9,8 @@ extends Control
 
 const NAV_TABS := ["NavStore", "NavGear", "NavBattle", "NavModes", "NavQuests"]
 const NAV_DIM := Color(0.42, 0.45, 0.55, 1.0)   # look of an inactive tab icon (painted icons: darker and greyer)
-const NAV_LIFT := -10.0                          # how far the active icon rises
-const NAV_BUMP := 14.0                           # notch height (nav_dock.gd bump_h)
+const NAV_LIFT := -3.0                           # how far the active icon rises (stays inside the bar)
+const NAV_BUMP := 4.0                            # space above the nav bar (nav_dock.gd bump_h)
 
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
@@ -68,6 +68,7 @@ var _nav_empty: StyleBoxEmpty = null
 var _nav_active := "NavBattle"
 var _pulse_tween: Tween = null
 var _view_container: Control = null
+var _frost: ColorRect = null      # frosted glass behind menu screens (frost.gdshader)
 var _current_view: Control = null
 var _current_view_name := "NavBattle"
 
@@ -253,7 +254,7 @@ func _build_home() -> void:
 	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Crystals: premium currency.\nComing soon."))
 	dockL.add_child(_crystal_btn)
 	var open := _icon_button("OpenCurrencyButton", "plus", 36.0, 26.0, 14, Color(CYAN, 0.4))
-	open.pressed.connect(func(): _side_popup("RESOURCES", "Room for one more resource\nor currency later."))
+	open.pressed.connect(func(): _on_nav_tap("NavStore", "res://store.tscn"))   # + opens the Store (coins, crystals)
 	dockL.add_child(open)
 	_frame.add_dock(top, 0, Vector2(0, 4))
 	var spacer := Control.new()
@@ -347,8 +348,8 @@ func _build_home() -> void:
 	row.name = "ActionRow"
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	row.custom_minimum_size = Vector2(0, 62)
-	row.offset_top = -62.0
+	row.custom_minimum_size = Vector2(0, 8)
+	row.offset_top = -8.0
 	home.add_child(row)
 	_action_row = row
 	var chest := _action_item("ChestButton", "chest_closed", "Chest", func():
@@ -358,24 +359,18 @@ func _build_home() -> void:
 	chest.grow_horizontal = Control.GROW_DIRECTION_END
 	chest.grow_vertical = Control.GROW_DIRECTION_BOTH
 	chest.offset_left = 2.0
-	chest.offset_top = -128.0
-	chest.offset_bottom = -128.0
+	chest.offset_top = -159.0
+	chest.offset_bottom = -159.0
 	row.add_child(chest)
-	_frame.add_dock(chest, -1, Vector2(4, 1))
-	var start := _battle_button()
-	start.set_anchors_preset(Control.PRESET_CENTER)
-	start.grow_horizontal = Control.GROW_DIRECTION_BOTH
-	start.grow_vertical = Control.GROW_DIRECTION_BOTH
-	row.add_child(start)
+	# (no START button here since dev107: on Home the gold Battle tab IS the Play button)
 	var patrol := _action_item("PatrolButton", "patrol", "Patrol", func(): _show_panel($PatrolPanel))
 	patrol.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	patrol.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	patrol.grow_vertical = Control.GROW_DIRECTION_BOTH
 	patrol.offset_right = -2.0
-	patrol.offset_top = -128.0
-	patrol.offset_bottom = -128.0
+	patrol.offset_top = -159.0
+	patrol.offset_bottom = -159.0
 	row.add_child(patrol)
-	_frame.add_dock(patrol, 1, Vector2(4, 1))
 
 func _action_item(node_name: String, icon_name: String, label: String, on_press: Callable) -> Control:
 	# Round button + optional small label, same size for Chest and Patrol so they line up.
@@ -412,17 +407,20 @@ func _pill_button(node_name: String, icon_name: String, text: String) -> Button:
 	b.add_theme_color_override("font_hover_color", Color.WHITE)
 	b.custom_minimum_size = Vector2(0, 36)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var n := _glass(13.0)
-	n.expand_margin_top = -5.0
-	n.expand_margin_bottom = -5.0
-	n.content_margin_left = 10.0
-	n.content_margin_right = 12.0
-	var p := _glass(13.0, CYAN, Color(CYAN, 0.25))
+	# no oval: icon and number float free (Rudy, dev107); a faint glass shows only while pressed
+	var n := StyleBoxEmpty.new()
+	n.content_margin_left = 4.0
+	n.content_margin_right = 6.0
+	var p := _glass(13.0, Color(CYAN, 0.5), Color(CYAN, 0.18))
 	p.expand_margin_top = -5.0
 	p.expand_margin_bottom = -5.0
-	p.content_margin_left = 10.0
-	p.content_margin_right = 12.0
-	_style_button(b, n, p)
+	p.content_margin_left = 4.0
+	p.content_margin_right = 6.0
+	b.add_theme_stylebox_override("normal", n)
+	b.add_theme_stylebox_override("hover", n)
+	b.add_theme_stylebox_override("pressed", p)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.add_theme_constant_override("h_separation", 5)
 	return b
 
 func _arrow_button(node_name: String, icon_name: String) -> Button:
@@ -447,47 +445,6 @@ func _segment_button(node_name: String, text: String) -> Button:
 	b.add_theme_font_size_override("font_size", 14)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	return b
-
-func _battle_button() -> Button:
-	var b := Button.new()
-	b.name = "BattleButton"
-	b.custom_minimum_size = Vector2(170, 46)
-	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var n := _glass(23.0, Color(CYAN, 0.9), Color(CYAN, 0.14))
-	n.set_border_width_all(1)
-	n.shadow_color = Color(CYAN, 0.18)
-	n.shadow_size = 6
-	var p := _glass(23.0, CYAN, Color(CYAN, 0.3))
-	p.set_border_width_all(2)
-	_style_button(b, n, p)
-	# Icon + word, centred together, so they can never overlap.
-	var content := HBoxContainer.new()
-	content.set_anchors_preset(Control.PRESET_FULL_RECT)
-	content.alignment = BoxContainer.ALIGNMENT_CENTER
-	content.add_theme_constant_override("separation", 10)
-	content.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var icon := TextureRect.new()
-	icon.texture = Icons.get_icon("play_small")
-	icon.custom_minimum_size = Vector2(18, 18)
-	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(icon)
-	var word := Label.new()
-	word.text = "START"
-	word.add_theme_font_size_override("font_size", 17)
-	word.add_theme_color_override("font_color", Color.WHITE)
-	word.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	content.add_child(word)
-	b.add_child(content)
-	b.pressed.connect(func(): _smooth_change_scene("res://battle.tscn"))
-	# slow breathing glow
-	var tw := create_tween().set_loops()
-	tw.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
-	tw.tween_property(n, "shadow_size", 10, 1.4)
-	tw.tween_property(n, "shadow_size", 4, 1.4)
 	return b
 
 func _fmt(n: int) -> String:
@@ -543,6 +500,17 @@ func _setup_view_manager() -> void:
 	_view_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_view_container)
 	move_child(_view_container, $Safe.get_index())
+	# frosted glass over the frozen Home battle, behind every menu screen
+	_frost = ColorRect.new()
+	_frost.name = "Frost"
+	_frost.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_frost.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var fm := ShaderMaterial.new()
+	fm.shader = load("res://frost.gdshader")
+	_frost.material = fm
+	_frost.visible = false
+	add_child(_frost)
+	move_child(_frost, _view_container.get_index())
 	_nav_dock = NavDock.new()
 	_nav_dock.name = "NavDock"
 	add_child(_nav_dock)
@@ -575,6 +543,11 @@ func _process(_delta: float) -> void:
 		for pair in [["on", "off"], ["lit", "dim"]]:
 			if L.has(pair[0]):
 				L[pair[1]].modulate.a = clampf((1.0 - L[pair[0]].modulate.a) * 2.0, 0.0, 1.0)
+	# Home showing: the Battle tile becomes Play (breathing gold, label "Play")
+	if _nav_dock != null:
+		var home := _current_view == null
+		_nav_dock.play_mode = home
+		_nav_label("NavBattle").text = "Play" if home else NAV_NAMES["NavBattle"]
 	# Follow the real screen size (tall phones settle after first frame).
 	var vp := get_viewport_rect().size
 	if size != vp:
@@ -586,8 +559,9 @@ func _process(_delta: float) -> void:
 		$Safe.add_theme_constant_override("margin_bottom", pad)
 	# Menu screens fill the area above the nav bar.
 	if _view_container != null:
-		_view_container.position = Vector2.ZERO
-		_view_container.size = Vector2(size.x, nb.get_global_rect().position.y)
+		var inset := SafeAreaMargin.top_inset(get_viewport())   # below the notch / camera cutout
+		_view_container.position = Vector2(0, inset)
+		_view_container.size = Vector2(size.x, nb.get_global_rect().position.y - inset)
 	if _frame != null:
 		_frame.visible = $Safe.visible
 		_frame.line_top_y = $Safe/Home.get_node("TopBar").get_global_rect().end.y + 10.0
@@ -681,10 +655,12 @@ func _wire_panels() -> void:
 	$SidePanel/SideClose.pressed.connect(func(): _hide_panels())
 
 func _set_home_visible(visible: bool) -> void:
-	# Home content on/off. The nav stays. The wallpaper is paused in menu views.
+	# Home content on/off. The nav stays. In menu views the wallpaper stays on screen,
+	# frozen, under the frosted glass (_frost), so every menu sits in the game's world.
 	$Safe.visible = visible
-	$AFK.visible = visible
 	$Dim.visible = visible
+	if _frost != null:
+		_frost.visible = not visible
 	if visible:
 		$AFK.process_mode = Node.PROCESS_MODE_INHERIT
 	else:
@@ -693,6 +669,11 @@ func _set_home_visible(visible: bool) -> void:
 
 func _on_nav_tap(tapped: String, path: String) -> void:
 	if _transitioning: return
+	# on Home, the gold Battle tile is the Play button: tapping it starts the battle
+	if tapped == "NavBattle" and _current_view == null:
+		_spawn_spark_burst(_nav_btn("NavBattle"))
+		_smooth_change_scene("res://battle.tscn")
+		return
 	_transitioning = true
 	_stop_nav_pulse()
 	var edge := -1 if tapped == "NavStore" else (1 if tapped == "NavQuests" else 0)
@@ -742,8 +723,11 @@ func _show_view(view_name: String, path: String) -> void:
 	# themselves are NOT edited, standalone behaviour unchanged) and
 	# route Back through the nav tap to Home, which also re-lights
 	# Battle, moves the notch, and restarts the pulse.
-	var back = view.get_node_or_null("BackButton")
+	# Inside Home the Back button is hidden (Rudy, dev107): the Battle tab goes back. It
+	# stays wired to Home in case a screen shows it again.
+	var back = view.find_child("BackButton", true, false)
 	if back != null:
+		back.visible = false
 		for conn in back.pressed.get_connections():
 			back.pressed.disconnect(conn["callable"])
 		back.pressed.connect(func(): _on_nav_tap("NavBattle", ""))

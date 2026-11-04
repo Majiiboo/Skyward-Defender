@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev106 (version/code=106 and version/name="1.0-dev106" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev107 (version/code=107 and version/name="1.0-dev107" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,31 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev107: Rudy's Home and menu playtest fixes
+
+- Pilot: his free arm no longer comes loose or crosses his chest when he aims to the
+  right (an angle wasn't wrapped when he's mirrored); it now hangs naturally at his side
+  both ways. His head now tilts a little toward where he aims and drifts side to side.
+- Home:
+  - The Sentry sits centred on its socket, in two pieces like in battle (base ring +
+    floating gun head that turns to its target).
+  - Chest and Patrol lost their glass tabs (the line under them); they float free,
+    moved up so they don't cover the turrets.
+  - START is gone: on Home the gold Battle tab reads "Play", breathes, and starts the
+    battle. The base now sits right on the nav bar, no empty gap.
+  - The active tab's tile now sits inside the glass bar (no bar line behind it,
+    nothing sticking out above).
+  - Top bar: no box any more; profile, XP, coins and crystals float over a soft shade.
+    Coins and crystals lost their ovals. The + opens the Store.
+- Menus (Gear, Store, Quests, Modes):
+  - No Back buttons (the Battle tab goes back).
+  - Frosted glass: the Home world stays behind every menu, blurred and darkened,
+    instead of the plain navy.
+  - All panels, tabs and tiles are see-through glass with a light-cyan edge.
+- Notch / camera cutout: the game now fills the whole screen (Android edge-to-edge)
+  and Home, the menus and the battle top bar keep their buttons below the cutout,
+  measured on each phone.
 
 ## dev106: phone test build
 

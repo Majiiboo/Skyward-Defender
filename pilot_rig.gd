@@ -101,7 +101,7 @@ class Rig:
 		recoil = 1.0
 	# the aim as seen in the unmirrored rig (rifle on the left of the screen)
 	func local_aim() -> float:
-		return aim if face >= 0.0 else PI - aim
+		return aim if face >= 0.0 else wrapf(PI - aim, -PI, PI)   # kept in -PI..PI so arm and head maths never jump a full turn
 
 # Two-bone IK: from root toward target with bone lengths a, b. bend = +1/-1 picks the
 # elbow side. Returns [elbow, hand].
@@ -132,7 +132,10 @@ static func solve(r: Rig) -> Dictionary:
 	X.torso = _place("torso", torso_at, torso_rot, Vector2(1.0, 1.0 + breath * 0.012))
 	X.orb = _child(X.torso, "torso", "orb")
 	var helmet_at: Vector2 = X.torso * _rel("helmet", "torso") + Vector2(0, sin(t * TAU / 2.6 - 0.6) * 5.0)
-	var head_rot := torso_rot * 0.6 + sin(t * 0.9) * 0.012
+	# the head turns a little toward the target (tilts as he looks up-left / up-right) and
+	# drifts slowly side to side
+	var look := clampf((aim + PI / 2.0) * 0.3, -0.26, 0.26)
+	var head_rot := torso_rot * 0.6 + look + sin(t * 0.9) * 0.03
 	X.helmet = _place("helmet", helmet_at, head_rot)
 	X.visor = _child(X.helmet, "helmet", "visor")
 	# jetpack rides on the torso, bobbing a little behind it
@@ -163,8 +166,10 @@ static func solve(r: Rig) -> Dictionary:
 	var a_l := (PARTS.upper_l.end - PARTS.upper_l.pv).y * tex("upper_l").get_height() * float(PARTS.upper_l.s)
 	var fl: Vector2 = PARTS.forearm_l.end - PARTS.forearm_l.pv
 	var b_l := (fl * tex("forearm_l").get_size() * float(PARTS.forearm_l.s)).length()
-	var free_ang := PI / 2.0 - 0.55 + breath * 0.04 - lean * 0.35 + (aim + PI / 2.0) * 0.18 + kick * 0.08
-	var hand_l: Vector2 = sh_l + Vector2(cos(free_ang), sin(free_ang)) * (a_l + b_l) * 0.86
+	var swing := clampf((aim + PI / 2.0) * 0.18, -0.2, 0.2)
+	var free_ang := PI / 2.0 - 0.38 + breath * 0.04 - lean * 0.3 + swing + kick * 0.08
+	# hand a little short of full reach, so the elbow bends and the arm stays close to him
+	var hand_l: Vector2 = sh_l + Vector2(cos(free_ang), sin(free_ang)) * (a_l + b_l) * 0.78
 	var arm_l := _ik(sh_l, hand_l, a_l, b_l, 1.0)
 	X.upper_l = _bone("upper_l", sh_l, arm_l[0])
 	X.forearm_l = _bone("forearm_l", arm_l[0], arm_l[1])

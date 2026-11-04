@@ -161,6 +161,7 @@ var hive_brains := true           # debug: false turns off flit, dodge and feint
 var _stars: Array = []
 var _city: Array = []
 var _tex := {}
+var _safe_top := 0.0              # notch / camera cutout height (SafeAreaMargin.top_inset)
 var _boss_bar_hp := 0.0           # the white "damage taken" chunk that trails the boss bar
 var _boss_bar_max := 0.0
 var _boss_bar_in := 0.0           # 0 -> 1 as the boss bar slides in
@@ -472,12 +473,15 @@ func _drag_by(d: Vector2) -> void:
 # ------------------------------------------------------------------ frame
 
 func _process(delta: float) -> void:
-	var vp_h: float = get_viewport_rect().size.y
+	# the field starts below the phone's notch / camera cutout (the whole battle node is
+	# moved down by _safe_top; the sky and the top bar's fill reach up behind the cutout)
+	_safe_top = SafeAreaMargin.top_inset(get_viewport())
+	var vp_h: float = get_viewport_rect().size.y - _safe_top
 	if absf(vp_h - FIELD_H) > 0.5:
 		FIELD_H = vp_h
 		BASE_Y = FIELD_H - 14.0
 	if paused or picking or game_over or stage_cleared:
-		position = Vector2.ZERO
+		position = Vector2(0, _safe_top)
 		queue_redraw()
 		return
 	delta *= game_speed
@@ -487,7 +491,7 @@ func _process(delta: float) -> void:
 		delta *= 0.2
 	shake = maxf(shake - delta * 3.5, 0.0)
 	var sk := shake * shake * 5.0
-	position = Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
+	position = Vector2(0, _safe_top) + Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
 	for k in _lid_anim.keys():
@@ -1891,7 +1895,7 @@ func _show_end(won: bool) -> void:
 func _draw() -> void:
 	var fsize := Vector2(FIELD_W, FIELD_H)
 	var sec := StageData.sector(stage)
-	draw_rect(Rect2(Vector2.ZERO, get_viewport_rect().size), sec.sky_bot)
+	draw_rect(Rect2(Vector2(0, -_safe_top - 20.0), get_viewport_rect().size + Vector2(0, 40.0)), sec.sky_bot)
 	if sec.has("bg"):
 		Backdrop.draw_world(self, fsize, FIELD_H, String(sec.bg), _stars, time_alive, soldier_pos.x / FIELD_W - 0.5)
 	else:
@@ -2357,8 +2361,8 @@ func _draw_hud() -> void:
 	var muted := Color(0.62, 0.70, 0.84)
 	var pts := _hud_bar_points()
 	var shape := PackedVector2Array(pts)
-	shape.append(Vector2(FIELD_W, -2))
-	shape.append(Vector2(0, -2))
+	shape.append(Vector2(FIELD_W, -2 - _safe_top))   # fill reaches up behind the notch
+	shape.append(Vector2(0, -2 - _safe_top))
 	draw_colored_polygon(shape, Color(0.03, 0.045, 0.10, 0.82))
 	draw_polyline(pts, Color(cyan, 0.55), 1.2, true)
 	# row 1: stage number (white) and name (cyan), then the run time

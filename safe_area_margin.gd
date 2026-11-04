@@ -1,3 +1,4 @@
+class_name SafeAreaMargin
 extends MarginContainer
 # Gemini safe_area_margin.gd, adapted with a 12px floor.
 # Gemini used max(0, safe) — on a phone with no notch that would put
@@ -7,6 +8,16 @@ extends MarginContainer
 @export var apply_bottom: bool = true
 @export var apply_left: bool = true
 @export var apply_right: bool = true
+
+# How far the phone's notch / camera cutout reaches down from the top, in game units
+# (0 on phones without one, or on PC). Android draws the game behind the cutout
+# (export: screen/edge_to_edge), so screens keep their top buttons below this line.
+static func top_inset(vp: Viewport) -> float:
+	var safe: Rect2i = DisplayServer.get_display_safe_area()
+	var win: Vector2i = DisplayServer.window_get_size()
+	if win.y <= 0 or safe.size.y <= 0:
+		return 0.0
+	return maxf(0.0, safe.position.y * vp.get_visible_rect().size.y / float(win.y))
 
 func _ready() -> void:
 	_update_safe_margins()

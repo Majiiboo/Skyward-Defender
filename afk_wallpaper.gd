@@ -394,21 +394,61 @@ func _load_wall_turrets() -> void:
 	for i in Turrets.MOUNTS:
 		var id: String = loadout[i]
 		if id != "" and Turrets.mount_open(i, _wall_unlocked) and plevel >= int(Turrets.TURRETS[id].unlock):
-			_wall_turrets.append({"socket": i, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
+			_wall_turrets.append({"socket": i, "id": id, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
 
 func _draw_turrets() -> void:
 	var bottom := _horizon_y() + STRIP_DROP
 	for i in Turrets.MOUNTS:
 		if not Turrets.mount_open(i, _wall_unlocked):
 			Backdrop.draw_socket_lock(self, i, size.x, bottom)
-	for w in _wall_turrets:
+	for i in _wall_turrets.size():
+		var w: Dictionary = _wall_turrets[i]
+		if w.id == "sentry":
+			_draw_wall_sentry(i, bottom)
+			continue
 		var tex: Texture2D = w.tex
 		var s: float = _wall_turret_h() / tex.get_height()
 		var sz := tex.get_size() * s
 		var p := Backdrop.socket_pos(int(w.socket), size.x, bottom)
 		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * float(w.cx), -sz.y + 6.0 * size.x / 480.0), sz), false)
 
+# The Sentry as in battle: Luna's base ring centred on the socket, the gun head floating
+# just above it and turning to its target (mirrored for targets on the right).
+const SENTRY_BASE_W := 58.0
+const SENTRY_HEAD_H := 66.0
+const SENTRY_HEAD_CX := 0.468
+const SENTRY_ART_DIR := -PI / 2.0 - 0.26
+var _sentry_tex := {"base": preload("res://turrets/sentry_base.png"), "head": preload("res://turrets/sentry_head.png")}
+
+func _sentry_pivot(i: int, bottom: float) -> Vector2:
+	var k := size.x / 480.0
+	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
+	var bt: Texture2D = _sentry_tex.base
+	var base_h: float = bt.get_height() * (SENTRY_BASE_W * k / bt.get_width())
+	return p + Vector2(sin(_t * 0.9 + i) * 1.5 * k, -base_h * 0.42 - 9.0 * k + sin(_t * 2.3 + i * 1.7) * 1.6 * k)
+
+func _draw_wall_sentry(i: int, bottom: float) -> void:
+	var k := size.x / 480.0
+	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
+	draw_set_transform(p + Vector2(0, 3 * k), 0.0, Vector2(1.0, 0.32))
+	draw_circle(Vector2.ZERO, 30.0 * k, Color(0, 0, 0, 0.45))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var bt: Texture2D = _sentry_tex.base
+	var bs := bt.get_size() * (SENTRY_BASE_W * k / bt.get_width())
+	draw_texture_rect(bt, Rect2(p - bs * 0.5, bs), false)
+	var ang: float = _turret_ang[i]
+	var face := -1.0 if cos(ang) > 0.1 else 1.0
+	var art_dir: float = SENTRY_ART_DIR if face > 0.0 else PI - SENTRY_ART_DIR
+	var rot: float = clampf(angle_difference(art_dir, ang), -0.6, 0.6)
+	var ht: Texture2D = _sentry_tex.head
+	var hsz := ht.get_size() * (SENTRY_HEAD_H * k / ht.get_height())
+	draw_set_transform(_sentry_pivot(i, bottom), rot, Vector2(face, 1.0))
+	draw_texture_rect(ht, Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9), hsz), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 func _wall_turret_tip(i: int) -> Vector2:
+	if _wall_turrets[i].id == "sentry":
+		return _sentry_pivot(i, _horizon_y() + STRIP_DROP) + Vector2(0, -SENTRY_HEAD_H * 0.6 * size.x / 480.0)
 	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, _horizon_y() + STRIP_DROP)
 	return p + Vector2(0, 6.0 * size.x / 480.0 - _wall_turret_h() * 0.9)
 

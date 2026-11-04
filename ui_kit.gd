@@ -1,8 +1,9 @@
 class_name UIKit
 extends RefCounted
-# Shared look for every menu screen (Gear, Modes, Quests, Store), so they all
-# match the Home screen: dark glass panels, cyan outlines, gold for the main
-# action, teal for secondary actions, purple for premium, rarity colours on tiles.
+# Shared look for every menu screen (Gear, Modes, Quests, Store), so they all match
+# Home's Glass look (glass.gd): see-through dark glass over the frosted world (hub
+# Frost), a thin light-cyan edge and a faint sheen, gold for the main action, teal for
+# secondary actions, purple for premium, rarity colours on tiles.
 
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
@@ -30,7 +31,14 @@ static func box(fill: Color, line: Color, radius: float = 12.0, width: int = 1) 
 	return s
 
 static func glass(radius: float = 12.0) -> StyleBoxFlat:
-	return box(Color(INK, 0.55), Color(1, 1, 1, 0.14), radius)
+	var s := box(Color(0.035, 0.06, 0.14, 0.5), Color(0.55, 0.85, 1.0, 0.26), radius)
+	# the sheen: a lighter top edge, like the Home glass
+	s.border_width_top = 1
+	s.border_color = Color(0.55, 0.85, 1.0, 0.26)
+	s.shadow_color = Color(0, 0, 0, 0.18)
+	s.shadow_size = 4
+	s.shadow_offset = Vector2(0, 2)
+	return s
 
 static func panel(radius: float = 14.0) -> PanelContainer:
 	var p := PanelContainer.new()
@@ -112,7 +120,7 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	var b := Button.new()
 	b.custom_minimum_size = size
 	b.clip_text = true
-	_style_btn(b, box(Color(col, 0.13), Color(col, 0.85), 10), box(Color(col, 0.35), Color.WHITE, 10), Color.WHITE)
+	_style_btn(b, box(Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.55), Color(col, 0.7), 12), box(Color(col, 0.35), Color.WHITE, 12), Color.WHITE)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -152,7 +160,7 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0) -> HBoxCont
 	var paint := func(sel: int):
 		for j in buttons.size():
 			var on: bool = j == sel
-			_style_btn(buttons[j], box(Color(CYAN, 0.22) if on else Color(INK, 0.5), CYAN if on else Color(1, 1, 1, 0.14), 9), box(Color(CYAN, 0.3), CYAN, 9), Color.WHITE if on else MUTED)
+			_style_btn(buttons[j], box(Color(CYAN, 0.2) if on else Color(0.035, 0.06, 0.14, 0.45), Color(CYAN, 0.9) if on else Color(0.55, 0.85, 1.0, 0.22), 12), box(Color(CYAN, 0.3), CYAN, 12), Color.WHITE if on else MUTED)
 	for i in buttons.size():
 		buttons[i].pressed.connect(func():
 			paint.call(i)
