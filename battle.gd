@@ -165,6 +165,7 @@ var _boss_bar_hp := 0.0           # the white "damage taken" chunk that trails t
 var _boss_bar_max := 0.0
 var _boss_bar_in := 0.0           # 0 -> 1 as the boss bar slides in
 var _boss_flash := 0.0            # the bar flashes when a layer breaks
+var _aegis_flash := 0.0           # the Aegis shell flares when the card is picked
 # card overcharges (third pick of a card, Cards.OVERCHARGE)
 var _crit6 := false
 var _burst_pierce := false
@@ -470,6 +471,7 @@ func _process(delta: float) -> void:
 			_intro = {}
 	inv_t = maxf(inv_t - delta, 0.0)
 	_boss_flash = maxf(_boss_flash - delta * 2.5, 0.0)
+	_aegis_flash = maxf(_aegis_flash - delta * 1.2, 0.0)
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
@@ -1603,6 +1605,7 @@ func _pick_card(id: String) -> void:
 		"burst_fire": burst_count += 1
 		"aegis":
 			max_hearts = mini(max_hearts + 1, 5)
+			_aegis_flash = 1.0
 			hearts = mini(hearts + 1, max_hearts)
 		"magnet":
 			magnet_level += 1
@@ -1935,6 +1938,30 @@ func _turret_tip(t: Dictionary) -> Vector2:
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
 	fxs.append({"tex": name, "pos": pos, "size": size, "rot": rot, "life": life, "max": life, "grow": grow, "col": col})
 
+# Aegis: a thin hexagonal shell round the pilot on the light layer. Faint at rest, a
+# bright band sweeps down it every couple of seconds, and it flares when the card is
+# picked or when he takes a hit.
+func _draw_aegis() -> void:
+	var lv := int(card_levels.get("aegis", 0))
+	if lv <= 0:
+		return
+	var c := soldier_pos + Vector2(0, sin(time_alive * 4.0) * 2.5 - 2.0)
+	var rx := 40.0 + 6.0 * _aegis_flash
+	var ry := 48.0 + 6.0 * _aegis_flash
+	var sy: float = lerpf(-ry * 1.4, ry * 1.4, fmod(time_alive * 0.45, 1.0))
+	var base_a: float = 0.08 + 0.05 * lv + 0.6 * _aegis_flash + 0.35 * smoothstep(0.0, 0.3, inv_t)
+	var col := Color(0.55, 0.85, 1.0)
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for k in 6:
+		var a0 := -PI / 2.0 + k * PI / 3.0
+		var p0 := Vector2(cos(a0) * rx, sin(a0) * ry)
+		var p1 := Vector2(cos(a0 + PI / 3.0) * rx, sin(a0 + PI / 3.0) * ry)
+		for s in 4:
+			var q0 := p0.lerp(p1, s / 4.0)
+			var q1 := p0.lerp(p1, (s + 1) / 4.0)
+			var band: float = exp(-pow(((q0.y + q1.y) * 0.5 - sy) / 12.0, 2.0))
+			_fx.draw_line(c + q0, c + q1, Color(col, minf(base_a + 0.5 * band, 1.0)), 1.2, true)
+
 # The additive light layer: Luna's shot and hit sprites (painted on black, so they
 # only add light), turret charge glows and beams.
 func _draw_fx() -> void:
@@ -1948,6 +1975,7 @@ func _draw_fx() -> void:
 	for t in turrets:
 		if t.type == "sentry" and float(t.drop) >= 1.0:
 			_draw_sentry_field(t)
+	_draw_aegis()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]

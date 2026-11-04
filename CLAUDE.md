@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev100 (code 100).
+  go UP every package (same signing key, install-over). Current: dev101 (code 101).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -71,7 +71,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 2. (done dev86: Hive brains. Scout move "flit", _spitter_dodge, Diver "feint" state,
    goo globs from EnemyRig.anchor(kind, "muzzle"). hive_brains=false in battle.gd turns
    them off for simulator comparisons.)
-3. Card visuals still to do: Nova ring, Aegis shimmer (bolt thickness, hot muzzle and
+3. (done dev101: card visuals. Nova ring = Luna fx, Aegis = _draw_aegis hex shell; bolt thickness, hot muzzle and
    magnet ring are done).
 4. Modernise the top bar, nav bar and edge tabs (Rudy finds them flat; mock options first).
    Battle HUD done (2026-11-03): battle.gd _draw_hud draws a Home-style top bar (HUD_H,
