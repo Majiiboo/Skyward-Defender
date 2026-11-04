@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev126 (code 126).
+  go UP every package (same signing key, install-over). Current: dev127 (code 127).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -103,6 +103,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    SUIT=starter in cut_pilot_art.gd + cut_batch_d.gd; STARTER_FIX knee, STARTER_LIFT) or "commander"
    (save stage_unlocked > COMMANDER_STAGE 10; save "suit" = player choice; suit_for(save) in
    set_gear). Gear _suit_btn toggles; battle Area Complete says NEW SUIT once ("commander_seen").
+6b. Balance pass 2 DONE (dev127, stages 21-60): SIM_KIT=auto in tools/balance_sim.gd (_auto_kit: coins
+   so far x1.5, 60% gear / 40% turrets on open mounts, even levels). hp_mult +5%/stage 11-30, +2%
+   after; waves(): extra = (min(stage,30)-1)/2 + (stage-30)/4, and from stage 21 extra ramps 60%..100%
+   over waves 1-5. Human bot: 22-50 win 4/4, 55 and 60 win 3/4. Turrets still ~15-25% of damage.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

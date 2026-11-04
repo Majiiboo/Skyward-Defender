@@ -17,6 +17,7 @@ extends SceneTree
 #               "human"   = "skilled" with a 0.25 s reaction time and about one dodge in three missed
 #   SIM_TURRETS loadout, e.g. "sentry,,," (default: a new player's loadout)
 #   SIM_LEVEL   turret level (1)
+#   SIM_KIT     "auto" = the gear + turrets a typical player has by that stage (_auto_kit)
 #
 # Prints one line per run and a summary per stage.
 
@@ -59,6 +60,7 @@ func _initialize() -> void:
 	while loadout.size() < 4:
 		loadout.append("")
 	tlevel = int(OS.get_environment("SIM_LEVEL")) if OS.get_environment("SIM_LEVEL") != "" else 1
+	kit_auto = OS.get_environment("SIM_KIT") == "auto"
 	for st in stages:
 		for i in runs:
 			queue.append([st, i])
@@ -75,9 +77,56 @@ func _write_save(stage: int) -> void:
 	# unlocked (pilot_xp), the loadout says which ones stand on the base
 	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": stage, "pilot_xp": 100000, "areas_briefed": [0, 1, 2, 3, 4, 5],
 		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
+	if kit_auto:
+		_auto_kit(d, stage)
 	var f := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))
 	f.close()
+
+# SIM_KIT=auto: the gear and turrets a typical player has when meeting `stage`. Coins
+# earned so far (ECONOMY.md first-clear table) x1.5 for daily gifts, missions and replays,
+# 60% spent on the six gear pieces, 40% on the turrets on the open mounts, all levelled
+# evenly (cost of Lv.L: gear 60 L(L-1) a piece, turret 75 L(L-1)).
+const COINS_SO_FAR := [[1, 0], [10, 964], [15, 2171], [20, 3964], [25, 5631], [30, 7970], [40, 12816], [50, 18548], [60, 25108]]
+var kit_auto := false
+
+static func _coins_before(stage: int) -> float:
+	for i in COINS_SO_FAR.size() - 1:
+		var a: Array = COINS_SO_FAR[i]
+		var z: Array = COINS_SO_FAR[i + 1]
+		if stage <= z[0]:
+			return lerpf(float(a[1]), float(z[1]), float(stage - a[0]) / float(z[0] - a[0]))
+	return float(COINS_SO_FAR[-1][1])
+
+# the highest level L with per * L * (L-1) <= budget
+static func _level_for(budget: float, per: float) -> int:
+	var lv := 1
+	while lv < 10 and per * (lv + 1) * lv <= budget:
+		lv += 1
+	return lv
+
+func _auto_kit(d: Dictionary, stage: int) -> void:
+	var spend := _coins_before(stage) * 1.5
+	var glv := _level_for(spend * 0.6 / 6.0, 60.0)
+	var lv := {}
+	for s in GearData.SLOTS:
+		lv["ion_" + s.to_lower()] = glv
+	d["gear"] = {"equipped": GearData.DEFAULT.duplicate(), "levels": lv}
+	var types := ["sentry", "lance", "storm", "gravity"]
+	var lo: Array = ["", "", "", ""]
+	var n := 0
+	for i in 4:
+		if stage > int(Turrets.MOUNT_OPENS_AFTER[i]):
+			lo[i] = types[i]
+			n += 1
+	var tl := _level_for(spend * 0.4 / maxf(1.0, n), 75.0) if n > 0 else 1
+	var tlv := {}
+	for t in lo:
+		if t != "":
+			tlv[t] = tl
+	d["turrets"] = {"loadout": lo, "levels": tlv}
+	r_kit = "gear Lv.%d, %d turrets Lv.%d" % [glv, n, tl]
+var r_kit := ""
 
 func _next() -> void:
 	if b:
@@ -240,7 +289,7 @@ func _finish() -> void:
 	r.hit_diver = b.stat_hit_diver
 	r.pxp = b._xp_gain
 	var why := "WIN" if r.won else ("hearts" if b.hearts <= 0 else ("hull" if b.hull <= 0.0 else "timeout"))
-	print("stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hearts lost %d (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
+	print(("[%s] " % r_kit if kit_auto else "") + "stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hearts lost %d (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])

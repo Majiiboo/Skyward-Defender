@@ -113,7 +113,9 @@ static func hp_mult(stage: int, elite: bool) -> float:
 	# gentle through the first planet (+7% a stage), a little steeper after it (+8%), when
 	# the player has turrets and upgrades to answer with
 	# (beyond the first planet +6% a stage; gear and turret upgrades carry the player there)
-	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.045, maxi(stage - 10, 0)) * (1.85 if elite else 1.0)
+	# Balance pass 2 (dev127, SIM_KIT=auto): +5% a stage through stage 30, then +2%, so the
+	# typical player's gear and turrets keep up through planets 4-6 instead of hitting a wall at 45
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.05, clampi(stage - 10, 0, 20)) * pow(1.02, maxi(stage - 30, 0)) * (1.85 if elite else 1.0)
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4
@@ -143,7 +145,12 @@ static func waves(stage: int) -> Array:
 	var n := wave_count(stage)
 	for w in range(1, n + 1):
 		var wave: Array = []
-		var extra: int = (stage - 1) / 2
+		# more bugs every other stage up to 30, every fourth after it (balance pass 2)
+		var extra: int = (mini(stage, 30) - 1) / 2 + maxi(stage - 30, 0) / 4
+		# from planet 3 the extra bugs build up over the first waves (60% in wave 1, all of
+		# them from wave 5): early in a stage the player has no power cards yet
+		if stage > 20:
+			extra = int(extra * minf(1.0, 0.5 + 0.1 * w))
 		# tutorial stages start small: 3 scouts in stage 1 wave 1, growing each wave
 		# later waves grow by about two bugs every three waves, so long stages stay fair
 		wave.append(["scout", (2 + w) if stage == 1 else ((4 + w) if stage == 2 else 4 + (w * 2) / 3 + extra / 2)])

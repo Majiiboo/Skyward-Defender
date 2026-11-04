@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev126 (version/code=126 and version/name="1.0-dev126" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev127 (version/code=127 and version/name="1.0-dev127" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev127: balance pass for stages 21-60
+
+- Tested with a "typical player" autopilot that has the gear and turret levels you'd
+  normally have by each stage (from the coin table, ECONOMY.md).
+- Before: stages 10-35 were never a threat, and from stage 45 the base fell in the
+  first minute (a wall).
+- Now: bug health grows 5% a stage to stage 30, then 2%; bug numbers grow half as fast
+  after stage 30; from planet 3 the extra bugs build up over the first five waves.
+- Result (autopilot, 4 runs each): stages 22-50 win every time, with hearts and base
+  damage from 45 on; stage 55 and the final boss at 60 win 3 times out of 4.
+- tools/balance_sim.gd: SIM_KIT=auto gives the autopilot that typical gear.
 
 ## dev126: rookie suit and the Commander armour
 
