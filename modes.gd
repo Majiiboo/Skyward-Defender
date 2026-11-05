@@ -192,6 +192,10 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 	var next_txt := "All ranks won" if nxt < 0 else ("Next: %s trial  ·  recommended Lv.%d%s" % [Promotion.RANKS[nxt].name, int(Promotion.RANKS[nxt].level), "" if Promotion.unlocked(_save, player_level) else "  ·  opens at Lv.%d" % Promotion.open_level(nxt)])
 	info.add_child(UIKit.label(next_txt, 11, UIKit.MUTED))
 	row.add_child(info)
+	var elems := UIKit.ghost_button("Elements", 12)   # the element ladders (dev172)
+	elems.custom_minimum_size = Vector2(74, 38)
+	elems.pressed.connect(_etrials)
+	row.add_child(elems)
 	var ladder := UIKit.ghost_button("Ranks", 12)
 	ladder.custom_minimum_size = Vector2(64, 38)
 	ladder.pressed.connect(_ladder)
@@ -321,3 +325,67 @@ func _mystery(icon: String, rarity: String) -> Control:
 
 func _tips() -> void:
 	Tips.first(get_tree(), [["promotion", _promo_btn]])
+
+# ELEMENT TRIALS (Rudy, dev172): one ladder per element inside Promotion; only a hero of that
+# element may fight it. Six rows: element, the hero it needs, steps cleared, and Fight.
+func _etrials() -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.75)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
+	add_child(layer)
+	var p := UIKit.panel(16)
+	var w := minf(size.x - 32.0, 400.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, 40.0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UIKit.label("ELEMENT TRIALS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var intro := UIKit.label("One ladder per element, %d steps each, across every planet. Only a hero of that element may fight it. The first clear of a step pays that hero's shards and coins; the last step pays crystals too." % Promotion.ETRIAL_STEPS, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(intro)
+	for el in Heroes.ELEMENTS:
+		var elid: String = String(el)
+		var col := Heroes.element_color(elid)
+		var steps := Promotion.etrial_steps(_save, elid)
+		var why := Promotion.etrial_why_not(_save, elid)
+		var hid := Promotion.etrial_owned_hero(_save, elid)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 8)
+		var pips := Control.new()
+		pips.custom_minimum_size = Vector2(70, 30)
+		pips.draw.connect(func():
+			for i in Promotion.ETRIAL_STEPS:
+				var c := Vector2(8.0 + i * 14.0, 15.0)
+				pips.draw_circle(c, 5.0, Color(col, 0.9) if i < steps else Color(col, 0.15))
+				pips.draw_arc(c, 5.0, 0.0, TAU, 16, Color(col, 0.7), 1.0, true))
+		h.add_child(pips)
+		var info := VBoxContainer.new()
+		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		info.add_theme_constant_override("separation", 0)
+		info.add_child(UIKit.label("%s  ·  %d / %d" % [Heroes.element_name(elid), steps, Promotion.ETRIAL_STEPS], 14, col))
+		var sub := why if why != "" else ("Fight with %s  ·  step %d: stage %d bugs x%.1f" % [Heroes.ROSTER[hid].name, steps + 1, int(Promotion.ETRIAL_STAGES[steps]), Promotion.etrial_hp(steps)])
+		info.add_child(UIKit.label(sub, 10, UIKit.MUTED))
+		h.add_child(info)
+		var b: Button
+		if why != "":
+			b = UIKit.ghost_button("Done" if steps >= Promotion.ETRIAL_STEPS else "Locked", 12)
+			b.disabled = true
+		else:
+			b = UIKit.gold_button("Fight", 13)
+			var step := steps
+			b.pressed.connect(func():
+				if Energy.try_play(self, false):
+					var s := Progress.read()
+					Promotion.start_etrial(s, elid, step)
+					Progress.write(s)
+					get_tree().change_scene_to_file("res://battle.tscn"))
+		b.custom_minimum_size = Vector2(72, 34)
+		h.add_child(b)
+		v.add_child(h)
+	var close := UIKit.ghost_button("Close", 13)
+	close.custom_minimum_size = Vector2(0, 38)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)

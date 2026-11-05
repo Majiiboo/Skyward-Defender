@@ -122,3 +122,105 @@ static func won(save: Dictionary, i: int) -> bool:
 		save["promotion"] = i + 1
 		return true
 	return false
+
+# ---- ELEMENT TRIALS (Rudy, dev172) ----
+# Inside Promotion, one ladder per element. Only a hero OF THAT ELEMENT may fight it (the
+# hero on duty). Each ladder is STEPS stages, each built from a boss stage one planet further
+# on, so the ladder crosses every family: the element is strong on one planet and resisted
+# on another, the real test. Bugs get ETRIAL_HP / ETRIAL_COUNT on top. The first clear of a
+# step pays shards of that element's hero, coins and (on the last step) crystals; replays pay
+# half the coins. Save "etrials": {element: steps cleared}; "selected_mode" == "etrial" +
+# "etrial_el" / "etrial_step" once (take_etrial clears them), like the rank trials.
+const ETRIAL_STAGES := [10, 20, 30, 40, 50]
+const ETRIAL_HP := [1.2, 1.3, 1.4, 1.5, 1.6]
+const ETRIAL_COUNT := 1.2
+const ETRIAL_SHARDS := [10, 15, 20, 30, 40]
+const ETRIAL_COINS := [300, 600, 900, 1200, 1800]
+const ETRIAL_CRYSTALS_LAST := 20
+const ETRIAL_STEPS := 5
+
+static func etrial_steps(save: Dictionary, el: String) -> int:
+	var t = save.get("etrials", {})
+	return clampi(int(t.get(el, 0)), 0, ETRIAL_STEPS) if typeof(t) == TYPE_DICTIONARY else 0
+
+# the hero that carries this element (the first in the roster order)
+static func etrial_hero(el: String) -> String:
+	for id in Heroes.ORDER:
+		if Heroes.element_of(id) == el:
+			return id
+	return Heroes.DEFAULT
+
+# a hero of this element the player owns (the one on duty first), "" when none
+static func etrial_owned_hero(save: Dictionary, el: String) -> String:
+	var h := Heroes.read(save)
+	var on := Heroes.selected(h)
+	if Heroes.element_of(on) == el:
+		return on
+	for id in Heroes.ORDER:
+		if Heroes.element_of(id) == el and Heroes.owned(h, id):
+			return id
+	return ""
+
+# "" when the next step can be fought, else why not
+static func etrial_why_not(save: Dictionary, el: String) -> String:
+	if etrial_steps(save, el) >= ETRIAL_STEPS:
+		return "Ladder complete"
+	if etrial_owned_hero(save, el) == "":
+		return "Needs a %s hero" % Heroes.element_name(el)
+	return ""
+
+static func etrial_reward(step: int, first: bool, el: String) -> Dictionary:
+	var k := clampi(step, 0, ETRIAL_STEPS - 1)
+	var r := {"coins": int(ETRIAL_COINS[k]) if first else int(ETRIAL_COINS[k]) / 2}
+	if first:
+		r["shards"] = {etrial_hero(el): int(ETRIAL_SHARDS[k])}
+		if k == ETRIAL_STEPS - 1:
+			r["crystals"] = ETRIAL_CRYSTALS_LAST
+	return r
+
+# the waves of step `k`: that boss stage's waves with more bugs (same shape as waves())
+static func etrial_waves(k: int) -> Array:
+	var src: Array = StageData.waves(int(ETRIAL_STAGES[clampi(k, 0, ETRIAL_STEPS - 1)]))
+	var out: Array = []
+	for wave in src:
+		var w: Array = []
+		for spec in wave:
+			var count := int(spec[1])
+			if spec[0] != "hive_mother":
+				count = int(ceil(count * ETRIAL_COUNT))
+			w.append([spec[0], count])
+		out.append(w)
+	return out
+
+static func etrial_hp(k: int) -> float:
+	return float(ETRIAL_HP[clampi(k, 0, ETRIAL_STEPS - 1)])
+
+# Modes: start step `k` of the `el` ladder with that element's hero on duty
+static func start_etrial(save: Dictionary, el: String, k: int) -> void:
+	var hid := etrial_owned_hero(save, el)
+	if hid != "":
+		var h := Heroes.read(save)
+		h.selected = hid
+		save["hero"] = Heroes.write(h)
+	save["selected_mode"] = "etrial"
+	save["etrial_el"] = el
+	save["etrial_step"] = k
+
+# battle: the element trial the save asks for ({} = none); the ask is used up
+static func take_etrial(save: Dictionary) -> Dictionary:
+	if String(save.get("selected_mode", "normal")) != "etrial":
+		return {}
+	save["selected_mode"] = "normal"
+	var el := String(save.get("etrial_el", "ion"))
+	return {"el": el if Heroes.ELEMENTS.has(el) else "ion", "step": clampi(int(save.get("etrial_step", 0)), 0, ETRIAL_STEPS - 1)}
+
+# a win of step `k`: true the first time (the ladder moves on)
+static func etrial_won(save: Dictionary, el: String, k: int) -> bool:
+	var t = save.get("etrials", {})
+	if typeof(t) != TYPE_DICTIONARY:
+		t = {}
+	if int(t.get(el, 0)) == k:
+		t[el] = k + 1
+		save["etrials"] = t
+		return true
+	return false

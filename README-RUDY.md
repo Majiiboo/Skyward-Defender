@@ -237,6 +237,16 @@ Update 4: TURRETS AND DRONES follow the heroes (DESIGN-turrets-drones.md).
 - Balance: turrets have one tune knob now (Turrets.TURRET_TUNE) so the base's share of the
   damage can be set from the simulator in one place.
 
+Update 5: ELEMENT TRIALS inside Promotion (your idea). Modes > Promotion has an ELEMENTS
+button: one ladder per element, five steps each. Only a hero of that element may fight it
+(Fight puts him on duty for you); without one the ladder says "Needs a Fire hero". Step 1 to
+5 use the bugs of stages 10, 20, 30, 40, 50 with 20% more of them and x1.2 to x1.6 health, so
+each ladder crosses every planet: your element is strong on one and resisted on another.
+The first clear of a step pays that element's hero 10, 15, 20, 30, 40 shards plus 300 to
+1,800 coins, and the last step 20 crystals; a replay pays half the coins. No stars, no stage
+unlocks, no drops: the trial pays. The HUD says "FIRE TRIAL 2", the end screen shows the
+step and the reward.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

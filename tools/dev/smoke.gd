@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_check_unlocks()
 	_check_heroes()
 	_check_turrets()
+	_check_etrials()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
 
@@ -320,3 +321,26 @@ func _check_turrets() -> void:
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
 	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "blaster", "support pods: job and borrowed art")
 	_expect(ResourceLoader.exists("res://drone/pod_%s.png" % DroneData.pod_art("repair")), "the Repair pod has a picture to borrow")
+
+# element trials (dev172): ladders per element, hero of that element needed, rewards
+func _check_etrials() -> void:
+	var s := {"coins": 0, "stage_unlocked": 1, "pilot_xp": 0}
+	_expect(Promotion.etrial_steps(s, "solar") == 0 and Promotion.etrial_why_not(s, "ion") == "", "fresh save: Energy ladder open (Rook), nothing cleared")
+	_expect(Promotion.etrial_why_not(s, "solar") != "", "no Fire hero: Fire ladder locked")
+	var h := Heroes.read(s)
+	h.owned.append("ember")
+	s["hero"] = Heroes.write(h)
+	_expect(Promotion.etrial_why_not(s, "solar") == "" and Promotion.etrial_owned_hero(s, "solar") == "ember", "owning Ember opens the Fire ladder")
+	Promotion.start_etrial(s, "solar", 0)
+	_expect(Heroes.selected(Heroes.read(s)) == "ember", "starting the Fire ladder puts Ember on duty")
+	var t := Promotion.take_etrial(s)
+	_expect(t.el == "solar" and int(t.step) == 0 and Promotion.take_etrial(s).is_empty(), "take_etrial is one-shot")
+	_expect(Promotion.etrial_waves(0).size() == StageData.waves(10).size() and Promotion.etrial_waves(4).size() == StageData.waves(50).size(), "steps use the boss stages 10..50")
+	_expect(Promotion.etrial_won(s, "solar", 0) and Promotion.etrial_steps(s, "solar") == 1 and not Promotion.etrial_won(s, "solar", 0), "the first clear moves the ladder on, a replay does not")
+	var r := Promotion.etrial_reward(0, true, "solar")
+	_expect(int(r.coins) == 300 and int(r.shards.ember) == 10 and not r.has("crystals"), "step 1 first clear: 300 coins + 10 Ember shards")
+	var r5 := Promotion.etrial_reward(4, true, "solar")
+	_expect(int(r5.get("crystals", 0)) == Promotion.ETRIAL_CRYSTALS_LAST, "the last step pays crystals")
+	_expect(int(Promotion.etrial_reward(0, false, "solar").coins) == 150 and not Promotion.etrial_reward(0, false, "solar").has("shards"), "a replay pays half the coins, no shards")
+	Progress.grant(s, r)
+	_expect(Heroes.shards(Heroes.read(s), "ember") == 10 and int(s.coins) == 300, "grant pays the shards and coins")

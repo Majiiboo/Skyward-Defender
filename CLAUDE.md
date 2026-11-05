@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 4 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 5 updates (next push = dev171 + that count; see the build rule). Rudy
   (2026-11-05): do NOT push to Luna for now.
   2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
      _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
@@ -28,6 +28,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      Drone element = its BODY's own (DroneData body_element: scout ion, striker solar, warden
      frost; battle _drone_mult on "drone" bullets and the beam; _show_dmg(.., mult)), Rudy: a
      drone you own can cover a planet your heroes cannot. More bodies by grade later.
+  5. ELEMENT TRIALS (Rudy): promotion.gd ETRIAL_* (stages 10..50, hp 1.2..1.6, count 1.2,
+     shards / coins / crystals), etrial_steps / why_not / owned_hero / reward / waves / hp /
+     start_etrial / take_etrial / etrial_won (save "etrials" {el: steps}, selected_mode
+     "etrial"); battle `etrial` + _is_trial() (replaces every `promo < 0` check), rewards via
+     Progress.grant, HUD + end screen; modes.gd _etrials pop-up (Elements button). ROSTER
+     DEPTH rule (Rudy): two heroes / drones / turrets per element over time, different builds.
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old

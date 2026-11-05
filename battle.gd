@@ -90,6 +90,9 @@ var stage := 1
 var elite := false
 var promo := -1                   # the promotion trial being fought (Promotion.RANKS index), -1 = a normal stage
 var _promoted := false            # this win earned the next rank (end screen)
+var etrial := {}                  # an element trial (Promotion.take_etrial): {"el", "step"}; {} = none
+var _etrial_first := false        # this win cleared the step for the first time
+var _etrial_reward := {}          # what it paid (end screen)
 var waves: Array = []
 var wave_index := 0
 var wave_queue: Array = []        # enemy ids still to spawn this wave
@@ -349,6 +352,9 @@ func _load() -> void:
 	# a promotion trial (Promotion): the save asks once, then the ask is cleared so Home's
 	# Play goes back to the normal stage
 	promo = Promotion.take(d)
+	etrial = Promotion.take_etrial(d)
+	if not etrial.is_empty():
+		stage = int(Promotion.ETRIAL_STAGES[int(etrial.step)])
 	if promo >= 0:
 		_write_save({"selected_mode": "normal"})
 		stage = int(Promotion.RANKS[promo].stage)
@@ -378,7 +384,7 @@ func _write_save(patch: Dictionary) -> void:
 # ------------------------------------------------------------------ setup
 
 func _start_stage() -> void:
-	waves = Promotion.waves(promo) if promo >= 0 else StageData.waves(stage)
+	waves = Promotion.waves(promo) if promo >= 0 else (Promotion.etrial_waves(int(etrial.step)) if not etrial.is_empty() else StageData.waves(stage))
 	wave_index = 0
 	stage_cleared = false
 	_vacuum_t = 0.0
@@ -473,7 +479,7 @@ func _start_stage() -> void:
 	_magnet_base = MAGNET_BASE + float(gs.magnet)
 	magnet_radius = _magnet_base
 	idle_power = gs.auto_fire
-	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if promo >= 0 else 1.0)   # trials: cards come faster
+	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if _is_trial() else 1.0)   # trials: cards come faster
 	_coin_mult = gs.coins
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
@@ -1929,7 +1935,15 @@ func _end_run(won: bool) -> void:
 	# pilot XP: what you destroyed, plus a bonus the first time this stage is cleared
 	var was := int(d.get("stage_unlocked", 1))
 	var old_xp := int(d.get("pilot_xp", 0))
-	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and promo < 0 and stage >= was else 0
+	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and not _is_trial() and stage >= was else 0
+	# an element trial (Promotion): the first clear of a step pays shards, coins, crystals
+	_etrial_first = false
+	_etrial_reward = {}
+	if not etrial.is_empty() and won:
+		_etrial_first = Promotion.etrial_won(d, String(etrial.el), int(etrial.step))
+		_etrial_reward = Promotion.etrial_reward(int(etrial.step), _etrial_first, String(etrial.el))
+		Progress.grant(d, _etrial_reward)
+		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
 	# a promotion trial: a win the first time = the next rank, for good (Promotion)
 	_promoted = false
 	if promo >= 0 and won and Promotion.won(d, promo):
@@ -1943,7 +1957,7 @@ func _end_run(won: bool) -> void:
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull
 	# above half, the pilot untouched (dev172: HP instead of hearts; a hit is a hit)
-	if won and not elite and promo < 0:
+	if won and not elite and not _is_trial():
 		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if _hp_lost <= 0.0 else 0)
 		var st = d.get("stars", {})
 		if typeof(st) != TYPE_DICTIONARY:
@@ -1972,16 +1986,16 @@ func _end_run(won: bool) -> void:
 	# hero shards (heroes, dev172): a boss stage or an Elite win drops shards of the hero this
 	# planet is weak to (Heroes.hero_for_planet), so stars come from playing where he shines
 	_shards_got = {}
-	if won and promo < 0 and (StageData.boss_kind(stage) != "" or elite):
+	if won and not _is_trial() and (StageData.boss_kind(stage) != "" or elite):
 		var hid := Heroes.hero_for_planet(stage)
 		var sn := (3 if StageData.boss_kind(stage) == "boss" else 2) + (1 if elite else 0)
 		var hh := Heroes.read(d)
 		Heroes.add_shards(hh, hid, sn)
 		patch["hero"] = Heroes.write(hh)
 		_shards_got = {"id": hid, "n": sn}
-	if won and promo < 0 and elite:   # Elite is its own ladder (dev167): a win opens the next Elite stage
+	if won and not _is_trial() and elite:   # Elite is its own ladder (dev167): a win opens the next Elite stage
 		patch["elite_unlocked"] = maxi(stage + 1, int(d.get("elite_unlocked", 1)))
-	if won and promo < 0 and not elite:   # a trial never unlocks stages; Elite has its own ladder
+	if won and not _is_trial() and not elite:   # a trial never unlocks stages; Elite has its own ladder
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
 			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
@@ -2674,8 +2688,10 @@ func _show_end(won: bool) -> void:
 	p.position = Vector2(FIELD_W * 0.5 - w * 0.5, HUD_H + 10)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 9)
-	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite and promo < 0
+	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite and not _is_trial()
 	var title := "AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST")
+	if not etrial.is_empty():   # an element trial (Promotion)
+		title = "STEP CLEARED" if won else "TRIAL FAILED"
 	if promo >= 0:   # a promotion trial (Promotion)
 		title = "PROMOTED!" if _promoted else ("TRIAL CLEARED" if won else "TRIAL FAILED")
 	var t := UIKit.label(title, 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
@@ -2689,10 +2705,16 @@ func _show_end(won: bool) -> void:
 		var pr := Promotion.rank(_read_save())
 		v.add_child(UIKit.label("RANK: %s" % String(Promotion.RANKS[promo].name).to_upper(), 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 		v.add_child(UIKit.label("For good: %s" % Promotion.bonus_text(pr), 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+	elif not etrial.is_empty():
+		v.add_child(UIKit.label("%s TRIAL  ·  STEP %d / %d" % [Heroes.element_name(String(etrial.el)).to_upper(), int(etrial.step) + 1, Promotion.ETRIAL_STEPS], 13, Heroes.element_color(String(etrial.el)), HORIZONTAL_ALIGNMENT_CENTER))
+		if won:
+			v.add_child(UIKit.label(("FIRST CLEAR:  " if _etrial_first else "REPLAY:  ") + Progress.reward_text(_etrial_reward), 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		else:
+			v.add_child(UIKit.label("Bugs are x%.1f tougher and more of them. Level him up, then try again." % Promotion.etrial_hp(int(etrial.step)), 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	elif promo >= 0 and not won:
 		v.add_child(UIKit.label("Bugs are x%.2f tougher here. Upgrade, then try again." % Promotion.hp_mult(promo), 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# three stars, popping in one after another (none in a trial)
-	var got: int = _stars_got if won and not elite and promo < 0 else 0
+	var got: int = _stars_got if won and not elite and not _is_trial() else 0
 	var srow := HBoxContainer.new()
 	srow.alignment = BoxContainer.ALIGNMENT_CENTER
 	srow.add_theme_constant_override("separation", 14)
@@ -2734,7 +2756,7 @@ func _show_end(won: bool) -> void:
 		if nxt_area < StageData.AREAS.size():
 			v.add_child(UIKit.label("Next planet: %s" % StageData.AREAS[nxt_area].name, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		# the Area 1 boss earns the Commander suit (PilotRig.COMMANDER_STAGE), said once
-		if stage == PilotRig.COMMANDER_STAGE and promo < 0 and not bool(_read_save().get("commander_seen", false)):
+		if stage == PilotRig.COMMANDER_STAGE and not _is_trial() and not bool(_read_save().get("commander_seen", false)):
 			_write_save({"commander_seen": true})
 			var suit_l := UIKit.label("NEW SUIT: COMMANDER ARMOUR", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 			suit_l.add_theme_font_override("font", title_font)
@@ -2793,7 +2815,7 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 4)
 	v.add_child(sp)
-	if won and stage < StageData.MAX_STAGE and promo < 0:
+	if won and stage < StageData.MAX_STAGE and not _is_trial():
 		var nxt := UIKit.gold_button("Next stage", 17)
 		nxt.custom_minimum_size = Vector2(0, 46)
 		nxt.pressed.connect(func():
@@ -3529,7 +3551,7 @@ func _draw_hud() -> void:
 	var num := "%d " % stage
 	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 	var nx: float = 18.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else StageData.stage_name(stage)).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if promo >= 0 else cyan)
+	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else StageData.stage_name(stage))).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if _is_trial() else cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
 	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
@@ -3886,7 +3908,11 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0)
+	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0)
+
+# a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
+func _is_trial() -> bool:
+	return promo >= 0 or not etrial.is_empty()
 
 # A turret head swinging to a new target on a damped spring (dev153): it arrives fast,
 # overshoots a touch and settles, instead of easing in. k = stiffness, d = damping.
