@@ -1,0 +1,11 @@
+{"coins": 12500, "crystals": 300, "pilot_xp": 9000, "stage_unlocked": 27, "selected_stage": 26,
+ "parts": {"alloy": 40, "cell": 9, "core": 2},
+ "gear": {"equipped": {"Weapon": "scavenger_weapon", "Helmet": "ion_helmet", "Chest": "void_chest", "Gauntlets": "ion_gauntlets", "Boots": "scavenger_boots", "Jetpack": "ion_jetpack"},
+  "levels": {"scavenger_weapon": 10, "ion_helmet": 6, "void_chest": 3, "ion_gauntlets": 8, "scavenger_boots": 5, "ion_jetpack": 4},
+  "copies": {"scavenger_weapon": {"common": 2, "uncommon": 1}, "ion_helmet": {"common": 4}, "void_chest": {"common": 1, "rare": 1}, "ion_boots": {"common": 7}, "ion_weapon": {"common": 1, "uncommon": 3}, "scavenger_helmet": {"common": 2}, "void_weapon": {"common": 1, "epic": 1}},
+  "recent": ["ion_boots", "void_weapon", "ion_weapon", "scavenger_weapon"]},
+ "turrets": {"loadout": ["sentry", "lance", "", ""], "tracks": {"sentry": {"atk": 6, "rate": 3, "range": 2}, "lance": {"atk": 4, "rate": 2, "range": 1}}},
+ "drone": {"body": "striker", "pod": "beam", "level": 6},
+ "loadouts": [{"name": "Boss kit", "gear": {"Weapon": "void_weapon", "Helmet": "ion_helmet", "Chest": "void_chest", "Gauntlets": "ion_gauntlets", "Boots": "ion_boots", "Jetpack": "ion_jetpack"}, "turrets": ["lance", "sentry", "", ""], "drone": {"body": "scout", "pod": "blaster"}}, null, null],
+ "loadout_active": 0,
+ "selected_mode": "promotion", "promotion_rank": 2, "promotion": 2, "energy": 55, "energy_t": 0}

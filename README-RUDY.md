@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev142 (version/code=142 and version/name="1.0-dev142" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev143 (version/code=143 and version/name="1.0-dev143" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,27 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev143: Promotion (rank trials)
+
+- A new PROMOTION card on the Modes page: ten pilot ranks, each with its own trial. A trial
+  is one hard stage of 10 waves built from a boss stage's waves (Cadet = stage 5, Pilot = 10,
+  Ace = 15, Comet = 20, Meteor = 25, Nova = 30, Pulsar = 35, Quasar = 40, Supernova = 50,
+  Singularity = 60): bugs x2.2 tougher than that stage (Elite is x1.85), 30% more of them,
+  and the boss at the end. Each trial opens at a pilot level (3, 6, 10, 14, 18, 22, 26, 30,
+  35, 40). It costs normal power tokens and can be retried.
+- Win a trial once and you are PROMOTED for good: every rank gives +5% bolt damage and +5%
+  base shield and hull, stacking (Singularity = +50% each), plus 250 pilot XP the first
+  time. The end screen says PROMOTED! with your new rank and what it gives; a lost trial
+  says TRIAL FAILED and reminds you how tough it is. Trials never unlock stages, give stars
+  or the Commander suit; coins, parts and a gear copy drop as usual.
+- The card shows your rank and bonus, the next trial (or the pilot level it needs), a Ranks
+  button with the whole ladder (won ranks gold and ticked, the next one lit), and Challenge.
+- Home shows your rank name instead of "Pilot" under the profile ring (Rookie before the
+  first trial); the profile card lists rank and bonus. The Gear STATS panel includes the
+  rank bonus since it goes through the same gear stats.
+- Modes cards are a little shorter so all five fit on one screen.
+- Dev: tools/dev/save_trial.json starts battle in the Ace trial for captures.
 
 ## dev142: red dots everywhere and the attendance calendar (from the Slayer Legend notes)
 

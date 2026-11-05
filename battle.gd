@@ -88,6 +88,8 @@ var card_levels := {}
 # ---- state ----
 var stage := 1
 var elite := false
+var promo := -1                   # the promotion trial being fought (Promotion.RANKS index), -1 = a normal stage
+var _promoted := false            # this win earned the next rank (end screen)
 var waves: Array = []
 var wave_index := 0
 var wave_queue: Array = []        # enemy ids still to spawn this wave
@@ -311,6 +313,13 @@ func _load() -> void:
 	var d := _read_save()
 	stage = int(d.get("selected_stage", 1))
 	elite = bool(d.get("selected_elite", false))
+	# a promotion trial (Promotion): the save asks once, then the ask is cleared so Home's
+	# Play goes back to the normal stage
+	promo = Promotion.take(d)
+	if promo >= 0:
+		_write_save({"selected_mode": "normal"})
+		stage = int(Promotion.RANKS[promo].stage)
+		elite = false
 	var t := Turrets.read(d)
 	turret_loadout = t.loadout
 	turret_levels = t.levels
@@ -336,7 +345,7 @@ func _write_save(patch: Dictionary) -> void:
 # ------------------------------------------------------------------ setup
 
 func _start_stage() -> void:
-	waves = StageData.waves(stage)
+	waves = Promotion.waves(promo) if promo >= 0 else StageData.waves(stage)
 	wave_index = 0
 	stage_cleared = false
 	_vacuum_t = 0.0
@@ -535,7 +544,7 @@ func _meet(id: String) -> void:
 func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var e := {"id": next_enemy_id, "type": id, "pos": pos,
-		"hp": float(def.hp) * StageData.hp_mult(stage, elite), "hp_max": float(def.hp) * StageData.hp_mult(stage, elite),
+		"hp": float(def.hp) * _hp_mult(), "hp_max": float(def.hp) * _hp_mult(),
 		"speed": float(def.speed) * StageData.speed_mult(stage), "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
@@ -1132,7 +1141,7 @@ func _update_enemies(delta: float) -> void:
 					e.hatched = true
 					for k in (4 if e.hp < e.hp_max * 0.5 else 3):
 						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 36.0, -54.0),
-							"hp": 2.0 * StageData.hp_mult(stage, elite), "hp_max": 2.0 * StageData.hp_mult(stage, elite),
+							"hp": 2.0 * _hp_mult(), "hp_max": 2.0 * _hp_mult(),
 							"speed": 62.0 * StageData.speed_mult(stage), "r": 13.6, "ph": rng.randf() * TAU,
 							"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 45.0, -70.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
 							"hatchling": true, "fold": 1.0}
@@ -1741,7 +1750,13 @@ func _end_run(won: bool) -> void:
 	# pilot XP: what you destroyed, plus a bonus the first time this stage is cleared
 	var was := int(d.get("stage_unlocked", 1))
 	var old_xp := int(d.get("pilot_xp", 0))
-	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and stage >= was else 0
+	_xp_bonus = Turrets.first_clear_bonus(stage) if won and not elite and promo < 0 and stage >= was else 0
+	# a promotion trial: a win the first time = the next rank, for good (Promotion)
+	_promoted = false
+	if promo >= 0 and won and Promotion.won(d, promo):
+		_promoted = true
+		_xp_bonus = Promotion.XP_BONUS
+		_write_save({"promotion": int(d.promotion)})
 	_xp_gain = int(score / 50 * _pilot_xp_mult) + _xp_bonus
 	_level_before = Turrets.pilot_level(old_xp)
 	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
@@ -1749,7 +1764,7 @@ func _end_run(won: bool) -> void:
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull
 	# above half, no hearts lost (dev111; "no damage at all" was near impossible without regen)
-	if won and not elite:
+	if won and not elite and promo < 0:
 		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if _hearts_lost == 0 else 0)
 		var st = d.get("stars", {})
 		if typeof(st) != TYPE_DICTIONARY:
@@ -1775,7 +1790,7 @@ func _end_run(won: bool) -> void:
 		var g := GearData.read(d)
 		GearData.add_copy(g, _gear_got.id, _gear_got.rarity)
 		patch["gear"] = GearData.write(g)
-	if won:
+	if won and promo < 0:   # a trial never unlocks stages
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
 			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
@@ -1886,7 +1901,7 @@ func _fill_pause() -> void:
 	var title := UIKit.label("PAUSED", 24, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", title_font)
 	v.add_child(title)
-	v.add_child(UIKit.label("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label(("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper()) if promo >= 0 else ("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()]), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("%s  ·  Wave %d of %d  ·  %02d:%02d" % [String(StageData.area(stage).name), mini(wave_index + 1, waves.size()), waves.size(), int(time_alive) / 60, int(time_alive) % 60], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# objectives
 	v.add_child(UIKit.header("STARS"))
@@ -2392,13 +2407,25 @@ func _show_end(won: bool) -> void:
 	p.position = Vector2(FIELD_W * 0.5 - w * 0.5, HUD_H + 10)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 9)
-	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite
-	var t := UIKit.label("AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST"), 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
+	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite and promo < 0
+	var title := "AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST")
+	if promo >= 0:   # a promotion trial (Promotion)
+		title = "PROMOTED!" if _promoted else ("TRIAL CLEARED" if won else "TRIAL FAILED")
+	var t := UIKit.label(title, 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
-	v.add_child(UIKit.label("%s %d  ·  %s" % ["ELITE" if elite else "STAGE", stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-	# three stars, popping in one after another
-	var got: int = _stars_got if won and not elite else 0
+	if promo >= 0:
+		v.add_child(UIKit.label("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper(), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		v.add_child(UIKit.label("%s %d  ·  %s" % ["ELITE" if elite else "STAGE", stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	if _promoted:
+		var pr := Promotion.rank(_read_save())
+		v.add_child(UIKit.label("RANK: %s" % String(Promotion.RANKS[promo].name).to_upper(), 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("For good: %s" % Promotion.bonus_text(pr), 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+	elif promo >= 0 and not won:
+		v.add_child(UIKit.label("Bugs are x%.1f tougher here. Upgrade, then try again." % Promotion.HP_MULT, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	# three stars, popping in one after another (none in a trial)
+	var got: int = _stars_got if won and not elite and promo < 0 else 0
 	var srow := HBoxContainer.new()
 	srow.alignment = BoxContainer.ALIGNMENT_CENTER
 	srow.add_theme_constant_override("separation", 14)
@@ -2440,7 +2467,7 @@ func _show_end(won: bool) -> void:
 		if nxt_area < StageData.AREAS.size():
 			v.add_child(UIKit.label("Next planet: %s" % StageData.AREAS[nxt_area].name, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		# the Area 1 boss earns the Commander suit (PilotRig.COMMANDER_STAGE), said once
-		if stage == PilotRig.COMMANDER_STAGE and not bool(_read_save().get("commander_seen", false)):
+		if stage == PilotRig.COMMANDER_STAGE and promo < 0 and not bool(_read_save().get("commander_seen", false)):
 			_write_save({"commander_seen": true})
 			var suit_l := UIKit.label("NEW SUIT: COMMANDER ARMOUR", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 			suit_l.add_theme_font_override("font", title_font)
@@ -2497,7 +2524,7 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 4)
 	v.add_child(sp)
-	if won and stage < StageData.MAX_STAGE:
+	if won and stage < StageData.MAX_STAGE and promo < 0:
 		var nxt := UIKit.gold_button("Next stage", 17)
 		nxt.custom_minimum_size = Vector2(0, 46)
 		nxt.pressed.connect(func():
@@ -3070,7 +3097,7 @@ func _draw_hud() -> void:
 	var num := "%d " % stage
 	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 	var nx: float = 18.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_hc.draw_string(title_font, Vector2(nx, 30), StageData.stage_name(stage).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, cyan)
+	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else StageData.stage_name(stage)).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if promo >= 0 else cyan)
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
 	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
@@ -3414,3 +3441,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 	if elite:
 		out.append_array(out.duplicate())
 	return out
+
+# bug health for this run: the stage's scaling, Elite, and a promotion trial on top
+func _hp_mult() -> float:
+	return StageData.hp_mult(stage, elite) * (Promotion.HP_MULT if promo >= 0 else 1.0)

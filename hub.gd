@@ -181,7 +181,7 @@ func _pilot_block() -> Control:
 	v.add_theme_constant_override("separation", 2)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_l := _small_label("Pilot", 14, Color.WHITE)
+	var name_l := _small_label(Promotion.rank_name(Progress.read()), 14, Color.WHITE)   # the pilot's rank (Promotion)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	v.add_child(name_l)
 	# XP into this level (the ring round the profile button shows the same)
@@ -280,7 +280,8 @@ func _build_home() -> void:
 	profile.pressed.connect(func():
 		# a real profile card (dev140): level, XP, how far you are, lifetime numbers
 		var sv := Progress.read()
-		_side_popup("PILOT  ·  LEVEL %d" % level, "%d / %d XP to level %d\nHighest stage: %d of %d  ·  stars %d\nBugs destroyed: %d  ·  bosses: %d\nStages cleared: %d  ·  %.1f hours in battle" % [
+		_side_popup("%s  ·  LEVEL %d" % [Promotion.rank_name(sv).to_upper(), level], "Rank %d of %d: %s\n%d / %d XP to level %d\nHighest stage: %d of %d  ·  stars %d\nBugs destroyed: %d  ·  bosses: %d\nStages cleared: %d  ·  %.1f hours in battle" % [
+			Promotion.rank(sv), Promotion.RANKS.size(), Promotion.bonus_text(Promotion.rank(sv)),
 			pilot_xp - Turrets.xp_for_level(level), Turrets.xp_for_level(level + 1) - Turrets.xp_for_level(level), level + 1,
 			maxi(stage_unlocked - 1, 0), StageData.MAX_STAGE, int(Progress.stat(sv, "stars")),
 			int(Progress.stat(sv, "kills")), int(Progress.stat(sv, "bosses")), int(Progress.stat(sv, "stages")), Progress.stat(sv, "hours")],

@@ -18,6 +18,7 @@ func _initialize() -> void:
 	_check_energy()
 	_check_gear()
 	_check_attend()
+	_check_promotion()
 	_check_cards()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
@@ -145,6 +146,38 @@ func _check_attend() -> void:
 	s.gear = GearData.write(g)
 	at = Progress.attention(s)
 	_expect(not at.store and at.gear and at.gear_ws[1], "attention: gear merge only (%s)" % str(at))
+
+func _check_promotion() -> void:
+	var s := {"pilot_xp": 0}
+	_expect(Promotion.rank(s) == 0 and Promotion.rank_name(s) == "Rookie" and Promotion.next(s) == 0, "fresh save: no rank, Cadet next")
+	_expect(not Promotion.unlocked(s, 2) and Promotion.unlocked(s, 3), "Cadet trial opens at pilot Lv.3")
+	for i in Promotion.RANKS.size():
+		var w := Promotion.waves(i)
+		_expect(w.size() == Promotion.WAVES, "trial %d has %d waves" % [i, Promotion.WAVES])
+		var boss_last := false
+		var boss_count := 0
+		for k in w.size():
+			for spec in w[k]:
+				if spec[0] == "hive_mother":
+					boss_count += 1
+					if k == w.size() - 1:
+						boss_last = true
+		_expect(boss_last, "trial %d ends with the boss" % i)
+		_expect(boss_count <= 2, "trial %d: at most the mid-stage young mother plus the boss (%d)" % [i, boss_count])
+	var w0: Array = Promotion.waves(0)
+	var n5: Array = StageData.waves(5)
+	_expect(int(w0[0][0][1]) == int(ceil(int(n5[0][0][1]) * Promotion.COUNT_MULT)), "counts scaled by COUNT_MULT")
+	# the mode hand-off: start sets it, take reads it once and clears it
+	Promotion.start(s, 0)
+	_expect(Promotion.take(s) == 0 and Promotion.take(s) == -1, "take() is one-shot")
+	# a win promotes once; a replay does not
+	_expect(Promotion.won(s, 0) and Promotion.rank(s) == 1, "first win promotes")
+	_expect(not Promotion.won(s, 0) and Promotion.rank(s) == 1, "replay does not promote again")
+	_expect(not Promotion.won(s, 5), "cannot skip ranks")
+	# the bonus reaches battle through GearData.stats
+	var base: float = GearData.stats({"promotion": 0}).damage
+	var st := GearData.stats({"promotion": 4})
+	_expect(absf(float(st.damage) / float(base) - 1.2) < 0.001 and absf(float(st.fortress) - 1.2) < 0.001, "4 ranks = +20% damage and fortress")
 
 func _check_cards() -> void:
 	for id in Cards.CARDS:

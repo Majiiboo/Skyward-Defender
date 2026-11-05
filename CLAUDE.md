@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev142)
+## Where we are (hand-over, 2026-11-04, build dev143)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-142 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-143 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev142 (code 142).
+  go UP every package (same signing key, install-over). Current: dev143 (code 143).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -214,6 +214,13 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    Rudy picks; systems only, never its art or names.
    DONE dev142: red dots (Progress.attention, UIKit.dot / tab_dots, hub _refresh_dots) and the
    attendance calendar (Progress.ATTEND / attend / claim_attend, store.gd Offers).
+24. PROMOTION DONE (dev143, Rudy's pick from the Slayer Legend video): promotion.gd Promotion
+   (RANKS x10 with level + base stage, HP_MULT 2.2, COUNT_MULT 1.3, WAVES 10, PER_RANK 0.05,
+   waves(i), start/take/won; save "promotion" = ranks beaten, "selected_mode"/"promotion_rank"
+   one-shot). battle.gd promo (_load via Promotion.take, _start_stage waves, _hp_mult(), _end_run
+   no stars/unlock/suit, end screen PROMOTED!, HUD "TRIAL · NAME"); GearData.stats applies
+   Promotion.bonus to damage and fortress; modes.gd card _promotion_row + _ladder; hub rank
+   name. Later: Luna rank badges (10), a PROMOTED banner in battle, rank as a talent-map gate.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

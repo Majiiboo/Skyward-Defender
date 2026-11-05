@@ -387,6 +387,10 @@ static func stats(save: Dictionary) -> Dictionary:
 	if set_count(gear, "frost") >= 3: st.shield += 0.20
 	if set_count(gear, "frost") >= 6: st.chill = true
 	st.shield *= st.shield_regen   # Ion 6-piece: base shield +50%
+	# pilot rank (Promotion): +5% damage and +5% base shield / hull per rank won
+	var pr := Promotion.rank(save)
+	st.damage *= Promotion.bonus(pr)
+	st.fortress *= Promotion.bonus(pr)
 	return st
 
 # a single number for the Gear screen: sum of levels, weighted
