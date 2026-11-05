@@ -704,8 +704,11 @@ func _set_home_visible(visible: bool) -> void:
 	# frozen, under the frosted glass (_frost), so every menu sits in the game's world.
 	$Safe.visible = visible
 	$Dim.visible = visible
+	# dev146: the frosted-glass blur (a 17-tap full-screen shader every frame) stays OFF now
+	# that every menu page draws its own planet wallpaper over it (MenuBackdrop); the biggest
+	# single GPU cost in the menus, for nothing visible. The node stays for pop-ups later.
 	if _frost != null:
-		_frost.visible = not visible
+		_frost.visible = false
 	if visible:
 		$AFK.process_mode = Node.PROCESS_MODE_INHERIT
 	else:

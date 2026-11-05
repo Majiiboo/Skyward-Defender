@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev145)
+## Where we are (hand-over, 2026-11-04, build dev146)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-145 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-146 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev145 (code 145).
+  go UP every package (same signing key, install-over). Current: dev146 (code 146).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -245,6 +245,15 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). Then LUNA-BRIEF-animation.md
    (older in-between list) is mostly superseded by the parts approach.
 16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable.
+27. PERFORMANCE MODES + SETTINGS PAGE (Rudy, 2026-11-04). Facts: draws at native phone
+   resolution (stretch canvas_items/expand from 480 wide), no FPS cap + vsync = screen refresh
+   (60/90/120), GL Compatibility, ETC2/ASTC. dev146 switched the frost blur off (covered by
+   MenuBackdrop). TO BUILD: settings.gd page (Menu button on Home): Performance = Battery saver
+   (Engine.max_fps 30, OS.low_processor_usage_mode in menus, MenuBackdrop static + half the
+   motes/stars, no UIKit.sheen, fewer battle particles) | Balanced (60) | Full throttle (0 = uncapped);
+   save "perf"; apply at startup (hub _ready) and when changed. Sound toggles when sound exists.
+   Efficiency pass still to do (Rudy: lighter, never uglier): profile battle _draw on a phone,
+   cache per-frame string formatting in the HUD, pool _fx dicts, cap enemy_bullets draw calls.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

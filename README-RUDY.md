@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev145 (version/code=145 and version/name="1.0-dev145" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev146 (version/code=146 and version/name="1.0-dev146" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,27 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev146: what the game renders at, and the first efficiency cut
+
+Rudy asked what the game runs at and how to make it lighter on phones.
+- RESOLUTION: the layout is designed at 480 px wide, but the game DRAWS at the phone's own
+  pixels (Godot stretch "canvas_items" + "expand"): a 1080 x 2340 phone renders 1080 x 2340,
+  a 1440p phone 1440p. Every line and picture is sharp; nothing is upscaled. Phones are not
+  4K, so "4K" does not apply.
+- FRAME RATE: there is no cap and v-sync is on, so the game runs at the screen's refresh
+  rate when the phone keeps up: 60 on a 60 Hz phone, 90 or 120 on those screens. A "full
+  throttle" mode therefore mostly already exists; what a Settings page can add is a choice.
+- RENDERER: GL Compatibility (the lightest Godot renderer, made for phones), textures
+  compressed for phone GPUs (ETC2 / ASTC), linear filtering with mipmaps.
+- SIZE: the game's own files are 37 MB before packaging (Luna's source renders, 32 MB, are
+  not shipped). RAM on a phone is not measured yet; it needs a device (Luna's next APK).
+- FIRST CUT: the frosted-glass blur behind menus (a 17-sample full-screen shader, every
+  frame, at native resolution) is switched off: since dev145 the planet wallpaper covers it,
+  so it was the most expensive thing in the menus for nothing visible.
+- PLANNED (queue 27, with the Settings page): Battery saver (30 FPS cap, engine sleeps between
+  frames in menus, fewer stars and motes, static wallpaper, no sheen), Balanced (60) and Full
+  throttle (uncapped: 90 / 120 on phones that have it), plus sound on / off once sound exists.
 
 ## dev145: living wallpapers behind every menu, motion everywhere, a battle sweep
 
