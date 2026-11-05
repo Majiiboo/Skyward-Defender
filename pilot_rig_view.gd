@@ -98,7 +98,7 @@ func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> vo
 		if sa > 0.01:
 			PilotRig.draw(c, rig, X, at, h, 0.0, sa, lift)
 		if fa > 0.01:
-			PilotRig.draw_front(c, rig, at, h, fa, lift)
+			PilotRig.draw_front(c, rig, at, h, fa, lift, -1.0, front_only)
 		return
 	if PilotRig.turn_ready():
 		# Luna's turn-around frames (dev161): the rig hands over to them for the turn

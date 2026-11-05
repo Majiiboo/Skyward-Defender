@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev166 (version/code=166 and version/name="1.0-dev166" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev167 (version/code=167 and version/name="1.0-dev167" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -141,6 +141,28 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev167: your playtest, round one (the quick fixes)
+
+- TURRETS PAGE WAS EMPTY: a bug of mine from dev149 (the card depth layer took the spot the
+  turret tiles looked for), so the whole page aborted before drawing a tile. Fixed; the mounts
+  and the six turrets are back.
+- THE WEAPON WAS INVISIBLE ON THE GEAR PAGE: a bug of mine from dev158 (the gun fades out at
+  the exact middle of a turn, and the Gear showcase stands at that angle). Fixed: the equipped
+  weapon shows in his hand again. Note: by design the other pieces show on him only as accents
+  (visor and helmet lights take the helmet set's colour, the chest orb the chest set's; bolts
+  take the weapon set's colour). Full armour swaps need Luna to paint each set on the pilot.
+- TIPS ARE OFF. The code stays for a later, lighter version for new elements only.
+- ELITE is its own ladder: it starts at Elite stage 1 and each win opens the next Elite
+  stage; Standard wins no longer unlock Elite stages. On Home, Elite tints the world purple
+  and the stage name sits in a frame coloured by the mode.
+- PROMOTION is harder and worth more: recommended levels 10, 13, 16, 19, 22, 25, 28, 31, 34,
+  37, a trial opens at its level (no early tries), bugs much tougher (Cadet x3.4 health, half
+  again as many), and each rank now gives +6% ATK and +6% base.
+- PAUSE MENU: the YOUR CARDS row is gone (the HUD has the cards button).
+- HOME CHEST: tapping the chest now opens a CHEST overlay (the Store's Supply Crate and Vault
+  Chest, opened right there with crystals) and Luna's chest stays open until you close it.
+- MENU SKIES: a shooting star now and then, slow dark asteroids drifting and turning.
 
 ## dev166: developer build for Rudy's test, and a last sweep
 

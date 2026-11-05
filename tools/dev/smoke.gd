@@ -151,7 +151,7 @@ func _check_attend() -> void:
 func _check_promotion() -> void:
 	var s := {"pilot_xp": 0}
 	_expect(Promotion.rank(s) == 0 and Promotion.rank_name(s) == "Rookie" and Promotion.next(s) == 0, "fresh save: no rank, Cadet next")
-	_expect(not Promotion.unlocked(s, 2) and Promotion.unlocked(s, 3), "Cadet trial opens at pilot Lv.3")
+	_expect(not Promotion.unlocked(s, 9) and Promotion.unlocked(s, 10), "Cadet trial opens at pilot Lv.10 (dev167)")
 	for i in Promotion.RANKS.size():
 		var w := Promotion.waves(i)
 		_expect(w.size() == Promotion.WAVES, "trial %d has %d waves" % [i, Promotion.WAVES])
@@ -178,7 +178,7 @@ func _check_promotion() -> void:
 	# the bonus reaches battle through GearData.stats
 	var base: float = GearData.stats({"promotion": 0}).damage
 	var st := GearData.stats({"promotion": 4})
-	_expect(absf(float(st.damage) / float(base) - 1.2) < 0.001 and absf(float(st.fortress) - 1.2) < 0.001, "4 ranks = +20% damage and fortress")
+	_expect(absf(float(st.damage) / float(base) - 1.24) < 0.001 and absf(float(st.fortress) - 1.24) < 0.001, "4 ranks = +24% damage and fortress (6% a rank, dev167)")
 
 func _check_repeat() -> void:
 	var d := {"stats": {"kills": 400.0, "stages": 1.0}}

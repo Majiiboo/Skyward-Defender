@@ -1271,7 +1271,7 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 	var def: Dictionary = Turrets.TURRETS[id]
 	var tex: Texture2D = load("res://turrets/%s_idle.png" % def.art)
 	var t := UIKit.tile(def.name, subtitle, def.rarity, badge, tex, size)
-	var pic: TextureRect = t.get_child(0).get_child(0)
+	var pic: TextureRect = t.get_node("Body").get_child(0)   # the depth layer sits at child 0 since dev149
 	pic.custom_minimum_size = Vector2(0, size.y - 44.0)
 	if dim:
 		pic.modulate = Color(0.45, 0.45, 0.55, 0.8)

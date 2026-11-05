@@ -10,23 +10,23 @@ extends RefCounted
 # "selected_mode" == "promotion" + "promotion_rank" once and clears the mode again.
 
 const RANKS := [
-	{"id": "cadet",       "name": "Cadet",       "level": 4,  "stage": 5,  "hp": 2.4,  "count": 1.3},
-	{"id": "pilot",       "name": "Pilot",       "level": 7,  "stage": 10, "hp": 2.6,  "count": 1.35},
-	{"id": "ace",         "name": "Ace",         "level": 10, "stage": 15, "hp": 1.9,  "count": 1.2},
-	{"id": "comet",       "name": "Comet",       "level": 13, "stage": 20, "hp": 2.05, "count": 1.2},
-	{"id": "meteor",      "name": "Meteor",      "level": 16, "stage": 25, "hp": 1.85, "count": 1.15},
-	{"id": "nova",        "name": "Nova",        "level": 19, "stage": 30, "hp": 1.6,  "count": 1.15},
-	{"id": "pulsar",      "name": "Pulsar",      "level": 22, "stage": 35, "hp": 1.65, "count": 1.15},
-	{"id": "quasar",      "name": "Quasar",      "level": 24, "stage": 40, "hp": 1.6,  "count": 1.15},
-	{"id": "supernova",   "name": "Supernova",   "level": 27, "stage": 50, "hp": 1.9,  "count": 1.15},
-	{"id": "singularity", "name": "Singularity", "level": 30, "stage": 60, "hp": 1.75, "count": 1.15},
+	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 5,  "hp": 3.4,  "count": 1.5},
+	{"id": "pilot",       "name": "Pilot",       "level": 13, "stage": 10, "hp": 3.4,  "count": 1.5},
+	{"id": "ace",         "name": "Ace",         "level": 16, "stage": 15, "hp": 2.6,  "count": 1.35},
+	{"id": "comet",       "name": "Comet",       "level": 19, "stage": 20, "hp": 2.6,  "count": 1.35},
+	{"id": "meteor",      "name": "Meteor",      "level": 22, "stage": 25, "hp": 2.4,  "count": 1.3},
+	{"id": "nova",        "name": "Nova",        "level": 25, "stage": 30, "hp": 2.2,  "count": 1.3},
+	{"id": "pulsar",      "name": "Pulsar",      "level": 28, "stage": 35, "hp": 2.2,  "count": 1.3},
+	{"id": "quasar",      "name": "Quasar",      "level": 31, "stage": 40, "hp": 2.1,  "count": 1.3},
+	{"id": "supernova",   "name": "Supernova",   "level": 34, "stage": 50, "hp": 2.4,  "count": 1.3},
+	{"id": "singularity", "name": "Singularity", "level": 37, "stage": 60, "hp": 2.3,  "count": 1.3},
 ]
-const PER_RANK := 0.05        # +5% bolt damage and +5% base shield / hull per rank
+const PER_RANK := 0.06        # +6% bolt damage and +6% base shield / hull per rank (worth the fight)
 # "hp" and "count" per rank: bug health and bug numbers on top of that stage's normal scaling
 # (Elite is x1.85 health). Hard early, where the stages are small; gentler multipliers late,
 # where the stages themselves are already big (balance sim, dev144).
 const GEM_XP_MULT := 1.25     # run XP comes faster in a trial: power cards sooner, a better run (Rudy)
-const OPEN_EARLY := 3         # a trial opens this many pilot levels under its recommended level
+const OPEN_EARLY := 0         # a trial opens AT its recommended level (Rudy, dev167: hard but worth it)
 const WAVES := 10
 const XP_BONUS := 250         # pilot XP the first time a rank is won
 const NO_RANK := "Rookie"

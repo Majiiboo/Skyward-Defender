@@ -552,7 +552,7 @@ static var _ftex := {}
 static func front_ready() -> bool:
 	return ResourceLoader.exists("res://pilot_front/helmet.png")
 
-static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT, head_alpha: float = -1.0) -> void:
+static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT, head_alpha: float = -1.0, showcase: bool = false) -> void:
 	var k := height / BODY_H * FRONT_K
 	var breath := sin(r.t * TAU / 2.6)
 	var col := _lift_col(lift, alpha)
@@ -560,7 +560,9 @@ static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha
 	# hand ends up on the far side like a real turn; the rifle fades across the middle
 	# instead of jumping. head_alpha: the helmet on its own alpha (the head turns first).
 	var mir: float = -1.0 if r.face < 0.0 else 1.0
-	var gun_a: float = smoothstep(0.0, 0.3, absf(r.face))
+	# the gun fades across the middle of a TURN; the Gear showcase stands at that angle for good,
+	# so there it is always drawn (dev167 fix: it was invisible on the Gear page)
+	var gun_a: float = 1.0 if showcase else smoothstep(0.0, 0.3, absf(r.face))
 	for part in FRONT:
 		var nm: String = part[0]
 		var pcol := col

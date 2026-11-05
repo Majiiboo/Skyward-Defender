@@ -24,6 +24,7 @@ const TIPS := {
 	"cards":         {"title": "POWER CARDS", "text": "Gems fill your run level; each level offers three cards. Pick one: they stack for the whole stage."},
 }
 static var active := false
+const ENABLED := false   # Rudy (dev166 playtest): off until the tips are redone for new elements only
 
 static func seen(id: String) -> bool:
 	var t = Progress.read().get("tips", [])
@@ -46,7 +47,7 @@ static func reset() -> void:
 
 # the first unseen tip of the list, shown once the page has laid out
 static func first(tree: SceneTree, list: Array) -> void:
-	if active or tree == null:
+	if not ENABLED or active or tree == null:
 		return
 	for item in list:
 		var id: String = item[0]
@@ -55,7 +56,7 @@ static func first(tree: SceneTree, list: Array) -> void:
 			return
 
 static func show(tree: SceneTree, id: String, target: Control) -> void:
-	if active or not TIPS.has(id) or seen(id):
+	if not ENABLED or active or not TIPS.has(id) or seen(id):
 		return
 	active = true
 	var host: Node = tree.current_scene

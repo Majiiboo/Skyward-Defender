@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev166)
+## Where we are (hand-over, 2026-11-04, build dev167)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-166 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-167 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
@@ -37,7 +37,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev166 (code 166).
+  go UP every package (same signing key, install-over). Current: dev167 (code 167).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -248,6 +248,38 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). DONE dev147: (e) bug flinch (e.hit_t, HIT_FLINCH_T) + death shards (_spawn_shards / _update_shards / _draw_shards, AtlasTexture cuts of the body). DONE dev148: (c) drone spring (_drone_p / _drone_v, DRONE_K / DRONE_DAMP, _drone_bank). DONE dev149: turrets seated (Backdrop.draw_socket_lip / draw_socket_shadow), UIKit.tile depth; dev150 UIKit.draw_depth / depth / lift on slot squares + Store tiles. DONE dev153: (e) stretch on dart / dive (EnemyRig.draw_bug stretch + stretch_ang, e.stretch_s), (d) turret head overshoot (_spring_ang). DONE dev154: light layers (tools/cut_turret_light.gd, battle _draw_turret_lights, _split_pose). DONE dev155: (b) pilot lean spring (Rig.lean_vel), flare (Rig.flare), squash (Rig.bounce), weight shift, flames trail the lean. DONE dev156: bug hit flash (draw_bug bright), pilot hurt edge (_draw_hurt_edge). dev157 menu transitions (UIKit.enter/leave/pop_in). dev158 pilot turn: head leads (_head_face, side_head_weight / front_head_weight), gun lowers (solve turn), front pose mirrored past the middle, squeeze 0.6, face speed 3.2; tools/dev/turn_capture.gd. LUNA: LUNA-BRIEF-pilot-turn.md (5 whole-body turn frames per suit) -> code cross-fades through them. LUNA PARTS R1 ARRIVED 2026-11-05 (art_src/parts_r1, tools/cut_parts_r1.gd): dev160 chunks (shards) + drone hull/thrusters (DRONE_PARTS). dev161: bug legs / feelers / sac (EnemyRig.LEGS, FEELERS, draw_bug sac), Luna turn frames (art_src/turn, tools/cut_turn.gd, pilot_turn/, PilotRig.draw_turn / turn_weight, TURN_SCALE / TURN_FEET measured). dev162: Swarm lid flip (t.lid, _draw_turret lidded). dev163: bosses untouchable until arrived (battle _can_hurt, e.arrived). NEXT: Sentry head_nobarrels is a different angle (kept, not used); tune LEGS on a phone. (f) hit-stop + shake already exist in battle._process (hitstop, shake). Then LUNA-BRIEF-animation.md
    (older in-between list) is mostly superseded by the parts approach.
 16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
+28. RUDY PLAYTEST dev166 (2026-11-05, phone, old save with Commander suit). His notes, in his order:
+   - A Patrol tip pops the moment the game opens: bad first impression. Tip boxes are huge for
+     one or two sentences; in Modes the spotlight sat on a random area. VERDICT: tips OFF (keep the
+     code; redo later only for new elements like gear, not basics). DONE dev167 (Tips.ENABLED).
+   - Everything is on the small side: fonts, lettering, pictures; text is thin. Wants bolder /
+     bigger, maybe another font. (global font weight/size pass, with screenshots)
+   - Power-card pick: the blue outline is not centred on the cards, cuts them off; font too thin.
+   - Buttons and info boxes are flat (pause, menu, gear icons, upgrade buttons): wants 3D, layered,
+     shadows, popping (UIKit._style_btn gradient + bevel + shadow; boxes layered).
+   - Standard vs Elite on Home look identical: Elite needs a purple hue / changed background and a
+     border around the stage name. (dev167: Elite tints the Home world + stage name frame)
+   - Pilot: movement must be perfectly smooth when dragging (check on phone).
+   - GEAR PAGE overhaul: the showcase pilot looks like a SKELETON (not the chunky chibi body);
+     writing too small, too much info (3-5 lines to understand an upgrade), buttons flat; KIT row
+     disliked: wants a LOADOUTS button at the side that cycles Loadout 1/2/3 and saves what is
+     equipped; the equipment grid at the bottom is jumbled ("ugh"); merge maybe a button inside
+     the equipment area leading to a merge screen (auto / manual). Rudy wants ideas.
+   - EQUIPPED GEAR DOES NOT SHOW on the pilot (Gear page nor battle): weapon, chest, boots... and
+     Arc Welder gives no green bolts. (regression or Android texture issue: needs screenshots)
+   - Menu backgrounds: a bit more alive: sparkling stars, a shooting star, asteroids. (dev167)
+   - TURRETS page: nothing shows, no placeholders, no turret pictures. Drone page: overhaul too.
+   - Promotion Cadet was easy: must be very hard but worth it; recommended level min 10 for the
+     first trial, rising. (dev167: levels 10..37, hp/count up)
+   - Elite must be its own ladder: unlock at level 10, start at Elite stage 1, each Elite stage
+     needs the previous Elite stage beaten. (dev167: save "elite_unlocked")
+   - Turrets: bigger, with weight; cock back and shoot, lasers spread, pillars move; a resting
+     pose when nothing is in range and a firing pose when a bug is; he may change some powers.
+   - Battle top bar: spacing off, wasted space; keep simple. Pause menu: too much; drop YOUR CARDS
+     (the cards button on the HUD exists). (dev167: cards row removed from pause)
+   - Home chest icon opens "stage info" (wrong); the chest closes itself after seconds: keep it
+     open while its overlay shows. (dev167: Chest = a chest overlay, open while shown)
+   Screenshots coming from Rudy; the visual overhauls wait for them.
 27. PERFORMANCE MODES + SETTINGS PAGE DONE dev159 (perf.gd Perf: saver/balanced/full, apply_from at hub start, lite() read by MenuBackdrop, UIKit.sheen, battle shards; settings.gd/tscn from the Home menu pop-up; build_info.gd BUildInfo.BUILD bumped by bump_build.sh; show_fps in the battle HUD). Was: Facts: draws at native phone
    resolution (stretch canvas_items/expand from 480 wide), no FPS cap + vsync = screen refresh
    (60/90/120), GL Compatibility, ETC2/ASTC. dev146 switched the frost blur off (covered by

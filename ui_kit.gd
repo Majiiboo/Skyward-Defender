@@ -221,6 +221,7 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	depth(b, col, icon != null)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.name = "Body"   # callers reach the picture through this, never by child index (dev167)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 1)

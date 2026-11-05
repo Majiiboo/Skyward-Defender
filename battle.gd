@@ -1825,7 +1825,9 @@ func _end_run(won: bool) -> void:
 		var g := GearData.read(d)
 		GearData.add_copy(g, _gear_got.id, _gear_got.rarity)
 		patch["gear"] = GearData.write(g)
-	if won and promo < 0:   # a trial never unlocks stages
+	if won and promo < 0 and elite:   # Elite is its own ladder (dev167): a win opens the next Elite stage
+		patch["elite_unlocked"] = maxi(stage + 1, int(d.get("elite_unlocked", 1)))
+	if won and promo < 0 and not elite:   # a trial never unlocks stages; Elite has its own ladder
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
 			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
@@ -1953,26 +1955,7 @@ func _fill_pause() -> void:
 		row.add_child(tl)
 		row.add_child(mark)
 		v.add_child(row)
-	# your cards
-	v.add_child(UIKit.header("YOUR CARDS"))
-	if card_levels.is_empty():
-		v.add_child(UIKit.label("No cards yet: collect gems to level up.", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	else:
-		var grid := GridContainer.new()
-		grid.columns = 6
-		grid.add_theme_constant_override("h_separation", 6)
-		grid.add_theme_constant_override("v_separation", 4)
-		for id in card_levels:
-			var cell := VBoxContainer.new()
-			cell.add_theme_constant_override("separation", 0)
-			cell.custom_minimum_size = Vector2(46, 0)
-			cell.add_child(_card_pic(id, 34.0))
-			var lv := "F" if Cards.FUSIONS.has(id) else ("★" if Cards.overcharged(card_levels, id) else str(int(card_levels[id])))
-			cell.add_child(UIKit.label(lv, 10, Cards.COLOR[Cards.def(id).rarity], HORIZONTAL_ALIGNMENT_CENTER))
-			grid.add_child(cell)
-		var cc := CenterContainer.new()
-		cc.add_child(grid)
-		v.add_child(cc)
+	# (YOUR CARDS left the pause menu in dev167: the HUD has the cards button)
 	# sound and music (placeholders, saved for when sound arrives)
 	var d := _read_save()
 	var srow := HBoxContainer.new()

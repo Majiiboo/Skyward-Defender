@@ -306,11 +306,12 @@ func _fill_chests() -> void:
 	g.add_child(_teaser(load("res://icons/gear_on.png"), "Gear Chest", "Gear copies, Epic every 10th"))
 	_page.add_child(UIKit.label("Coins, or the crystal jackpot", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
-func _open_chest(c: Dictionary) -> void:
-	d = Progress.read()
-	if int(d.get("crystals", 0)) < int(c.price):
-		return
-	d["crystals"] = int(d.get("crystals", 0)) - int(c.price)
+# Pay for chest `c` and roll it: the reward, or {} when crystals are short. Changes `save`.
+# Static so Home's chest overlay (hub.gd) opens the same chests (dev167).
+static func open_chest_in(save: Dictionary, c: Dictionary) -> Dictionary:
+	if int(save.get("crystals", 0)) < int(c.price):
+		return {}
+	save["crystals"] = int(save.get("crystals", 0)) - int(c.price)
 	var roll := randi() % 100
 	var reward: Dictionary = c.rolls[0][1]
 	var acc := 0
@@ -319,7 +320,14 @@ func _open_chest(c: Dictionary) -> void:
 		if roll < acc:
 			reward = r[1]
 			break
-	Progress.grant(d, reward)
+	Progress.grant(save, reward)
+	return reward
+
+func _open_chest(c: Dictionary) -> void:
+	d = Progress.read()
+	var reward := open_chest_in(d, c)
+	if reward.is_empty():
+		return
 	Progress.write(d)
 	_chest_fx(reward)
 	_fill()

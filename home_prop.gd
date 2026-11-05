@@ -29,13 +29,23 @@ func _ready() -> void:
 	_light.draw.connect(_draw_light)
 	add_child(_light)
 
-func open() -> void:
+var hold := false   # stay open until close() (dev167: the Home chest while its overlay shows)
+
+func open(hold_open: bool = false) -> void:
 	_open_t = 0.0
+	hold = hold_open
+
+func close() -> void:
+	if hold:
+		hold = false
+		_open_t = maxf(_open_t, 1.1)   # settle back down from here
 
 func _process(delta: float) -> void:
 	t += delta
 	if _open_t >= 0.0:
 		_open_t += delta
+		if hold and _open_t > 1.0:
+			_open_t = 1.0   # held open
 		# up quickly, hold, settle back down
 		_open = smoothstep(0.0, 0.25, _open_t) * (1.0 - smoothstep(1.1, 1.5, _open_t))
 		if _open_t > 1.5:

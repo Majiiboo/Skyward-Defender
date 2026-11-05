@@ -68,6 +68,8 @@ var crystals := 0
 var best_score := 0
 var best_kills := 0
 var stage_unlocked := 1
+var elite_stage_unlocked := 1   # the Elite ladder (save "elite_unlocked"): starts at Elite stage 1 (dev167)
+var _elite_tint: ColorRect
 
 var _transitioning := false
 var _nav_dock: NavDock = null
@@ -103,6 +105,14 @@ func _ready() -> void:
 	Progress.write(ps)
 	Perf.apply_from(ps)   # performance mode and frame counter (Settings)
 	_load_save()
+	# the Elite hue over the live world (hidden in Standard)
+	_elite_tint = ColorRect.new()
+	_elite_tint.name = "EliteTint"
+	_elite_tint.color = Color(0.5, 0.15, 0.9, 0.0)
+	_elite_tint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_elite_tint.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(_elite_tint)
+	move_child(_elite_tint, $AFK.get_index() + 1)
 	_frame = HomeFrame.new()
 	_frame.name = "HomeFrame"
 	add_child(_frame)
@@ -130,7 +140,8 @@ func _load_save() -> void:
 				best_score = int(data.get("best_score", 0))
 				best_kills = int(data.get("best_kills", 0))
 				stage_unlocked = int(data.get("stage_unlocked", 1))
-				stage = clampi(int(data.get("selected_stage", 1)), 1, stage_unlocked)
+				elite_stage_unlocked = clampi(int(data.get("elite_unlocked", 1)), 1, StageData.MAX_STAGE)
+				stage = clampi(int(data.get("selected_stage", 1)), 1, elite_stage_unlocked if bool(data.get("selected_elite", false)) else stage_unlocked)
 				mode = "Elite" if bool(data.get("selected_elite", false)) else "Normal"
 				pilot_xp = int(data.get("pilot_xp", 0))
 				level = Turrets.pilot_level(pilot_xp)
@@ -413,8 +424,7 @@ func _build_home() -> void:
 	home.add_child(row)
 	_action_row = row
 	var chest := _action_item("ChestButton", "chest_closed", "Chest", func():
-		_chest_open_fx()
-		_side_popup("STAGE INFO", _info_text))
+		_chest_popup())
 	chest.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	chest.grow_horizontal = Control.GROW_DIRECTION_END
 	chest.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -646,7 +656,14 @@ func _update_stage_label() -> void:
 	_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STANDARD", stage, String(StageData.area(stage).name).to_upper()]
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
-	_stage_btn.modulate.a = 1.0 if stage <= stage_unlocked else 0.5
+	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5
+	# Elite look (Rudy, dev167): a purple hue over the world, and the stage name in a frame
+	# coloured by the mode
+	if _elite_tint:
+		_elite_tint.create_tween().tween_property(_elite_tint, "color:a", 0.18 if is_elite else 0.0, 0.35)
+	var fc: Color = PURPLE if is_elite else CYAN
+	for st in ["normal", "hover", "pressed"]:
+		_stage_btn.add_theme_stylebox_override(st, UIKit.box(Color(fc, 0.10), Color(fc, 0.75), 12))
 	_paint_segment(_std_btn, not is_elite, true)
 	_paint_segment(_elite_btn, is_elite, false)
 	$AFK.set_elite(is_elite)
@@ -679,11 +696,16 @@ func _set_mode(m: String) -> void:
 		_tag_timer.timeout.connect(_update_stage_label)
 		return
 	mode = m
+	stage = clampi(stage, 1, _top_stage())
 	_write_selection()
 	_update_stage_label()
 
+# the highest stage you may pick in this mode: Elite has its own ladder
+func _top_stage() -> int:
+	return elite_stage_unlocked if mode == "Elite" else stage_unlocked
+
 func _change_stage(d: int) -> void:
-	stage = clampi(stage + d, 1, stage_unlocked)
+	stage = clampi(stage + d, 1, _top_stage())
 	_write_selection()
 	_update_stage_label()
 
@@ -870,6 +892,11 @@ func _hide_panels() -> void:
 	if _popup_layer != null and is_instance_valid(_popup_layer):
 		_popup_layer.queue_free()
 	_popup_layer = null
+	var cb := _find_button(self, "ChestButton")
+	if cb != null:
+		var prop := cb.get_node_or_null("Prop") as HomeProp
+		if prop:
+			prop.close()   # the chest settles shut once its overlay is gone
 
 # A glass pop-up over Home in the menus' look (dev140; replaces the old grey scene panels):
 # a title, a few lines, optional buttons [[label, callable], ...] and Close. A tap outside
@@ -1059,15 +1086,15 @@ func _refresh_nav_layers(active: String, animate: bool = true) -> void:
 			elif not on and top.modulate.a > 0.0:
 				create_tween().tween_property(top, "modulate:a", 0.0, 0.25)
 
-func _chest_open_fx() -> void:
+func _chest_open_fx(hold: bool = false) -> void:
 	var b := _find_button(self, "ChestButton")
 	if b == null:
 		return
 	# Luna's chest lifts its lid and lets the light out (HomeProp.open), with a beam
-	# and a little hop.
+	# and a little hop. hold = stays open until _hide_panels closes it.
 	var prop := b.get_node_or_null("Prop") as HomeProp
 	if prop:
-		prop.open()
+		prop.open(hold)
 	IconFx.play(b, "beam", b.size * 0.5 + Vector2(0, -8), 0.5)
 	b.pivot_offset = b.size * 0.5
 	var tw := create_tween()
@@ -1267,3 +1294,40 @@ func _home_tips() -> void:
 	if Progress.attention(s).quests:
 		list.append(["red_dots", _nav_btn("NavQuests")])
 	Tips.first(get_tree(), list)
+
+# The Home chest (dev167): Luna's chest opens and STAYS open while this overlay shows the
+# Store's chests, opened right here with crystals; it closes when the overlay goes.
+const STORE := preload("res://store.gd")
+
+func _chest_popup() -> void:
+	_chest_open_fx(true)
+	var sv := Progress.read()
+	var lines: Array = []
+	var actions: Array = []
+	for c in STORE.CHESTS:
+		var lo := 1 << 30
+		var hi := 0
+		var jackpot := ""
+		for r in c.rolls:
+			if r[1].has("coins"):
+				lo = mini(lo, int(r[1].coins))
+				hi = maxi(hi, int(r[1].coins))
+			else:
+				jackpot = "%d%% chance of %d crystals" % [int(r[0]), int(r[1].crystals)]
+		lines.append("%s: %d-%d coins, %s" % [c.name, lo, hi, jackpot])
+		var chest: Dictionary = c
+		actions.append(["Open %s  ·  %d crystals" % [c.name, int(c.price)], func(): _open_home_chest(chest)])
+	_side_popup("CHEST", "\n".join(lines) + "\nYou have %d crystals." % int(sv.get("crystals", 0)), actions)
+
+func _open_home_chest(c: Dictionary) -> void:
+	var sv := Progress.read()
+	var reward: Dictionary = STORE.open_chest_in(sv, c)
+	if reward.is_empty():
+		_side_popup("CHEST", "Not enough crystals for the %s (%d)." % [c.name, int(c.price)])
+		return
+	Progress.write(sv)
+	_load_save()
+	_coin_btn.text = _fmt(coins)
+	_crystal_btn.text = _fmt(crystals)
+	_patrol_toast("+ " + Progress.reward_text(reward))
+	_chest_popup()   # stays open for another go
