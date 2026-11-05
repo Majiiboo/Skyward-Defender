@@ -124,7 +124,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    merging copies in the Workshop (needs gear drops). INVENTORY (Rudy): a filter button (by rarity, slot,
    set, newest) because players collect a lot; a QUICK MERGE button that merges all Common and
    Uncommon copies automatically, while Epic and above are merged by hand only (players keep
-   copies they like for their stats). (g) Re-tune: gentle to 15, then each boss a
+   copies they like for their stats). LOADOUTS (Rudy): save named presets (e.g. 3 slots) of the
+   equipped gear, turrets on mounts and drone, and switch between them in one tap (Gear page). (g) Re-tune: gentle to 15, then each boss a
    soft wall; target 30-40 hours to stage 60; replays pay half coins.
 17. ENEMY VARIETY (Rudy, 2026-11-04): today all 6 planets use the same Hive bugs (scout, drifter,
    spitter, diver, spore) and the ONLY boss is the Hive Mother (mini at x5, big at x10, young one
