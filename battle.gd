@@ -699,6 +699,7 @@ func _process(delta: float) -> void:
 	_update_bullets(delta)
 	_update_enemies(delta)
 	_update_gems(delta)
+	_update_shards(delta)
 	_update_turrets(delta)
 	_step_effects(delta)
 	_pilot_motion(delta)
@@ -966,6 +967,7 @@ func _update_bullets(delta: float) -> void:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
+				e.hit_t = HIT_FLINCH_T
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
@@ -1025,6 +1027,8 @@ func _update_enemies(delta: float) -> void:
 	for e in enemies:
 		var def: Dictionary = StageData.ENEMIES[e.type]
 		e.t += delta
+		if float(e.get("hit_t", 0.0)) > 0.0:
+			e.hit_t = float(e.hit_t) - delta   # the flinch after a hit (_draw_enemy)
 		var prev: Vector2 = e.pos
 		if e.state == "hatch":
 			e.pos += e.vel * delta
@@ -1230,6 +1234,7 @@ func _kill(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
 	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
+	_spawn_shards(e, def)
 	kills += 1
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
@@ -1358,6 +1363,7 @@ func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 	e.hp -= dmg
+	e.hit_t = HIT_FLINCH_T
 	# turret card overcharges: Overload (Storm) stuns now and then, Frozen Light (Prism) slows
 	if t.get("stun", false) and rng.randf() < 0.2:
 		e.slow_t = 0.8
@@ -2665,6 +2671,7 @@ func _draw() -> void:
 	# enemies
 	for e in enemies:
 		_draw_enemy(e)
+	_draw_shards()
 	_draw_turret_front()
 	for r in rings:
 		var k: float = 1.0 - r.life / r.max
@@ -2702,6 +2709,10 @@ func _draw_enemy(e: Dictionary) -> void:
 	var size: float = float(def.size) * 1.35
 	var ang: float = float(e.get("tilt_s", _enemy_tilt(e)))
 	var fold: float = float(e.get("fold", 0.0))
+	# the flinch (dev147): a hit bug shrinks for a tenth of a second and springs back
+	var flinch: float = float(e.get("hit_t", 0.0))
+	if flinch > 0.0:
+		size *= 1.0 - 0.16 * sin(clampf(flinch / HIT_FLINCH_T, 0.0, 1.0) * PI)
 	if e.get("hatchling", false):
 		size *= lerpf(0.6, 1.0, smoothstep(0.2, 1.2, float(e.t)))   # grows out of the sac
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
@@ -2874,6 +2885,61 @@ func _turret_tip(t: Dictionary) -> Vector2:
 	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
 	var h: float = tex.get_height() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
 	return t.pos + Vector2(0, 6.0 - h * float(look.tip) + sin(time_alive * 2.2 + float(t.mount)) * float(look.bob))
+
+# ---- death shards (dev147, AAA motion item 26 e): a killed bug breaks into six pieces of
+# its own painted body (regions of the body picture), thrown outward, tumbling under
+# gravity and fading. No new art: the pieces are cut from the picture at run time.
+const HIT_FLINCH_T := 0.12
+const SHARD_LIFE := 0.75
+var _shards: Array = []
+var _shard_atlas := {}   # enemy type -> [AtlasTexture x6]
+
+func _spawn_shards(e: Dictionary, def: Dictionary) -> void:
+	if not ["scout", "drifter", "spitter", "diver"].has(String(e.type)) or _shards.size() > 90:
+		return
+	if not _shard_atlas.has(e.type):
+		var tex: Texture2D = EnemyRig._t(String(e.type) + "_body")
+		var ts := tex.get_size()
+		var list: Array = []
+		for gy in 3:
+			for gx in 2:
+				var at := AtlasTexture.new()
+				at.atlas = tex
+				at.region = Rect2(ts.x * gx * 0.5, ts.y * gy / 3.0, ts.x * 0.5, ts.y / 3.0)
+				list.append(at)
+		_shard_atlas[e.type] = list
+	var s: float = float(def.size) * 1.35 / 220.0
+	var tilt: float = float(e.get("tilt_s", 0.0))
+	var pieces: Array = _shard_atlas[e.type]
+	for i in pieces.size():
+		var at: AtlasTexture = pieces[i]
+		# where this piece sat on the whole bug, so the burst starts from the right spot
+		var off := (Vector2(at.region.position.x + at.region.size.x * 0.5, at.region.position.y + at.region.size.y * 0.5) - at.atlas.get_size() * 0.5) * s
+		var dir := off.normalized() if off.length() > 0.1 else Vector2.from_angle(rng.randf() * TAU)
+		_shards.append({"at": at, "pos": e.pos + off.rotated(tilt), "vel": dir.rotated(tilt) * rng.randf_range(90.0, 200.0) + Vector2(0, -60.0) + e.vel * 0.3,
+			"rot": tilt, "spin": rng.randf_range(-7.0, 7.0), "s": s, "life": SHARD_LIFE})
+
+func _update_shards(delta: float) -> void:
+	var live: Array = []
+	for sh in _shards:
+		sh.life -= delta
+		if sh.life <= 0.0:
+			continue
+		sh.vel.y += 480.0 * delta
+		sh.vel.x *= 0.985
+		sh.pos += sh.vel * delta
+		sh.rot += sh.spin * delta
+		live.append(sh)
+	_shards = live
+
+func _draw_shards() -> void:
+	for sh in _shards:
+		var at: AtlasTexture = sh.at
+		var a: float = clampf(float(sh.life) / SHARD_LIFE * 1.6, 0.0, 1.0)
+		var sz: Vector2 = at.region.size * float(sh.s)
+		draw_set_transform(sh.pos, sh.rot, Vector2.ONE)
+		draw_texture_rect(at, Rect2(-sz * 0.5, sz), false, Color(1, 1, 1, a))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
 	fxs.append({"tex": name, "pos": pos, "size": size, "rot": rot, "life": life, "max": life, "grow": grow, "col": col})

@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev146)
+## Where we are (hand-over, 2026-11-04, build dev147)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-146 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-147 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev146 (code 146).
+  go UP every package (same signing key, install-over). Current: dev147 (code 147).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -242,7 +242,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    spring, head overshoot when tracking, charge swell on the light layer, lid flip; (e) bugs:
    squash on hit (0.85/1.15 for 0.12 s), stretch when darting, feeler whip, death chunks
    tumbling with gravity + fade, hatching pop; (f) hit-stop 40 ms on boss hits, screen
-   shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). Then LUNA-BRIEF-animation.md
+   shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). DONE dev147: (e) bug flinch (e.hit_t, HIT_FLINCH_T) + death shards (_spawn_shards / _update_shards / _draw_shards, AtlasTexture cuts of the body). Then LUNA-BRIEF-animation.md
    (older in-between list) is mostly superseded by the parts approach.
 16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable.
 27. PERFORMANCE MODES + SETTINGS PAGE (Rudy, 2026-11-04). Facts: draws at native phone
@@ -254,8 +254,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    save "perf"; apply at startup (hub _ready) and when changed. Sound toggles when sound exists.
    Efficiency pass still to do (Rudy: lighter, never uglier): profile battle _draw on a phone,
    cache per-frame string formatting in the HUD, pool _fx dicts, cap enemy_bullets draw calls.
-15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
-   the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
+15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04; reminded 2026-11-05: "a lot was added"):
+   when something unlocks or is used the first time, a short guided tip. LIST (dev147): first
+   gear upgrade, first turret mount, Workshop (parts merge), Workshop > Gear (copies, Quick Merge,
+   rarity caps), KIT row (loadouts), drone unlock, Patrol (farming + gear copies), Promotion
+   (rank trials, recommended level), attendance calendar, red dots, Elite unlock, Stage Map,
+   each new planet / enemy family, power cards (first pick), turret cards, suits. Format: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
    the tiny chibi pilot beside it, step by step across screens; saved so each shows once.
 8. GEAR REWORK DONE (dev97): gear_data.gd (GearData: SLOTS, SETS ion/scavenger/void unlocked at

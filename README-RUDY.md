@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev146 (version/code=146 and version/name="1.0-dev146" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev147 (version/code=147 and version/name="1.0-dev147" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,17 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev147: bugs flinch and shatter (first piece of the AAA motion work, no new art)
+
+- A bug hit by a bolt or a turret shrinks for a tenth of a second and springs back, so every
+  hit reads on the enemy, not only on the bullet.
+- A killed Scout, Drifter, Spitter or Diver no longer pops: it breaks into six pieces cut
+  from its own painted body, thrown outward from where each piece sat, tumbling and falling
+  under gravity, fading in three quarters of a second. No new pictures: the pieces are cut
+  from Luna's body art at run time. (Luna's chunk sheets in LUNA-BRIEF-animation-parts.md
+  will replace these cuts with proper broken shell, wings and goo.)
+- Checked headless on stages 3 and 12 (no errors), smoke test passes.
 
 ## dev146: what the game renders at, and the first efficiency cut
 
