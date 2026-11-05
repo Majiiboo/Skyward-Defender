@@ -274,6 +274,9 @@ func _ready() -> void:
 	for n in ["blaster", "beam", "missile"]:
 		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
+	for n in ["sentry", "lance", "storm", "gravity", "prism", "swarm"]:   # the turrets' own glow (dev154)
+		if ResourceLoader.exists("res://turrets/%s_light.png" % n):
+			_fx_tex["light_" + n] = load("res://turrets/%s_light.png" % n)
 	for i in 4:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
 	_tex["goo"] = load("res://fx/goo.png")
@@ -2803,6 +2806,15 @@ func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
 		Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # seated in the socket
 	var g := _split_geo(t)
 	var ht: Texture2D = _tex[t.type + "_head"]
+	var pose := _split_pose(t)
+	draw_set_transform(g.centre + Vector2(0, yo), pose.rot, Vector2(pose.sx, 1.0) * pose.pulse)
+	draw_texture_rect(ht, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# how a split turret's head is turned, mirrored and pulsed right now (shared by the head
+# and its light layer, dev154)
+func _split_pose(t: Dictionary) -> Dictionary:
+	var look: Dictionary = SPLIT_LOOK[t.type]
 	var rot := 0.0
 	var sx := 1.0
 	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
@@ -2815,9 +2827,45 @@ func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
 	elif t.type == "prism":
 		rot = clampf(angle_difference(-PI / 2.0, float(t.ang)) * 0.25, -0.3, 0.3)   # leans toward its target
 	var pulse: float = 1.0 + 0.06 * kick + (0.03 * sin(time_alive * 3.0 + float(t.mount)) if not look.turns else 0.0)
-	draw_set_transform(g.centre + Vector2(0, yo), rot, Vector2(sx, 1.0) * pulse)
-	draw_texture_rect(ht, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return {"rot": rot, "sx": sx, "pulse": pulse}
+
+# The turrets' own light (dev154): the glow cut from each turret picture
+# (tools/cut_turret_light.gd) drawn on the additive layer exactly over the turret, breathing
+# while idle, swelling as it charges, flashing when it fires.
+func _draw_turret_lights() -> void:
+	for t in turrets:
+		if t.drop < 1.0 or not _fx_tex.has("light_" + String(t.type)):
+			continue
+		var lt: Texture2D = _fx_tex["light_" + String(t.type)]
+		var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
+		var strength: float = 0.5 + 0.22 * sin(time_alive * 2.1 + float(t.mount) * 1.7) + 0.6 * kick
+		if CHARGE_COL.has(t.type):
+			var every: float = float(t.def.every)
+			strength += 0.5 * smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd))
+		elif t.type == "lance":
+			strength += 0.5 * smoothstep(0.5, 1.0, float(t.charge) / maxf(float(t.def.every), 0.1))
+		var col := Color(1, 1, 1, clampf(strength, 0.0, 1.0))
+		if t.type == "sentry":
+			var g := _sentry_geo(t)
+			var hs: float = SENTRY_HEAD_H / lt.get_height()
+			var hsz := lt.get_size() * hs
+			_fx.draw_set_transform(g.pivot, g.rot, Vector2(g.face, 1.0))
+			_fx.draw_texture_rect(lt, Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz), false, col)
+		elif SPLIT_LOOK.has(t.type):
+			var g := _split_geo(t)
+			var pose := _split_pose(t)
+			_fx.draw_set_transform(g.centre, pose.rot, Vector2(pose.sx, 1.0) * pose.pulse)
+			_fx.draw_texture_rect(lt, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, col)
+		else:
+			# the whole-picture turrets (Swarm): same placement as _draw_turret
+			var look: Dictionary = TURRET_LOOK[t.type]
+			var sz := lt.get_size() * minf(float(look.h) / lt.get_height(), float(look.w) / lt.get_width())
+			var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
+			var k2 := kick * kick
+			var ksz := Vector2(sz.x * (1.0 + 0.03 * k2), sz.y * (1.0 - 0.05 * k2))
+			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_fx.draw_texture_rect(lt, Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + bob), ksz), false, col)
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _draw_turret(t: Dictionary) -> void:
 	# Luna's turret sits in its socket with a soft shadow; it falls in from above
@@ -3045,6 +3093,7 @@ func _draw_fx() -> void:
 		var da: float = minf(1.0, dr.age / 0.15) * minf(1.0, dr.life / 0.4)
 		_fx.draw_set_transform(dr.pos, dr.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(dt, Rect2(-11, -11 * dt.get_height() / dt.get_width(), 22, 22 * dt.get_height() / dt.get_width()), false, Color(1, 1, 1, da))
+	_draw_turret_lights()
 	for t in turrets:
 		if t.drop >= 1.0 and CHARGE_COL.has(t.type):
 			# charge-up: light gathers at the weapon in the last moments before a shot,

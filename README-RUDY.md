@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev153 (version/code=153 and version/name="1.0-dev153" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev154 (version/code=154 and version/name="1.0-dev154" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev154: the turrets' own light
+
+- Every turret now glows with its own light: the glowing parts of Luna's turret pictures
+  (crystal, vents, rods, orb, hatch rim) are cut out in code (tools/cut_turret_light.gd ->
+  turrets/<name>_light.png) and drawn as light exactly over the turret: breathing while it
+  waits, swelling as it charges, flashing when it fires. No Luna work needed, and it takes
+  the light layers off her list for good.
 
 ## dev153: bugs stretch into their motion, turret heads overshoot
 
