@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev128 (version/code=128 and version/name="1.0-dev128" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev129 (version/code=129 and version/name="1.0-dev129" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,12 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev129: level ring on Home
+
+- The profile button (top left of Home) has a ring that fills cyan to purple as you earn
+  pilot XP; when it is full you go up a level. A small badge in its corner shows your level.
+- Beside it: "Pilot" and your XP into this level (e.g. 450 / 1100 XP).
 
 ## dev128: turret upgrade tracks and milestones
 

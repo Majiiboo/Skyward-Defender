@@ -182,21 +182,49 @@ func _pilot_block() -> Control:
 	v.add_theme_constant_override("separation", 2)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_l := _small_label("Pilot %d" % level, 14, Color.WHITE)
+	var name_l := _small_label("Pilot", 14, Color.WHITE)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	v.add_child(name_l)
+	# XP into this level (the ring round the profile button shows the same)
+	var lo := Turrets.xp_for_level(level)
+	var hi := Turrets.xp_for_level(level + 1)
+	var xp_l := _small_label("%d / %d XP" % [pilot_xp - lo, hi - lo], 10, MUTED)
+	xp_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	v.add_child(xp_l)
+	return v
+
+# The level ring (Rudy): a thin ring round the profile button fills as pilot XP grows,
+# cyan to purple; a small badge in its corner shows the level. Full ring = next level.
+func _xp_ring(b: Button) -> void:
 	var lo := Turrets.xp_for_level(level)
 	var hi := Turrets.xp_for_level(level + 1)
 	var f := clampf(float(pilot_xp - lo) / maxf(float(hi - lo), 1.0), 0.0, 1.0)
-	var bar := Control.new()
-	bar.custom_minimum_size = Vector2(62, 4)
-	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	bar.draw.connect(func():
-		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), Color(1, 1, 1, 0.12))
+	var ring := Control.new()
+	ring.name = "XpRing"
+	ring.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	ring.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	ring.draw.connect(func():
+		var c := ring.size * 0.5
+		var r := minf(c.x, c.y) - 1.5
+		ring.draw_arc(c, r, 0.0, TAU, 48, Color(1, 1, 1, 0.14), 2.5, true)
 		if f > 0.0:
-			bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bar.size.x * f, bar.size.y)), CYAN.lerp(PURPLE, f)))
-	v.add_child(bar)
-	return v
+			# from the top, clockwise; the colour runs cyan to purple along the way
+			var steps := maxi(2, int(48 * f))
+			for i in steps:
+				var a0 := -PI / 2.0 + TAU * f * float(i) / steps
+				var a1 := -PI / 2.0 + TAU * f * float(i + 1) / steps
+				ring.draw_arc(c, r, a0, a1, 3, CYAN.lerp(PURPLE, float(i) / steps), 2.5, true)
+		# level badge, bottom-right
+		var bc := c + Vector2(r * 0.72, r * 0.72)
+		var txt := str(level)
+		var br := 8.0 if txt.length() < 2 else 9.5
+		ring.draw_circle(bc, br, Color(0.04, 0.06, 0.17))
+		ring.draw_arc(bc, br, 0.0, TAU, 24, CYAN.lerp(PURPLE, f), 1.2, true)
+		var font := ring.get_theme_default_font()
+		var fs := 10
+		var w := font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x
+		ring.draw_string(font, bc + Vector2(-w * 0.5, fs * 0.36), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.WHITE))
+	b.add_child(ring)
 
 func _small_label(text: String, size_px: int, col: Color) -> Label:
 	var l := Label.new()
@@ -243,8 +271,9 @@ func _build_home() -> void:
 	dockL.add_theme_constant_override("separation", 6)
 	dockL.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(dockL)
-	var profile := _icon_button("ProfileButton", "profile", 44.0, 38.0, 30, Color(PURPLE, 0.7))
+	var profile := _icon_button("ProfileButton", "profile", 44.0, 38.0, 30, Color(PURPLE, 0.0))   # the XP ring is its outline
 	profile.pressed.connect(func(): _side_popup("PROFILE", "Pilot\nLevel %d\nProfile and account\nsettings will live here." % level))
+	_xp_ring(profile)   # the level ring and badge
 	dockL.add_child(profile)
 	dockL.add_child(_pilot_block())
 	_coin_btn = _pill_button("CoinButton", "ui_coin", _fmt(coins))
