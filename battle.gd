@@ -1293,7 +1293,7 @@ func _update_enemies(delta: float) -> void:
 			e.slow_t = float(e.slow_t) - delta
 			e.pos = prev.lerp(e.pos, 1.0 - float(e.get("slow", 0.0)))
 		# a booster's aura: the bug covers 30% more ground this frame
-		if float(e.get("boost_t", 0.0)) > 0.0 and e.state != "aim" and e.state != "hatch":
+		if float(e.get("boost_t", 0.0)) > 0.0 and e.state != "aim" and e.state != "hatch" and e.type != "spore":   # a spore keeps its motion in e.vel: stretching it would compound
 			e.boost_t = float(e.boost_t) - delta
 			e.pos = prev.lerp(e.pos, 1.3)
 			if e.type == "spitter":
@@ -1310,6 +1310,9 @@ func _update_enemies(delta: float) -> void:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
 		if e.type != "hive_mother":
 			e.pos.x = clampf(e.pos.x, 16.0, FIELD_W - 16.0)   # never drifts off the sides (a wave must stay killable)
+			if e.pos.y < -120.0:
+				e.pos.y = -120.0
+				e.vel = Vector2.ZERO
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# faster than its cruising speed (a dart, a dive): it stretches into the motion (dev153)
 		e.stretch_s = lerpf(float(e.get("stretch_s", 0.0)), clampf(e.vel.length() / maxf(float(e.speed), 1.0) - 1.0, 0.0, 1.2) * 0.16, minf(1.0, delta * 12.0))
