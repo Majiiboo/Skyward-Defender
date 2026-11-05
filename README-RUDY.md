@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev167 (version/code=167 and version/name="1.0-dev167" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev171 (version/code=171 and version/name="1.0-dev171" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -142,7 +142,7 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
-## Next push (dev167 + the updates below; numbered when it goes to GitHub)
+## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.
 - ELITE never runs ahead of Standard: Elite stage N opens only once you have cleared Standard

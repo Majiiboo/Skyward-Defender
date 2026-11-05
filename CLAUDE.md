@@ -3,9 +3,10 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev167)
+## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev167: 4 updates (next push = dev167 + that count; see the build rule).
+- UNPUSHED since dev171: 0 updates (next push = dev171 + that count; see the build rule).
+  dev171 carried (README-RUDY dev171):
   4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
      in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
      leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless,
@@ -23,7 +24,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      "too much to absorb, not enough fun gameplay" -> research in the chat (Vampire Survivors /
      Brotato / Archero loops, staggered unlocks, game feel); plan: hide-not-remove (done), sound
      + hit feel, fight decisions (telegraphs, reasons to move), measure the first 10 minutes.
-- dev138-167 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-171 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
@@ -55,7 +56,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev167 (code 167).
+  go UP every package (same signing key, install-over). Current: dev171 (code 171).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push
