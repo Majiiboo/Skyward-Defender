@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev150 (version/code=150 and version/name="1.0-dev150" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev151 (version/code=151 and version/name="1.0-dev151" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev151: every glass panel lifts like the cards; Luna's parts brief, version 2
+
+- Every glass panel in the game (Modes cards, Quests rows, detail panels, pop-ups) now has
+  the same soft drop shadow as the item cards, so nothing sits flat on the wallpaper.
+- Luna reported that her image generator reframes each piece to fill its own picture, so
+  pieces cannot be stacked on one canvas. Fixed on our side: the brief is now "route 3",
+  each piece as its own picture at roughly its true size, and the code places it (the way
+  the pilot's 16 parts already work). Light layers are off her list: the glow is cut from
+  the whole pictures in code. Order unchanged: turrets, bugs, drone.
 
 ## dev150: the same lift on every card
 

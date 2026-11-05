@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev150)
+## Where we are (hand-over, 2026-11-04, build dev151)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-150 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-151 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev150 (code 150).
+  go UP every package (same signing key, install-over). Current: dev151 (code 151).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -232,8 +232,8 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    levels up from what the player already does (no new currency), with Luna painting the
    building tiers. A separate "build your base" screen with its own costs is the version to avoid.
 26. AAA MOTION (Rudy, 2026-11-04: pilot, drone, turrets, enemies must move like a big-budget
-   game; renders if needed, else code). Luna: LUNA-BRIEF-animation-parts.md (drone hull +
-   thrusters + light, turret barrels / lid / light layers, bug legs / feelers / sac / chunks).
+   game; renders if needed, else code). Luna: LUNA-BRIEF-animation-parts.md v2 (ROUTE 3 after her note 2026-11-05: separate sprites at true
+   size, code places them like the pilot parts; light layers cut in code from the whole pictures).
    CODE (can start before the art, with the pieces we have): (a) a shared Motion helper:
    spring (pos, vel, stiffness, damping), follow-through lag, squash-stretch from velocity;
    (b) pilot: bank into drags, jetpack flame lag, rifle recoil spring (exists), landing /

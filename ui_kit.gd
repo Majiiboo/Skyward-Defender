@@ -36,9 +36,10 @@ static func glass(radius: float = 12.0) -> StyleBoxFlat:
 	# the sheen: a lighter top edge, like the Home glass
 	s.border_width_top = 1
 	s.border_color = Color(0.55, 0.85, 1.0, 0.26)
-	s.shadow_color = Color(0, 0, 0, 0.18)
-	s.shadow_size = 4
-	s.shadow_offset = Vector2(0, 2)
+	# the same lift as the cards (dev151): a soft drop shadow under every glass panel
+	s.shadow_color = Color(0, 0, 0, 0.36)
+	s.shadow_size = 8
+	s.shadow_offset = Vector2(0, 4)
 	return s
 
 static func panel(radius: float = 14.0) -> PanelContainer:
