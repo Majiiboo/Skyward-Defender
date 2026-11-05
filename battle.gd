@@ -2474,7 +2474,7 @@ func _show_end(won: bool) -> void:
 		var nxt := UIKit.gold_button("Next stage", 17)
 		nxt.custom_minimum_size = Vector2(0, 46)
 		nxt.pressed.connect(func():
-			if not Energy.try_play(_end_panel, elite):   # a stage costs power tokens
+			if not Energy.try_play(_end_panel, elite, stage + 1):   # a stage costs power tokens (stages 1-5 free)
 				return
 			_write_save({"selected_stage": stage + 1})
 			stage += 1
@@ -2485,7 +2485,7 @@ func _show_end(won: bool) -> void:
 	var again := UIKit.teal_button("Retry" if not won else "Play again")
 	again.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	again.custom_minimum_size = Vector2(0, 40)
-	again.pressed.connect(func(): if Energy.try_play(_end_panel, elite): _start_stage())
+	again.pressed.connect(func(): if Energy.try_play(_end_panel, elite, stage): _start_stage())
 	brow.add_child(again)
 	var home := UIKit.ghost_button("Back to Hub", 14)
 	home.size_flags_horizontal = Control.SIZE_EXPAND_FILL

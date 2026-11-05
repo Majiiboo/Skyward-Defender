@@ -289,7 +289,7 @@ func _build_home() -> void:
 	dockL.add_child(_crystal_btn)
 	# power tokens: playing a stage and collecting Patrol cost them (Energy)
 	_energy_btn = _pill_button("EnergyButton", "ui_energy", "")
-	_energy_btn.pressed.connect(func(): _side_popup("POWER", "A stage: %d  ·  Elite: %d\nCollect Patrol: %d\n+1 every 6 min, up to %d" % [Energy.STAGE_COST, Energy.ELITE_COST, Energy.PATROL_COST, Energy.MAX]))
+	_energy_btn.pressed.connect(func(): _side_popup("POWER", "A stage: %d  ·  stages 1-%d free  ·  Elite: %d\nCollect Patrol: %d\n+1 every 6 min, up to %d" % [Energy.STAGE_COST, Energy.FREE_STAGES, Energy.ELITE_COST, Energy.PATROL_COST, Energy.MAX]))
 	dockL.add_child(_energy_btn)
 	_on_energy_changed()
 	var et := Timer.new()
@@ -692,7 +692,7 @@ func _write_selection() -> void:
 
 func _wire_panels() -> void:
 	$SelectPanel/SelectClose.pressed.connect(func(): _hide_panels())
-	$SelectPanel/SelectGo.pressed.connect(func(): if Energy.try_play(self, mode == "Elite"): _smooth_change_scene("res://battle.tscn"))
+	$SelectPanel/SelectGo.pressed.connect(func(): if Energy.try_play(self, mode == "Elite", stage): _smooth_change_scene("res://battle.tscn"))
 	$PatrolPanel/PatrolClose.pressed.connect(func(): _hide_panels())
 	$PatrolPanel/PatrolClaim.pressed.connect(func(): $PatrolPanel/PatrolLabel.text = "Auto-Patrol Gain\nCoins 34/h, Parts 8/h\nClaim will give 612 coins, 18 parts, 144 gems (show-only).\nNo granting yet: battle rewards update enables it.")
 	$InfoPanel/InfoClose.pressed.connect(func(): _hide_panels())
@@ -715,7 +715,7 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 	if _transitioning: return
 	# on Home, the gold Battle tile is the Play button: tapping it starts the battle
 	if tapped == "NavBattle" and _current_view == null:
-		if not Energy.try_play(self, mode == "Elite"):   # a stage costs power tokens
+		if not Energy.try_play(self, mode == "Elite", stage):   # a stage costs power tokens (stages 1-5 free)
 			return
 		_spawn_spark_burst(_nav_btn("NavBattle"))
 		_smooth_change_scene("res://battle.tscn")

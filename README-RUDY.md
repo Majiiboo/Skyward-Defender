@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev137 (version/code=137 and version/name="1.0-dev137" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev138 (version/code=138 and version/name="1.0-dev138" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev138: free tutorial stages and Luna's turret card pictures
+
+- Stages 1 to 5 cost no power tokens in Normal mode (first clears and replays alike), so a
+  new player learns the game before tokens matter. Elite always costs 8. The POWER pop-up on
+  Home says so. From stage 6 the normal 5 applies.
+- Luna's six turret power card pictures are in: Ricochet, Focused Lance, Chain Storm, Event
+  Horizon, Hive Surge and Wide Prism now show her art instead of the turret's picture
+  (cards/pic_<card>.png, cut by tools/cut_ui_art.gd with ONLY=cards_r2; sources in
+  art_src/cards_r2).
+- New dev check: tools/dev/smoke.gd loads every script and runs quick rule checks before a
+  build is handed over.
 
 ## dev137: power tokens
 

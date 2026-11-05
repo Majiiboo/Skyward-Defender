@@ -262,7 +262,7 @@ func _open_card(s: int) -> void:
 		play.custom_minimum_size = Vector2(0, 42)
 		play.pressed.connect(func():
 			_select(s)
-			if Energy.try_play(self, false):   # a stage costs power tokens
+			if Energy.try_play(self, false, s):   # a stage costs power tokens (stages 1-5 free)
 				_leave("res://battle.tscn"))
 		row.add_child(play)
 		v.add_child(row)

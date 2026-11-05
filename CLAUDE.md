@@ -12,9 +12,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   ATK/Rate/Range + milestones, turret power cards, combat stats (crit, damage boost, base
   reduction, fortress HP) + gear/drone milestones + Gear STATS panel, Home XP ring, Quests Go
   buttons, Modes mystery rewards, Patrol offline farming with limits, power tokens.
-- OPEN QUESTION for Rudy: should the tutorial stages (1-5) be free or cheaper in power
-  tokens? (A new player has 60 = 12 stages, then waits.)
-- Waiting on Luna: turret card pictures (LUNA-BRIEF-turret-cards.md), merge sparks sheet.
+- DECIDED (Rudy, 2026-11-04, dev138): Normal stages 1-5 are free of power tokens (Energy.FREE_STAGES);
+  Elite always pays.
+- Turret card pictures arrived (dev138, art_src/cards_r2). Still waiting on Luna: merge sparks sheet.
 - Next in the queue (Rudy picks): item 16 (e) pilot talent map, (f) gear rarity + Workshop
   gear merging + inventory filter + Quick Merge + loadouts, (g) long-game difficulty re-tune;
   item 17 enemy variants/support enemies/families; item 18 Store 2.0 (key chests with pity);
@@ -32,7 +32,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev137 (code 137).
+  go UP every package (same signing key, install-over). Current: dev138 (code 138).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -193,7 +193,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 21. POWER TOKENS DONE (dev137, Rudy): energy.gd Energy (MAX 60, +1 per 6 min, STAGE_COST 5, ELITE_COST 8,
    PATROL_COST 5, crystal REFILL 30 for 50; save "energy"/"energy_t"). Energy.try_play() gates every
    way into battle (hub nav + SelectGo, modes, stage_map, quests _go, battle Next/Retry); hub
-   _energy_btn counter (refreshes every 2 s). Open question for Rudy: free / cheaper tutorial stages.
+   _energy_btn counter (refreshes every 2 s). Stages 1-5 free in Normal (dev138).
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

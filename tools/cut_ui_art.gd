@@ -59,6 +59,13 @@ const JOBS := [
 	["../cards_r1/frame-fusion", [0, 0, 9999, 9999], "cards/frame_fusion.png", 450, "solid+card"],
 	["../cards_r1/frame-overcharge", [176, 326, 924, 1336], "cards/frame_overcharge.png", 450, "solid+card"],   # frame body only (sparks outside it trimmed)
 	["../cards_r1/gear-platform-design-classic", [0, 0, 9999, 9999], "gear/platform.png", 720, "solid"],
+	# dev138 (art_src/cards_r2): Luna's six turret power card pictures (LUNA-BRIEF-turret-cards.md)
+	["../cards_r2/pic-sentry-ricochet", [0, 0, 9999, 9999], "cards/pic_sentry_ricochet.png", 256, "solid"],
+	["../cards_r2/pic-lance-focus", [0, 0, 9999, 9999], "cards/pic_lance_focus.png", 256, "solid"],
+	["../cards_r2/pic-storm-chain", [0, 0, 9999, 9999], "cards/pic_storm_chain.png", 256, "solid"],
+	["../cards_r2/pic-gravity-horizon", [0, 0, 9999, 9999], "cards/pic_gravity_horizon.png", 256, "solid"],
+	["../cards_r2/pic-swarm-surge", [0, 0, 9999, 9999], "cards/pic_swarm_surge.png", 256, "solid"],
+	["../cards_r2/pic-prism-fan", [0, 0, 9999, 9999], "cards/pic_prism_fan.png", 256, "solid"],
 	# batch D (art_src/batch_d): bolt designs for the cards (pointing right, light) and the
 	# rifle muzzle flash in 4 steps (each cropped just past the barrel Luna painted in)
 	["../batch_d/bolt-designs", [30, 500, 490, 280], "fx/bolt_rail.png", 256, "light"],
@@ -75,7 +82,11 @@ func _initialize() -> void:
 	for d in ["pickups", "fx", "cards", "icons", "base", "gear"]:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://" + d))
 	var sheets := {}
+	# ONLY=cards_r2 (env) re-cuts just the jobs whose source path contains that text
+	var only := OS.get_environment("ONLY")
 	for j in JOBS:
+		if only != "" and not String(j[0]).contains(only):
+			continue
 		if not sheets.has(j[0]):
 			var img := Image.load_from_file(ProjectSettings.globalize_path(SRC + j[0] + ".webp"))
 			img.convert(Image.FORMAT_RGBA8)
@@ -97,7 +108,8 @@ func _initialize() -> void:
 			_save(out, "res://" + j[2])
 			continue
 		_save(_fit(out, j[3]), "res://" + j[2])
-	_platform_layers()
+	if only == "":
+		_platform_layers()
 	quit()
 
 func _save(img: Image, path: String) -> void:

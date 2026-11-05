@@ -11,11 +11,15 @@ const REGEN_S := 360.0          # one token every 6 minutes (empty to full in 6 
 const STAGE_COST := 5
 const ELITE_COST := 8
 const PATROL_COST := 5
+const FREE_STAGES := 5          # the tutorial stages 1-5 cost nothing in Normal mode (Rudy, dev138)
 const REFILL := 30              # tokens a crystal refill gives
 const REFILL_PRICE := 50        # crystals
 
-static func cost(elite: bool) -> int:
-	return ELITE_COST if elite else STAGE_COST
+# what a stage costs: Elite always pays; Normal stages 1-5 are free (stage 0 = unknown, full price)
+static func cost(elite: bool, stage: int = 0) -> int:
+	if elite:
+		return ELITE_COST
+	return 0 if stage >= 1 and stage <= FREE_STAGES else STAGE_COST
 
 # Tokens now, with the refill since last time counted in (changes `save`).
 static func update(save: Dictionary) -> int:
@@ -52,12 +56,15 @@ static func try_spend(save: Dictionary, n: int) -> bool:
 
 # Pay for a stage from the saved file; true = go ahead. Shows the "not enough" box on
 # `parent` otherwise.
-static func try_play(parent: Control, elite: bool) -> bool:
+static func try_play(parent: Control, elite: bool, stage: int = 0) -> bool:
+	var c := cost(elite, stage)
+	if c <= 0:
+		return true
 	var s := Progress.read()
-	if try_spend(s, cost(elite)):
+	if try_spend(s, c):
 		Progress.write(s)
 		return true
-	show_short(parent, cost(elite))
+	show_short(parent, c)
 	return false
 
 static func refill(save: Dictionary) -> bool:
