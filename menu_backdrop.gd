@@ -25,9 +25,9 @@ static func add_to(page: Control) -> MenuBackdrop:
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_stars = Backdrop.make_stars(70, 5)
+	_stars = Backdrop.make_stars(35 if Perf.lite() else 70, 5)
 	_rng.seed = 11
-	for i in MOTES:
+	for i in (MOTES / 2 if Perf.lite() else MOTES):
 		_motes.append({"x": _rng.randf(), "y": _rng.randf(), "s": _rng.randf_range(0.6, 1.6), "v": _rng.randf_range(0.004, 0.012), "ph": _rng.randf() * TAU})
 	var sv := Progress.read()
 	_key = String(StageData.sector(clampi(int(sv.get("selected_stage", 1)), 1, StageData.MAX_STAGE)).get("bg", "hive_a"))
@@ -35,6 +35,10 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if Perf.lite():
+		# battery saver: the wallpaper only redraws a few times a second
+		if Engine.get_process_frames() % 6 != 0:
+			return
 	queue_redraw()
 
 # the page's size can lag a frame behind the screen when a scene opens on its own: always

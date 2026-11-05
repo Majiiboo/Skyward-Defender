@@ -2993,6 +2993,8 @@ func _spawn_shards(e: Dictionary, def: Dictionary) -> void:
 	var tilt: float = float(e.get("tilt_s", 0.0))
 	var pieces: Array = _shard_atlas[e.type]
 	for i in pieces.size():
+		if Perf.lite() and i % 2 == 1:
+			continue   # battery saver: half the shards
 		var at: AtlasTexture = pieces[i]
 		# where this piece sat on the whole bug, so the burst starts from the right spot
 		var off := (Vector2(at.region.position.x + at.region.size.x * 0.5, at.region.position.y + at.region.size.y * 0.5) - at.atlas.get_size() * 0.5) * s
@@ -3250,6 +3252,8 @@ func _draw_hud() -> void:
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
 	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	if Perf.show_fps:   # Settings > frame counter
+		_hc.draw_string(hud_font, Vector2(18, HUD_H + 14), "%d fps" % Engine.get_frames_per_second(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(muted, 0.8))
 	# cards button: three small fanned cards
 	_hud_frame(CARDS_RECT, _cards_open)
 	var cc := CARDS_RECT.get_center()

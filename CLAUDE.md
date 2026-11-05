@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev158)
+## Where we are (hand-over, 2026-11-04, build dev159)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-158 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-159 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev158 (code 158).
+  go UP every package (same signing key, install-over). Current: dev159 (code 159).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -245,7 +245,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). DONE dev147: (e) bug flinch (e.hit_t, HIT_FLINCH_T) + death shards (_spawn_shards / _update_shards / _draw_shards, AtlasTexture cuts of the body). DONE dev148: (c) drone spring (_drone_p / _drone_v, DRONE_K / DRONE_DAMP, _drone_bank). DONE dev149: turrets seated (Backdrop.draw_socket_lip / draw_socket_shadow), UIKit.tile depth; dev150 UIKit.draw_depth / depth / lift on slot squares + Store tiles. DONE dev153: (e) stretch on dart / dive (EnemyRig.draw_bug stretch + stretch_ang, e.stretch_s), (d) turret head overshoot (_spring_ang). DONE dev154: light layers (tools/cut_turret_light.gd, battle _draw_turret_lights, _split_pose). DONE dev155: (b) pilot lean spring (Rig.lean_vel), flare (Rig.flare), squash (Rig.bounce), weight shift, flames trail the lean. DONE dev156: bug hit flash (draw_bug bright), pilot hurt edge (_draw_hurt_edge). dev157 menu transitions (UIKit.enter/leave/pop_in). dev158 pilot turn: head leads (_head_face, side_head_weight / front_head_weight), gun lowers (solve turn), front pose mirrored past the middle, squeeze 0.6, face speed 3.2; tools/dev/turn_capture.gd. LUNA: LUNA-BRIEF-pilot-turn.md (5 whole-body turn frames per suit) -> code cross-fades through them. NEXT: Swarm lid / Sentry barrels / bug legs when Luna's pieces arrive. (f) hit-stop + shake already exist in battle._process (hitstop, shake). Then LUNA-BRIEF-animation.md
    (older in-between list) is mostly superseded by the parts approach.
 16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable.
-27. PERFORMANCE MODES + SETTINGS PAGE (Rudy, 2026-11-04). Facts: draws at native phone
+27. PERFORMANCE MODES + SETTINGS PAGE DONE dev159 (perf.gd Perf: saver/balanced/full, apply_from at hub start, lite() read by MenuBackdrop, UIKit.sheen, battle shards; settings.gd/tscn from the Home menu pop-up; build_info.gd BUildInfo.BUILD bumped by bump_build.sh; show_fps in the battle HUD). Was: Facts: draws at native phone
    resolution (stretch canvas_items/expand from 480 wide), no FPS cap + vsync = screen refresh
    (60/90/120), GL Compatibility, ETC2/ASTC. dev146 switched the frost blur off (covered by
    MenuBackdrop). TO BUILD: settings.gd page (Menu button on Home): Performance = Battery saver

@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev158 (version/code=158 and version/name="1.0-dev158" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev159 (version/code=159 and version/name="1.0-dev159" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,19 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev159: Settings page with performance modes
+
+- Home's menu button now opens SETTINGS (and shows the build number). The page has:
+  - PERFORMANCE: Battery saver (30 fps, the engine rests between frames, lighter menu
+    effects: fewer stars and motes, a still wallpaper, no button sheen, half the death
+    shards), Balanced (60 fps, everything on; the default), Full throttle (no cap: 90 or
+    120 on phones with those screens). Applied at once and remembered.
+  - A frame counter switch: a small fps number in battle and on the Settings page, for
+    testing on your phone.
+  - SOUND: effects and music switches, greyed "coming with the sound pack".
+  - GAME: a Stage Map shortcut. ABOUT: the build number (kept up to date by the build
+    bump) and a line on resolution.
 
 ## dev158: the pilot's turn (Rudy: "is it a mirror flip?")
 

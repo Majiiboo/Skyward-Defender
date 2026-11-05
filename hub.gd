@@ -101,6 +101,7 @@ func _ready() -> void:
 	var ps := Progress.read()
 	Patrol.tick(ps)
 	Progress.write(ps)
+	Perf.apply_from(ps)   # performance mode and frame counter (Settings)
 	_load_save()
 	_frame = HomeFrame.new()
 	_frame.name = "HomeFrame"
@@ -318,7 +319,7 @@ func _build_home() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(spacer)
 	var menu := _icon_button("MenuButton", "menu", 44.0, 32.0, 16)
-	menu.pressed.connect(func(): _side_popup("MENU", "Settings, mail, log-in rewards and community come with the online update (2.0).", [["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]]))
+	menu.pressed.connect(func(): _side_popup("MENU", "Build %s\nMail, log-in rewards and community come with the online update (2.0)." % BuildInfo.BUILD, [["Settings", func(): _smooth_change_scene("res://settings.tscn")], ["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]]))
 	top.add_child(menu)
 
 	# ---- stage block: mode tag, stage name with arrows, Standard / Elite ----

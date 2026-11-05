@@ -131,7 +131,7 @@ static func reveal(box: Node, stagger: float = 0.035, rise: float = 14.0) -> voi
 # A light sweep across a gold button every few seconds (dev145): a thin bright band
 # slides over it, clipped to the button, so the main action catches the eye.
 static func sheen(b: Button) -> void:
-	if b.has_meta("sheen"):
+	if b.has_meta("sheen") or Perf.lite():
 		return
 	b.set_meta("sheen", true)
 	b.clip_contents = true
