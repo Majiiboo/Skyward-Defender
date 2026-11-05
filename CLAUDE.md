@@ -124,6 +124,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    spitter, diver, spore) and the ONLY boss is the Hive Mother (mini at x5, big at x10, young one
    mid-stage from 22). Plan: (a) code-only first: enemy tiers / variants (armoured shell, shielded,
    fast, splitting...) using the turret traits that no enemy has yet, and a gradual mix: tier 1
+   ROLES, not only attackers (Rudy): support variants that buff bugs NEAR them (health boost,
+   attack boost, speed boost, each its own variant with a visible aura linking them), a healer,
+   a force-field projector (bubble over neighbours that stops bolts until broken), armoured shells
+   (several hits to crack), plus attack variants. Kill the support first = the strategy.
    early in each planet, tier 2 creeping in, a little tier 3 near its end. (b) A boss and a
    mini-boss per planet, each with its own moves (Luna parts sheets, like the Hive Mother), plus
    each planet's own enemy family (LUNA-BRIEF-areas.md), Scrap Belt first.
