@@ -336,7 +336,12 @@ static func attention(d: Dictionary) -> Dictionary:
 			if GearData.can_merge(g, id, r):
 				gear_merge = true
 	var p := Patrol.tick(d.duplicate(true))   # a copy: looking must not count time
-	var patrol: bool = not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0
+	var patrol: bool = not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0 and Unlocks.open(d, "patrol")
+	if not Unlocks.open(d, "workshop"):   # no dot for a page the player cannot see yet (Unlocks)
+		parts_merge = false
+		gear_merge = false
+	if not Unlocks.open(d, "repeat"):
+		q[3] = false
 	return {"quests": q[0] or q[1] or q[2] or q[3], "quests_tabs": q, "store": bool(attend(d).claimable),
 		"gear": parts_merge or gear_merge, "gear_ws": [parts_merge, gear_merge], "patrol": patrol}
 

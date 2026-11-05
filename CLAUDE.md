@@ -5,8 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-04, build dev167)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev167: 1 update (next push = dev167 + that count; see the build rule).
+- UNPUSHED since dev167: 2 updates (next push = dev167 + that count; see the build rule).
   1. Elite capped by Standard progress + Promotion ladder 10/20/25..60 retuned (README "next push").
+  2. FUN PASS part one: unlocks.gd Unlocks (progressive disclosure: UNLOCKS table by stage / level,
+     open / fresh / mark_seen / settle, save "seen_new"); UIKit.tabs hidden list + tab_map meta +
+     tab_shown; gear _hidden_pages, store Parts tab, quests Repeat tab, modes teaser card, hub
+     Patrol dock + _announce_new NEW pop-up, Progress.attention gated. Rudy's fear (2026-11-05):
+     "too much to absorb, not enough fun gameplay" -> research in the chat (Vampire Survivors /
+     Brotato / Archero loops, staggered unlocks, game feel); plan: hide-not-remove (done), sound
+     + hit feel, fight decisions (telegraphs, reasons to move), measure the first 10 minutes.
 - dev138-167 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).

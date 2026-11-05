@@ -50,7 +50,7 @@ const RIGHT_RAIL := [
 		"go": ["NavQuests", "quests_tab", 0]},
 	{"id": "GiftsButton", "icon": "gifts", "label": "Gifts", "dot": false,
 		"go": ["NavStore", "store_tab", 0]},
-	{"id": "RanksButton", "icon": "ranks", "label": "Ranks", "dot": false,
+	{"id": "RanksButton", "icon": "ranks", "label": "Ranks", "dot": false, "hidden": true,   # no dead buttons (dev168): back with the online update
 		"title": "RANKS", "body": "Rankings run in 30-day seasons with rewards by rank. They need the online update (2.0)."},
 ]
 const NAV_PATHS := {"NavStore": "res://store.tscn", "NavGear": "res://gear.tscn", "NavModes": "res://modes.tscn", "NavQuests": "res://quests.tscn"}
@@ -127,6 +127,7 @@ func _ready() -> void:
 	_setup_view_manager()
 	call_deferred("_animate_nav_in")
 	_on_energy_changed()   # the red dots, now that every button exists
+	get_tree().create_timer(0.7).timeout.connect(_announce_new)   # NEW: a system opened since the last visit (Unlocks)
 	call_deferred("_home_tips")   # guided first-time tips (Tips)
 
 func _load_save() -> void:
@@ -433,14 +434,15 @@ func _build_home() -> void:
 	chest.offset_bottom = -159.0
 	row.add_child(chest)
 	# (no START button here since dev107: on Home the gold Battle tab IS the Play button)
-	var patrol := _action_item("PatrolButton", "patrol", "Patrol", _patrol_open)   # offline farming (Patrol)
-	patrol.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
-	patrol.grow_horizontal = Control.GROW_DIRECTION_BEGIN
-	patrol.grow_vertical = Control.GROW_DIRECTION_BOTH
-	patrol.offset_right = -2.0
-	patrol.offset_top = -159.0
-	patrol.offset_bottom = -159.0
-	row.add_child(patrol)
+	if Unlocks.open(Progress.read(), "patrol"):   # Patrol appears after stage 6 (Unlocks)
+		var patrol := _action_item("PatrolButton", "patrol", "Patrol", _patrol_open)   # offline farming (Patrol)
+		patrol.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
+		patrol.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+		patrol.grow_vertical = Control.GROW_DIRECTION_BOTH
+		patrol.offset_right = -2.0
+		patrol.offset_top = -159.0
+		patrol.offset_bottom = -159.0
+		row.add_child(patrol)
 
 func _action_item(node_name: String, icon_name: String, label: String, on_press: Callable) -> Control:
 	# Round button + optional small label, same size for Chest and Patrol so they line up.
@@ -1331,3 +1333,31 @@ func _open_home_chest(c: Dictionary) -> void:
 	_crystal_btn.text = _fmt(crystals)
 	_patrol_toast("+ " + Progress.reward_text(reward))
 	_chest_popup()   # stays open for another go
+
+# ------------------------------------------------------------- NEW (Unlocks)
+# Systems appear one at a time (Unlocks). The first one opened since the last visit gets
+# one glass pop-up with a Show me button that opens it; an old save takes what it already
+# has as seen (Unlocks.settle), so a veteran is not greeted with a queue of pop-ups.
+func _announce_new() -> void:
+	if not is_inside_tree() or _current_view != null or _popup_layer != null:
+		return
+	var s := Progress.read()
+	Unlocks.settle(s)
+	var fresh := Unlocks.fresh(s)
+	if fresh.is_empty():
+		Progress.write(s)
+		return
+	var id: String = fresh[0]
+	Unlocks.mark_seen(s, id)
+	Progress.write(s)
+	var u: Dictionary = Unlocks.UNLOCKS[id]
+	var actions: Array = []
+	var go: Array = u.get("go", [])
+	if not go.is_empty():
+		actions.append(["Show me", func():
+			if String(go[1]) != "":
+				get_tree().root.set_meta(go[1], go[2])
+			_on_nav_tap(go[0], NAV_PATHS[go[0]])])
+	elif id == "patrol":
+		actions.append(["Show me", _patrol_open])
+	_side_popup("NEW: %s" % String(u.name).to_upper(), String(u.text), actions)

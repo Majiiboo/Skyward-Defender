@@ -62,6 +62,7 @@ func _ready() -> void:
 		_ws_tab = int(get_tree().root.get_meta("gear_ws_tab"))
 		get_tree().root.remove_meta("gear_ws_tab")
 	_load()
+	_start_page = UIKit.tab_shown([0, 1, 2, 3], _start_page, _hidden_pages())   # a page not reached yet falls back to Pilot
 	_build()
 	_select(selected_slot)
 	if _start_page != 0:
@@ -144,7 +145,8 @@ func _build() -> void:
 	top.add_child(_wallet_box)
 	col.add_child(top)
 	# Pilot / Turrets switch
-	_tabs_row = UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page)
+	# pages the player has not reached yet are not built (Unlocks: turrets, drone, workshop)
+	_tabs_row = UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages())
 	col.add_child(_tabs_row)
 	_paint_dots()
 	_workshop_box = VBoxContainer.new()
@@ -168,6 +170,7 @@ func _build() -> void:
 	_loadout_row = HBoxContainer.new()
 	_loadout_row.add_theme_constant_override("separation", 6)
 	col.add_child(_loadout_row)
+	_loadout_row.visible = Unlocks.open(_read(), "loadouts")   # kits appear once a second set is in reach (Unlocks)
 	_paint_loadouts()
 	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
 	var stage := Control.new()
@@ -417,6 +420,16 @@ func _on_upgrade_pressed() -> void:
 	var tw := b.create_tween()
 	tw.tween_property(b, "scale", Vector2(1.12, 1.12), 0.1)
 	tw.tween_property(b, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+
+
+# Gear pages the player has not reached (Unlocks): 1 Turrets, 2 Drone, 3 Workshop
+func _hidden_pages() -> Array:
+	var d := _read()
+	var out: Array = []
+	for pair in [[1, "turrets"], [2, "drone"], [3, "workshop"]]:
+		if not Unlocks.open(d, pair[1]):
+			out.append(pair[0])
+	return out
 
 func _show_page(i: int) -> void:
 	_pilot_box.visible = i == 0

@@ -81,7 +81,9 @@ func _build() -> void:
 	if get_tree().root.has_meta("store_tab"):
 		tab = int(get_tree().root.get_meta("store_tab"))
 		get_tree().root.remove_meta("store_tab")
-	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab)
+	var hidden: Array = [] if Unlocks.open(d, "workshop") else [2]   # Parts only once the Workshop is open (Unlocks)
+	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
+	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab, [], hidden)
 	col.add_child(_tabs_row)
 	_page = VBoxContainer.new()
 	_page.add_theme_constant_override("separation", 10)

@@ -78,8 +78,19 @@ func _build() -> void:
 	top.add_child(back)
 	top.add_child(UIKit.screen_title("MODES"))
 	col.add_child(top)
+	# Modes the player has not reached are not shown, except the NEXT one as a teaser
+	# (Unlocks, dev168: a new player sees Normal and one card to look forward to)
+	var teased := false
 	for m in MODES:
-		col.add_child(_card(m))
+		var gate: String = {"elite": "elite", "promotion": "promotion"}.get(m.id, "")
+		var reached: bool = gate == "" or Unlocks.open(_save, gate)
+		if m.get("soon", false):
+			reached = player_level >= int(m.unlock)
+		if reached:
+			col.add_child(_card(m))
+		elif not teased:
+			teased = true
+			col.add_child(_card(m))
 	UIKit.reveal(col, 0.06)
 	call_deferred("_tips")
 

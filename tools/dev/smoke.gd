@@ -21,6 +21,7 @@ func _initialize() -> void:
 	_check_promotion()
 	_check_repeat()
 	_check_cards()
+	_check_unlocks()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
 
@@ -196,3 +197,29 @@ func _check_cards() -> void:
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("turret"):
 			_expect(ResourceLoader.exists("res://cards/pic_%s.png" % id), "turret card picture missing: " + id)
+
+# progressive disclosure (Unlocks, dev168): a new player sees little, systems open in order
+func _check_unlocks() -> void:
+	var s := {"pilot_xp": 0, "stage_unlocked": 1}
+	for id in ["turrets", "patrol", "workshop", "repeat", "promotion", "drone", "elite", "loadouts"]:
+		_expect(not Unlocks.open(s, id), "fresh save: %s hidden" % id)
+	_expect(Unlocks.open(s, "nothing_like_this"), "unknown ids are always open")
+	_expect(Unlocks.fresh(s).is_empty(), "fresh save: nothing to announce")
+	s["stage_unlocked"] = 6
+	_expect(Unlocks.open(s, "turrets") and not Unlocks.open(s, "patrol"), "stage 5 cleared: turrets open, patrol not yet")
+	_expect(Unlocks.fresh(s) == ["turrets", "repeat"], "stage 5 cleared: turrets and repeat quests to announce, table order")
+	Unlocks.mark_seen(s, "turrets")
+	Unlocks.mark_seen(s, "repeat")
+	_expect(Unlocks.fresh(s).is_empty(), "announced once")
+	s["stage_unlocked"] = 7
+	_expect(Unlocks.fresh(s) == ["patrol"], "stage 6 cleared: patrol next")
+	var g := GearData.read(s)
+	GearData.add_copy(g, "ion_weapon", "common")
+	s["gear"] = GearData.write(g)
+	_expect(Unlocks.open(s, "workshop"), "a spare copy opens the Workshop early")
+	s["pilot_xp"] = Turrets.xp_for_level(8)
+	_expect(Unlocks.open(s, "drone") and Unlocks.open(s, "promotion") and not Unlocks.open(s, "elite"), "Lv.8: drone and promotion, not elite")
+	var old := {"pilot_xp": Turrets.xp_for_level(12), "stage_unlocked": 20}
+	Unlocks.settle(old)
+	_expect(Unlocks.fresh(old).is_empty(), "an old save takes what it has as seen")
+	_expect(UIKit.tab_shown([0, 1, 2, 3], 2, [2, 3]) == 0 and UIKit.tab_shown([0, 1, 2, 3], 1, [2]) == 1, "hidden tab falls back to the first shown")

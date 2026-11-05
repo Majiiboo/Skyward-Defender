@@ -271,15 +271,33 @@ static func dot(b: Control, on: bool) -> void:
 
 # dots on a tabs() row: flags[i] true = the i-th tab has something to claim
 static func tab_dots(row: HBoxContainer, flags: Array) -> void:
-	for i in mini(row.get_child_count(), flags.size()):
-		dot(row.get_child(i), bool(flags[i]))
+	# flags are indexed like `names` in tabs(); hidden tabs (Unlocks) are skipped by the map
+	var map: Array = row.get_meta("tab_map", [])
+	for j in row.get_child_count():
+		var i: int = int(map[j]) if j < map.size() else j
+		if i < flags.size():
+			dot(row.get_child(j), bool(flags[i]))
 
-static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array = []) -> HBoxContainer:
+# the index a hidden `selected` tab falls back to (the first shown one)
+static func tab_shown(names: Array, selected: int, hidden: Array) -> int:
+	if not hidden.has(selected):
+		return selected
+	for i in names.size():
+		if not hidden.has(i):
+			return i
+	return 0
+
+static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array = [], hidden: Array = []) -> HBoxContainer:
 	# A row of sub-tabs (Daily / Weekly / Monthly). Calls on_pick(index). dots: see tab_dots.
+	# hidden: indices not built at all (a system the player has not reached yet, Unlocks);
+	# on_pick and dots keep using the full `names` index.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var buttons: Array = []
+	var map: Array = []
 	for i in names.size():
+		if hidden.has(i):
+			continue
 		var b := Button.new()
 		b.text = names[i]
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -287,15 +305,18 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 		b.add_theme_font_size_override("font_size", 13)
 		row.add_child(b)
 		buttons.append(b)
+		map.append(i)
+	row.set_meta("tab_map", map)
 	var paint := func(sel: int):
 		for j in buttons.size():
-			var on: bool = j == sel
+			var on: bool = int(map[j]) == sel
 			_style_btn(buttons[j], box(Color(CYAN, 0.2) if on else Color(0.035, 0.06, 0.14, 0.45), Color(CYAN, 0.9) if on else Color(0.55, 0.85, 1.0, 0.22), 12), box(Color(CYAN, 0.3), CYAN, 12), Color.WHITE if on else MUTED)
-	for i in buttons.size():
-		buttons[i].pressed.connect(func():
+	for j in buttons.size():
+		var i: int = int(map[j])
+		buttons[j].pressed.connect(func():
 			paint.call(i)
 			on_pick.call(i))
-	paint.call(selected)
+	paint.call(tab_shown(names, selected, hidden))
 	tab_dots(row, dots)
 	return row
 

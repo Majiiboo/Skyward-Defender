@@ -50,7 +50,9 @@ func _build() -> void:
 	if get_tree().root.has_meta("quests_tab"):
 		tab = int(get_tree().root.get_meta("quests_tab"))
 		get_tree().root.remove_meta("quests_tab")
-	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat"], func(i): tab = i; _fill(), tab)
+	var hidden: Array = [] if Unlocks.open(d, "repeat") else [3]   # Repeat quests from stage 4 (Unlocks)
+	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
+	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat"], func(i): tab = i; _fill(), tab, [], hidden)
 	col.add_child(_tabs_row)
 	_note = UIKit.label("", 12, UIKit.MUTED)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

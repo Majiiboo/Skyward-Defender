@@ -156,6 +156,22 @@ Update 1: Elite and Promotion, from your notes.
   stage wins about half the time, a player twelve stages weaker almost never (one win in
   fifteen), a player eight stages stronger nearly always. Gear and turrets carry it, not retries.
 
+Update 2: the fun pass, part one: SYSTEMS APPEAR ONE AT A TIME (your worry that there is too
+much to absorb). Nothing was removed; a new player just does not see it yet.
+- A fresh player sees: Play, Gear with only the Pilot page, Quests (Daily, Career, Trophies),
+  the Store (Offers, Chests, Packs) and Modes with Normal plus ONE "next up" card.
+- Then, in this order: Repeat quests after stage 3; Turrets after stage 5 (the first mount);
+  Patrol after stage 6; the Workshop after stage 8 (or sooner, the moment you hold a spare copy
+  of a piece or enough parts to merge); Promotion at pilot level 5; the Drone at level 8;
+  Elite at level 10; Loadouts (the KIT row) after stage 12. The Store's Parts tab comes with the
+  Workshop.
+- Each one is announced ONCE on Home with a small NEW pop-up and a Show me button that opens
+  it. Your existing save takes everything it already has as seen, so you will not get a queue
+  of pop-ups.
+- Red dots never point at a page you cannot see yet. The Ranks button (which only said
+  "needs the online update") is hidden until that update exists.
+- The table is unlocks.gd; moving a system earlier or later is one number.
+
 ## dev167: your playtest, round one (the quick fixes)
 
 - TURRETS PAGE WAS EMPTY: a bug of mine from dev149 (the card depth layer took the spot the
