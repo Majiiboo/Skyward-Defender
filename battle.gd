@@ -279,6 +279,9 @@ func _ready() -> void:
 	_tex["ui_coin"] = load("res://icons/ui_coin.png")
 	for n in ["lid_closed", "lid_half", "lid_open"]:
 		_tex[n] = load("res://base/%s.png" % n)
+	for k in Parts.ORDER:   # part pickups (was loaded every frame while one lay on the field)
+		if ResourceLoader.exists("res://parts/%s.png" % k):
+			_tex["part_" + k] = load("res://parts/%s.png" % k)
 	for n in FX_NAMES:
 		_fx_tex[n] = load("res://fx/%s.png" % n)
 	# effects (shots, hits, glows) are drawn on their own layer with additive light
@@ -3372,12 +3375,10 @@ func _maybe_brief() -> void:
 # else a small faceted shape in the part's colour with a slow turn.
 func _draw_part_pickup(p: Vector2, kind: String, a: float) -> void:
 	var col: Color = Parts.KINDS[kind].color
-	var path := "res://parts/%s.png" % kind
 	draw_circle(p, 13.0, Color(0.0, 0.01, 0.05, 0.55 * a))
 	draw_arc(p, 12.0 + sin(time_alive * 5.0) * 1.0, 0.0, TAU, 20, Color(col, 0.8 * a), 1.4, true)
-	if ResourceLoader.exists(path):
-		var tx: Texture2D = load(path)
-		draw_texture_rect(tx, Rect2(p - Vector2(11, 11), Vector2(22, 22)), false, Color(1, 1, 1, a))
+	if _tex.has("part_" + kind):
+		draw_texture_rect(_tex["part_" + kind], Rect2(p - Vector2(11, 11), Vector2(22, 22)), false, Color(1, 1, 1, a))
 		return
 	var sides: int = {"alloy": 4, "cell": 6, "core": 8}[kind]
 	var pts := PackedVector2Array()

@@ -87,6 +87,47 @@ static func _style_btn(b: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat, t
 	b.add_theme_color_override("font_hover_color", text_col)
 	b.add_theme_color_override("font_pressed_color", text_col)
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.55, 0.65))
+	press_fx(b)
+
+# Touch feedback on every kit button (dev140): a small squeeze while held, a springy
+# release. Connected once per button.
+static func press_fx(b: Button) -> void:
+	if b.has_meta("press_fx"):
+		return
+	b.set_meta("press_fx", true)
+	b.button_down.connect(func():
+		b.pivot_offset = b.size * 0.5
+		var tw := b.create_tween()
+		tw.tween_property(b, "scale", Vector2(0.95, 0.95), 0.06))
+	b.button_up.connect(func():
+		var tw := b.create_tween()
+		tw.tween_property(b, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
+
+# an icon with a number beside it (coins, crystals, parts)
+static func amount(icon: Texture2D, n: int, col: Color, px: float = 18.0, font: int = 13) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	h.alignment = BoxContainer.ALIGNMENT_CENTER
+	var tr := TextureRect.new()
+	tr.texture = icon
+	tr.custom_minimum_size = Vector2(px, px)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(tr)
+	h.add_child(label(num(n), font, col))
+	return h
+
+static func num(n: int) -> String:
+	return str(n) if n < 10000 else "%.1fk" % (n / 1000.0)
+
+# the same coins + crystals wallet at the top of every menu page (Store, Quests, Gear)
+static func wallet(coins: int, crystals: int) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	h.add_child(amount(load("res://icons/ui_coin.png"), coins, GOLD))
+	h.add_child(amount(load("res://icons/ui_crystal.png"), crystals, CYAN))
+	return h
 
 static func gold_button(text: String, size_px: int = 16) -> Button:
 	# The main action (Claim, Upgrade, Go).

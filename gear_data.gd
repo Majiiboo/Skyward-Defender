@@ -311,6 +311,15 @@ static func roll_drop(stage: int, rng: RandomNumberGenerator) -> Dictionary:
 			break
 	return {"id": "%s_%s" % [set_id, slot.to_lower()], "rarity": r}
 
+# the best rarity a stage can drop (the Modes rewards row)
+static func best_drop_rarity(stage: int) -> String:
+	var w: Array = DROP_WEIGHTS[clampi((stage - 1) / 10, 0, SET_ORDER.size() - 1)]
+	var best := "common"
+	for i in w.size():
+		if int(w[i]) > 0:
+			best = RARITIES[i]
+	return best
+
 # chance that clearing `stage` drops a piece: every 5th stage (mini-boss / boss) always,
 # Elite always, other stages about a third of the time
 static func drop_chance(stage: int, elite: bool) -> float:

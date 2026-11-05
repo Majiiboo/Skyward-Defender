@@ -183,10 +183,12 @@ func _rewards(id: String) -> Array:
 				out.append(["res://parts/cell.png", "epic"])
 			if boss == "boss" and s >= 20:
 				out.append(["res://parts/core.png", "legendary"])
+			out.append(["res://icons/gear_on.png", GearData.best_drop_rarity(s)])   # a gear copy (dev139)
 		"elite":
 			out.append(["res://parts/cell.png", "epic"])
 			if boss == "boss" and s >= 20:
 				out.append(["res://parts/core.png", "legendary"])
+			out.append(["res://icons/gear_on.png", GearData.best_drop_rarity(s)])
 		"horde":
 			out = [[COIN, "common"], [CRYSTAL, "epic"]]
 		"boss":

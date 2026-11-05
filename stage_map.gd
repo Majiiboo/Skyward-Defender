@@ -195,7 +195,7 @@ func _build_top() -> void:
 	line.position = Vector2(0, 63)
 	line.size = Vector2(4000, 1.2)
 	add_child(line)
-	var back := UIKit.ghost_button("‹ Home", 13)
+	var back := UIKit.ghost_button("Back", 13)   # the same Back as every other page
 	back.position = Vector2(10, 14)
 	back.size = Vector2(84, 36)
 	back.pressed.connect(_go_home)

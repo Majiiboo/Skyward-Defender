@@ -9,6 +9,7 @@ extends Control
 
 var gear := {}             # GearData.read(save): {equipped, levels, copies, recent}
 var _loadout_row: HBoxContainer
+var _wallet_box: HBoxContainer
 var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
 var _ws_parts_box: VBoxContainer
 var _ws_gear_box: VBoxContainer
@@ -133,6 +134,8 @@ func _build() -> void:
 	top.add_child(sp)
 	_power_label = UIKit.label("", 13, UIKit.GOLD)
 	top.add_child(_power_label)
+	_wallet_box = HBoxContainer.new()
+	top.add_child(_wallet_box)
 	col.add_child(top)
 	# Pilot / Turrets switch
 	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page))
@@ -342,7 +345,8 @@ func _select(slot: String) -> void:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
 		_upgrade_btn.text = _upgrade_text(cost, lv)
-	_power_label.text = "POWER %d  ·  %d coins" % [GearData.power(gear), coins]
+	_power_label.text = "POWER %d" % GearData.power(gear)
+	_paint_wallet()
 	var lines: Array = []
 	for set_id in GearData.SETS:
 		var n := GearData.set_count(gear, set_id)
@@ -393,6 +397,7 @@ func _on_upgrade_pressed() -> void:
 	if GearData.milestones(lv + 1) > GearData.milestones(lv):
 		_milestone_toast("%s reached Lv.%d: %s" % [GearData.ITEMS[id].name, lv + 1, GearData.MILESTONE[selected_slot].text])
 	_save()
+	Progress.bump("upgrades")
 	_select(selected_slot)
 	if _plat:
 		_plat.glow_col = UIKit.RARITY[GearData.ITEMS[id].set] if _plat.glow <= 0.0 else _plat.glow_col
@@ -593,6 +598,7 @@ func _merge(kind: String, times: int) -> void:
 	if out:
 		out.store_string(JSON.stringify(data))
 		out.close()
+	Progress.bump("merges", made)
 	var to: String = Parts.MERGE[kind]
 	var fx := MergeFX.new()
 	fx.src = Parts.icon(kind)
@@ -684,7 +690,8 @@ func _refresh_ws_gear() -> void:
 	for s in stacks:
 		grid.add_child(_inv_tile(s))
 	_ws_gear_box.add_child(grid)
-	_power_label.text = "GEAR  %d copies  ·  %d coins" % [total, coins]
+	_power_label.text = "%d copies" % total
+	_paint_wallet()
 
 # a stack tile: the piece in its rarity colour, "x3", the set name as the badge
 func _inv_tile(s: Dictionary) -> Button:
@@ -753,6 +760,7 @@ func _merge_gear(id: String, r: String) -> void:
 	if out:
 		out.store_string(JSON.stringify(data))
 		out.close()
+	Progress.bump("merges")
 	gear = g
 	var fx := MergeFX.new()
 	fx.src = _pic(id)
@@ -774,6 +782,7 @@ func _quick_merge() -> void:
 	if out:
 		out.store_string(JSON.stringify(data))
 		out.close()
+	Progress.bump("merges", made)
 	gear = g
 	var fx := MergeFX.new()
 	fx.src = load("res://parts/alloy.png") if ResourceLoader.exists("res://parts/alloy.png") else null
@@ -919,6 +928,14 @@ func _loadout_box(i: int) -> void:
 	p.add_child(v)
 	layer.add_child(p)
 
+# coins and crystals as icons at the top right (the same wallet as Store and Quests)
+func _paint_wallet() -> void:
+	if _wallet_box == null:
+		return
+	for c in _wallet_box.get_children():
+		c.queue_free()
+	_wallet_box.add_child(UIKit.wallet(coins, int(_read().get("crystals", 0))))
+
 func _write_data(data: Dictionary) -> void:
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
@@ -986,6 +1003,7 @@ func _refresh_drone() -> void:
 				if int(drone.level) == int(m[0]):
 					_milestone_toast("Drone reached Lv.%d: %s" % [m[0], m[1]])
 			_save_drone()
+			Progress.bump("upgrades")
 			_refresh_drone())
 	urow.add_child(up)
 	_drone_box.add_child(urow)
@@ -1011,7 +1029,8 @@ func _refresh_drone() -> void:
 					_refresh_drone())
 			grid.add_child(tile)
 		_drone_box.add_child(grid)
-	_power_label.text = "DRONE Lv.%d  ·  %d coins" % [lvl, coins]
+	_power_label.text = "DRONE Lv.%d" % lvl
+	_paint_wallet()
 
 func _save_drone() -> void:
 	var data := _read()
@@ -1227,7 +1246,8 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 	return t
 
 func _refresh_turrets() -> void:
-	_power_label.text = "COINS %d" % coins
+	_power_label.text = ""
+	_paint_wallet()
 	for c in _mount_row.get_children():
 		c.queue_free()
 	for i in Turrets.MOUNTS:
@@ -1285,7 +1305,7 @@ func _refresh_turret_detail() -> void:
 	var locked: bool = pilot_level < int(def.unlock)
 	var ms := Turrets.milestones(lvl)
 	# name and level, its milestone stars, then the next milestone (every 5 levels)
-	var lines := "%s  Lv.%d  %s\n%s" % [def.name, lvl, "*".repeat(ms), def.desc]
+	var lines := "%s  Lv.%d  %s\n%s" % [def.name, lvl, "★".repeat(ms), def.desc]
 	if locked:
 		lines += "\nNeeds pilot Lv.%d" % def.unlock
 	elif not def.ready:
@@ -1348,6 +1368,7 @@ func _on_track_upgrade(k: String) -> void:
 	t_tracks[t_focus] = tr
 	t_levels[t_focus] = Turrets.level_of(tr)
 	_save_turrets()
+	Progress.bump("turret_upgrades")
 	_refresh_turrets()
 	var b: Button = _t_tracks_btn[k]
 	b.pivot_offset = b.size * 0.5

@@ -25,3 +25,22 @@ func _initialize() -> void:
 		root.set_meta("gear_ws_tab", int(ws))
 	var scene := OS.get_environment("CAP_SCENE")
 	change_scene_to_file(scene if scene != "" else "res://gear.tscn")
+	# CAP_CALL="method|arg|arg": call that on the scene once it has settled (opens a pop-up)
+	var call := OS.get_environment("CAP_CALL")
+	if call != "":
+		_pending = call.split("|")
+
+var _pending := PackedStringArray()
+var _frames := 0
+
+func _process(_delta: float) -> bool:
+	if _pending.is_empty() or current_scene == null:
+		return false
+	_frames += 1
+	if _frames == 10:
+		var args: Array = []
+		for i in range(1, _pending.size()):
+			args.append(_pending[i])
+		current_scene.callv(_pending[0], args)
+		_pending = PackedStringArray()
+	return false

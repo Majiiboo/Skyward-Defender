@@ -23,6 +23,10 @@ const DAILY_POOL := [
 	{"id": "d_perfect1", "text": "Win a stage with no damage", "stat": "perfect", "goal": 1, "reward": {"coins": 100, "crystals": 5}},
 	{"id": "d_time10", "text": "Fight for 10 minutes", "stat": "seconds", "goal": 600, "reward": {"coins": 100, "pilot_xp": 100}},
 	{"id": "d_boss1", "text": "Defeat a boss or mini-boss", "stat": "bosses_any", "goal": 1, "reward": {"coins": 150, "crystals": 5}},
+	# Gear page tasks (dev140; their Go buttons open the right Gear tab): gear.gd calls bump()
+	{"id": "d_upgrade2", "text": "Upgrade gear 2 times", "stat": "upgrades", "goal": 2, "reward": {"coins": 80, "pilot_xp": 60}},
+	{"id": "d_turret1", "text": "Upgrade a turret track", "stat": "turret_upgrades", "goal": 1, "reward": {"coins": 80, "pilot_xp": 60}},
+	{"id": "d_merge1", "text": "Merge in the Workshop", "stat": "merges", "goal": 1, "reward": {"coins": 60, "crystals": 3}},
 ]
 const DAILY_COUNT := 5
 const DAILY_ALL_BONUS := {"coins": 200, "crystals": 10}   # for finishing all five
@@ -141,6 +145,15 @@ static func record_run(run: Dictionary) -> void:
 			add.call("bosses", 1)
 		if run.get("boss", "") != "":
 			add.call("bosses_any", 1)
+	d["stats"] = s
+	write(d)
+
+# Count a menu action (upgrades, turret_upgrades, merges) for missions. Reads and writes
+# the save, so call it after the screen has saved its own changes.
+static func bump(key: String, n: int = 1) -> void:
+	var d := read()
+	var s: Dictionary = d.get("stats", {})
+	s[key] = float(s.get(key, 0.0)) + n
 	d["stats"] = s
 	write(d)
 

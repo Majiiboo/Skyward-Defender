@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev139 (version/code=139 and version/name="1.0-dev139" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev140 (version/code=140 and version/name="1.0-dev140" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,48 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev140: polish pass (menus, notes, code)
+
+Rudy asked for a page-by-page look at the whole game. What changed:
+- Home: every pop-up (Profile, Coins, Crystals, Power, Menu, Chest stage info, Event, Promo,
+  Ranks) is now a glass card in the menus' style, with a tap-outside-to-close dim, instead of
+  the old grey engine panels. The four old panels (and a leftover show-only Patrol panel) were
+  removed from the scene.
+- Home side buttons go somewhere now: Daily opens Quests (Daily), Gifts opens the Store
+  (Offers, the daily gift), Starter opens the Store (Packs). Event, Promo and Ranks say
+  plainly what they will be. Profile shows a real card: XP to the next level, highest stage,
+  stars, bugs, bosses, stages cleared, hours, with a Trophies button. Crystals explains where
+  they come from and opens the Store; Menu has a Stage Map shortcut.
+- One wallet everywhere: coins and crystals as icons at the top right of Store, Quests and
+  Gear (Quests had them as words, Gear only coins).
+- Every button in the menus squeezes a little while held and springs back (touch feedback).
+- Stage Map's "‹ Home" is now the same Back button as every other page.
+- Turret milestones show a real star instead of an asterisk.
+- Modes: the rewards row shows a gear piece (in the best rarity that planet can drop).
+- Quests: three new daily tasks that use the Go buttons added in dev131: "Upgrade gear 2
+  times", "Upgrade a turret track", "Merge in the Workshop" (Gear counts them).
+- Battle: part pickups no longer load their picture from disk every frame.
+- Notes (CLAUDE.md) brought up to date: layout overhaul, glass menus, real missions and gear
+  copies in Patrol are all marked done; a new queue item 22 lists the polish proposals below.
+
+Things I would upgrade next (your call, Rudy; some need Luna):
+1. Sound: there is none. Taps, bolts, hits, pickups, card picks, a music loop per planet.
+   Biggest "modern game" gap by far. Needs sound files (free packs or a composer).
+2. Home side rail: only Chest, Patrol, Starter and Gifts have labels (LABELED in hub.gd);
+   make it all six or none. Event and Promo lead nowhere yet: hide them until events exist?
+3. Fonts: Modes banners and the Stage Map title use Orbitron; the rule says Exo 2 everywhere
+   except the Home stage name and battle banners. Keep Orbitron there, or switch to Exo 2?
+4. Store: Offers and Chests pages are half empty. Store 2.0 (queue 18: keys, pity, offers)
+   fills them; until then a "Key chests: coming" teaser tile would look less bare.
+5. Trophies: medals are drawn in code (thin lines). A Luna sheet of 10 trophy pictures x 3
+   tiers would make the room worth visiting.
+6. Quests rows are text only; a small painted icon per task type (bugs, gems, boss, stage,
+   upgrade, merge) would make them scan faster.
+7. Workshop > Gear: every owned piece shows as an "x1 Common" stack, so the list is long
+   once all sets are open. Option: hide single base copies unless a filter is set.
+8. Settings page (sound on/off, music, language) once sound exists.
+9. Battle HUD and end screens were not in this visual pass (they need a run); next time.
 
 ## dev139: gear rarity, gear copies and merging, inventory, Quick Merge, loadouts
 

@@ -6,7 +6,7 @@ extends Control
 var tab := 0
 var _list: VBoxContainer
 var _note: Label
-var _wallet: Label
+var _wallet: HBoxContainer
 var d := {}
 
 func _ready() -> void:
@@ -41,10 +41,14 @@ func _build() -> void:
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(sp)
-	_wallet = UIKit.label("", 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+	_wallet = HBoxContainer.new()
 	top.add_child(_wallet)
 	col.add_child(top)
-	col.add_child(UIKit.tabs(["Daily", "Career", "Trophies"], func(i): tab = i; _fill(), 0))
+	# Home's Daily button can ask for a tab ("quests_tab" meta on the tree root)
+	if get_tree().root.has_meta("quests_tab"):
+		tab = int(get_tree().root.get_meta("quests_tab"))
+		get_tree().root.remove_meta("quests_tab")
+	col.add_child(UIKit.tabs(["Daily", "Career", "Trophies"], func(i): tab = i; _fill(), tab))
 	_note = UIKit.label("", 12, UIKit.MUTED)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_note)
@@ -56,7 +60,9 @@ func _build() -> void:
 func _fill() -> void:
 	for c in _list.get_children():
 		c.queue_free()
-	_wallet.text = "%d coins  ·  %d crystals" % [int(d.get("coins", 0)), int(d.get("crystals", 0))]
+	for c in _wallet.get_children():
+		c.queue_free()
+	_wallet.add_child(UIKit.wallet(int(d.get("coins", 0)), int(d.get("crystals", 0))))
 	match tab:
 		0:
 			var ms := Progress.daily(d)

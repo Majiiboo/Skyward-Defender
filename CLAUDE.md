@@ -3,8 +3,11 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev137, tag backup-dev137)
+## Where we are (hand-over, 2026-11-04, build dev140)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
+- dev138-140 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+  copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
+  Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
   six 3D gear sets with tier art, Workshop + merge animation (Luna's layers), gear on the
   pilot (weapon in hand, visor/orb/bolt colours), rookie starter suit + Commander unlock,
@@ -31,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev139 (code 139).
+  go UP every package (same signing key, install-over). Current: dev140 (code 140).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -90,8 +93,8 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    them off for simulator comparisons.)
 3. CARDS: overcharge (Cards.OVERCHARGE, 3rd pick or last for max-2 cards) dev99; FUSIONS dev102 (Cards.FUSIONS, battle _offer puts a ready fusion in the middle slot, _fuse; new cards chain_spark, wingman (HomeProp.draw_drone), quick_study; Luna art: LUNA-BRIEF-cards.md). (done dev101: card visuals. Nova ring = Luna fx, Aegis = _draw_aegis hex shell; bolt thickness, hot muzzle and
    magnet ring are done).
-4. dev107 Rudy playtest: top bar box removed (HomeFrame side 0 = top shade), Chest/Patrol undocked, START removed (Battle tab = Play on Home, NavDock.play_mode, hub _on_nav_tap), nav tile inside the bar (bump_h 4), menus over Frost (frost.gdshader on the frozen AFK; hub _frost), BackButton hidden in hub, UIKit glass restyle, notch: SafeAreaMargin.top_inset + export screen/edge_to_edge=true (battle node shifted by _safe_top, hub view container inset). Menu page LAYOUT overhaul (Modes especially) still to do.
-4. GLASS LOOK DONE (dev103, from Luna's Home mockups): glass.gd (Glass.panel/box/rounded: fill, sheen, cyan-to-purple edge); home_frame.gd docks (0 top capsule, -1/1 edge tabs, 2 free tile); nav_dock.gd floating glass bar + lit tile (gold on Battle), all tab names shown (hub NAV_NAMES, _paint_nav_label); hub _pilot_block (name + XP bar). Gear Pilot page: PilotShowcase on PlatformFloor (Luna's "classic" design: platform_floor + platform_rim since dev105, set-bonus glow from platform_rim_lights / platform_floor_lights masks recoloured + additive halo, flash() on upgrade; platform.png = single-picture fallback; TEX_W/TEX_FEET place it), slot tiles 3 left / 3 right. Later: real background blur if it runs well on phones; Store/Quests/Modes screens in glass.
+4. dev107 Rudy playtest: top bar box removed (HomeFrame side 0 = top shade), Chest/Patrol undocked, START removed (Battle tab = Play on Home, NavDock.play_mode, hub _on_nav_tap), nav tile inside the bar (bump_h 4), menus over Frost (frost.gdshader on the frozen AFK; hub _frost), BackButton hidden in hub, UIKit glass restyle, notch: SafeAreaMargin.top_inset + export screen/edge_to_edge=true (battle node shifted by _safe_top, hub view container inset). Menu page LAYOUT overhaul done (dev111, dev124).
+4. GLASS LOOK DONE (dev103, from Luna's Home mockups): glass.gd (Glass.panel/box/rounded: fill, sheen, cyan-to-purple edge); home_frame.gd docks (0 top capsule, -1/1 edge tabs, 2 free tile); nav_dock.gd floating glass bar + lit tile (gold on Battle), all tab names shown (hub NAV_NAMES, _paint_nav_label); hub _pilot_block (name + XP bar). Gear Pilot page: PilotShowcase on PlatformFloor (Luna's "classic" design: platform_floor + platform_rim since dev105, set-bonus glow from platform_rim_lights / platform_floor_lights masks recoloured + additive halo, flash() on upgrade; platform.png = single-picture fallback; TEX_W/TEX_FEET place it), slot tiles 3 left / 3 right. Store/Quests/Modes in glass done (dev111); real background blur later if it runs well on phones.
    Battle HUD done (2026-11-03): battle.gd _draw_hud draws a Home-style top bar (HUD_H,
    PAUSE_RECT), XP on its bottom line, LV tab, wave diamonds; pause menu has Back to Hub.
 5. Sector 2 enemies: write Luna a parts-sheet brief (body + hinged wings or parts, a gun
@@ -141,7 +144,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    Patrol store; offline time is counted as simulated waves (waves per hour from that stage's
    length). Farm older stages for their element. DONE dev135 (patrol.gd Patrol: WAVE_S 30, CAP 8 h,
    per_wave(stage), tick/claim/set_stage; hub _patrol_open window); dev136 limits: COIN_RATE 0.4, speed 1/0.5/0.25
-   (2 h/6 h/8 h), DAY_CAP 12 h, MAX_COLLECTS 3 a day; gear copies still to come. (e) PILOT TALENT MAP (Rudy): a path/map of nodes you buy in order,
+   (2 h/6 h/8 h), DAY_CAP 12 h, MAX_COLLECTS 3 a day; gear copies dev139 (per_wave "gear"). (e) PILOT TALENT MAP (Rudy): a path/map of nodes you buy in order,
    each a small permanent % (bolt damage, turret damage, crit rate e.g. +0.5%, crit damage, base
    HP...). Costs rise: coins first, then crystals and a new in-game currency that is harder to
    collect later (e.g. Star Shards from bosses). Every 10th node unlocks a NEW power card for runs
@@ -193,6 +196,16 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    PATROL_COST 5, crystal REFILL 30 for 50; save "energy"/"energy_t"). Energy.try_play() gates every
    way into battle (hub nav + SelectGo, modes, stage_map, quests _go, battle Next/Retry); hub
    _energy_btn counter (refreshes every 2 s). Stages 1-5 free in Normal (dev138).
+22. POLISH PASS dev140 (Rudy, 2026-11-04: cleaner, modern, cohesive menus; point out what does
+   not fit). Done: hub _side_popup glass pop-ups (old tscn panels removed), rail "go" targets
+   (Daily -> Quests, Gifts/Starter -> Store via root metas quests_tab / store_tab), Profile card,
+   UIKit.wallet / amount / num on Store, Quests, Gear; UIKit.press_fx on every kit button;
+   Progress.bump("upgrades" | "turret_upgrades" | "merges") from gear.gd + 3 daily tasks;
+   Modes rewards show gear (GearData.best_drop_rarity); battle part pickup textures cached.
+   PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound (none exists), rail
+   labels all-or-none + hide Event/Promo until events, Orbitron on Modes/Stage Map vs the Exo 2
+   rule, Store teaser tiles until Store 2.0, Luna trophy art, quest task icons, hide "x1 Common"
+   base stacks in Workshop > Gear, a Settings page after sound, battle HUD/end-screen visual pass.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

@@ -34,25 +34,30 @@ const STAGE_NAMES := {
 }
 
 # Side buttons. "dot" = red notification dot. Events, offers and promos will go here later.
+# "go" = [nav tab, meta key, tab index]: the button opens that page on that tab (dev140:
+# Daily -> Quests, Gifts -> Store offers, Starter -> Store packs); the rest show a pop-up.
 const LEFT_RAIL := [
 	{"id": "EventButton", "icon": "event", "label": "Event", "dot": true,
-		"title": "EVENT", "body": "Seasonal event: coming soon.\nThis side slot is for events\nand promotions."},
+		"title": "EVENT", "body": "Seasonal events with their own stage and rewards are coming in a later update."},
 	{"id": "PromoButton", "icon": "promo", "label": "Promo", "dot": false,
-		"title": "PROMO", "body": "Special deal: coming soon.\nThis side slot is for deals\nand bundles."},
+		"title": "PROMO", "body": "Special deals and bundles will show here once the Store opens for real-money packs."},
 	{"id": "StarterButton", "icon": "starter", "label": "Starter", "dot": false,
-		"title": "STARTER", "body": "Starter pack: test only.\nSimple card, no purchase yet."},
+		"go": ["NavStore", "store_tab", 3]},
 ]
 const RIGHT_RAIL := [
 	{"id": "DailyButton", "icon": "daily", "label": "Daily", "dot": true,
-		"title": "DAILY", "body": "Daily check-in: coming soon.\nClaim will be here."},
+		"go": ["NavQuests", "quests_tab", 0]},
 	{"id": "GiftsButton", "icon": "gifts", "label": "Gifts", "dot": false,
-		"title": "GIFTS", "body": "Gifts: coming soon.\nClaimable gifts will list here."},
+		"go": ["NavStore", "store_tab", 0]},
 	{"id": "RanksButton", "icon": "ranks", "label": "Ranks", "dot": false,
-		"title": "RANKS", "body": "Rankings: coming soon.\nLeaderboard will list here."},
+		"title": "RANKS", "body": "Rankings run in 30-day seasons with rewards by rank. They need the online update (2.0)."},
 ]
+const NAV_PATHS := {"NavStore": "res://store.tscn", "NavGear": "res://gear.tscn", "NavModes": "res://modes.tscn", "NavQuests": "res://quests.tscn"}
 
 var stage := 1
 var mode := "Normal"
+var _popup_layer: Control = null   # the open glass pop-up (_side_popup)
+var _info_text := ""               # the selected stage's facts (Chest tap)
 var elite_unlocked := false
 var level := 1
 var pilot_xp := 0
@@ -103,7 +108,6 @@ func _ready() -> void:
 	_setup_nav()
 	_build_layered_nav_icons()
 	MenuAnim.pop_buttons($Safe)
-	_wire_panels()
 	_update_stage_label()
 	_hide_panels()
 	_fade_in_overlay()
@@ -253,7 +257,12 @@ func _rail_item(def: Dictionary) -> Control:
 		_add_dot(b)
 	if def.id in LABELED:
 		box.add_child(_small_label(def.label, 12, MUTED))
-	b.pressed.connect(func(): _side_popup(def.title, def.body))
+	if def.has("go"):
+		b.pressed.connect(func():
+			get_tree().root.set_meta(def.go[1], def.go[2])
+			_on_nav_tap(def.go[0], NAV_PATHS[def.go[0]]))
+	else:
+		b.pressed.connect(func(): _side_popup(def.title, def.body))
 	return box
 
 # ------------------------------------------------------------- Home build
@@ -277,7 +286,16 @@ func _build_home() -> void:
 	dockL.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(dockL)
 	var profile := _icon_button("ProfileButton", "profile", 44.0, 38.0, 30, Color(PURPLE, 0.0))   # the XP ring is its outline
-	profile.pressed.connect(func(): _side_popup("PROFILE", "Pilot\nLevel %d\nProfile and account\nsettings will live here." % level))
+	profile.pressed.connect(func():
+		# a real profile card (dev140): level, XP, how far you are, lifetime numbers
+		var sv := Progress.read()
+		_side_popup("PILOT  ·  LEVEL %d" % level, "%d / %d XP to level %d\nHighest stage: %d of %d  ·  stars %d\nBugs destroyed: %d  ·  bosses: %d\nStages cleared: %d  ·  %.1f hours in battle" % [
+			pilot_xp - Turrets.xp_for_level(level), Turrets.xp_for_level(level + 1) - Turrets.xp_for_level(level), level + 1,
+			maxi(stage_unlocked - 1, 0), StageData.MAX_STAGE, int(Progress.stat(sv, "stars")),
+			int(Progress.stat(sv, "kills")), int(Progress.stat(sv, "bosses")), int(Progress.stat(sv, "stages")), Progress.stat(sv, "hours")],
+			[["Trophies", func():
+				get_tree().root.set_meta("quests_tab", 2)
+				_on_nav_tap("NavQuests", NAV_PATHS["NavQuests"])]]))
 	_xp_ring(profile)   # the level ring and badge
 	dockL.add_child(profile)
 	dockL.add_child(_pilot_block())
@@ -285,7 +303,9 @@ func _build_home() -> void:
 	_coin_btn.pressed.connect(func(): _side_popup("COINS", "Coins: earned by defeating enemies.\nYou keep them between runs."))
 	dockL.add_child(_coin_btn)
 	_crystal_btn = _pill_button("CrystalButton", "ui_crystal", _fmt(crystals))
-	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Crystals: premium currency.\nComing soon."))
+	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Premium currency. Earned from missions, trophies, the daily gift and chests; crystal packs come with the Google Play release.", [["Open the Store", func():
+		get_tree().root.set_meta("store_tab", 1)
+		_on_nav_tap("NavStore", NAV_PATHS["NavStore"])]]))
 	dockL.add_child(_crystal_btn)
 	# power tokens: playing a stage and collecting Patrol cost them (Energy)
 	_energy_btn = _pill_button("EnergyButton", "ui_energy", "")
@@ -306,7 +326,7 @@ func _build_home() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(spacer)
 	var menu := _icon_button("MenuButton", "menu", 44.0, 32.0, 16)
-	menu.pressed.connect(func(): _side_popup("MENU", "Settings\nMail\nLog-in rewards\nCommunity\n\n(coming soon)"))
+	menu.pressed.connect(func(): _side_popup("MENU", "Settings, mail, log-in rewards and community come with the online update (2.0).", [["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]]))
 	top.add_child(menu)
 
 	# ---- stage block: mode tag, stage name with arrows, Standard / Elite ----
@@ -398,7 +418,7 @@ func _build_home() -> void:
 	_action_row = row
 	var chest := _action_item("ChestButton", "chest_closed", "Chest", func():
 		_chest_open_fx()
-		_show_panel($InfoPanel))
+		_side_popup("STAGE INFO", _info_text))
 	chest.set_anchors_preset(Control.PRESET_CENTER_LEFT)
 	chest.grow_horizontal = Control.GROW_DIRECTION_END
 	chest.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -634,18 +654,12 @@ func _update_stage_label() -> void:
 	_paint_segment(_elite_btn, is_elite, false)
 	$AFK.set_elite(is_elite)
 	$AFK.set_stage(stage)
-	var lines := PackedStringArray(["Select Stage", ""])
-	for i in range(maxi(1, stage - 3), mini(StageData.MAX_STAGE, stage + 3) + 1):
-		var tail := "  (current)" if i == stage else ("" if i <= stage_unlocked else "  [locked]")
-		lines.append("Stage %d: %s%s" % [i, StageData.stage_name(i), tail])
-	$SelectPanel/SelectLabel.text = "\n".join(lines)
-	$SelectPanel/SelectGo.text = "Go to Stage %d" % stage
 	var w := StageData.waves(stage)
 	var kinds := {}
 	for wv in w:
 		for entry in wv:
 			kinds[entry[0]] = true
-	$InfoPanel/InfoLabel.text = "%s %d: %s\nSector: %s\nWaves: %d\nEnemies: %s\nBest run: Score %d, Kills %d" % [
+	_info_text = "%s %d: %s\nSector: %s\nWaves: %d\nEnemies: %s\nBest run: Score %d, Kills %d" % [
 		"Elite" if is_elite else "Standard", stage, StageData.stage_name(stage), sec.name, w.size(), ", ".join(kinds.keys()).replace("_", " "), best_score, best_kills]
 
 func _paint_segment(b: Button, selected: bool, left: bool) -> void:
@@ -689,14 +703,6 @@ func _write_selection() -> void:
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
 		out.store_string(JSON.stringify(data))
-
-func _wire_panels() -> void:
-	$SelectPanel/SelectClose.pressed.connect(func(): _hide_panels())
-	$SelectPanel/SelectGo.pressed.connect(func(): if Energy.try_play(self, mode == "Elite", stage): _smooth_change_scene("res://battle.tscn"))
-	$PatrolPanel/PatrolClose.pressed.connect(func(): _hide_panels())
-	$PatrolPanel/PatrolClaim.pressed.connect(func(): $PatrolPanel/PatrolLabel.text = "Auto-Patrol Gain\nCoins 34/h, Parts 8/h\nClaim will give 612 coins, 18 parts, 144 gems (show-only).\nNo granting yet: battle rewards update enables it.")
-	$InfoPanel/InfoClose.pressed.connect(func(): _hide_panels())
-	$SidePanel/SideClose.pressed.connect(func(): _hide_panels())
 
 func _set_home_visible(visible: bool) -> void:
 	# Home content on/off. The nav stays. In menu views the wallpaper stays on screen,
@@ -857,20 +863,54 @@ func _smooth_change_scene(path: String) -> void:
 	get_tree().change_scene_to_file(path)
 
 func _hide_panels() -> void:
-	$SelectPanel.visible = false
-	$PatrolPanel.visible = false
-	$InfoPanel.visible = false
-	$SidePanel.visible = false
+	if _popup_layer != null and is_instance_valid(_popup_layer):
+		_popup_layer.queue_free()
+	_popup_layer = null
 
-func _show_panel(p: Panel) -> void:
+# A glass pop-up over Home in the menus' look (dev140; replaces the old grey scene panels):
+# a title, a few lines, optional buttons [[label, callable], ...] and Close. A tap outside
+# closes it too.
+func _side_popup(title: String, body: String, actions: Array = []) -> void:
 	_hide_panels()
-	p.visible = true
-	MenuAnim.panel_pop(p)
-
-func _side_popup(title: String, body: String) -> void:
-	$SidePanel/SideTitle.text = title
-	$SidePanel/SideLabel.text = body
-	_show_panel($SidePanel)
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0.01, 0.04, 0.6)
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	dim.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: _hide_panels())
+	layer.add_child(dim)
+	var p := UIKit.panel(16)
+	var w := minf(size.x - 40.0, 360.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, size.y * 0.28)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(UIKit.label(title, 17, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var b := UIKit.label(body, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(b)
+	for a in actions:
+		var ab := UIKit.teal_button(a[0], 14)
+		ab.custom_minimum_size = Vector2(0, 40)
+		var fn: Callable = a[1]
+		ab.pressed.connect(func():
+			_hide_panels()
+			fn.call())
+		v.add_child(ab)
+	var close := UIKit.ghost_button("Close", 13)
+	close.custom_minimum_size = Vector2(0, 36)
+	close.pressed.connect(_hide_panels)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)
+	add_child(layer)
+	_popup_layer = layer
+	p.pivot_offset = Vector2(w * 0.5, 0.0)
+	p.scale = Vector2(0.9, 0.9)
+	p.modulate.a = 0.0
+	var tw := p.create_tween().set_parallel(true)
+	tw.tween_property(p, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(p, "modulate:a", 1.0, 0.15)
 
 func _fade_in_overlay() -> void:
 	var overlay = ColorRect.new()

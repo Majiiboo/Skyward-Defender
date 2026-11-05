@@ -74,7 +74,11 @@ func _build() -> void:
 	_wallet.add_theme_constant_override("separation", 10)
 	top.add_child(_wallet)
 	col.add_child(top)
-	col.add_child(UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), 0))
+	# Home's Gifts / Starter buttons can ask for a tab ("store_tab" meta on the tree root)
+	if get_tree().root.has_meta("store_tab"):
+		tab = int(get_tree().root.get_meta("store_tab"))
+		get_tree().root.remove_meta("store_tab")
+	col.add_child(UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab))
 	_page = VBoxContainer.new()
 	_page.add_theme_constant_override("separation", 10)
 	_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -90,30 +94,12 @@ func _fill() -> void:
 		c.queue_free()
 	for c in _wallet.get_children():
 		c.queue_free()
-	_wallet.add_child(_amount(load("res://icons/ui_coin.png"), int(d.get("coins", 0)), UIKit.GOLD))
-	_wallet.add_child(_amount(load("res://icons/ui_crystal.png"), int(d.get("crystals", 0)), UIKit.CYAN))
+	_wallet.add_child(UIKit.wallet(int(d.get("coins", 0)), int(d.get("crystals", 0))))
 	match tab:
 		0: _fill_offers()
 		1: _fill_chests()
 		2: _fill_parts()
 		3: _fill_packs()
-
-# an icon with a number beside it
-func _amount(icon: Texture2D, n: int, col: Color, px: float = 18.0, font: int = 13) -> HBoxContainer:
-	var h := HBoxContainer.new()
-	h.add_theme_constant_override("separation", 4)
-	h.alignment = BoxContainer.ALIGNMENT_CENTER
-	var tr := TextureRect.new()
-	tr.texture = icon
-	tr.custom_minimum_size = Vector2(px, px)
-	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	h.add_child(tr)
-	h.add_child(UIKit.label(_num(n), font, col))
-	return h
-
-func _num(n: int) -> String:
-	return str(n) if n < 10000 else "%.1fk" % (n / 1000.0)
 
 # A shop tile: a big picture, a big number, one short line, the button.
 func _tile(icon: Texture2D, big: String, small: String, color: String, button: Button) -> PanelContainer:
@@ -183,8 +169,8 @@ func _fill_offers() -> void:
 	gv.add_child(UIKit.label("DAILY GIFT", 16, UIKit.GOLD))
 	var gr := HBoxContainer.new()
 	gr.add_theme_constant_override("separation", 12)
-	gr.add_child(_amount(load("res://icons/ui_coin.png"), int(DAILY_GIFT.coins), Color.WHITE, 20.0, 15))
-	gr.add_child(_amount(load("res://icons/ui_crystal.png"), int(DAILY_GIFT.crystals), Color.WHITE, 20.0, 15))
+	gr.add_child(UIKit.amount(load("res://icons/ui_coin.png"), int(DAILY_GIFT.coins), Color.WHITE, 20.0, 15))
+	gr.add_child(UIKit.amount(load("res://icons/ui_crystal.png"), int(DAILY_GIFT.crystals), Color.WHITE, 20.0, 15))
 	gv.add_child(gr)
 	gh.add_child(gv)
 	var gb := VBoxContainer.new()
@@ -203,7 +189,7 @@ func _fill_offers() -> void:
 		var offer: Dictionary = o
 		b.pressed.connect(func(): _buy(offer))
 		var speed: bool = o.id == "speed"
-		var big: String = "x2 speed" if speed else "+" + _num(int(o.reward.coins))
+		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
 		g.add_child(_tile(load("res://icons/ui_energy.png") if speed else load("res://icons/ui_coin.png"), big, o.name, o.color, b))
 
 func _buy(o: Dictionary) -> void:
@@ -237,7 +223,7 @@ func _fill_chests() -> void:
 				hi = maxi(hi, int(r[1].coins))
 			else:
 				jackpot = "%d%%: %d crystals" % [int(r[0]), int(r[1].crystals)]
-		g.add_child(_tile(load("res://icons/chest3d_closed.png"), "%s-%s" % [_num(lo), _num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
+		g.add_child(_tile(load("res://icons/chest3d_closed.png"), "%s-%s" % [UIKit.num(lo), UIKit.num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
 	_page.add_child(UIKit.label("Coins, or the crystal jackpot", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 func _open_chest(c: Dictionary) -> void:
