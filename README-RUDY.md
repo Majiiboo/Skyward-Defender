@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev157 (version/code=157 and version/name="1.0-dev157" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev158 (version/code=158 and version/name="1.0-dev158" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,23 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev158: the pilot's turn (Rudy: "is it a mirror flip?")
+
+- Checked frame by frame with a new capture tool (tools/dev/turn_capture.gd). It was NOT an
+  instant mirror, but close to one: the side pose narrowed like a card, Luna's front pose
+  faded in, then the mirrored side pose faded back, with the gun jumping from raised to
+  the hip and from one side to the other.
+- Now: the HEAD turns first (the front helmet comes in while the body is still side-on, and
+  on the way out the side helmet arrives before the body), the gun LOWERS to the hip as the
+  turn starts (where the front pose holds it) and comes back up on the other side, the
+  front pose is mirrored past the middle so the gun hand ends on the far side like a real
+  turn (the gun fades across the middle instead of popping), the card-like squeeze is
+  much softer, and the turn takes about 0.6 s instead of 0.5.
+- It is still a cross-fade through one front picture, not a drawn rotation. The real thing
+  needs Luna: LUNA-BRIEF-pilot-turn.md asks for five whole-body turn frames per suit (left
+  three-quarter, eighth, front, eighth, right three-quarter), gun in a fixed ready pose, feet
+  and helmet at the same heights. The code will cross-fade through them during the turn.
 
 ## dev157: menus flow (no more black cuts)
 

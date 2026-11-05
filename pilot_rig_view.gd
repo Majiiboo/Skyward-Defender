@@ -94,10 +94,19 @@ func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> vo
 	var h := height * PilotRig.SIZE
 	var sa := _side_a()
 	var fa := _front_a()
-	if sa > 0.01:
-		PilotRig.draw(c, rig, X, at, h, 0.0, sa, lift)
-	if fa > 0.01:
-		PilotRig.draw_front(c, rig, at, h, fa, lift)
+	if not PilotRig.front_ready() or front_only:
+		if sa > 0.01:
+			PilotRig.draw(c, rig, X, at, h, 0.0, sa, lift)
+		if fa > 0.01:
+			PilotRig.draw_front(c, rig, at, h, fa, lift)
+		return
+	# the turn (dev158): the head goes first, the body follows; each on its own alpha
+	var sha := alpha * PilotRig.side_head_weight(rig)
+	var fha := alpha * PilotRig.front_head_weight(rig)
+	if sa > 0.01 or sha > 0.01:
+		PilotRig.draw(c, rig, X, at, h, 0.0, sa, lift, sha)
+	if fa > 0.01 or fha > 0.01:
+		PilotRig.draw_front(c, rig, at, h, fa, lift, fha)
 
 func _draw() -> void:
 	if not X.is_empty():

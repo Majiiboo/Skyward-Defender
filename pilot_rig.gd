@@ -218,7 +218,7 @@ class Rig:
 		elif dx < -0.25:
 			face_target = 1.0
 		# turning takes about half a second, passing through the front view (draw_front)
-		face = move_toward(face, face_target, delta * (4.0 if PilotRig.front_ready() else 12.0))
+		face = move_toward(face, face_target, delta * (3.2 if PilotRig.front_ready() else 12.0))   # ~0.6 s turn (dev158)
 		aim = lerp_angle(aim, aim_angle, 1.0 - exp(-delta * 16.0))
 		# the lean on a spring: he tips into a drag, overshoots a touch, settles
 		lean_vel += ((clampf(lean_in, -1.5, 1.5) - lean) * 80.0 - lean_vel * 9.5) * dt
@@ -301,6 +301,12 @@ static func solve(r: Rig) -> Dictionary:
 	var sh_r: Vector2 = X.torso * _rel("upper_r", "torso")
 	var grip: Vector2 = sh_r + Vector2(-225, 40).rotated(body_rot) + aim_dir * 150.0 - aim_dir * kick * 34.0
 	var rifle_rot := aim + PI / 2.0 + kick * 0.14 * maxf(-cos(aim), 0.0)
+	# turning (dev158): the gun comes down to the hip, upright, where the front pose holds it,
+	# so the hand-over between the side rig and the front pose is seamless
+	var turn := 1.0 - smoothstep(0.55, 0.92, absf(r.face))
+	if turn > 0.001:
+		grip = grip.lerp(X.hips.origin + Vector2(-215, 70), turn)
+		rifle_rot = lerp_angle(rifle_rot, 0.0, turn)
 	X.rifle = _place("rifle", grip, rifle_rot)
 	var a_r: float = ((PARTS.upper_r.end - PARTS.upper_r.pv) * tex("upper_r").get_size() * float(PARTS.upper_r.s)).length()
 	var b_r: float = ((PARTS.forearm_r.end - PARTS.forearm_r.pv) * tex("forearm_r").get_size() * float(PARTS.forearm_r.s)).length()
@@ -363,7 +369,7 @@ static func _draw_part(c: CanvasItem, base: Transform2D, xf: Transform2D, name: 
 # reference px -> screen, with the mirror/turn squeeze and the overall tilt
 static func base_xform(r: Rig, pos: Vector2, height: float, tilt: float = 0.0) -> Transform2D:
 	var k := height / BODY_H
-	var w: float = clampf(absf(r.face), 0.3, 1.0) * signf(r.face if r.face != 0.0 else 1.0)
+	var w: float = clampf(absf(r.face), 0.6, 1.0) * signf(r.face if r.face != 0.0 else 1.0)   # a little foreshortening, not a card flip (dev158)
 	return Transform2D(tilt, Vector2(k * w, k), 0.0, pos) * Transform2D(0.0, -ORIGIN)
 
 # rifle tip on screen (for where bullets start)
@@ -381,10 +387,16 @@ static func _lift_col(lift: Color, alpha: float) -> Color:
 	var l := STARTER_LIFT if suit == "starter" and lift == LIFT else lift
 	return Color(l.r, l.g, l.b, alpha)
 
-static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0, alpha: float = 1.0, lift: Color = LIFT) -> void:
+static func draw(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, tilt: float = 0.0, alpha: float = 1.0, lift: Color = LIFT, head_alpha: float = -1.0) -> void:
 	var base := base_xform(r, pos, height, tilt)
 	var col := _lift_col(lift, alpha)
+	# head_alpha: the helmet and visor on their own alpha (the head turns before the body, dev158)
+	var hcol := _lift_col(lift, head_alpha if head_alpha >= 0.0 else alpha)
 	for nm in ORDER:
+		if (nm == "helmet" or nm == "visor") and head_alpha >= 0.0:
+			if head_alpha > 0.005:
+				_draw_part(c, base, X[nm], nm, hcol)
+			continue
 		if nm == "shin_r":
 			_draw_part(c, base, X.shin_r, "shin", col)
 		elif nm == "shin_l":
@@ -540,12 +552,26 @@ static var _ftex := {}
 static func front_ready() -> bool:
 	return ResourceLoader.exists("res://pilot_front/helmet.png")
 
-static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
+static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT, head_alpha: float = -1.0) -> void:
 	var k := height / BODY_H * FRONT_K
 	var breath := sin(r.t * TAU / 2.6)
 	var col := _lift_col(lift, alpha)
+	# the turn (dev158): the front pose is mirrored once he is past the middle, so the rifle
+	# hand ends up on the far side like a real turn; the rifle fades across the middle
+	# instead of jumping. head_alpha: the helmet on its own alpha (the head turns first).
+	var mir: float = -1.0 if r.face < 0.0 else 1.0
+	var gun_a: float = smoothstep(0.0, 0.3, absf(r.face))
 	for part in FRONT:
 		var nm: String = part[0]
+		var pcol := col
+		if nm == "helmet" and head_alpha >= 0.0:
+			if head_alpha <= 0.005:
+				continue
+			pcol = _lift_col(lift, head_alpha)
+		elif head_alpha >= 0.0 and alpha <= 0.005:
+			continue   # head only
+		elif nm == "rifle" or nm == "forearm_fist":
+			pcol = _lift_col(lift, alpha * gun_a)
 		if not _ftex.has(nm):
 			var fp := "res://%s/%s.png" % [_dir(true), nm]
 			if not ResourceLoader.exists(fp):
@@ -564,19 +590,33 @@ static func draw_front(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha
 			var hsz := ht.get_size() * hs
 			# mirrored, so the barrel side faces away from his body
 			var grip := Vector2(206, 300 + sin(r.t * 2.1) * 4.0)
-			c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(-k, k))
-			c.draw_texture_rect(ht, Rect2(grip - Vector2(PARTS.held.pv) * hsz, hsz), false, col)
+			c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(-k * mir, k))
+			c.draw_texture_rect(ht, Rect2(grip - Vector2(PARTS.held.pv) * hsz, hsz), false, pcol)
 			continue
 		# a little life: he breathes, the helmet nods, the hands sway
 		if nm == "helmet":
 			at += Vector2(0, breath * 6.0)
 		elif nm.begins_with("forearm") or nm == "rifle":
 			at += Vector2(0, sin(r.t * 2.1) * 4.0)
-		c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(k * (-1.0 if part[3] else 1.0), k))
+		c.draw_set_transform(pos + Vector2(0, sin(r.t * TAU / 2.6) * 2.0), 0.0, Vector2(k * (-1.0 if part[3] else 1.0) * mir, k))
 		var p := Vector2((-at.x if part[3] else at.x), at.y) - sz * 0.5
-		c.draw_texture_rect(tx, Rect2(p, sz), false, col)
+		c.draw_texture_rect(tx, Rect2(p, sz), false, pcol)
 	c.draw_set_transform_matrix(Transform2D.IDENTITY)
 
 # How much of the front pose shows (0 side view, 1 facing the camera), from rig.face.
 static func front_weight(r: Rig) -> float:
 	return 1.0 - smoothstep(0.42, 0.52, absf(r.face))
+
+# The head turns before the body (dev158): the front helmet is already in while the body
+# is still side-on, and the side helmet has gone by then.
+# the head runs ahead of the body along the turn: it leaves the side view first and
+# arrives at the new side first
+static func _head_face(r: Rig) -> float:
+	var dir := signf(r.face_target - r.face)
+	return clampf(r.face + dir * 0.34, -1.0, 1.0) if dir != 0.0 else r.face
+
+static func front_head_weight(r: Rig) -> float:
+	return 1.0 - smoothstep(0.42, 0.52, absf(_head_face(r)))
+
+static func side_head_weight(r: Rig) -> float:
+	return smoothstep(0.38, 0.47, absf(_head_face(r)))
