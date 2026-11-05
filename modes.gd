@@ -200,6 +200,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 				get_tree().change_scene_to_file("res://battle.tscn"))
 	_promo_btn = b
 	b.custom_minimum_size = Vector2(110, 38)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
 	return row
 

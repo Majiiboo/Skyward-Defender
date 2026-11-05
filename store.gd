@@ -155,6 +155,7 @@ func _fill_offers() -> void:
 	var at := Progress.attend(d)
 	var gift := UIKit.gold_button("Tomorrow" if at.claimed_today else "FREE", 15)
 	_gift_btn = gift
+	gift.size_flags_vertical = Control.SIZE_SHRINK_CENTER   # its own height, so the tip ring fits it
 	gift.disabled = at.claimed_today
 	gift.custom_minimum_size = Vector2(100, 40)
 	gift.pressed.connect(func():
