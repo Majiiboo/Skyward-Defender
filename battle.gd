@@ -1160,6 +1160,8 @@ func _update_enemies(delta: float) -> void:
 			e.slow_t = float(e.slow_t) - delta
 			e.pos = prev.lerp(e.pos, 1.0 - float(e.get("slow", 0.0)))
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
+		# faster than its cruising speed (a dart, a dive): it stretches into the motion (dev153)
+		e.stretch_s = lerpf(float(e.get("stretch_s", 0.0)), clampf(e.vel.length() / maxf(float(e.speed), 1.0) - 1.0, 0.0, 1.2) * 0.16, minf(1.0, delta * 12.0))
 		# tilt and wing fold ease toward their targets so dives and hatches never snap
 		e.tilt_s = lerp_angle(float(e.get("tilt_s", _enemy_tilt(e))), _enemy_tilt(e), minf(1.0, delta * 10.0))
 		var want_fold: float = 1.0 if _lunging(e) or (e.state == "hatch" and e.t < 0.45) else 0.0
@@ -1413,7 +1415,7 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			bd = d
 			best = i
 	if best >= 0:
-		t.ang = lerp_angle(t.ang, (enemies[best].pos - t.pos).angle(), 0.12)
+		_spring_ang(t, (enemies[best].pos - t.pos).angle(), delta, 110.0, 12.0)   # overshoots a touch and settles (dev153)
 		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
 		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 6.0)
 		t.cd -= delta
@@ -1428,6 +1430,7 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 		# nothing in range: the head sweeps slowly from side to side, searching
 		var search: float = -PI / 2.0 + sin(time_alive * 0.7 + float(t.mount) * 1.3) * 0.9
 		t.ang = lerp_angle(t.ang, search, minf(1.0, delta * 2.0))
+		t.ang_v = float(t.get("ang_v", 0.0)) * 0.8
 		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
 		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 3.0)
 		t.cd = maxf(float(t.cd) - delta, 0.0)
@@ -1454,7 +1457,12 @@ func _update_lance(t: Dictionary, delta: float) -> void:
 			best = i
 	var want: float = (enemies[best].pos - _turret_tip(t)).angle() if best >= 0 else -PI / 2.0 + sin(time_alive * 0.6 + float(t.mount)) * 0.7
 	want = clampf(want, -PI + 0.15, -0.15)   # never aims down into the base
-	t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * (5.0 if best >= 0 else 1.5)))
+	if best >= 0:
+		_spring_ang(t, want, delta, 70.0, 10.0)
+		t.ang = clampf(float(t.ang), -PI + 0.15, -0.15)
+	else:
+		t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * 1.5))
+		t.ang_v = float(t.get("ang_v", 0.0)) * 0.8
 	t.charge = minf(t.charge + delta, float(def.every))
 	if t.charge < float(def.every):
 		return
@@ -2752,9 +2760,9 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_set_transform(e.pos, ang, Vector2.ONE)
 		draw_texture_rect(ht, Rect2(-hs * 0.5, hs), false, Color(1, 1, 1, a * fold))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold))
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle())
 	else:
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a)
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle())
 	if e.hp < e.hp_max and e.type != "hive_mother":
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
@@ -3531,3 +3539,12 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
 	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0)
+
+# A turret head swinging to a new target on a damped spring (dev153): it arrives fast,
+# overshoots a touch and settles, instead of easing in. k = stiffness, d = damping.
+func _spring_ang(t: Dictionary, want: float, delta: float, k: float, d: float) -> void:
+	var v: float = float(t.get("ang_v", 0.0))
+	var diff := angle_difference(float(t.ang), want)
+	v += (diff * k - v * d) * minf(delta, 0.05)
+	t.ang_v = v
+	t.ang = float(t.ang) + v * minf(delta, 0.05)

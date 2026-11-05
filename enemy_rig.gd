@@ -24,10 +24,14 @@ static func _t(name: String) -> Texture2D:
 		_tex[name] = load("res://enemies/parts/%s.png" % name)
 	return _tex[name]
 
-static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float, rot: float, pivot: Vector2, flip_x: bool = false, alpha: float = 1.0) -> void:
-	# pivot is 0..1 inside the texture; the texture is placed so pivot sits at pos.
+static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float, rot: float, pivot: Vector2, flip_x: bool = false, alpha: float = 1.0, pre: Transform2D = Transform2D.IDENTITY) -> void:
+	# pivot is 0..1 inside the texture; the texture is placed so pivot sits at pos. `pre` is an
+	# extra world-space transform applied over the part (the whole-bug stretch, dev153).
 	var sz := tex.get_size() * scale
-	c.draw_set_transform(pos, rot, Vector2(-1.0 if flip_x else 1.0, 1.0))
+	if pre == Transform2D.IDENTITY:
+		c.draw_set_transform(pos, rot, Vector2(-1.0 if flip_x else 1.0, 1.0))
+	else:
+		c.draw_set_transform_matrix(pre * Transform2D(rot, Vector2(-1.0 if flip_x else 1.0, 1.0), 0.0, pos))
 	c.draw_texture_rect(tex, Rect2(-Vector2(pivot.x * sz.x, pivot.y * sz.y), sz), false, Color(1, 1, 1, alpha))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -35,8 +39,14 @@ static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float,
 # between blend smoothly, so wings fold and unfold instead of snapping.
 # alpha fades the whole bug (entering at the top, hatching). Never set the node's
 # modulate inside _draw for this: it applies to everything the node draws.
-static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: float, phase: float, tilt: float = 0.0, fold: float = 0.0, speed_mult: float = 1.0, alpha: float = 1.0) -> void:
+# stretch (dev153): the whole bug is stretched by `stretch` along the world direction
+# `stretch_ang` (its motion) and squeezed across it, around its centre: darting and diving
+# bugs lengthen into their motion like a drawn animation would.
+static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: float, phase: float, tilt: float = 0.0, fold: float = 0.0, speed_mult: float = 1.0, alpha: float = 1.0, stretch: float = 0.0, stretch_ang: float = 0.0) -> void:
 	var p: Dictionary = PARTS[kind]
+	var pre := Transform2D.IDENTITY
+	if stretch > 0.001:
+		pre = Transform2D(0.0, pos) * Transform2D(stretch_ang, Vector2.ZERO) * Transform2D(0.0, Vector2(1.0 + stretch, 1.0 - stretch * 0.5), 0.0, Vector2.ZERO) * Transform2D(-stretch_ang, Vector2.ZERO) * Transform2D(0.0, -pos)
 	var body: Texture2D = _t(kind + "_body")
 	var wing: Texture2D = _t(kind + "_wing")
 	var s: float = size / 220.0
@@ -59,9 +69,9 @@ static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: 
 		var wa: float = alpha * lerpf(WING_BLUR[i], 1.0 if i == 0 else 0.0, k)   # folded wings are still: one solid copy
 		if wa < 0.01:
 			continue
-		_draw_tex(c, wing, hr_w, ws, tilt - flap, Vector2(0.02, 0.5), false, wa)
-		_draw_tex(c, wing, hl_w, ws, tilt + flap, Vector2(0.02, 0.5), true, wa)
-	_draw_tex(c, body, pos, s, tilt, Vector2(0.5, 0.5), false, alpha)
+		_draw_tex(c, wing, hr_w, ws, tilt - flap, Vector2(0.02, 0.5), false, wa, pre)
+		_draw_tex(c, wing, hl_w, ws, tilt + flap, Vector2(0.02, 0.5), true, wa, pre)
+	_draw_tex(c, body, pos, s, tilt, Vector2(0.5, 0.5), false, alpha, pre)
 
 # World position of a named anchor on the body art ("muzzle", "sac"), for a bug
 # drawn by draw_bug with the same size and tilt. Falls back to the body centre.
