@@ -8,7 +8,7 @@ extends RefCounted
 # Cells, Cores), or crystals as the shortcut; a few are also gated by a stage; real-money
 # packs come with Store 2.0. Element ids are the old set ids so every colour, weapon and
 # thruster in GearData.SETS carries over.
-# Save "hero": {"selected": id, "owned": [ids], "levels": {id: n}, "tiers": {id: n},
+# Save "hero": {"selected": id, "owned": [ids], "levels": {id: n}, "def": {id: n}, "tiers": {id: n},
 # "shards": {id: n}}. An old save with no "hero" block is converted once (migrate): coins
 # spent on the five armour pieces become Rook's level, armour copies become Rook shards.
 # The old gear block stays untouched, so the change can be undone.
@@ -68,7 +68,7 @@ const ROSTER := {
 		"cost": {"coins": 40000, "cell": 20, "core": 6}, "crystals": 650, "stage": 20, "build": {"scale": 0.9, "speed": 1.2, "tough": 0.9},
 		"blurb": "Sees the weak spot before the bug knows it has one."},
 	"ember":  {"name": "Ember", "title": "Dragon-kin, flight harness", "element": "solar", "grade": 4,
-		"weapon": "solar_weapon", "passive": "+1 heart", "look": "ember",
+		"weapon": "solar_weapon", "passive": "Max HP +20%", "look": "ember",
 		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6}, "crystals": 650, "stage": 30, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},
 		"blurb": "Breathes fire instead of carrying a jetpack. Cheaper."},
 }
@@ -81,19 +81,28 @@ const PER_LEVEL := {"atk": 0.03, "rate": 0.01, "aim": 0.015, "recovery": 0.02, "
 # milestones every 5 levels, rotating (the old gear milestones, now on the hero)
 const MILESTONES := [
 	{"stat": "crit_rate", "per": 0.03, "text": "Crit rate +3%"},
-	{"stat": "hearts",    "per": 1.0,  "text": "+1 heart"},
+	{"stat": "hp_mult",   "per": 0.15, "text": "Max HP +15%"},
 	{"stat": "crit_dmg",  "per": 0.15, "text": "Crit damage +15%"},
 	{"stat": "dmg_boost", "per": 0.04, "text": "Damage boost +4%"},
 	{"stat": "base_dr",   "per": 0.04, "text": "Base damage taken -4%"},
 	{"stat": "fortress",  "per": 0.06, "text": "Fortress HP +6%"},
 ]
 const MILESTONE_EVERY := 5
+# pilot HP (instead of three hearts, dev172) and the DEF track: DEF_PER per DEF level, capped
+const BASE_HP := 100.0
+const HP_PER_LEVEL := 0.02
+const DEF_PER := 0.012
+const DEF_CAP := 0.5
+const MAX_DEF_LEVEL := 40
 # TIERS (evolutions, Luna's three looks): tier 2 and 3 cost shards; each tier ATK and base +8%
 const TIER_SHARDS := [30, 90]
 const TIER_BONUS := 0.08
 const MAX_TIER := 3
 # armour copies -> shards when an old save is converted (their merge value)
 const SHARD_VALUE := {"common": 1, "uncommon": 3, "rare": 9, "epic": 27, "legendary": 81}
+
+static func def_cost(level: int) -> int:
+	return 50 + 25 * level
 
 static func level_cost(level: int) -> int:
 	return 60 + 30 * level
@@ -104,7 +113,7 @@ static func read(save: Dictionary) -> Dictionary:
 	var h = save.get("hero", null)
 	if typeof(h) != TYPE_DICTIONARY:
 		return migrate(save)
-	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "tiers": {}, "shards": {}}
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}}
 	var ow = h.get("owned", [])
 	if typeof(ow) == TYPE_ARRAY:
 		for id in ow:
@@ -112,7 +121,7 @@ static func read(save: Dictionary) -> Dictionary:
 				out.owned.append(String(id))
 	if ROSTER.has(String(h.get("selected", ""))) and out.owned.has(String(h.selected)):
 		out.selected = String(h.selected)
-	for key in ["levels", "tiers", "shards"]:
+	for key in ["levels", "def", "tiers", "shards"]:
 		var src = h.get(key, {})
 		if typeof(src) == TYPE_DICTIONARY:
 			for id in src:
@@ -121,12 +130,12 @@ static func read(save: Dictionary) -> Dictionary:
 	return out
 
 static func write(h: Dictionary) -> Dictionary:
-	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "tiers": h.tiers, "shards": h.shards}
+	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "def": h.def, "tiers": h.tiers, "shards": h.shards}
 
 # the hero block an old save gets the first time: spent armour coins -> Rook's level,
 # armour copies -> Rook shards (the weapon keeps everything it had)
 static func migrate(save: Dictionary) -> Dictionary:
-	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "tiers": {}, "shards": {}}
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}}
 	var g := GearData.read(save)
 	var spent := 0
 	var shards := 0
@@ -159,6 +168,9 @@ static func migrate(save: Dictionary) -> Dictionary:
 
 static func level(h: Dictionary, id: String) -> int:
 	return clampi(int(h.levels.get(id, 1)), 1, MAX_LEVEL)
+
+static func def_level(h: Dictionary, id: String) -> int:
+	return clampi(int(h.def.get(id, 1)), 1, MAX_DEF_LEVEL)
 
 static func tier(h: Dictionary, id: String) -> int:
 	return clampi(int(h.tiers.get(id, 1)), 1, MAX_TIER)
@@ -274,6 +286,15 @@ static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	h.levels[id] = lv + 1
 	return true
 
+static func def_up(save: Dictionary, h: Dictionary, id: String) -> bool:
+	var lv := def_level(h, id)
+	var cost := def_cost(lv)
+	if lv >= MAX_DEF_LEVEL or int(save.get("coins", 0)) < cost:
+		return false
+	save["coins"] = int(save.get("coins", 0)) - cost
+	h.def[id] = lv + 1
+	return true
+
 static func evolve(h: Dictionary, id: String) -> bool:
 	if not can_evolve(h, id):
 		return false
@@ -328,12 +349,12 @@ static func stats(save: Dictionary) -> Dictionary:
 	var id := selected(h)
 	var hero: Dictionary = ROSTER[id]
 	var gear := GearData.read(save)
-	var st := {"damage": 1.0, "fire_rate": 1.0, "aim": 1.0, "recovery": 1.0, "hearts": 0, "magnet": 0.0,
+	var st := {"damage": 1.0, "fire_rate": 1.0, "aim": 1.0, "recovery": 1.0, "magnet": 0.0,
 		"auto_fire": 1.0, "gem_xp": 1.0, "coins": 1.0, "shield_regen": 1.0, "refreshes": 0, "pierce5": false,
 		"turret_dmg": 1.0, "turret_rate": 1.0, "pilot_xp": 1.0, "shield": 1.0, "chill": false,
 		"crit_rate": GearData.BASE_CRIT_RATE, "crit_dmg": GearData.BASE_CRIT_DMG, "dmg_boost": 0.0, "base_dr": 0.0, "fortress": 1.0,
 		"weapon": "laser_pistol", "thruster": String(GearData.SETS[hero.element].thruster),
-		"hero": id, "element": String(hero.element),
+		"hero": id, "element": String(hero.element), "hp": BASE_HP, "hp_mult": 1.0, "def": 0.0,
 		"scale": float(hero.build.scale), "speed": float(hero.build.speed), "tough": float(hero.build.tough)}
 	# the grade: a higher-rated hero starts stronger
 	var gm: float = float(GRADES[grade(id) - 1].mult)
@@ -351,11 +372,15 @@ static func stats(save: Dictionary) -> Dictionary:
 	for m in milestones(lv):
 		var ms: Dictionary = MILESTONES[m % MILESTONES.size()]
 		st[ms.stat] = float(st[ms.stat]) + float(ms.per)
-	st.hearts = int(st.hearts)
+	# HP and DEF (Rudy: HP instead of three hearts, so defence can be a stat): HP grows with the
+	# level and the tier, DEF with its own upgrade track; bulky builds start with more HP
+	st.hp = BASE_HP * float(hero.build.tough) * (1.0 + HP_PER_LEVEL * steps)
+	st.def = minf(DEF_PER * (def_level(h, id) - 1), DEF_CAP)
 	# the tier (evolutions)
 	var t := tier(h, id) - 1
 	st.damage *= 1.0 + TIER_BONUS * t
 	st.fortress *= 1.0 + TIER_BONUS * t
+	st.hp *= 1.0 + TIER_BONUS * t
 	# the passive
 	match id:
 		"rook": st.gem_xp += 0.15
@@ -363,7 +388,7 @@ static func stats(save: Dictionary) -> Dictionary:
 		"frost": st.chill = true
 		"hollow": st.pierce5 = true
 		"nyx": st.crit_rate += 0.05
-		"ember": st.hearts += 1
+		"ember": st.hp_mult += 0.2
 	# the one gear slot: the weapon (its level, its type)
 	var wid: String = gear.equipped["Weapon"]
 	var wlv := GearData.level(gear, wid)
@@ -371,6 +396,7 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.weapon = GearData.SETS[GearData.ITEMS[wid].set].weapon
 	st.crit_rate += float(GearData.MILESTONE["Weapon"].per) * GearData.milestones(wlv)
 	# pilot rank (Promotion)
+	st.hp = roundf(float(st.hp) * float(st.hp_mult))   # milestones and Ember's passive
 	var pr := Promotion.rank(save)
 	st.damage *= Promotion.bonus(pr)
 	st.fortress *= Promotion.bonus(pr)

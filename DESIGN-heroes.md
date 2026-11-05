@@ -28,7 +28,10 @@ Heroes are not handed out by stage. They are RATED by a star grade and BOUGHT:
   (name, grade stars, element, passive, Level up, tier + Evolve, or the price + Unlock); then
   the roster as one scrolling row per grade, locked heroes dimmed with what they need.
 - Later per hero (Rudy): his own weapon variant and way of shooting, maybe his own movement
-  and stance; a unique POWER CARD that only shows up for him in a run; ATK and DEF as
+  and stance; a unique POWER CARD that only shows up for him in a run, and it BUILDS UP like
+  every card: the first pick is its basic form, the second more of it, the third pick (the
+  overcharge) is his max specialty, so it is earned in the run, not a legendary handed over
+  (Cards "hero" key, offered only when he is on duty, like the turret cards); ATK and DEF as
   separate upgrades. DEF needs the pilot on HP instead of three hearts (like the base's
   shield and hull), so damage taken can be reduced by a defence stat: a gameplay change to
   plan on its own (hearts -> HP bar, hit damage per enemy, DEF % on the hero).

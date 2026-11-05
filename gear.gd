@@ -245,6 +245,10 @@ func _build() -> void:
 	_level_btn = UIKit.gold_button("Level up", 13)
 	_level_btn.custom_minimum_size = Vector2(118, 44)
 	_level_btn.pressed.connect(_on_level_up)
+	_def_btn = UIKit.teal_button("DEF up", 13)
+	_def_btn.custom_minimum_size = Vector2(96, 44)
+	_def_btn.pressed.connect(_on_def_up)
+	hrow.add_child(_def_btn)
 	hrow.add_child(_level_btn)
 	hrow.add_child(_crystal_btn)
 	hrow.add_child(_unlock_btn)
@@ -506,7 +510,8 @@ func _show_stats() -> void:
 		["Crit rate", "%d%%" % roundi(float(gs.crit_rate) * 100.0)],
 		["Crit damage", "x%.2f" % float(gs.crit_dmg)],
 		["Damage boost", "+%d%%" % roundi(float(gs.dmg_boost) * 100.0)],
-		["Hearts", str(3 + int(gs.hearts))],
+		["HP", "%d" % roundi(float(gs.hp))],
+		["Defence", "-%d%% damage taken" % roundi(float(gs.def) * 100.0)],
 	])
 	v.add_child(UIKit.header("BASE"))
 	_stat_rows(v, [
@@ -1719,6 +1724,7 @@ var _stars_l: Label
 var _evolve_btn: Button
 var _unlock_btn: Button
 var _crystal_btn: Button
+var _def_btn: Button           # the DEF track (HP instead of hearts, dev172)
 
 func _hero_id() -> String:
 	return Heroes.selected(hero)
@@ -1812,6 +1818,7 @@ func _paint_hero() -> void:
 	_hero_name.text = "%s  %s  ·  %s %s" % [h.name, Heroes.stars_text(id), Heroes.grade_name(id), Heroes.element_name(el)]
 	_hero_name.add_theme_color_override("font_color", col)
 	_level_btn.visible = own
+	_def_btn.visible = own
 	_evolve_btn.visible = own
 	_stars_l.visible = own
 	_unlock_btn.visible = not own
@@ -1819,15 +1826,21 @@ func _paint_hero() -> void:
 	if own:
 		var lv := Heroes.level(hero, id)
 		var t := Heroes.tier(hero, id)
+		var dl := Heroes.def_level(hero, id)
 		var next_lv := ((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY
 		var ms := Heroes.milestone_at(next_lv)
 		var next_ms := ("next Lv.%d: %s" % [next_lv, ms.text]) if not ms.is_empty() else ""
 		var gm: float = float(Heroes.GRADES[Heroes.grade(id) - 1].mult)
 		var atk := roundi(((gm * (1.0 + float(Heroes.PER_LEVEL.atk) * (lv - 1)) * (1.0 + Heroes.TIER_BONUS * (t - 1))) - 1.0) * 100.0)
-		_hero_line.text = "%s\nLv.%d  ·  ATK +%d%%  ·  %s" % [h.passive, lv, atk, next_ms]
+		var st := Heroes.stats(data) if id == _hero_id() else {}
+		var hp_txt := ("HP %d  ·  DEF %d%%" % [roundi(float(st.get("hp", 0.0))), roundi(float(st.get("def", 0.0)) * 100.0)]) if not st.is_empty() else ""
+		_hero_line.text = "%s\nLv.%d  ·  ATK +%d%%  ·  %s\n%s" % [h.passive, lv, atk, hp_txt, next_ms]
 		var cost := Heroes.level_cost(lv)
 		_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
-		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
+		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "ATK up\n%d coins" % cost
+		var dcost := Heroes.def_cost(dl)
+		_def_btn.disabled = dl >= Heroes.MAX_DEF_LEVEL or coins < dcost
+		_def_btn.text = "DEF max" if dl >= Heroes.MAX_DEF_LEVEL else "DEF up\n%d coins" % dcost
 		var need := Heroes.next_tier_cost(hero, id)
 		var have := Heroes.shards(hero, id)
 		_stars_l.text = "Tier %d / %d   %s" % [t, Heroes.MAX_TIER, ("shards %d / %d" % [have, need]) if need > 0 else "final look"]
@@ -1867,6 +1880,21 @@ func _on_level_up() -> void:
 	if _plat:
 		_plat.flash()
 	_paint_roster()
+	_paint_hero()
+
+# the DEF track: each level takes a little more off every hit (Heroes.DEF_PER, capped)
+func _on_def_up() -> void:
+	var data := _read()
+	var id := _view_id
+	if not Heroes.owned(hero, id) or not Heroes.def_up(data, hero, id):
+		return
+	coins = int(data.coins)
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	Sfx.play("upgrade")
+	Progress.bump("upgrades")
+	if _plat:
+		_plat.flash()
 	_paint_hero()
 
 func _on_evolve() -> void:

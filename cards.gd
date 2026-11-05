@@ -33,7 +33,7 @@ const CARDS := {
 		"desc": "Your turrets fire 15% faster"},
 	# defence
 	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
-		"desc": "+1 heart (max 5) and a shield of light"},
+		"desc": "+30 max HP, healed now, and a shield of light"},
 	"reinforced_hull": {"name": "Reinforced Hull", "family": "base",   "rarity": "common",    "max": 3, "icon": "chest",
 		"desc": "Base shield +30 and hull +20, repaired now"},
 	"shield_recharge": {"name": "Shield Recharge", "family": "base",   "rarity": "uncommon",  "max": 3, "icon": "chest", "from_level": 4,
@@ -70,7 +70,7 @@ const OVERCHARGE := {
 	"chain_spark":     "Sparks hit twice as hard",
 	"frost_rounds":    "Slowed bugs take +20% damage",
 	"turret_overclock": "Turret shots +30% damage",
-	"aegis":           "Heals 1 heart each new wave",
+	"aegis":           "Heals 25 HP each new wave",
 	"reinforced_hull": "Base shield +40",
 	"shield_recharge": "Also slowly repairs the hull",
 	"magnet":          "Each gem repairs 1 shield",

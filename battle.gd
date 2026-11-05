@@ -75,7 +75,7 @@ var burst_left := 0
 var burst_timer := 0.0
 var burst_dir := Vector2.UP
 var burst_tid := -2
-var max_hearts := 3
+var pilot_hp_max := 100.0           # the pilot's HP (instead of three hearts, dev172): Heroes.stats "hp"
 const MAGNET_BASE := 90.0           # gem pull range at the start of a run (px); each Magnet card adds 30
 var magnet_radius := MAGNET_BASE
 var magnet_level := 0
@@ -99,7 +99,9 @@ var soldier_pos := Vector2(240, 620)
 var dragging := false
 var drag_id := -1
 var last_touch := Vector2.ZERO
-var hearts := 3
+var pilot_hp := 100.0
+var _def := 0.0                     # the hero's DEF: damage to the pilot x (1 - _def)
+const GOO_DMG := 25.0               # a Spitter glob on the pilot (about four hits of base HP)
 var shield := 150.0
 var hull := 100.0
 var score := 0
@@ -179,7 +181,7 @@ var _stars: Array = []
 var _city: Array = []
 var _tex := {}
 var _safe_top := 0.0              # notch / camera cutout height (SafeAreaMargin.top_inset)
-var _hearts_lost := 0             # this stage (star objective 3)
+var _hp_lost := 0.0               # this stage (star objective 3: take no damage)
 var _vacuum_t := 0.0              # > 0: every pickup flies to the pilot (wave end)
 var _outro_t := -1.0              # >= 0: stage won, the closing flight is playing
 var _outro_lift := -1.0           # when (in _outro_t) he lifted off
@@ -367,8 +369,8 @@ func _start_stage() -> void:
 	_outro_t = -1.0
 	_outro_lift = -1.0
 	game_over = false
-	hearts = 3
-	max_hearts = 3
+	pilot_hp = 100.0
+	pilot_hp_max = 100.0
 	shield_max = BASE_SHIELD
 	hull_max = BASE_HULL
 	shield = shield_max
@@ -436,8 +438,9 @@ func _start_stage() -> void:
 	fire_rate_mult = gs.fire_rate
 	aim_error = 0.05 / gs.aim
 	aim_turn_speed = 10.0 * gs.aim
-	max_hearts = 3 + int(gs.hearts)
-	hearts = max_hearts
+	pilot_hp_max = float(gs.get("hp", 100.0))
+	_def = clampf(float(gs.get("def", 0.0)), 0.0, 0.6)
+	pilot_hp = pilot_hp_max
 	_recovery = gs.recovery
 	_magnet_base = MAGNET_BASE + float(gs.magnet)
 	magnet_radius = _magnet_base
@@ -491,7 +494,7 @@ func _start_stage() -> void:
 	_drone_cd = 0.5
 	_drone_beam = {}
 	_took_damage = false
-	_hearts_lost = 0
+	_hp_lost = 0.0
 	_parts_got = {}
 	_stars_got = 0
 	_gems_got = 0
@@ -521,9 +524,9 @@ func _start_wave() -> void:
 		Sfx.play("wave")
 	if wave_index >= waves.size():
 		return
-	if _aegis_heal and wave_index > 0 and hearts < max_hearts:
-		hearts += 1   # Aegis overcharged
-		_float_text(soldier_pos + Vector2(0, -40), "+1 HEART", Color(1.0, 0.5, 0.6))
+	if _aegis_heal and wave_index > 0 and pilot_hp < pilot_hp_max:
+		pilot_hp = minf(pilot_hp + 25.0, pilot_hp_max)   # Aegis overcharged: a heal between waves
+		_float_text(soldier_pos + Vector2(0, -40), "+25 HP", Color(1.0, 0.5, 0.6))
 	for entry in waves[wave_index]:
 		for i in int(entry[1]):
 			wave_queue.append(entry[0])
@@ -725,7 +728,7 @@ func _process(delta: float) -> void:
 	_step_effects(delta)
 	_pilot_motion(delta)
 	anim.update(_wanted_pose(), delta)
-	if hearts <= 0 or hull <= 0.0:
+	if pilot_hp <= 0.0 or hull <= 0.0:
 		_end_run(false)
 	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared and _outro_t < 0.0:
 		wave_index += 1
@@ -1041,7 +1044,7 @@ func _update_bullets(delta: float) -> void:
 		if b.pos.distance_to(soldier_pos) < 14.0:
 			if inv_t <= 0.0:
 				stat_hit_bullet += 1
-			_hurt_pilot()
+			_hurt_pilot(GOO_DMG)
 			continue
 		if b.pos.y < FIELD_H + 20.0:
 			live_eb.append(b)
@@ -1750,17 +1753,18 @@ func _hurt_base(amount: float) -> void:
 		Sfx.play("hull")
 		hull = maxf(hull - amount, 0.0)
 
-func _hurt_pilot() -> void:
+func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if inv_t > 0.0:
 		return
-	inv_t = 1.5 * _recovery
-	hearts -= 1
+	inv_t = 1.0 * _recovery
+	var dmg := amount * (1.0 - _def)   # DEF takes its share off
+	pilot_hp = maxf(pilot_hp - dmg, 0.0)
 	Sfx.play("hurt")
-	_hearts_lost += 1
+	_hp_lost += dmg
 	_took_damage = true
 	shake = maxf(shake, 0.7)
 	_burst(soldier_pos, 16.0, Color(1.0, 0.35, 0.42), 10)
-	_float_text(soldier_pos + Vector2(0, -30), "-1 HEART", Color(1.0, 0.4, 0.45))
+	_float_text(soldier_pos + Vector2(0, -30), "-%d" % roundi(dmg), Color(1.0, 0.4, 0.45))
 
 func _burst(p: Vector2, radius: float, col: Color, count: int = 7) -> void:
 	rings.append({"pos": p, "life": 0.4, "max": 0.4, "r": radius * 2.6, "col": col})
@@ -1824,9 +1828,9 @@ func _end_run(won: bool) -> void:
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull
-	# above half, no hearts lost (dev111; "no damage at all" was near impossible without regen)
+	# above half, the pilot untouched (dev172: HP instead of hearts; a hit is a hit)
 	if won and not elite and promo < 0:
-		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if _hearts_lost == 0 else 0)
+		var got := 1 + (1 if hull >= hull_max * 0.5 else 0) + (1 if _hp_lost <= 0.0 else 0)
 		var st = d.get("stars", {})
 		if typeof(st) != TYPE_DICTIONARY:
 			st = {}
@@ -1923,7 +1927,7 @@ func _objectives(won: bool = false) -> Array:
 	return [
 		{"text": "Clear the stage", "state": "done" if won else "todo"},
 		{"text": "Keep the base hull above half", "state": ("done" if won else "ok") if hull_ok else "fail"},
-		{"text": "Lose no hearts", "state": ("done" if won else "ok") if _hearts_lost == 0 else "fail"},
+		{"text": "Take no damage", "state": ("done" if won else "ok") if _hp_lost <= 0.0 else "fail"},
 	]
 
 # a five-pointed star outline
@@ -2203,11 +2207,11 @@ func _pick_card(id: String) -> void:
 		"heavy_bolts": damage_mult *= 1.15
 		"burst_fire": burst_count += 1
 		"aegis":
-			max_hearts = mini(max_hearts + 1, 5)
+			pilot_hp_max += 30.0   # Aegis: +30 max HP, healed now
 			_aegis_flash = 1.0
 			if _rig_view:
 				_rig_view.shield_form = 0.0   # the band closes in around him
-			hearts = mini(hearts + 1, max_hearts)
+			pilot_hp = minf(pilot_hp + 30.0, pilot_hp_max)
 		"magnet":
 			magnet_level += 1
 			magnet_radius = _magnet_base + 40.0 * magnet_level   # +40 px per card (on top of the boots)
@@ -3423,8 +3427,16 @@ func _draw_hud() -> void:
 			_hc.draw_polyline(dia, Color(cyan, 0.6), 1.0, true)
 	else:
 		_hc.draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-	for i in max_hearts:
-		_draw_heart(Vector2(FIELD_W - 24 - (max_hearts - 1 - i) * 22, y2 - 3), 7.5, i < hearts)
+	# the pilot's HP bar (dev172: HP instead of hearts): red, with the number, at the right
+	var bar := Rect2(FIELD_W - 132.0, y2 - 10.0, 114.0, 9.0)
+	_hc.draw_string(hud_font, Vector2(bar.position.x - 20.0, y2), "HP", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+	_hc.draw_colored_polygon(Glass.box(bar, 3.0).slice(0, -1), Color(0.12, 0.03, 0.06, 0.85))
+	var hk := clampf(pilot_hp / maxf(pilot_hp_max, 1.0), 0.0, 1.0)
+	if hk > 0.0:
+		var fill := Rect2(bar.position, Vector2(maxf(bar.size.x * hk, 6.0), bar.size.y))
+		_hc.draw_colored_polygon(Glass.box(fill, 3.0).slice(0, -1), Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25))
+	_hc.draw_polyline(Glass.box(bar, 3.0), Color(1.0, 0.45, 0.5, 0.5), 1.0, true)
+	_hc.draw_string(hud_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 8, Color.WHITE)
 	# run XP: a rounded track under the capsule, filled cyan to purple, level on a chip
 	var need := _xp_need()
 	var xp := clampf(run_xp / need, 0.0, 1.0)

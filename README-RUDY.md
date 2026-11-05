@@ -185,6 +185,19 @@ Luna's brief is LUNA-BRIEF-heroes.md).
   lights and hold their own weapon, so the whole system is playable now.
 - Dev: Settings > DEVELOPER > gear copies also gives 50 shards of every hero.
 
+Update 2: HP INSTEAD OF HEARTS (your call, so defence can be a real stat).
+- The pilot has an HP bar now (top right of the battle HUD, red, with the number) instead of
+  three hearts. A Spitter glob takes 25 off 100, so a fresh Rook still takes four hits. Short
+  invulnerability after a hit stays, so a glob cannot drain him in one go.
+- Every hero has TWO upgrade tracks with coins on the Hero page: ATK up (the level: damage,
+  fire rate, aim, recovery, magnet, auto-fire, milestones) and DEF up (each level takes 1.2%
+  more off every hit, capped at 50%; 50 + 25 x level coins a step). The panel shows HP and DEF.
+- Max HP grows with the hero's level (+2% a level), his tier (+8%), his build (bulky heroes
+  start with more), the milestones that used to give a heart (now Max HP +15%), and Ember's
+  passive (Max HP +20%).
+- The Aegis card gives +30 max HP and heals 30 (its overcharge heals 25 HP each new wave).
+  The third stage star is "Take no damage".
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

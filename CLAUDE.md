@@ -5,7 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 1 update (next push = dev171 + that count; see the build rule).
+- UNPUSHED since dev171: 2 updates (next push = dev171 + that count; see the build rule). Rudy
+  (2026-11-05): do NOT push to Luna for now.
+  2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
+     _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
+     25 a wave overcharged); Heroes BASE_HP 100 x build.tough x (1 + 2%/level) x tier x hp_mult
+     (milestone "Max HP +15%", Ember +20%), DEF track (save hero.def, def_level / def_cost /
+     def_up, DEF_PER 1.2% capped 50%); Hero page ATK up + DEF up buttons, HP / DEF line; sim
+     column "hp lost". Hero cards (Rudy): one per hero, offered only with him on duty, builds up
+     over its three picks like every card (Cards "hero" key): NOT built yet, DESIGN-heroes.md.
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old

@@ -175,7 +175,7 @@ func _next() -> void:
 	b.set_process(false)
 	b.set_process_input(false)
 	steps = 0
-	r = {"stage": cur[0], "won": false, "t": 0.0, "wave": 0, "waves": 0, "hearts_lost": 0, "min_hull": 100.0,
+	r = {"stage": cur[0], "won": false, "t": 0.0, "wave": 0, "waves": 0, "hearts_lost": 0.0, "min_hull": 100.0,
 		"first_heart_wave": -1, "first_base_wave": -1, "kills": 0, "lvl": 1, "cards": [], "pilot_dmg": 0.0, "turret_dmg": 0.0,
 		"hit_bullet": 0, "hit_diver": 0, "base_hits": 0}
 
@@ -195,7 +195,7 @@ func _step() -> bool:
 	steps += 1
 	if b.picking:
 		_pick()
-	var hearts_before: int = b.hearts
+	var hp_before: float = b.pilot_hp
 	var hull_before: float = b.hull
 	var shield_before: float = b.shield
 	if b.paused:
@@ -220,8 +220,8 @@ func _step() -> bool:
 		else:
 			b.dragging = false
 	b._process(DT)
-	if b.hearts < hearts_before:
-		r.hearts_lost += hearts_before - b.hearts
+	if b.pilot_hp < hp_before:
+		r.hearts_lost += hp_before - b.pilot_hp   # HP lost (the column keeps its name)
 		if r.first_heart_wave < 0:
 			r.first_heart_wave = b.wave_index + 1
 	if b.hull < hull_before or b.shield < shield_before:
@@ -316,8 +316,8 @@ func _finish() -> void:
 	r.hit_bullet = b.stat_hit_bullet
 	r.hit_diver = b.stat_hit_diver
 	r.pxp = b._xp_gain
-	var why := "WIN" if r.won else ("hearts" if b.hearts <= 0 else ("hull" if b.hull <= 0.0 else "timeout"))
-	print(("[%s] " % r_kit if kit_auto else "") + "stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hearts lost %d (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
+	var why := "WIN" if r.won else ("hp" if b.pilot_hp <= 0.0 else ("hull" if b.hull <= 0.0 else "timeout"))
+	print(("[%s] " % r_kit if kit_auto else "") + "stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hp lost %3.0f (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
@@ -327,7 +327,7 @@ func _finish() -> void:
 
 func _summary() -> void:
 	print("\nSUMMARY pilot=%s" % pilot)
-	print("stage  win  avg time  avg wave  hearts lost  hull min  pilot dmg share  pilot XP  (sum of wins, level)")
+	print("stage  win  avg time  avg wave  hp lost  hull min  pilot dmg share  pilot XP  (sum of wins, level)")
 	var total_xp := 0.0
 	for st in stages:
 		var rs: Array = results.get(st, [])

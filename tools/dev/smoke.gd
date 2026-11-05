@@ -256,13 +256,17 @@ func _check_heroes() -> void:
 		_expect(GearData.ITEMS.has(String(Heroes.ROSTER[id].weapon)) and GearData.SETS.has(String(Heroes.ROSTER[id].element)), "hero %s: weapon and element exist" % id)
 	# stats: the keys battle reads are all there; Nyx (Legendary) hits harder than Rook
 	var st := Heroes.stats(s)
-	for k in ["damage", "fire_rate", "aim", "recovery", "hearts", "magnet", "auto_fire", "gem_xp", "coins", "weapon", "thruster", "crit_rate", "fortress", "element", "hero"]:
+	for k in ["damage", "fire_rate", "aim", "recovery", "hp", "def", "magnet", "auto_fire", "gem_xp", "coins", "weapon", "thruster", "crit_rate", "fortress", "element", "hero"]:
 		_expect(st.has(k), "stats has %s" % k)
 	_expect(String(st.hero) == "nyx" and String(st.element) == "nightmare" and float(st.crit_rate) > GearData.BASE_CRIT_RATE, "Nyx on duty: her element and passive")
 	h.selected = "rook"
 	s["hero"] = Heroes.write(h)
 	var rst := Heroes.stats(s)
 	_expect(float(st.damage) > float(rst.damage) * 1.05, "a Legendary out-hits a Common")
+	s["coins"] = 500
+	_expect(Heroes.def_up(s, h, "rook") and Heroes.def_level(h, "rook") == 2 and int(s.coins) == 500 - Heroes.def_cost(1), "DEF up costs 50 + 25 x level")
+	s["hero"] = Heroes.write(h)
+	_expect(is_equal_approx(float(Heroes.stats(s).def), Heroes.DEF_PER) and float(Heroes.stats(s).hp) >= Heroes.BASE_HP, "DEF and HP in the stats")
 	# old save: five armour pieces at Lv.6 each (5 x 1800 coins) and some spare copies -> Rook level + shards
 	var old := {"stage_unlocked": 12, "gear": {"equipped": GearData.DEFAULT.duplicate(),
 		"levels": {"ion_helmet": 6, "ion_chest": 6, "ion_gauntlets": 6, "ion_boots": 6, "ion_jetpack": 6, "ion_weapon": 4},
