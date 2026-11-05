@@ -221,6 +221,15 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    no stars/unlock/suit, end screen PROMOTED!, HUD "TRIAL · NAME"); GearData.stats applies
    Promotion.bonus to damage and fortress; modes.gd card _promotion_row + _ladder; hub rank
    name. Later: Luna rank badges (10), a PROMOTED banner in battle, rank as a talent-map gate.
+25. HOME BASE building (Rudy idea, 2026-11-04, SIDELINED to 1.x by agreement): a side screen where
+   you build and level buildings (oxygen, water, mine, alliance hall...) on the planet, for looks
+   and small perks. Claude's advice: do not add a second economy before 1.0 is polished (gear,
+   turrets, drone, cards, parts, kits, ranks, Patrol, missions, trophies, calendar, plus the
+   talent map and Store 2.0 already planned = enough decisions). If it comes: make the EXISTING
+   base the base (Backdrop base strip): buildings = the dome (super weapons, item 10), the four
+   sockets (turrets), a hangar (drone + Patrol), a workshop (merging); each building's look
+   levels up from what the player already does (no new currency), with Luna painting the
+   building tiers. A separate "build your base" screen with its own costs is the version to avoid.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
