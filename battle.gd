@@ -433,6 +433,7 @@ func _start_stage() -> void:
 	_burn_level = 0
 	_burn_spread = false
 	_dmg_acc = {}
+	_variants_seen = {}
 	_shield_rate = 0.0
 	_hull_rate = 0.0
 	_chain_mult = 1.0
@@ -642,6 +643,7 @@ func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
 	next_enemy_id += 1
+	_roll_variant(e)   # armoured / shielded / booster / healer, by stage (VARIANTS)
 	return e
 
 # ------------------------------------------------------------------ input
@@ -1052,7 +1054,7 @@ func _update_bullets(delta: float) -> void:
 				if e.type == "hive_mother" and e.laying > 1.2:
 					dmg *= 2.0   # weak spot open while she lays
 				if b.has("src"):
-					dmg *= Turrets.trait_mult(b.src, StageData.ENEMIES[e.type].traits) * Turrets.element_mult(String(b.src), stage)
+					dmg *= Turrets.trait_mult(b.src, _traits(e)) * Turrets.element_mult(String(b.src), stage)
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 					# Ricochet (turret card): the Sentry bolt bounces on to the nearest other bug
@@ -1086,6 +1088,7 @@ func _update_bullets(delta: float) -> void:
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
+				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
 				Sfx.play("boss_hit" if e.type == "hive_mother" else "hit", rng.randf_range(0.92, 1.08))
@@ -1149,6 +1152,7 @@ func _update_bullets(delta: float) -> void:
 func _update_enemies(delta: float) -> void:
 	var live: Array = []
 	var centre := Vector2(FIELD_W / 2, BASE_Y)
+	_update_auras(delta)   # support variants (boosters, healers)
 	for e in enemies:
 		var def: Dictionary = StageData.ENEMIES[e.type]
 		e.t += delta
@@ -1288,6 +1292,12 @@ func _update_enemies(delta: float) -> void:
 		if float(e.get("slow_t", 0.0)) > 0.0:
 			e.slow_t = float(e.slow_t) - delta
 			e.pos = prev.lerp(e.pos, 1.0 - float(e.get("slow", 0.0)))
+		# a booster's aura: the bug covers 30% more ground this frame
+		if float(e.get("boost_t", 0.0)) > 0.0 and e.state != "aim" and e.state != "hatch":
+			e.boost_t = float(e.boost_t) - delta
+			e.pos = prev.lerp(e.pos, 1.3)
+			if e.type == "spitter":
+				e.fire_t = float(e.fire_t) - delta * 0.5   # spits sooner
 		# Afterburn (Ember card): a burning bug loses HP every frame and sheds embers
 		if float(e.get("burn_t", 0.0)) > 0.0:
 			e.burn_t = float(e.burn_t) - delta
@@ -1298,6 +1308,8 @@ func _update_enemies(delta: float) -> void:
 				_show_dmg(e, bd, false, _elem_mult)
 			if rng.randf() < delta * 10.0:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
+		if e.type != "hive_mother":
+			e.pos.x = clampf(e.pos.x, 16.0, FIELD_W - 16.0)   # never drifts off the sides (a wave must stay killable)
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# faster than its cruising speed (a dart, a dive): it stretches into the motion (dev153)
 		e.stretch_s = lerpf(float(e.get("stretch_s", 0.0)), clampf(e.vel.length() / maxf(float(e.speed), 1.0) - 1.0, 0.0, 1.2) * 0.16, minf(1.0, delta * 12.0))
@@ -1374,7 +1386,7 @@ func _enemy_tilt(e: Dictionary) -> float:
 
 func _kill(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
-	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
+	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else (150 if e.has("variant") else 100))
 	score += worth
 	_spawn_shards(e, def)
 	_flush_dmg(int(e.id))   # the last number before it goes
@@ -1528,7 +1540,8 @@ func _turret_dmg(t: Dictionary) -> float:
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	if not _can_hurt(e):
 		return
-	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits) * Turrets.element_mult(t.type, stage)   # traits and the element (dev172)
+	dmg *= Turrets.trait_mult(t.type, _traits(e)) * Turrets.element_mult(t.type, stage)   # traits, the variant and the element (dev172)
+	dmg = _through_shield(e, dmg)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 	e.hp -= dmg
 	e.hit_t = HIT_FLINCH_T
@@ -2729,7 +2742,8 @@ func _draw_zaps() -> void:
 				var nrm: Vector2 = (Vector2(z.b) - Vector2(z.a)).orthogonal().normalized()
 				p += nrm * sin(z.seed + k * 2.3 + time_alive * 40.0) * 7.0
 			pts.append(p)
-		_fx.draw_polyline(pts, Color(0.6, 0.85, 1.0, a), 2.0, true)
+		var zc: Color = z.get("col", Color(0.6, 0.85, 1.0))   # healers zap green (variants)
+		_fx.draw_polyline(pts, Color(zc, a), 2.0, true)
 		_fx.draw_polyline(pts, Color(1, 1, 1, a), 1.0, true)
 
 # Stage Cleared / Base Lost, in the glass style (Rudy, dev111): the title, three big
@@ -3100,6 +3114,7 @@ func _draw_enemy(e: Dictionary) -> void:
 		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
 	else:
 		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
+	_draw_variant(e, size)
 	if e.hp < e.hp_max and e.type != "hive_mother":
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
@@ -4049,3 +4064,122 @@ func _draw_hurt_edge() -> void:
 # Mother (and the young one mid-stage) is untouchable while she descends to her hover height.
 func _can_hurt(e: Dictionary) -> bool:
 	return e.type != "hive_mother" or bool(e.get("arrived", false))
+
+# ---- ENEMY VARIANTS (queue item 17 a, dev172): the same bugs with a twist, mixed in by stage ----
+# armoured: a plated shell, nearly double health, slower (trait "armoured": the Lance eats it)
+# shielded: a bubble that stops bolts and beams until it breaks (trait "shielded": the Storm)
+# booster:  a SUPPORT bug: bugs near it move faster and spit sooner; kill it first (orange aura)
+# healer:   a SUPPORT bug: heals bugs near it; kill it first (green aura)
+# One roll per bug: the chance rises with the stage, each variant from its own stage on.
+const VARIANTS := {
+	"armoured": {"from": 6,  "name": "ARMOURED", "col": Color(0.75, 0.78, 0.85)},
+	"shielded": {"from": 11, "name": "SHIELDED", "col": Color(0.4, 0.9, 1.0)},
+	"booster":  {"from": 16, "name": "BOOSTER",  "col": Color(1.0, 0.6, 0.2)},
+	"healer":   {"from": 21, "name": "HEALER",   "col": Color(0.4, 1.0, 0.5)},
+}
+const AURA_R := 120.0
+var _variants_seen := {}   # variant -> true once its card showed this run
+
+func _roll_variant(e: Dictionary) -> void:
+	if not ["scout", "drifter", "spitter", "diver"].has(String(e.type)) or e.has("hatchling"):
+		return
+	var pool: Array = []
+	for v in VARIANTS:
+		if stage >= int(VARIANTS[v].from):
+			pool.append(v)
+	if pool.is_empty():
+		return
+	var p: float = clampf(0.06 + 0.006 * (stage - 5), 0.06, 0.32)
+	if rng.randf() > p:
+		return
+	var v: String = pool[rng.randi() % pool.size()]
+	e.variant = v
+	match v:
+		"armoured":
+			e.hp *= 1.9
+			e.hp_max *= 1.9
+			e.speed = float(e.speed) * 0.85
+			e.r = float(e.r) * 1.1
+		"shielded":
+			e.shield_hp = 0.7 * float(e.hp_max)
+			e.shield_max = e.shield_hp
+		"booster", "healer":
+			e.hp *= 0.85
+			e.hp_max *= 0.85
+	if not _variants_seen.has(v):
+		_variants_seen[v] = true
+		var vd: Dictionary = VARIANTS[v]
+		_float_text(Vector2(FIELD_W * 0.5, 200), ("%s BUG: KILL IT FIRST" if v in ["booster", "healer"] else "%s BUG") % vd.name, vd.col, true)
+
+# the bug's traits: its kind's plus its variant's (turret "strong vs" bonuses)
+func _traits(e: Dictionary) -> Array:
+	var t: Array = Array(StageData.ENEMIES[e.type].traits).duplicate()
+	match String(e.get("variant", "")):
+		"armoured": t.append("armoured")
+		"shielded": t.append("shielded")
+		"booster", "healer": t.append("support")
+	return t
+
+# a shielded bug's bubble takes the hit first; returns what gets through
+func _through_shield(e: Dictionary, dmg: float) -> float:
+	var sh: float = float(e.get("shield_hp", 0.0))
+	if sh <= 0.0:
+		return dmg
+	e.shield_hp = sh - dmg
+	if float(e.shield_hp) <= 0.0:
+		_fx_add("nova", e.pos, float(e.r) * 2.6, 0.3, 0.0, 1.8, Color(0.4, 0.9, 1.0))
+		Sfx.play("shield")
+		return -float(e.shield_hp)
+	_fx_add("impact", e.pos + Vector2(0, -float(e.r) * 0.6), 20.0, 0.15, rng.randf() * TAU, 1.4, Color(0.5, 0.95, 1.0))
+	return 0.0
+
+# support bugs: boosters speed up and healers patch every bug in their aura (each frame)
+func _update_auras(delta: float) -> void:
+	for e in enemies:
+		var v := String(e.get("variant", ""))
+		if v != "booster" and v != "healer":
+			continue
+		for o in enemies:
+			if o == e or o.pos.distance_to(e.pos) > AURA_R:
+				continue
+			if v == "booster":
+				o.boost_t = 0.25
+			elif o.hp < o.hp_max and o.type != "hive_mother":
+				o.hp = minf(float(o.hp) + 0.04 * float(o.hp_max) * delta, float(o.hp_max))
+				if rng.randf() < delta * 1.5:
+					zaps.append({"a": e.pos, "b": o.pos, "life": 0.18, "seed": rng.randf() * 100.0, "col": Color(0.4, 1.0, 0.5)})
+
+func _draw_variant(e: Dictionary, size: float) -> void:
+	var v := String(e.get("variant", ""))
+	if v == "":
+		return
+	var col: Color = VARIANTS[v].col
+	match v:
+		"armoured":
+			# plates round the body: a thick dark ring with lighter segments
+			draw_arc(e.pos, size * 0.62, 0.0, TAU, 32, Color(0.25, 0.27, 0.32, 0.8), 4.0, true)
+			for i in 6:
+				var a0 := TAU * i / 6.0 + time_alive * 0.4
+				draw_arc(e.pos, size * 0.62, a0, a0 + TAU / 6.0 * 0.55, 8, Color(col, 0.75), 3.0, true)
+		"shielded":
+			var sh: float = float(e.get("shield_hp", 0.0))
+			if sh > 0.0:
+				var k: float = sh / maxf(float(e.get("shield_max", 1.0)), 1.0)
+				var r := size * 0.78
+				draw_circle(e.pos, r, Color(col, 0.08 + 0.06 * k))
+				draw_arc(e.pos, r, 0.0, TAU, 40, Color(col, 0.35 + 0.4 * k + 0.1 * sin(time_alive * 9.0)), 1.5, true)
+		"booster", "healer":
+			var pulse: float = 0.5 + 0.5 * sin(time_alive * 4.0)
+			draw_arc(e.pos, AURA_R * (0.95 + 0.05 * pulse), 0.0, TAU, 48, Color(col, 0.18), 1.0, true)
+			draw_circle(e.pos, size * 0.7, Color(col, 0.08 + 0.05 * pulse))
+			if v == "booster":
+				for o in enemies:
+					if o != e and float(o.get("boost_t", 0.0)) > 0.0 and o.pos.distance_to(e.pos) <= AURA_R:
+						draw_line(e.pos, o.pos, Color(col, 0.35), 1.0, true)
+	# the shield bar over the health bar
+	if v == "shielded" and float(e.get("shield_hp", 0.0)) > 0.0:
+		var w := size * 0.9
+		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6 - 5.0, w * clampf(float(e.shield_hp) / float(e.shield_max), 0.0, 1.0), 3), Color(0.4, 0.9, 1.0))
+	if not ["booster", "healer"].has(v):
+		return
+	draw_string(hud_font, Vector2(e.pos.x - 40.0, e.pos.y - size * 0.75), VARIANTS[v].name, HORIZONTAL_ALIGNMENT_CENTER, 80, 9, Color(col, 0.9))

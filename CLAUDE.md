@@ -5,7 +5,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 9 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 10 updates (next push = dev171 + that count; see the build rule). Rudy
+  10. ENEMY VARIANTS (17 a): battle VARIANTS table (armoured 6 / shielded 11 / booster 16 /
+     healer 21), _roll_variant in _make_enemy (p 0.06 + 0.006/stage, cap 0.32), _traits(e) feeds
+     Turrets.trait_mult (armoured / shielded / support), _through_shield on pilot and turret hits,
+     _update_auras (boost_t speed x1.3 + spit sooner, heal 4%/s with green zaps), _draw_variant
+     (plates, bubble + shield bar, auras + links + name), first-of-kind banner, worth 150.
   9. HORDE (battle `horde` from selected_mode "horde": _horde_wave(k) cycles the best stage's
      non-boss waves, +15% count per lap, HORDE_HP_PER_WAVE 0.04, boss every 10th, bounty per
      wave, save "best_horde", HUD / end screen; modes.gd card live, shown from Lv.5). Sim auto

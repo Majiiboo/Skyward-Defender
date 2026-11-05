@@ -332,6 +332,9 @@ func _finish() -> void:
 	r.hit_diver = b.stat_hit_diver
 	r.pxp = b._xp_gain
 	var why := "WIN" if r.won else ("hp" if b.pilot_hp <= 0.0 else ("hull" if b.hull <= 0.0 else "timeout"))
+	if why == "timeout":   # what was left on screen (a stuck bug shows up here)
+		for e in b.enemies:
+			print("  left: %s %s at %s hp %.1f/%.1f state %s shield %.1f queue %d" % [e.type, e.get("variant", "-"), str(Vector2(e.pos).round()), e.hp, e.hp_max, e.state, float(e.get("shield_hp", 0.0)), b.wave_queue.size()])
 	print(("[%s] " % r_kit if kit_auto else "") + "stage %2d run %d  %-7s wave %2d/%2d  %5.0fs  hp lost %3.0f (shots %d, divers %d)  hull min %3.0f  first heart w%s base w%s  kills %3d  lvl %2d  pilot %3.0f%%  cards %s" % [
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,

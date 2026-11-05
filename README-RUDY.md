@@ -316,6 +316,16 @@ Boss Rush stays "coming soon".
   damage late; Elite 10 won, 20 and 40 half, 30 a cliff (2 of 3), 50 and 60 won; the rank trials
   had become easy with the hero kit, so every rank got tougher (Cadet now has no turrets:
   about half the runs, the rest won but hurt). Numbers in CLAUDE.md 16g.
+Update 10: ENEMY VARIANTS (queue item 17 a, code only; Luna's families come later). The same
+bugs now come with a twist, mixed in more as the stages rise (about 6% of bugs at stage 6, a
+third by stage 50): ARMOURED (from stage 6: a plated ring, nearly double health, slower; the
+Lance Pylon is strong against it), SHIELDED (from 11: a bubble that stops bolts and beams
+until it breaks with a flash; the Storm Spire is strong against it), BOOSTER (from 16: a
+SUPPORT bug with an orange aura; bugs near it move 30% faster and spit sooner, with orange
+lines to the bugs it boosts: kill it first), HEALER (from 21: a green aura; it heals bugs
+near it 4% a second with green zaps: kill it first). Support bugs carry their name over them;
+the first of each kind in a run announces itself ("BOOSTER BUG: KILL IT FIRST"). Variants pay
+150 score instead of 100. Shielded bugs show a cyan shield bar over the health bar.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 
