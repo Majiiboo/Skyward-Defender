@@ -365,7 +365,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    68-78% late (turrets ~25-30%); Elite 10 won, 20 half, 30 lost (hull 0 by wave 4-5), 40 half,
    50-60 won: a cliff at stage 30 only; trials with the hero kit: Cadet / Pilot / Ace / Meteor
    3 of 3, Comet 0 of 3 (Turrets down at stage 55 was a wall) -> ranks +0.15 hp, no_turrets moved
-   to Pilot; the bot dodges every goo, so Normal "never threatened" is partly the bot. OLDER
+   to Cadet only (stage 15); after: Cadet 1.45 + no turrets, Pilot 1.45, Ace 1.65, Comet 1.6,
+   Meteor 1.7, later +0.05 steps to 1.95: sim Cadet ~half, Pilot 2 of 3, Ace-Meteor won with HP
+   lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
+   threatened" is partly the bot. OLDER
    (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
 28. RUDY PLAYTEST dev166 (2026-11-05, phone, old save with Commander suit). His notes, in his order:
    - A Patrol tip pops the moment the game opens: bad first impression. Tip boxes are huge for

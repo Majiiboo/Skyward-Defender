@@ -310,6 +310,12 @@ the score is the wave you reached, saved as your best and shown on the card ("BE
 Each wave cleared pays a coin bounty on top of the drops (20 coins + 4 a wave). Costs 5 power
 tokens. The HUD says "HORDE · WAVE 12"; the end screen "HORDE OVER" or "NEW BEST!".
 Boss Rush stays "coming soon".
+- BALANCE SWEEP with the new hero kit (simulator, a careful player with the gear of that stage):
+  Normal 1-60 all won with no pilot damage and the base untouched (the bot dodges every glob,
+  so this is the top end of what a player does), turrets about a quarter to a third of the
+  damage late; Elite 10 won, 20 and 40 half, 30 a cliff (2 of 3), 50 and 60 won; the rank trials
+  had become easy with the hero kit, so every rank got tougher (Cadet now has no turrets:
+  about half the runs, the rest won but hurt). Numbers in CLAUDE.md 16g.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 
