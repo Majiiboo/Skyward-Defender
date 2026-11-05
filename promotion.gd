@@ -10,16 +10,16 @@ extends RefCounted
 # "selected_mode" == "promotion" + "promotion_rank" once and clears the mode again.
 
 const RANKS := [
-	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 15, "hp": 1.4,  "count": 1.3},
-	{"id": "pilot",       "name": "Pilot",       "level": 20, "stage": 30, "hp": 1.3,  "count": 1.3},
-	{"id": "ace",         "name": "Ace",         "level": 25, "stage": 40, "hp": 1.4,  "count": 1.3},
-	{"id": "comet",       "name": "Comet",       "level": 30, "stage": 55, "hp": 1.4,  "count": 1.3},
-	{"id": "meteor",      "name": "Meteor",      "level": 35, "stage": 60, "hp": 1.45, "count": 1.3},
-	{"id": "nova",        "name": "Nova",        "level": 40, "stage": 60, "hp": 1.5,  "count": 1.35},
-	{"id": "pulsar",      "name": "Pulsar",      "level": 45, "stage": 60, "hp": 1.55, "count": 1.4},
-	{"id": "quasar",      "name": "Quasar",      "level": 50, "stage": 60, "hp": 1.6,  "count": 1.45},
-	{"id": "supernova",   "name": "Supernova",   "level": 55, "stage": 60, "hp": 1.7,  "count": 1.5},
-	{"id": "singularity", "name": "Singularity", "level": 60, "stage": 60, "hp": 1.8,  "count": 1.6},
+	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 15, "hp": 1.55, "count": 1.3},
+	{"id": "pilot",       "name": "Pilot",       "level": 20, "stage": 30, "hp": 1.45, "count": 1.3},
+	{"id": "ace",         "name": "Ace",         "level": 25, "stage": 40, "hp": 1.65, "count": 1.3},
+	{"id": "comet",       "name": "Comet",       "level": 30, "stage": 55, "hp": 1.6,  "count": 1.3},
+	{"id": "meteor",      "name": "Meteor",      "level": 35, "stage": 60, "hp": 1.7,  "count": 1.3},
+	{"id": "nova",        "name": "Nova",        "level": 40, "stage": 60, "hp": 1.65, "count": 1.35},
+	{"id": "pulsar",      "name": "Pulsar",      "level": 45, "stage": 60, "hp": 1.7,  "count": 1.4},
+	{"id": "quasar",      "name": "Quasar",      "level": 50, "stage": 60, "hp": 1.75, "count": 1.45},
+	{"id": "supernova",   "name": "Supernova",   "level": 55, "stage": 60, "hp": 1.85, "count": 1.5},
+	{"id": "singularity", "name": "Singularity", "level": 60, "stage": 60, "hp": 1.95, "count": 1.6},
 ]
 const PER_RANK := 0.06        # +6% bolt damage and +6% base shield / hull per rank (worth the fight)
 # "level" is the RECOMMENDED pilot level, one per ten levels (Rudy, dev168: 10, then the 20s,
@@ -29,8 +29,12 @@ const PER_RANK := 0.06        # +6% bolt damage and +6% base shield / hull per r
 # rising. The trial is tuned for the recommended level, but a player a few levels under it
 # with better gear or turrets can still take it (OPEN_EARLY).
 # "hp" and "count" per rank: bug health and bug numbers on top of that stage's normal scaling.
+# "Turrets down" only on the first rank / step (stage 10-15, turrets ~10% of the damage); from
+# stage 30 on it was a wall (0 of 3) wherever it sat.
 # Tuned with the balance sim (dev168, human bot, the kit of a player at that stage): hp 1.2 wins
-# every trial, 1.35-1.4 wins about half, 1.5 loses most; a kit 12 stages weaker wins almost
+# every trial, 1.35-1.4 wins about half, 1.5 loses most (that was before the hero kit; with hero
+# ATK + DEF levels in the sim kit, dev172, the same bot won 1.4 three of three, so every rank
+# went up 0.15); a kit 12 stages weaker wins almost
 # never (one Comet win in 3), a kit 8 stages stronger wins nearly always. Trials are a cliff:
 # the real strategy is gear and turrets, not retries.
 # (Elite is x1.85 health).
@@ -244,10 +248,10 @@ const MODS := {
 }
 # per rank trial (index into RANKS), good ones first
 const RANK_MODS := [
-	["rapid", "swift_bugs"],
-	["fortified", "thick_shells"],
+	["rapid", "no_turrets"],
+	["fortified", "swift_bugs"],
 	["sharpshooter", "double_spit"],
-	["overcharge", "no_turrets"],
+	["overcharge", "thick_shells"],
 	["turret_boost", "weak_shield"],
 	["reinforced", "swift_bugs", "thick_shells"],
 	["rapid", "sharpshooter", "no_turrets"],
@@ -257,9 +261,9 @@ const RANK_MODS := [
 ]
 # per element step
 const ETRIAL_MODS := [
-	["rapid", "swift_bugs"],
-	["fortified", "thick_shells"],
-	["sharpshooter", "no_turrets"],
+	["rapid", "no_turrets"],
+	["fortified", "swift_bugs"],
+	["sharpshooter", "swift_bugs"],
 	["overcharge", "double_spit"],
 	["reinforced", "thick_shells", "weak_shield"],
 ]

@@ -12,8 +12,8 @@ const MODES := [
 	# rank trials (Promotion, dev143): one hard stage per rank, win once = stronger for good
 	{"id": "promotion", "name": "Promotion", "banner": "crystal", "tint": Color(1.0, 0.8, 0.3), "unlock": 0,
 		"desc": "Ten rank trials · win once, stronger for good"},
-	{"id": "horde", "name": "Horde", "banner": "magma", "tint": Color(1.0, 0.55, 0.25), "unlock": 5, "soon": true,
-		"desc": "Endless waves · beat your best score"},
+	{"id": "horde", "name": "Horde", "banner": "magma", "tint": Color(1.0, 0.55, 0.25), "unlock": 5,
+		"desc": "Endless waves from your best stage · a boss every 10th · beat your best"},
 	{"id": "boss", "name": "Boss Rush", "banner": "plasma", "tint": Color(1.0, 0.35, 0.5), "unlock": 20, "soon": true,
 		"desc": "Every boss you beat, back to back"},
 ]
@@ -84,7 +84,7 @@ func _build() -> void:
 	for m in MODES:
 		var gate: String = {"elite": "elite", "promotion": "promotion"}.get(m.id, "")
 		var reached: bool = gate == "" or Unlocks.open(_save, gate)
-		if m.get("soon", false):
+		if m.get("soon", false) or m.id == "horde":
 			reached = player_level >= int(m.unlock)
 		if reached:
 			col.add_child(_card(m))
@@ -140,6 +140,8 @@ func _card(m: Dictionary) -> Control:
 	title.position = Vector2(12, 36)
 	banner.add_child(title)
 	var chip_text := "COMING SOON" if soon else ("UNLOCKS AT PILOT LV.%d" % int(m.unlock) if locked else ("STAGE %d" % selected_stage if m.id != "boss" else "READY"))
+	if m.id == "horde" and not locked:
+		chip_text = ("BEST: WAVE %d" % int(_save.get("best_horde", 0))) if int(_save.get("best_horde", 0)) > 0 else "READY"
 	if m.id == "promotion":
 		chip_text = "RANK %d / %d" % [Promotion.rank(_save), Promotion.RANKS.size()]
 	var chip := UIKit.chip(chip_text, UIKit.GOLD if (locked or soon) else tint)
@@ -171,6 +173,11 @@ func _card(m: Dictionary) -> Control:
 		b.pressed.connect(func():
 			var sv := Progress.read()
 			var top: int = StageData.elite_top(sv) if elite else stage_unlocked
+			if m.id == "horde":   # endless waves from your best Standard stage (battle horde)
+				_save_patch({"selected_mode": "horde"})
+				if Energy.try_play(self, false, 99):
+					get_tree().change_scene_to_file("res://battle.tscn")
+				return
 			_save_patch({"selected_elite": elite, "selected_stage": clampi(int(sv.get("selected_stage", 1)), 1, top)})
 			if Energy.try_play(self, elite, int(Progress.read().get("selected_stage", 1))):   # a stage costs power tokens (stages 1-5 free)
 				get_tree().change_scene_to_file("res://battle.tscn"))

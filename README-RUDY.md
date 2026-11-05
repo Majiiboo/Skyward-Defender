@@ -303,6 +303,16 @@ parts/) is the next step for finer motion. Dev: tools/cut_heroes.gd.
   drifts back to face you after four seconds. A "drag to turn" hint fades once used. The full
   spin to his back needs three more frames per hero (LUNA-BRIEF-hero-back-frames.md).
 
+Update 9: HORDE MODE is real (the Modes card said "coming soon"). From pilot level 5: endless
+waves built from your best Standard stage's wave list, cycling through it with 15% more bugs
+each lap and bug health up 4% a wave, a boss every 10th wave. The run ends when you fall;
+the score is the wave you reached, saved as your best and shown on the card ("BEST: WAVE 14").
+Each wave cleared pays a coin bounty on top of the drops (20 coins + 4 a wave). Costs 5 power
+tokens. The HUD says "HORDE · WAVE 12"; the end screen "HORDE OVER" or "NEW BEST!".
+Boss Rush stays "coming soon".
+- Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
+  weapon (the armour pieces are gone), so its numbers mean something again.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

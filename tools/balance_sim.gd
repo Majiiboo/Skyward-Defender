@@ -134,7 +134,22 @@ static func _level_for(budget: float, per: float) -> int:
 func _auto_kit(d: Dictionary, stage: int) -> void:
 	stage += int(OS.get_environment("SIM_KIT_PLUS")) if OS.get_environment("SIM_KIT_PLUS") != "" else 0
 	var spend := _coins_before(stage) * 1.5
-	var glv := _level_for(spend * 0.6 / 6.0, 60.0)
+	# heroes (dev172): 60% of the kit goes to the hero: ATK levels and DEF levels (half each), and
+	# the one weapon piece; the old armour pieces are gone
+	var hero_budget := spend * 0.6
+	var wlv := _level_for(hero_budget * 0.2, 120.0)
+	var hl := 1
+	var hb := hero_budget * 0.5
+	while hl < Heroes.MAX_LEVEL and hb >= Heroes.level_cost(hl):
+		hb -= Heroes.level_cost(hl)
+		hl += 1
+	var dl := 1
+	var db := hero_budget * 0.3
+	while dl < Heroes.MAX_DEF_LEVEL and db >= Heroes.def_cost(dl):
+		db -= Heroes.def_cost(dl)
+		dl += 1
+	d["hero"] = {"selected": "rook", "owned": ["rook"], "levels": {"rook": hl}, "def": {"rook": dl}, "tiers": {}, "shards": {}}
+	var glv := wlv
 	var lv := {}
 	for s in GearData.SLOTS:
 		lv["ion_" + s.to_lower()] = glv
@@ -153,7 +168,7 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 		if t != "":
 			ttr[t] = {"atk": tl, "rate": tl, "range": tl}
 	d["turrets"] = {"loadout": lo, "tracks": ttr}
-	r_kit = "gear Lv.%d, %d turrets Lv.%d" % [glv, n, tl]
+	r_kit = "hero Lv.%d DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, dl, glv, n, tl]
 var r_kit := ""
 
 func _next() -> void:

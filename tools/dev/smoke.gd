@@ -364,5 +364,5 @@ func _check_mods() -> void:
 				else:
 					bad += 1
 		_expect(good >= 1 and bad >= 1, "a trial has at least one advantage and one disadvantage (%s)" % str(lst))
-	_expect(Promotion.mods_for(-1, {}).is_empty() and Promotion.mods_for(0, {}) == ["rapid", "swift_bugs"] and Promotion.mods_for(-1, {"el": "ion", "step": 2}) == ["sharpshooter", "no_turrets"], "mods_for picks the right list")
-	_expect(Promotion.mods_short(["rapid", "swift_bugs"]).begins_with("+ Rapid fire") and Promotion.mods_lines(["no_turrets"])[0].begins_with("DISADVANTAGE"), "short and long texts")
+	_expect(Promotion.mods_for(-1, {}).is_empty() and Promotion.mods_for(0, {}) == ["rapid", "no_turrets"] and Promotion.mods_for(-1, {"el": "ion", "step": 2}) == ["sharpshooter", "swift_bugs"], "mods_for picks the right list")
+	_expect(Promotion.mods_short(["rapid", "no_turrets"]).begins_with("+ Rapid fire") and Promotion.mods_lines(["no_turrets"])[0].begins_with("DISADVANTAGE"), "short and long texts")

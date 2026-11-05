@@ -90,6 +90,9 @@ var stage := 1
 var elite := false
 var promo := -1                   # the promotion trial being fought (Promotion.RANKS index), -1 = a normal stage
 var _promoted := false            # this win earned the next rank (end screen)
+var horde := false                # HORDE mode (dev172): endless waves, beat your best; save "best_horde"
+var _horde_best := 0              # the best wave count before this run
+var _horde_new_best := false
 var etrial := {}                  # an element trial (Promotion.take_etrial): {"el", "step"}; {} = none
 var _etrial_first := false        # this win cleared the step for the first time
 var _etrial_reward := {}          # what it paid (end screen)
@@ -356,6 +359,12 @@ func _load() -> void:
 	# Play goes back to the normal stage
 	promo = Promotion.take(d)
 	etrial = Promotion.take_etrial(d)
+	horde = String(d.get("selected_mode", "normal")) == "horde"
+	if horde:
+		_write_save({"selected_mode": "normal"})
+		stage = clampi(int(d.get("stage_unlocked", 1)) - 1, 1, StageData.MAX_STAGE)   # built from your best Standard stage
+		elite = false
+		_horde_best = int(d.get("best_horde", 0))
 	if not etrial.is_empty():
 		stage = int(Promotion.ETRIAL_STAGES[int(etrial.step)])
 	if promo >= 0:
@@ -388,6 +397,8 @@ func _write_save(patch: Dictionary) -> void:
 
 func _start_stage() -> void:
 	waves = Promotion.waves(promo) if promo >= 0 else (Promotion.etrial_waves(int(etrial.step)) if not etrial.is_empty() else StageData.waves(stage))
+	if horde:
+		waves = [_horde_wave(0)]
 	wave_index = 0
 	stage_cleared = false
 	_vacuum_t = 0.0
@@ -792,7 +803,12 @@ func _process(delta: float) -> void:
 	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared and _outro_t < 0.0:
 		wave_index += 1
 		_vacuum_t = 1.4   # what is left flies to him
-		if wave_index >= waves.size():
+		if horde:
+			waves.append(_horde_wave(wave_index))   # endless: the next wave is built as it comes
+			_coins_f += 20.0 + 4.0 * wave_index   # a bounty per wave cleared
+			coins_earned = int(_coins_f)
+			_start_wave()
+		elif wave_index >= waves.size():
 			_outro_t = 0.0   # the stage ends with a short flight off the top (_update_outro)
 		else:
 			_start_wave()
@@ -1991,6 +2007,11 @@ func _end_run(won: bool) -> void:
 	_xp_gain = int(score / 50 * _pilot_xp_mult) + _xp_bonus
 	_level_before = Turrets.pilot_level(old_xp)
 	_level_after = Turrets.pilot_level(old_xp + _xp_gain)
+	if horde:   # the wave count is the score; a new best is saved
+		_horde_new_best = wave_index + 1 > _horde_best
+		if _horde_new_best:
+			_write_save({"best_horde": wave_index + 1})
+			d["best_horde"] = wave_index + 1
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull
@@ -2728,8 +2749,10 @@ func _show_end(won: bool) -> void:
 	p.position = Vector2(FIELD_W * 0.5 - w * 0.5, HUD_H + 10)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 9)
-	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite and not _is_trial()
+	var area_done: bool = won and StageData.boss_kind(stage) == "boss" and not elite and not _is_trial() and not horde
 	var title := "AREA COMPLETE" if area_done else ("STAGE CLEARED" if won else "BASE LOST")
+	if horde:
+		title = "NEW BEST!" if _horde_new_best else "HORDE OVER"
 	if not etrial.is_empty():   # an element trial (Promotion)
 		title = "STEP CLEARED" if won else "TRIAL FAILED"
 	if promo >= 0:   # a promotion trial (Promotion)
@@ -2740,7 +2763,10 @@ func _show_end(won: bool) -> void:
 	if promo >= 0:
 		v.add_child(UIKit.label("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper(), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
-		v.add_child(UIKit.label("%s %d  ·  %s" % ["ELITE" if elite else "STAGE", stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+		if horde:
+			v.add_child(UIKit.label("HORDE  ·  WAVE %d REACHED  ·  BEST %d" % [wave_index + 1, maxi(_horde_best, wave_index + 1)], 13, Color(1.0, 0.6, 0.3), HORIZONTAL_ALIGNMENT_CENTER))
+		else:
+			v.add_child(UIKit.label("%s %d  ·  %s" % ["ELITE" if elite else "STAGE", stage, StageData.stage_name(stage).to_upper()], 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	if _promoted:
 		var pr := Promotion.rank(_read_save())
 		v.add_child(UIKit.label("RANK: %s" % String(Promotion.RANKS[promo].name).to_upper(), 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
@@ -3595,7 +3621,7 @@ func _draw_hud() -> void:
 	var num := "%d " % stage
 	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 	var nx: float = 18.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else StageData.stage_name(stage))).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if _is_trial() else cyan)
+	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else StageData.stage_name(stage)))).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
 	var mins := int(time_alive) / 60
 	var secs := int(time_alive) % 60
 	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
@@ -3960,7 +3986,32 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0)
+	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+
+# HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
+# list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
+# boss every 10th wave. The run ends when you fall; the score is the wave count.
+const HORDE_HP_PER_WAVE := 0.04
+func _horde_wave(k: int) -> Array:
+	var src: Array = StageData.waves(stage)
+	var body: Array = []
+	for w in src:
+		var has_boss := false
+		for spec in w:
+			if spec[0] == "hive_mother":
+				has_boss = true
+		if not has_boss:
+			body.append(w)
+	if body.is_empty():
+		body = src
+	var base: Array = body[k % body.size()]
+	var lap := k / body.size()
+	var out: Array = []
+	for spec in base:
+		out.append([spec[0], int(ceil(int(spec[1]) * (1.0 + 0.15 * lap)))])
+	if k > 0 and (k + 1) % 10 == 0:
+		out.append(["hive_mother", 1])
+	return out
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
