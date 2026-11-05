@@ -10,23 +10,32 @@ extends RefCounted
 # "selected_mode" == "promotion" + "promotion_rank" once and clears the mode again.
 
 const RANKS := [
-	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 5,  "hp": 3.4,  "count": 1.5},
-	{"id": "pilot",       "name": "Pilot",       "level": 13, "stage": 10, "hp": 3.4,  "count": 1.5},
-	{"id": "ace",         "name": "Ace",         "level": 16, "stage": 15, "hp": 2.6,  "count": 1.35},
-	{"id": "comet",       "name": "Comet",       "level": 19, "stage": 20, "hp": 2.6,  "count": 1.35},
-	{"id": "meteor",      "name": "Meteor",      "level": 22, "stage": 25, "hp": 2.4,  "count": 1.3},
-	{"id": "nova",        "name": "Nova",        "level": 25, "stage": 30, "hp": 2.2,  "count": 1.3},
-	{"id": "pulsar",      "name": "Pulsar",      "level": 28, "stage": 35, "hp": 2.2,  "count": 1.3},
-	{"id": "quasar",      "name": "Quasar",      "level": 31, "stage": 40, "hp": 2.1,  "count": 1.3},
-	{"id": "supernova",   "name": "Supernova",   "level": 34, "stage": 50, "hp": 2.4,  "count": 1.3},
-	{"id": "singularity", "name": "Singularity", "level": 37, "stage": 60, "hp": 2.3,  "count": 1.3},
+	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 15, "hp": 1.4,  "count": 1.3},
+	{"id": "pilot",       "name": "Pilot",       "level": 20, "stage": 30, "hp": 1.3,  "count": 1.3},
+	{"id": "ace",         "name": "Ace",         "level": 25, "stage": 40, "hp": 1.4,  "count": 1.3},
+	{"id": "comet",       "name": "Comet",       "level": 30, "stage": 55, "hp": 1.4,  "count": 1.3},
+	{"id": "meteor",      "name": "Meteor",      "level": 35, "stage": 60, "hp": 1.45, "count": 1.3},
+	{"id": "nova",        "name": "Nova",        "level": 40, "stage": 60, "hp": 1.5,  "count": 1.35},
+	{"id": "pulsar",      "name": "Pulsar",      "level": 45, "stage": 60, "hp": 1.55, "count": 1.4},
+	{"id": "quasar",      "name": "Quasar",      "level": 50, "stage": 60, "hp": 1.6,  "count": 1.45},
+	{"id": "supernova",   "name": "Supernova",   "level": 55, "stage": 60, "hp": 1.7,  "count": 1.5},
+	{"id": "singularity", "name": "Singularity", "level": 60, "stage": 60, "hp": 1.8,  "count": 1.6},
 ]
 const PER_RANK := 0.06        # +6% bolt damage and +6% base shield / hull per rank (worth the fight)
-# "hp" and "count" per rank: bug health and bug numbers on top of that stage's normal scaling
-# (Elite is x1.85 health). Hard early, where the stages are small; gentler multipliers late,
-# where the stages themselves are already big (balance sim, dev144).
+# "level" is the RECOMMENDED pilot level, one per ten levels (Rudy, dev168: 10, then the 20s,
+# 30s, 40s, 50s); "stage" is the stage a player of that level is around (balance sweep: Lv.10
+# at stage 13-15, Lv.20 at 30, Lv.25 at 40, Lv.30 at 53-55, Lv.33 at 60), so the trial's bugs
+# are that stage's bugs. Ranks past Lv.33 are endgame: stage 60 bugs with the "hp" and "count"
+# rising. The trial is tuned for the recommended level, but a player a few levels under it
+# with better gear or turrets can still take it (OPEN_EARLY).
+# "hp" and "count" per rank: bug health and bug numbers on top of that stage's normal scaling.
+# Tuned with the balance sim (dev168, human bot, the kit of a player at that stage): hp 1.2 wins
+# every trial, 1.35-1.4 wins about half, 1.5 loses most; a kit 12 stages weaker wins almost
+# never (one Comet win in 3), a kit 8 stages stronger wins nearly always. Trials are a cliff:
+# the real strategy is gear and turrets, not retries.
+# (Elite is x1.85 health).
 const GEM_XP_MULT := 1.25     # run XP comes faster in a trial: power cards sooner, a better run (Rudy)
-const OPEN_EARLY := 0         # a trial opens AT its recommended level (Rudy, dev167: hard but worth it)
+const OPEN_EARLY := 7         # a trial opens 7 levels under its recommended level (Rudy: beatable early with good gear)
 const WAVES := 10
 const XP_BONUS := 250         # pilot XP the first time a rank is won
 const NO_RANK := "Rookie"
@@ -63,7 +72,7 @@ static func next(save: Dictionary) -> int:
 
 # "level" in RANKS is the RECOMMENDED pilot level (shown on the card); the trial opens a bit earlier
 static func open_level(i: int) -> int:
-	return maxi(int(RANKS[clampi(i, 0, RANKS.size() - 1)].level) - OPEN_EARLY, 3)
+	return maxi(int(RANKS[clampi(i, 0, RANKS.size() - 1)].level) - OPEN_EARLY, 5)
 
 static func unlocked(save: Dictionary, pilot_level: int) -> bool:
 	var n := next(save)

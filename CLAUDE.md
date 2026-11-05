@@ -5,6 +5,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-04, build dev167)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
+- UNPUSHED since dev167: 1 update (next push = dev167 + that count; see the build rule).
+  1. Elite capped by Standard progress + Promotion ladder 10/20/25..60 retuned (README "next push").
 - dev138-167 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
@@ -38,9 +40,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
   go UP every package (same signing key, install-over). Current: dev167 (code 167).
-  Rudy (2026-11-03): work through the queue item by item; after EACH finished item
-  commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
-  current batch if small, otherwise queue and say so.
+  Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
+  push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
+  when Rudy asks), and then bump the build by the number of updates since the last push
+  (3 updates since dev167 -> dev170). Keep the tally in "Where we are" (UNPUSHED below).
+  Each pushed build gets one README-RUDY changelog block listing all its updates.
+  Ideas he sends mid-work: fold into the current batch if small, otherwise queue and say so.
 - Update README-RUDY.md with a short plain-English changelog each build.
 - Don't copy the reference game "Galaxy Defense" (art, names, turret types).
 - Fonts: Exo 2 everywhere (project.godot gui/theme/custom_font), Orbitron only for the
@@ -270,9 +275,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    - Menu backgrounds: a bit more alive: sparkling stars, a shooting star, asteroids. (dev167)
    - TURRETS page: nothing shows, no placeholders, no turret pictures. Drone page: overhaul too.
    - Promotion Cadet was easy: must be very hard but worth it; recommended level min 10 for the
-     first trial, rising. (dev167: levels 10..37, hp/count up)
+     first trial, rising. (dev168: recommended 10, 20, 25 ... 60; base stage from the level sweep
+     (Lv.10 ~ stage 15, Lv.20 ~ 30, Lv.25 ~ 40, Lv.30 ~ 55, Lv.33+ ~ 60); OPEN_EARLY 7; hp 1.3-1.8
+     tuned by sim: a cliff, the stage kit wins about half, a kit 12 stages under almost never.)
    - Elite must be its own ladder: unlock at level 10, start at Elite stage 1, each Elite stage
-     needs the previous Elite stage beaten. (dev167: save "elite_unlocked")
+     needs the previous Elite stage beaten. (dev167: save "elite_unlocked"; dev168: never past the
+     Standard stage you have cleared, StageData.elite_top)
    - Turrets: bigger, with weight; cock back and shoot, lasers spread, pillars move; a resting
      pose when nothing is in range and a firing pose when a bug is; he may change some powers.
    - Battle top bar: spacing off, wasted space; keep simple. Pause menu: too much; drop YOUR CARDS

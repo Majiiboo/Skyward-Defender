@@ -54,6 +54,14 @@ const SECTORS := [
 ]
 const MAX_STAGE := 60
 
+# The highest Elite stage you may play (Rudy, dev168): Elite is its own ladder (save
+# "elite_unlocked" = the next Elite stage, opened by Elite wins) but it never runs ahead of
+# your Standard progress: Elite stage N needs Standard stage N cleared (stage_unlocked > N).
+static func elite_top(save: Dictionary) -> int:
+	var ladder := clampi(int(save.get("elite_unlocked", 1)), 1, MAX_STAGE)
+	var cleared := clampi(int(save.get("stage_unlocked", 1)) - 1, 1, MAX_STAGE)
+	return mini(ladder, cleared)
+
 # The zone a stage is in (5 stages each).
 static func sector(stage: int) -> Dictionary:
 	return SECTORS[clampi((stage - 1) / 5, 0, SECTORS.size() - 1)]

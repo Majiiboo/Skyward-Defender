@@ -8,7 +8,7 @@ const MODES := [
 	{"id": "standard", "name": "Normal", "banner": "", "tint": Color(0.2, 0.85, 1.0), "unlock": 0,
 		"desc": "6 planets · bosses · up to 3 stars a stage"},
 	{"id": "elite", "name": "Elite", "banner": "sentinel", "tint": Color(0.71, 0.45, 1.0), "unlock": 10,
-		"desc": "Its own ladder from stage 1 · bugs x1.85 tougher"},
+		"desc": "Its own ladder from stage 1, never past your Standard stage · bugs x1.85 tougher"},
 	# rank trials (Promotion, dev143): one hard stage per rank, win once = stronger for good
 	{"id": "promotion", "name": "Promotion", "banner": "crystal", "tint": Color(1.0, 0.8, 0.3), "unlock": 0,
 		"desc": "Ten rank trials · win once, stronger for good"},
@@ -159,7 +159,7 @@ func _card(m: Dictionary) -> Control:
 		var elite: bool = m.id == "elite"
 		b.pressed.connect(func():
 			var sv := Progress.read()
-			var top: int = clampi(int(sv.get("elite_unlocked", 1)), 1, StageData.MAX_STAGE) if elite else stage_unlocked
+			var top: int = StageData.elite_top(sv) if elite else stage_unlocked
 			_save_patch({"selected_elite": elite, "selected_stage": clampi(int(sv.get("selected_stage", 1)), 1, top)})
 			if Energy.try_play(self, elite, int(Progress.read().get("selected_stage", 1))):   # a stage costs power tokens (stages 1-5 free)
 				get_tree().change_scene_to_file("res://battle.tscn"))

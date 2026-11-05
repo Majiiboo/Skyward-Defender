@@ -142,6 +142,20 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
+## Next push (dev167 + the updates below; numbered when it goes to GitHub)
+
+Update 1: Elite and Promotion, from your notes.
+- ELITE never runs ahead of Standard: Elite stage N opens only once you have cleared Standard
+  stage N (and the previous Elite stage). The Modes card says so.
+- PROMOTION recommended levels are now 10, 20, 25, 30, 35, 40, 45, 50, 55, 60. Each trial uses
+  the bugs of the stage a player of that level is around (level 10 is about stage 15, level 20
+  about stage 30, level 25 about 40, level 30 about 55, and a player who only clears each stage
+  once reaches about level 33 by stage 60, so the ranks above that are the endgame ladder on
+  stage 60 bugs). A trial OPENS seven levels under its recommended level: the level is advice,
+  not a gate. Difficulty was set with the simulator: a player with the gear and turrets of that
+  stage wins about half the time, a player twelve stages weaker almost never (one win in
+  fifteen), a player eight stages stronger nearly always. Gear and turrets carry it, not retries.
+
 ## dev167: your playtest, round one (the quick fixes)
 
 - TURRETS PAGE WAS EMPTY: a bug of mine from dev149 (the card depth layer took the spot the

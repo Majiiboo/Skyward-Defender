@@ -140,7 +140,7 @@ func _load_save() -> void:
 				best_score = int(data.get("best_score", 0))
 				best_kills = int(data.get("best_kills", 0))
 				stage_unlocked = int(data.get("stage_unlocked", 1))
-				elite_stage_unlocked = clampi(int(data.get("elite_unlocked", 1)), 1, StageData.MAX_STAGE)
+				elite_stage_unlocked = StageData.elite_top(data)   # the Elite ladder, never past your Standard progress (dev168)
 				stage = clampi(int(data.get("selected_stage", 1)), 1, elite_stage_unlocked if bool(data.get("selected_elite", false)) else stage_unlocked)
 				mode = "Elite" if bool(data.get("selected_elite", false)) else "Normal"
 				pilot_xp = int(data.get("pilot_xp", 0))
