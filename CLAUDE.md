@@ -163,6 +163,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    collected items traded for chests/items (event shops). Real money needs Google Play Billing
    (until then "coming soon"). Keep the premium currency called Crystals: "gems" are the XP
    pickups in battle.
+19. LATER (Rudy): a turret SKIN LIBRARY: alternate designs / themes per turret (looks only, no
+   stats), unlocked or bought (crystals, events, Exchange). Needs Luna art per skin.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
