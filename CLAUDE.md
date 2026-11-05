@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev151)
+## Where we are (hand-over, 2026-11-04, build dev152)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-151 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-152 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev151 (code 151).
+  go UP every package (same signing key, install-over). Current: dev152 (code 152).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -205,7 +205,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    DONE dev141: rail labels on all + Event/Promo hidden ("hidden" in LEFT_RAIL), Store teaser
    tiles (store.gd _teaser). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
    (none exists), Orbitron on Modes/Stage Map vs the Exo 2 rule, Luna trophy art, quest task icons, hide "x1 Common"
-   base stacks in Workshop > Gear, a Settings page after sound, battle HUD/end-screen visual pass.
+   base stacks in Workshop > Gear (DONE dev152, _inv_filter.show), a Settings page after sound, battle HUD/end-screen visual pass.
 23. IDEAS FROM SLAYER LEGEND (Rudy's video, 2026-11-04): IDEAS-slayer-legend.md lists what that
    game has, what we already have, and 12 things worth taking, ranked: red dots everywhere,
    attendance calendar, welcome-back missions, repeat quests, daily meta bar, stage drops on

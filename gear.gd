@@ -15,7 +15,7 @@ var _wallet_box: HBoxContainer
 var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
 var _ws_parts_box: VBoxContainer
 var _ws_gear_box: VBoxContainer
-var _inv_filter := {"rarity": "", "slot": "", "set": "", "sort": "newest"}   # "" = any
+var _inv_filter := {"rarity": "", "slot": "", "set": "", "sort": "newest", "show": ""}   # "" = any; show "" = useful stacks only, "all" = everything
 var selected_slot := "Weapon"
 var _slot_tiles := {}
 var _power_label: Label
@@ -636,6 +636,9 @@ func _inv_stacks() -> Array:
 		for r in gear.copies[id]:
 			if _inv_filter.rarity != "" and r != _inv_filter.rarity:
 				continue
+			# the lone Common base copy of every owned piece is noise (dev152): hidden unless asked
+			if _inv_filter.show == "" and _inv_filter.rarity == "" and r == "common" and int(gear.copies[id][r]) == 1 and GearData.rarity(gear, id) == "common":
+				continue
 			out.append({"id": id, "rarity": r, "n": int(gear.copies[id][r]), "recent": gear.recent.rfind(id)})
 	match String(_inv_filter.sort):
 		"newest":
@@ -657,7 +660,7 @@ func _filter_text() -> String:
 		bits.append(_inv_filter.slot)
 	if _inv_filter.set != "":
 		bits.append(GearData.SETS[_inv_filter.set].name)
-	return ("All" if bits.is_empty() else " · ".join(bits)) + "  ·  " + INV_SORT_NAMES[_inv_filter.sort]
+	return ("All" if bits.is_empty() else " · ".join(bits)) + "  ·  " + INV_SORT_NAMES[_inv_filter.sort] + ("" if _inv_filter.show == "all" else "  ·  lone Commons hidden")
 
 func _refresh_ws_gear() -> void:
 	for c in _ws_gear_box.get_children():
@@ -823,6 +826,7 @@ func _filter_box() -> void:
 		["slot", "SLOT", [["", "Any"]] + GearData.SLOTS.map(func(s): return [s, s])],
 		["set", "SET", [["", "Any"]] + GearData.SET_ORDER.filter(func(s): return GearData.set_unlocked(s, t_unlocked)).map(func(s): return [s, GearData.SETS[s].name])],
 		["sort", "SORT", INV_SORTS.map(func(s): return [s, INV_SORT_NAMES[s]])],
+		["show", "SHOW", [["", "Useful stacks"], ["all", "Everything"]]],
 	]
 	for spec in rows:
 		v.add_child(UIKit.header(spec[1]))

@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev151 (version/code=151 and version/name="1.0-dev151" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev152 (version/code=152 and version/name="1.0-dev152" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,13 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev152: Workshop > Gear shows what matters
+
+- The lone Common base copy of every piece you own used to fill the inventory with "x1 ·
+  Common" tiles once a few sets were open. They are hidden by default now: the list shows
+  stacks you can merge and anything above Common. Filter > SHOW > Everything lists them
+  all; the filter line says "lone Commons hidden" so nobody thinks pieces are missing.
 
 ## dev151: every glass panel lifts like the cards; Luna's parts brief, version 2
 
