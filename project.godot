@@ -17,7 +17,7 @@ window/handheld/orientation=1
 
 [gui]
 
-theme/custom_font="res://fonts/Exo2-Variable.ttf"
+theme/custom_font="res://fonts/exo2_semibold.tres"
 
 [rendering]
 renderer/rendering_method="gl_compatibility"

@@ -255,6 +255,19 @@ step and the reward.
   top bar for the first seconds, and the pause menu lists them. The mix per rank and per step
   is in promotion.gd (RANK_MODS, ETRIAL_MODS): easy to change.
 
+Update 6: THE LOOK, from your playtest notes.
+- BOLDER TEXT everywhere: Exo 2 now runs at weight 600 (semibold) instead of regular, through
+  one font file (fonts/exo2_semibold.tres) the whole game and the battle HUD use; the small
+  text sizes (13 and under) are one size bigger.
+- BUTTONS WITH DEPTH: every kit button (gold, teal, glass) has a drop shadow, a gloss on its
+  top half, a darker band at the bottom and a light line on its top edge. Disabled buttons stay
+  flat so they read as off.
+- POWER CARDS: taller cards so three lines of the bolder text fit; the Refresh button moved
+  down with them. (The cyan frame on Uncommon cards is Luna's frame picture, drawn to the
+  card's edge where the Common frame has an inset; a frame with the same inset would make
+  them match.)
+- Modes: the Promotion row's three buttons fit the phone width again.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

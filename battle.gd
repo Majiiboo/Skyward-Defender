@@ -272,7 +272,7 @@ var anim := PilotSprite.Anim.new()
 var _rig_view: PilotRigView        # the new cut-out pilot (PilotRig.ENABLED); null = painted PilotSprite
 
 # ---- UI ----
-var hud_font: Font = preload("res://fonts/Exo2-Variable.ttf")
+var hud_font: Font = preload("res://fonts/exo2_semibold.tres")   # Exo 2 at weight 600 (Rudy: bolder text everywhere)
 var title_font: Font = preload("res://fonts/Orbitron-Variable.ttf")
 var _pause_btn: Button
 var _pause_panel: Control
@@ -2217,7 +2217,7 @@ func _open_cards() -> void:
 	_card_panel.add_child(sub)
 	var picks := _offer()
 	var cw := 136.0
-	var ch := 204.0
+	var ch := 228.0   # room for three lines of the bolder text (dev172)
 	var gap := 10.0
 	var x0 := FIELD_W * 0.5 - (cw * 3.0 + gap * 2.0) * 0.5
 	for i in picks.size():
@@ -2234,7 +2234,7 @@ func _open_cards() -> void:
 		tw.tween_property(card, "scale", Vector2.ONE, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(card, "position:y", card.position.y - 26.0, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var refresh := UIKit.ghost_button("Refresh (%d left)" % refreshes if refreshes > 0 else "No refresh left", 13)
-	refresh.position = Vector2(FIELD_W * 0.5 - 80, FIELD_H * 0.5 + 30)
+	refresh.position = Vector2(FIELD_W * 0.5 - 80, FIELD_H * 0.5 + 50)
 	refresh.size = Vector2(160, 34)
 	refresh.disabled = refreshes <= 0
 	refresh.pressed.connect(func():

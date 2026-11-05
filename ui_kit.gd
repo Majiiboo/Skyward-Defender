@@ -50,7 +50,7 @@ static func panel(radius: float = 14.0) -> PanelContainer:
 static func label(text: String, size_px: int = 14, col: Color = Color.WHITE, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", size_px)
+	l.add_theme_font_size_override("font_size", size_px + (1 if size_px <= 13 else 0))   # small text one size up (Rudy: too small, too thin)
 	l.add_theme_color_override("font_color", col)
 	l.horizontal_alignment = align
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -78,7 +78,23 @@ static func header(text: String) -> Control:
 	row.add_child(p)
 	return row
 
+# Depth on every kit button (Rudy, dev172: "buttons are flat"): a drop shadow under it, a
+# gloss on its top half, a darker band at the bottom and a thin light line on its top edge.
+static func draw_bevel(c: CanvasItem, s: Vector2) -> void:
+	var clear := Color(1, 1, 1, 0.0)
+	c.draw_polygon(PackedVector2Array([Vector2(2, 1), Vector2(s.x - 2, 1), Vector2(s.x - 2, s.y * 0.48), Vector2(2, s.y * 0.48)]),
+		PackedColorArray([Color(1, 1, 1, 0.14), Color(1, 1, 1, 0.14), clear, clear]))
+	c.draw_polygon(PackedVector2Array([Vector2(2, s.y * 0.62), Vector2(s.x - 2, s.y * 0.62), Vector2(s.x - 2, s.y - 1), Vector2(2, s.y - 1)]),
+		PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.2), Color(0, 0, 0, 0.2)]))
+	c.draw_line(Vector2(9, 1.5), Vector2(s.x - 9, 1.5), Color(1, 1, 1, 0.26), 1.0, true)
+
 static func _style_btn(b: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat, text_col: Color) -> void:
+	lift(normal)   # the drop shadow
+	normal.shadow_size = 6
+	normal.shadow_offset = Vector2(0, 3)
+	if not b.has_meta("bevel"):
+		b.set_meta("bevel", true)
+		b.draw.connect(func(): if not b.disabled: draw_bevel(b, b.size))
 	b.add_theme_stylebox_override("normal", normal)
 	b.add_theme_stylebox_override("hover", normal)
 	b.add_theme_stylebox_override("pressed", pressed)

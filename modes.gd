@@ -192,12 +192,12 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 	var next_txt := "All ranks won" if nxt < 0 else ("Next: %s trial  ·  recommended Lv.%d%s" % [Promotion.RANKS[nxt].name, int(Promotion.RANKS[nxt].level), "" if Promotion.unlocked(_save, player_level) else "  ·  opens at Lv.%d" % Promotion.open_level(nxt)])
 	info.add_child(UIKit.label(next_txt, 11, UIKit.MUTED))
 	row.add_child(info)
-	var elems := UIKit.ghost_button("Elements", 12)   # the element ladders (dev172)
-	elems.custom_minimum_size = Vector2(74, 38)
+	var elems := UIKit.ghost_button("Elements", 11)   # the element ladders (dev172)
+	elems.custom_minimum_size = Vector2(62, 36)
 	elems.pressed.connect(_etrials)
 	row.add_child(elems)
-	var ladder := UIKit.ghost_button("Ranks", 12)
-	ladder.custom_minimum_size = Vector2(64, 38)
+	var ladder := UIKit.ghost_button("Ranks", 11)
+	ladder.custom_minimum_size = Vector2(54, 36)
 	ladder.pressed.connect(_ladder)
 	row.add_child(ladder)
 	var b: Button
@@ -208,7 +208,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 		b = UIKit.ghost_button("Pilot Lv.%d" % Promotion.open_level(nxt), 13)
 		b.disabled = true
 	else:
-		b = UIKit.gold_button("Challenge", 15)
+		b = UIKit.gold_button("Challenge", 13)
 		b.pressed.connect(func():
 			if Energy.try_play(self, false):   # full price: a trial is never a free tutorial stage
 				var s := Progress.read()
@@ -216,7 +216,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 				Progress.write(s)
 				get_tree().change_scene_to_file("res://battle.tscn"))
 	_promo_btn = b
-	b.custom_minimum_size = Vector2(110, 38)
+	b.custom_minimum_size = Vector2(94, 38)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
 	return row

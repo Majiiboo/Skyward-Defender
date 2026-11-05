@@ -20,7 +20,7 @@ var _scroll: ScrollContainer
 var _trail: Control
 var _card: Control
 var _press_pos := Vector2.ZERO
-var _font: Font = preload("res://fonts/Exo2-Variable.ttf")
+var _font: Font = preload("res://fonts/exo2_semibold.tres")
 var _title_font: Font = preload("res://fonts/Orbitron-Variable.ttf")
 var _worlds := {}
 
