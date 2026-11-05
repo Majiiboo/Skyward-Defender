@@ -291,6 +291,13 @@ muzzle flash in his element colour. Hollow's frames 4 and 5 are mirrors of 2 and
 stands in with his reference picture until Luna's round-2 frames arrive (the cutter swaps
 them in automatically). The per-part rig for the heroes (parts cut and ready in heroes/<id>/
 parts/) is the next step for finer motion. Dev: tools/cut_heroes.gd.
+- LUNA'S ROUND 2 is in: Ember's five real turn frames (holding the gold rifle) and portrait,
+  Hollow's frames 4 and 5, Captain Frost's repainted glove. No stand-ins remain.
+- THE HERO STAND: the old equipment platform with its buildings is gone from the Heroes
+  page. The hero floats over a glowing hover disc in his element colour: a dark glass disc,
+  an etched grid, a holographic ring turning above the rim, a soft column of light with specks
+  rising. It flashes on a level-up. Luna's painted stand (LUNA-BRIEF-hero-stand.md) replaces
+  the code shapes the day it lands.
 
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 

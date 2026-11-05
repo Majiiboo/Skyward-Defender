@@ -110,8 +110,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 - LUNA ART PROGRAM (Rudy, 2026-11-05): "put her to work": she renders pieces, the code places them.
   LUNA-PROGRAM.md lists ten packages in order. Delivered 2026-11-05: ALL FIVE HERO SETS
   (art_src/heroes/<id>/ reference, parts_sheet, weapon_side, turn_1..5, portrait; alts kept).
-  Missing: Hollow turn 4 + turn 5 at 1024, Ember turn frames + portrait, Frost parts cell 8
-  (LUNA-BRIEF-heroes-redo-1.md). Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
+  Round 2 DELIVERED the same day (Ember frames + portrait, Hollow 4 + 5, Frost cell 8, Nyx grey
+  alts): every hero set is complete; no stand-ins left. gear.gd class HeroStand (code disc +
+  Luna's gear/stand_disc / stand_glow / stand_beam.png when present) replaced PlatformFloor. Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
   buttons / panels / bars / small), LUNA-BRIEF-icons.md (48-cell sheet), LUNA-BRIEF-drones-2.md
   (Spark Bot / Wisp / Night Bat as hull + thrusters + glow, Repair + Magnet pods).
   DONE (update 8): tools/cut_heroes.gd -> heroes/<id>/turn_1..5.png (640 tall, one union crop),
