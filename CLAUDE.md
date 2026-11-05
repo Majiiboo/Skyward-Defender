@@ -206,6 +206,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    tiles (store.gd _teaser). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
    (none exists), Orbitron on Modes/Stage Map vs the Exo 2 rule, Luna trophy art, quest task icons, hide "x1 Common"
    base stacks in Workshop > Gear, a Settings page after sound, battle HUD/end-screen visual pass.
+23. IDEAS FROM SLAYER LEGEND (Rudy's video, 2026-11-04): IDEAS-slayer-legend.md lists what that
+   game has, what we already have, and 12 things worth taking, ranked: red dots everywhere,
+   attendance calendar, welcome-back missions, repeat quests, daily meta bar, stage drops on
+   the map, Breakdown (copies -> parts), rank challenges (with 16 e), timed boosts, dungeon
+   entries + difficulty dial (Horde / Boss Rush), collection bonuses (19), chest milestones (18).
+   Rudy picks; systems only, never its art or names.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
