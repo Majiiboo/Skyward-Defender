@@ -392,11 +392,11 @@ func _load_wall_turrets() -> void:
 	PilotRig.set_gear(d)   # his weapon, visor and orb follow the gear (re-read when Home shows)
 	if _rig_view:
 		_rig_view.height = PILOT_H * float(Heroes.ROSTER[Heroes.selected(Heroes.read(d))].build.scale)   # his build (heroes)
-	var loadout: Array = Turrets.read(d).loadout
-	var plevel := Turrets.pilot_level(int(d.get("pilot_xp", 0)))
+	var tdat := Turrets.read(d)
+	var loadout: Array = tdat.loadout
 	for i in Turrets.MOUNTS:
 		var id: String = loadout[i]
-		if id != "" and Turrets.mount_open(i, _wall_unlocked) and plevel >= int(Turrets.TURRETS[id].unlock):
+		if id != "" and Turrets.mount_open(i, _wall_unlocked) and Turrets.owned(tdat, id):   # bought (dev172)
 			_wall_turrets.append({"socket": i, "id": id, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
 
 func _draw_turrets() -> void:

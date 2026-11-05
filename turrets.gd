@@ -19,29 +19,39 @@ const MOUNT_OPENS_AFTER := [5, 15, 25, 40]
 
 # art = file prefix in turrets/ (<art>_idle.png; the Sentry also has _head and _base).
 # ready = the battle mechanic exists; the others show in Gear as "in development".
-# unlock = pilot level needed. strong = enemy traits it does +50% against.
+# unlock = the pilot level that USED to gate it (old saves keep what that level had unlocked).
+# Since dev172 turrets are BOUGHT like heroes: "grade" (stars), "cost" (coins + parts) or
+# "crystals", a few with a "stage" to clear first; "element" (Heroes.ELEMENTS: the same weak /
+# resist table by planet) and "role" (the job, two words). strong = enemy traits it does +50%
+# against, on top, for when the enemy families arrive.
 const TURRETS := {
 	"sentry":  {"name": "Sentry",         "art": "sentry",  "rarity": "common",    "unlock": 5, "ready": true,
+		"element": "ion", "role": "Striker", "role_text": "steady single-target fire", "grade": 1, "cost": {}, "crystals": 0,
 		"strong": [], "glow": Color(0.2, 0.85, 1.0),
 		"damage": 1.0, "every": 0.55, "range": 520.0,
 		"desc": "Twin cannons, steady fire"},
 	"lance":   {"name": "Lance Pylon",    "art": "lance",   "rarity": "rare",      "unlock": 8, "ready": true,
+		"element": "solar", "role": "Breaker", "role_text": "bosses and armour", "grade": 2, "cost": {"coins": 3000, "alloy": 15}, "crystals": 80,
 		"strong": ["armoured", "boss"], "glow": Color(0.75, 0.9, 1.0),
 		"damage": 3.0, "every": 2.2, "width": 26.0,
 		"desc": "Charged beam up its whole column"},
 	"storm":   {"name": "Storm Spire",    "art": "storm",   "rarity": "epic",      "unlock": 11, "ready": true,
+		"element": "scavenger", "role": "Chain", "role_text": "crowds", "grade": 3, "cost": {"coins": 9000, "alloy": 20, "cell": 6}, "crystals": 200,
 		"strong": ["swarm", "shielded"], "glow": Color(0.6, 0.55, 1.0),
 		"damage": 1.1, "every": 1.5, "chain": 3, "cloud_r": 125.0, "cloud_h": 300.0,
 		"desc": "Lightning chains between bugs"},
 	"gravity": {"name": "Gravity Anchor", "art": "gravity", "rarity": "epic",      "unlock": 14, "ready": true,
+		"element": "void", "role": "Control", "role_text": "groups bugs, then crushes", "grade": 3, "cost": {"coins": 12000, "cell": 10, "core": 1}, "crystals": 260, "stage": 15,
 		"strong": ["swarm", "fast"], "glow": Color(0.71, 0.55, 1.0),
 		"damage": 2.8, "every": 2.8, "pull": 2.0, "radius": 115.0, "crush_r": 85.0, "height": 230.0,
 		"desc": "Pulls bugs together, then crushes"},
 	"swarm":   {"name": "Swarm Hive",     "art": "swarm",   "rarity": "rare",      "unlock": 18, "ready": true,
+		"element": "nightmare", "role": "Swarm", "role_text": "many small targets", "grade": 2, "cost": {"coins": 4000, "alloy": 20}, "crystals": 100,
 		"strong": ["fast", "high"], "glow": Color(0.2, 0.85, 1.0),
 		"damage": 0.5, "every": 3.0, "count": 4, "life": 4.0, "speed": 230.0,
 		"desc": "Homing micro-drones"},
 	"prism":   {"name": "Prism Tower",    "art": "prism",   "rarity": "legendary", "unlock": 22, "ready": true,
+		"element": "frost", "role": "Support", "role_text": "slows what it hits", "grade": 4, "cost": {"coins": 25000, "cell": 16, "core": 4}, "crystals": 500, "stage": 25,
 		"strong": ["wide"], "glow": Color(1.0, 0.85, 0.6),
 		"damage": 0.7, "every": 2.6, "beams": 5, "spread": 1.0, "split_h": 300.0,
 		"desc": "One shot splits into a fan of beams"},
@@ -140,7 +150,19 @@ static func read(save: Dictionary) -> Dictionary:
 	var levels := {}
 	for id in tracks:
 		levels[id] = level_of(tracks[id])
-	return {"loadout": loadout, "levels": levels, "tracks": tracks}
+	# owned turrets (dev172): bought; a save from before keeps what its pilot level had unlocked
+	var owned: Array = ["sentry"]
+	var ow = t.get("owned", null)
+	if typeof(ow) == TYPE_ARRAY:
+		for id in ow:
+			if TURRETS.has(String(id)) and not owned.has(String(id)):
+				owned.append(String(id))
+	else:
+		var plevel := pilot_level(int(save.get("pilot_xp", 0)))
+		for id in TURRETS:
+			if plevel >= int(TURRETS[id].unlock) and not owned.has(id):
+				owned.append(id)
+	return {"loadout": loadout, "levels": levels, "tracks": tracks, "owned": owned}
 
 # ---- upgrade tracks and milestones (Rudy, dev128) ----
 # Every turret has three tracks, each Lv.1-20, bought separately: ATK (damage per hit),
@@ -178,7 +200,7 @@ static func milestone_mult(level: int) -> float:
 # The turret's numbers with its upgrades in (battle uses this copy, t.def).
 static func stats(id: String, tr: Dictionary) -> Dictionary:
 	var d: Dictionary = TURRETS[id].duplicate(true)
-	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr))
+	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr)) * TURRET_TUNE
 	d.every = float(d.every) / rate_mult(int(tr.rate))
 	for k in REACH.get(id, []):
 		d[k] = float(d[k]) * reach_mult(int(tr.range))
@@ -190,3 +212,80 @@ static func track_cost(level: int) -> int:
 
 static func track_parts(level: int) -> Dictionary:
 	return Parts.need(level / 2)
+
+# ---- buying turrets (dev172, the heroes model), elements and roles ----
+const TURRET_TUNE := 2.5   # one knob for the whole base damage (sim dev172, human bot + auto kit: 1.0 = turrets 7-17% of the damage, 2.0 = 10-25%, 2.5 = about 30% from stage 20)
+
+static func owned(t: Dictionary, id: String) -> bool:
+	return id == "sentry" or Array(t.get("owned", [])).has(id)
+
+static func grade(id: String) -> int:
+	return clampi(int(TURRETS[id].get("grade", 1)), 1, Heroes.GRADES.size()) if TURRETS.has(id) else 1
+
+static func stars_text(id: String) -> String:
+	return "★".repeat(grade(id))
+
+static func element(id: String) -> String:
+	return String(TURRETS[id].get("element", "ion")) if TURRETS.has(id) else "ion"
+
+static func role(id: String) -> String:
+	return String(TURRETS[id].get("role", "")) if TURRETS.has(id) else ""
+
+# the turret's element against this stage's family (Heroes: weak x1.35, resists x0.75)
+static func element_mult(id: String, stage: int) -> float:
+	return Heroes.element_mult(element(id), stage)
+
+static func gate(id: String) -> int:
+	return int(TURRETS[id].get("stage", 0)) if TURRETS.has(id) else 0
+
+static func gate_open(save: Dictionary, id: String) -> bool:
+	return int(save.get("stage_unlocked", 1)) > gate(id)
+
+static func parts_needed(id: String) -> Dictionary:
+	var c: Dictionary = TURRETS[id].get("cost", {})
+	var needs := {}
+	for k in Parts.ORDER:
+		if int(c.get(k, 0)) > 0:
+			needs[k] = int(c[k])
+	return needs
+
+static func cost_text(id: String) -> String:
+	var c: Dictionary = TURRETS[id].get("cost", {})
+	var bits: Array = []
+	if int(c.get("coins", 0)) > 0:
+		bits.append("%s coins" % UIKit.num(int(c.coins)))
+	var needs := parts_needed(id)
+	if not needs.is_empty():
+		bits.append(Parts.text(needs))
+	return " + ".join(bits) if not bits.is_empty() else "Free"
+
+static func crystal_price(id: String) -> int:
+	return int(TURRETS[id].get("crystals", 0))
+
+static func can_afford(save: Dictionary, id: String) -> bool:
+	var c: Dictionary = TURRETS[id].get("cost", {})
+	return int(save.get("coins", 0)) >= int(c.get("coins", 0)) and Parts.has_all(Parts.read(save), parts_needed(id))
+
+# Buy a turret: coins + parts, or the crystal price. Changes `save` and `t` (Turrets.read)
+# in place; returns "" on success or why it failed. The caller writes t.owned back.
+static func unlock(save: Dictionary, t: Dictionary, id: String, with_crystals: bool) -> String:
+	if not TURRETS.has(id):
+		return "No such turret"
+	if owned(t, id):
+		return "Already yours"
+	if not gate_open(save, id):
+		return "Clear stage %d first" % gate(id)
+	if with_crystals:
+		var price := crystal_price(id)
+		if price <= 0:
+			return "Not for crystals"
+		if int(save.get("crystals", 0)) < price:
+			return "Not enough crystals"
+		save["crystals"] = int(save.get("crystals", 0)) - price
+	else:
+		var c: Dictionary = TURRETS[id].get("cost", {})
+		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(id), false)
+		if why != "":
+			return why
+	t.owned.append(id)
+	return ""

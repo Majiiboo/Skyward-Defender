@@ -526,9 +526,10 @@ func _start_stage() -> void:
 	_gems_got = 0
 	_kills_by = {}
 	_new_mount = -1
-	# a turret stands on the base only if its mount is open (stages) and it is unlocked (pilot level)
+	# a turret stands on the base only if its mount is open (stages) and you OWN it (bought, dev172)
+	var tdat := Turrets.read(sv)
 	for i in turret_loadout.size():
-		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and plevel >= int(Turrets.TURRETS[turret_loadout[i]].unlock):
+		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]):
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
 	for t in turrets:
 		if _lid_anim.has(t.mount):
@@ -1003,7 +1004,7 @@ func _update_bullets(delta: float) -> void:
 				if e.type == "hive_mother" and e.laying > 1.2:
 					dmg *= 2.0   # weak spot open while she lays
 				if b.has("src"):
-					dmg *= Turrets.trait_mult(b.src, StageData.ENEMIES[e.type].traits)
+					dmg *= Turrets.trait_mult(b.src, StageData.ENEMIES[e.type].traits) * Turrets.element_mult(String(b.src), stage)
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 					# Ricochet (turret card): the Sentry bolt bounces on to the nearest other bug
@@ -1478,7 +1479,7 @@ func _turret_dmg(t: Dictionary) -> float:
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	if not _can_hurt(e):
 		return
-	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
+	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits) * Turrets.element_mult(t.type, stage)   # traits and the element (dev172)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 	e.hp -= dmg
 	e.hit_t = HIT_FLINCH_T
@@ -2506,6 +2507,23 @@ func _update_drone(delta: float) -> void:
 	var body: Dictionary = DroneData.BODIES[_drone.body]
 	var pod: Dictionary = DroneData.PODS[_drone.pod]
 	var p := _drone_pos()
+	# support pods (dev172, DESIGN-turrets-drones.md): a job instead of guns
+	match DroneData.pod_job(String(_drone.pod)):
+		"repair":
+			# patches the base shield a little every second (the shield never regenerates on its own)
+			if shield < shield_max:
+				shield = minf(shield + float(pod.get("heal", 1.5)) * delta, shield_max)
+				if rng.randf() < delta * 2.0:
+					_drone_beam = {"a": p, "b": Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY * 0.6), "life": 0.25, "col": Color(0.4, 1.0, 0.8)}
+			_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
+			return
+		"magnet":
+			# gathers gems and coins near it and brings them to the pilot
+			for g in gems:
+				if Vector2(g.pos).distance_to(p) < float(pod.get("reach", 150.0)):
+					g.pos = Vector2(g.pos).move_toward(soldier_pos, 300.0 * delta)
+			_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
+			return
 	# Warden: swats one enemy shot near the pilot every few seconds
 	if body.has("guard"):
 		_drone_guard = maxf(_drone_guard - delta, 0.0)
@@ -2533,7 +2551,7 @@ func _update_drone(delta: float) -> void:
 		return
 	_drone_cd = float(pod.every)
 	_drone_flash = 0.12
-	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level))
+	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level)) * _elem_mult   # the drone shoots the hero element (dev172)
 	var dir := Vector2.from_angle(_drone_aim)
 	match String(_drone.pod):
 		"beam":
@@ -2556,7 +2574,7 @@ func _draw_drone() -> void:
 		return
 	var p := _drone_pos()
 	var rot := _drone_aim + PI / 2.0   # the painted drones face up
-	var pt: Texture2D = _tex["pod_" + String(_drone.pod)]
+	var pt: Texture2D = _tex["pod_" + DroneData.pod_art(String(_drone.pod))]
 	var bt: Texture2D = _tex["body_" + String(_drone.body)]
 	var bw := 46.0
 	var bh: float = bw * bt.get_height() / bt.get_width()

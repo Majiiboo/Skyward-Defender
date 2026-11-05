@@ -5,6 +5,8 @@ extends RefCounted
 # POD (how it shoots), and upgrade it with coins. Pictures: drone/body_*.png,
 # drone/pod_*.png, drone/flash_*.png (Luna's batch D, tools/cut_batch_d.gd).
 # Save: "drone": {"body": id, "pod": id, "level": 1..10}.
+# Element (dev172): the drone takes the HERO's element (it is his partner): its hits use the
+# same weak / resist table and its damage numbers his colour.
 
 const UNLOCK_LEVEL := 8        # pilot level that unlocks the drone
 const MAX_LEVEL := 10
@@ -22,6 +24,12 @@ const PODS := {
 		"desc": "Twin quick bolts"},
 	"beam":    {"name": "Beam",         "unlock": 12, "every": 1.4, "damage": 1.4,
 		"desc": "Instant beam, never misses"},
+	# support pods (dev172, DESIGN-turrets-drones.md): no guns, a job instead ("job"); they use
+	# another pod's picture until Luna paints theirs ("art")
+	"repair":  {"name": "Repair Pod",   "unlock": 10, "every": 0.0, "damage": 0.0, "job": "repair", "art": "beam", "heal": 1.5,
+		"desc": "No guns: patches the base shield 1.5 a second"},
+	"magnet":  {"name": "Magnet Pod",   "unlock": 12, "every": 0.0, "damage": 0.0, "job": "magnet", "art": "blaster", "reach": 150.0,
+		"desc": "No guns: gathers gems and coins near it for you"},
 	"missile": {"name": "Missiles",     "unlock": 16, "every": 2.2, "damage": 1.6, "splash": 55.0,
 		"desc": "Homing missile with splash"},
 }
@@ -60,3 +68,10 @@ static func milestone_text(level: int) -> String:
 	for m in MILESTONES:
 		bits.append(("%s (got)" if level >= int(m[0]) else "%s at Lv.%d") % ([m[1]] if level >= int(m[0]) else [m[1], m[0]]))
 	return "  ·  ".join(bits)
+
+# the picture a pod uses (support pods borrow one until Luna paints theirs)
+static func pod_art(pod: String) -> String:
+	return String(PODS[pod].get("art", pod)) if PODS.has(pod) else pod
+
+static func pod_job(pod: String) -> String:
+	return String(PODS[pod].get("job", "attack")) if PODS.has(pod) else "attack"

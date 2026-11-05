@@ -214,6 +214,26 @@ Update 3: HERO CARDS and DAMAGE NUMBERS.
   that planet and grey when it resists you, and a CRIT in big gold letters the moment it
   lands. Hits on you already show as red numbers.
 
+Update 4: TURRETS AND DRONES follow the heroes (DESIGN-turrets-drones.md).
+- Every turret has an ELEMENT and uses the same weak / resist table by planet as the heroes:
+  Sentry Energy, Lance Pylon Fire, Storm Spire Electric, Gravity Anchor Void, Swarm Hive Dark,
+  Prism Tower Ice. The old "strong vs traits" stays on top for when the enemy families come.
+- Every turret has a ROLE in two words on its tile and in its details: Striker (Sentry),
+  Breaker (Lance), Chain (Storm), Control (Gravity), Swarm (Hive), Support (Prism). Pick four
+  roles for the planet, not four guns.
+- Turrets are BOUGHT like heroes, rated by star grade: Sentry 1★ free; Lance 2★ 3,000 coins +
+  15 Alloy or 80 crystals; Swarm 2★ 4,000 + 20 Alloy or 100; Storm 3★ 9,000 + 20 Alloy + 6 Cells
+  or 200; Gravity 3★ 12,000 + 10 Cells + 1 Core or 260 (stage 15 first); Prism 4★ 25,000 + 16
+  Cells + 4 Cores or 500 (stage 25 first). Pilot level no longer gates turrets. On the Turrets
+  page a locked turret shows its price; its button says Unlock and offers crystals when parts
+  are short. YOUR SAVE keeps every turret your pilot level had already unlocked.
+- The DRONE shoots the hero's element (it is his partner), and two SUPPORT PODS join the
+  attack pods: Repair Pod (no guns, patches the base shield 1.5 a second; pilot level 10) and
+  Magnet Pod (no guns, gathers gems and coins near it; pilot level 12). They borrow the Beam
+  and Blaster pictures until Luna paints them. The Drone page says the element.
+- Balance: turrets have one tune knob now (Turrets.TURRET_TUNE) so the base's share of the
+  damage can be set from the simulator in one place.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

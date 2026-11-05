@@ -45,6 +45,7 @@ var t_tracks := {}         # turret id -> {atk, rate, range} (Turrets upgrade tr
 var _t_tracks_btn := {}    # track -> its Upgrade button
 var t_mount := 0           # selected mount
 var t_unlocked := 1        # save stage_unlocked: which mounts are open (Turrets.mount_open)
+var t_owned: Array = []    # turrets bought (Turrets.owned, dev172)
 var t_focus := ""          # turret shown in the detail panel
 var _mount_row: HBoxContainer
 var _turret_grid: GridContainer
@@ -85,6 +86,7 @@ func _load() -> void:
 	t_loadout = t.loadout
 	t_levels = t.levels
 	t_tracks = t.tracks
+	t_owned = t.owned
 	coins = int(data.get("coins", 0))
 	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
 	t_unlocked = int(data.get("stage_unlocked", 1))
@@ -524,7 +526,7 @@ func _show_stats() -> void:
 	var rows: Array = []
 	for i in Turrets.MOUNTS:
 		var id: String = tdat.loadout[i]
-		if id == "" or not Turrets.mount_open(i, t_unlocked) or pilot_level < int(Turrets.TURRETS[id].unlock):
+		if id == "" or not Turrets.mount_open(i, t_unlocked) or not Turrets.owned({"owned": t_owned}, id):
 			continue
 		var tr := Turrets.one_tracks(tdat.tracks, id)
 		var s := Turrets.stats(id, tr)
@@ -1046,7 +1048,7 @@ func _refresh_drone() -> void:
 	var pv := Control.new()
 	pv.custom_minimum_size = Vector2(0, 170)
 	var bt: Texture2D = load("res://drone/body_%s.png" % drone.body)
-	var pt: Texture2D = load("res://drone/pod_%s.png" % drone.pod)
+	var pt: Texture2D = load("res://drone/pod_%s.png" % DroneData.pod_art(drone.pod))
 	var tm := [0.0]
 	pv.draw.connect(func():
 		var c := pv.size * 0.5 + Vector2(0, sin(tm[0] * 2.0) * 5.0)
@@ -1064,7 +1066,8 @@ func _refresh_drone() -> void:
 	_drone_box.add_child(pv)
 	var lvl: int = int(drone.level)
 	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
-	var info := UIKit.label("%s + %s  Lv.%d\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, dmg * DroneData.dmg_bonus(lvl),
+	var hero_el := Heroes.element_name(Heroes.element_of(_hero_id()))
+	var info := UIKit.label("%s + %s  Lv.%d  ·  Element: %s (the hero)\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, hero_el, dmg * DroneData.dmg_bonus(lvl),
 		float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl), body.desc, pod.desc, DroneData.milestone_text(lvl)], 12, Color(0.85, 0.92, 1.0))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var ip := UIKit.panel(10)
@@ -1099,7 +1102,7 @@ func _refresh_drone() -> void:
 			var open: bool = pilot_level >= int(def.unlock)
 			var on: bool = drone[spec[2]] == id
 			var sub := "Equipped" if on else ("Choose" if open else "Pilot Lv.%d" % int(def.unlock))
-			var tile := UIKit.tile(def.name, sub, "ion" if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], id]), Vector2(108, 92))
+			var tile := UIKit.tile(def.name, sub, "ion" if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
 			if not open:
 				tile.modulate = Color(0.55, 0.55, 0.65, 0.8)
 			var key: String = spec[2]
@@ -1267,7 +1270,7 @@ func _save_turrets() -> void:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				data = d
-	data["turrets"] = {"loadout": t_loadout, "levels": t_levels, "tracks": t_tracks}
+	data["turrets"] = {"loadout": t_loadout, "levels": t_levels, "tracks": t_tracks, "owned": t_owned}
 	data["coins"] = coins
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
@@ -1320,7 +1323,7 @@ func _build_turrets(box: VBoxContainer) -> void:
 func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, dim: bool) -> Button:
 	var def: Dictionary = Turrets.TURRETS[id]
 	var tex: Texture2D = load("res://turrets/%s_idle.png" % def.art)
-	var t := UIKit.tile(def.name, subtitle, def.rarity, badge, tex, size)
+	var t := UIKit.tile(def.name, subtitle, Turrets.element(id), badge, tex, size)   # coloured by its element (dev172)
 	var pic: TextureRect = t.get_node("Body").get_child(0)   # the depth layer sits at child 0 since dev149
 	pic.custom_minimum_size = Vector2(0, size.y - 44.0)
 	if dim:
@@ -1343,7 +1346,7 @@ func _refresh_turrets() -> void:
 		else:
 			t = _turret_tile(id, "Mount %d" % (i + 1), "Lv.%d" % _t_lvl(id), Vector2(104, 112), false)
 		if i == t_mount:
-			var col: Color = UIKit.RARITY[Turrets.TURRETS[id].rarity] if id != "" else UIKit.CYAN
+			var col: Color = UIKit.RARITY[Turrets.element(id)] if id != "" else UIKit.CYAN
 			t.add_theme_stylebox_override("normal", UIKit.box(Color(col, 0.25), Color.WHITE, 10, 2))
 		var mi := i
 		t.pressed.connect(func():
@@ -1356,11 +1359,12 @@ func _refresh_turrets() -> void:
 		c.queue_free()
 	for id in Turrets.TURRETS:
 		var def: Dictionary = Turrets.TURRETS[id]
-		var locked: bool = pilot_level < int(def.unlock)
-		var sub := "Pilot Lv.%d" % def.unlock if locked else ("In development" if not def.ready else ("On mount %d" % (t_loadout.find(id) + 1) if t_loadout.has(id) else Turrets.strong_text(id)))
-		var t := _turret_tile(id, sub, "Lv.%d" % _t_lvl(id), Vector2(144, 116), locked or not def.ready)
+		var locked: bool = not Turrets.owned({"owned": t_owned}, id)
+		var price_sub: String = ("Stage %d first" % Turrets.gate(id)) if not Turrets.gate_open(_read(), id) else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if int(def.cost.get("coins", 0)) > 0 else "Unlock")
+		var sub := price_sub if locked else ("In development" if not def.ready else ("On mount %d" % (t_loadout.find(id) + 1) if t_loadout.has(id) else "%s  ·  %s" % [Turrets.role(id), Heroes.element_name(Turrets.element(id))]))
+		var t := _turret_tile(id, sub, "%s Lv.%d" % [Turrets.stars_text(id), _t_lvl(id)], Vector2(144, 116), locked or not def.ready)
 		if id == t_focus:
-			t.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.RARITY[def.rarity], 0.25), Color.WHITE, 10, 2))
+			t.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.RARITY[Turrets.element(id)], 0.25), Color.WHITE, 10, 2))
 		var tid: String = id
 		t.pressed.connect(func():
 			t_focus = tid
@@ -1385,18 +1389,26 @@ func _refresh_turret_detail() -> void:
 	var def: Dictionary = Turrets.TURRETS[t_focus]
 	var tr := Turrets.one_tracks(t_tracks, t_focus)
 	var lvl := Turrets.level_of(tr)
-	var locked: bool = pilot_level < int(def.unlock)
+	var locked: bool = not Turrets.owned({"owned": t_owned}, t_focus)
 	var ms := Turrets.milestones(lvl)
 	# name and level, its milestone stars, then the next milestone (every 5 levels)
-	var lines := "%s  Lv.%d  %s\n%s" % [def.name, lvl, "★".repeat(ms), def.desc]
+	var lines := "%s  %s  ·  %s  ·  %s\nLv.%d  %s  ·  %s" % [def.name, Turrets.stars_text(t_focus), Turrets.role(t_focus), Heroes.element_name(Turrets.element(t_focus)), lvl, "★".repeat(ms), def.desc]
 	if locked:
-		lines += "\nNeeds pilot Lv.%d" % def.unlock
+		lines += "\n%s%s%s" % [Turrets.cost_text(t_focus), ("  ·  or %d crystals" % Turrets.crystal_price(t_focus)) if Turrets.crystal_price(t_focus) > 0 else "", ("\nClear stage %d first" % Turrets.gate(t_focus)) if not Turrets.gate_open(_read(), t_focus) else ""]
 	elif not def.ready:
 		lines += "\nComing soon"
 	else:
 		lines += "\nNext milestone Lv.%d: ATK +5%%" % ((ms + 1) * 5)
 	_t_detail.text = lines
 	var usable: bool = not locked and def.ready
+	if locked:   # the Place button buys it (coins + parts, crystals as the fallback)
+		for k in Turrets.TRACKS:
+			var lb: Button = _t_tracks_btn[k]
+			lb.text = Turrets.TRACK_NAMES[k]
+			lb.disabled = true
+		_t_place.disabled = not Turrets.gate_open(_read(), t_focus)
+		_t_place.text = "Unlock"
+		return
 	for k in Turrets.TRACKS:
 		var b: Button = _t_tracks_btn[k]
 		var l: int = int(tr[k])
@@ -1423,6 +1435,9 @@ func _set_tracks_off() -> void:
 		b.disabled = true
 
 func _on_turret_place() -> void:
+	if t_focus != "" and not Turrets.owned({"owned": t_owned}, t_focus):
+		_on_turret_unlock()
+		return
 	if t_focus == "":
 		return
 	if t_loadout[t_mount] == t_focus:
@@ -1937,3 +1952,34 @@ func _on_unlock(with_crystals: bool) -> void:
 	_paint_roster()
 	_paint_hero()
 	_paint_suit()
+
+# buy the turret in focus (dev172, the heroes model): coins + parts; when parts or coins are
+# short, offer the crystal price instead
+func _on_turret_unlock() -> void:
+	var id := t_focus
+	var def: Dictionary = Turrets.TURRETS[id]
+	var data := _read()
+	var t := {"owned": t_owned.duplicate()}
+	var why := Turrets.unlock(data, t, id, false)
+	if why != "":
+		var price := Turrets.crystal_price(id)
+		if why.begins_with("Clear stage") or price <= 0:
+			_toast(why)
+			return
+		var ok := await _confirm("UNLOCK %s?" % String(def.name).to_upper(), "%s\n\nPrice: %s\n(%s)\n\nUse %d crystals instead? You have %d." % [def.desc, Turrets.cost_text(id), why, price, int(data.get("crystals", 0))], "Use %d crystals" % price, int(data.get("crystals", 0)) >= price)
+		if not ok:
+			return
+		data = _read()
+		t = {"owned": t_owned.duplicate()}
+		why = Turrets.unlock(data, t, id, true)
+		if why != "":
+			_toast(why)
+			return
+	t_owned = t.owned
+	data["turrets"] = {"loadout": t_loadout, "levels": t_levels, "tracks": t_tracks, "owned": t_owned}
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	Sfx.play("buy")
+	Progress.bump("turret_upgrades")
+	_toast("%s is yours" % def.name)
+	_refresh_turrets()

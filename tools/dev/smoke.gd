@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_check_cards()
 	_check_unlocks()
 	_check_heroes()
+	_check_turrets()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
 
@@ -297,3 +298,24 @@ func _check_heroes() -> void:
 	_expect(GearData.level(og, "ion_weapon") == 4 and int(og.copies["ion_weapon"]["common"]) == 3, "the weapon keeps its level and copies")
 	var drop := GearData.roll_drop(7, RandomNumberGenerator.new())
 	_expect(String(GearData.ITEMS[drop.id].slot) == "Weapon", "drops are weapons only")
+
+# turrets and drones (dev172): bought by grade, elements, support pods
+func _check_turrets() -> void:
+	for id in Turrets.TURRETS:
+		_expect(Heroes.ELEMENTS.has(Turrets.element(id)) and Turrets.role(id) != "" and Turrets.grade(id) >= 1, "turret %s: element, role, grade" % id)
+	var s := {"coins": 5000, "crystals": 300, "stage_unlocked": 1, "pilot_xp": 0, "parts": {"alloy": 15}}
+	var t := Turrets.read(s)
+	_expect(Turrets.owned(t, "sentry") and not Turrets.owned(t, "lance"), "fresh save: Sentry only")
+	_expect(Turrets.unlock(s, t, "lance", false) == "" and Turrets.owned(t, "lance") and int(s.coins) == 2000 and int(Parts.read(s).alloy) == 0, "Lance for 3000 coins + 15 alloy")
+	_expect(Turrets.unlock(s, t, "prism", true) != "" and not Turrets.owned(t, "prism"), "Prism needs stage 25 first")
+	s["stage_unlocked"] = 26
+	s["crystals"] = 600
+	_expect(Turrets.unlock(s, t, "prism", true) == "" and int(s.crystals) == 600 - Turrets.crystal_price("prism"), "Prism for crystals once the stage is cleared")
+	s["turrets"] = {"loadout": ["sentry", "lance", "", ""], "tracks": {}, "owned": t.owned}
+	_expect(Turrets.owned(Turrets.read(s), "prism") and Turrets.owned(Turrets.read(s), "lance"), "owned list round trip")
+	var old := {"pilot_xp": Turrets.xp_for_level(11), "turrets": {"loadout": ["sentry", "", "", ""], "levels": {"sentry": 3}}}
+	var ot := Turrets.read(old)
+	_expect(Turrets.owned(ot, "lance") and Turrets.owned(ot, "storm") and not Turrets.owned(ot, "gravity"), "an old save keeps the turrets its pilot level had (Lv.11: Sentry, Lance, Storm)")
+	_expect(is_equal_approx(Turrets.element_mult("prism", 25), Heroes.WEAK_MULT) and is_equal_approx(Turrets.element_mult("lance", 25), Heroes.RESIST_MULT), "Magma World: Ice Prism strong, Fire Lance weak")
+	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "blaster", "support pods: job and borrowed art")
+	_expect(ResourceLoader.exists("res://drone/pod_%s.png" % DroneData.pod_art("repair")), "the Repair pod has a picture to borrow")

@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 3 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 4 updates (next push = dev171 + that count; see the build rule). Rudy
   (2026-11-05): do NOT push to Luna for now.
   2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
      _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
@@ -17,9 +17,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      frost_freeze / hollow_phase / nyx_mark / ember_burn with OVERCHARGE texts; battle _twin_every,
      _weld_count / _weld_every, _freeze_level / _shatter, _phase_bonus, _burn_level / _burn_spread
      (e.burn_t / burn_dps, orange glow + embers), _show_dmg / _flush_dmg (DMG_BATCH 0.25 s, crits
-     big gold, element colour). NEXT (Rudy, 2026-11-05): a REWORK + RETUNE + NEW IDEAS pass for
-     TURRETS and DRONES now that heroes, elements and HP changed (elements on turrets and drones,
-     roles, strong-vs = elements, drone as a hero sidekick with its own element...). Not started.
+     big gold, element colour).
+  4. TURRETS + DRONES pass (DESIGN-turrets-drones.md): turrets.gd TURRETS element / role / grade /
+     cost / crystals / stage, read() "owned" (migrates by the old pilot-level unlock), owned /
+     unlock / cost_text / element_mult, TURRET_TUNE knob; battle mounts by owned, turret damage x
+     element, drone damage x the hero element, support pods (DroneData PODS repair / magnet with
+     "job" + borrowed "art", battle _update_drone jobs); gear.gd Turrets page element colours,
+     role + stars, price + Unlock (_on_turret_unlock), t_owned saved; Drone page element line.
+     Later ideas in the design doc (Repair Node, Beacon, Mark pod, Decoy, turret skins).
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old
