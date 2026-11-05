@@ -115,7 +115,17 @@ static func hp_mult(stage: int, elite: bool) -> float:
 	# (beyond the first planet +6% a stage; gear and turret upgrades carry the player there)
 	# Balance pass 2 (dev127, SIM_KIT=auto): +5% a stage through stage 30, then +2%, so the
 	# typical player's gear and turrets keep up through planets 4-6 instead of hitting a wall at 45
-	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(1.05, clampi(stage - 10, 0, 20)) * pow(1.02, maxi(stage - 30, 0)) * (1.85 if elite else 1.0)
+	return pow(1.07, mini(stage, 5) - 1) * pow(1.08, clampi(stage - 5, 0, 5)) * pow(HP_A, clampi(stage - 10, 0, 20)) * pow(HP_B, maxi(stage - 30, 0)) * (ELITE_HP if elite else 1.0)
+
+# the long-game knobs (16 g): bug health per stage 11-30, per stage after 30, and the Elite
+# factor; the balance simulator can override them (SIM_HP_A, SIM_HP_B, SIM_ELITE)
+static var HP_A: float = _knob("SIM_HP_A", 1.05)
+static var HP_B: float = _knob("SIM_HP_B", 1.02)
+static var ELITE_HP: float = _knob("SIM_ELITE", 1.85)
+
+static func _knob(env: String, dflt: float) -> float:
+	var v := OS.get_environment(env)
+	return float(v) if v != "" else dflt
 
 static func speed_mult(stage: int) -> float:
 	# stages 1-3 are the tutorial: slower bugs, building up to normal speed at stage 4

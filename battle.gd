@@ -1191,7 +1191,8 @@ func _update_enemies(delta: float) -> void:
 				_boss_flash = 1.0   # a layer broke
 				shake = maxf(shake, 0.3)
 			if _intro.is_empty():
-				_boss_bar_in = minf(_boss_bar_in + delta * 3.0, 1.0)
+				if e.get("arrived", false):   # her bar slides in once she can be hurt (dev164)
+					_boss_bar_in = minf(_boss_bar_in + delta * 3.0, 1.0)
 		if e.hp <= 0.0:
 			_kill(e)
 			continue
@@ -3190,6 +3191,12 @@ func _draw_fx() -> void:
 		_fx.draw_set_transform(dr.pos, dr.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(dt, Rect2(-11, -11 * dt.get_height() / dt.get_width(), 22, 22 * dt.get_height() / dt.get_width()), false, Color(1, 1, 1, da))
 	_draw_turret_lights()
+	# a boss still arriving is untouchable (_can_hurt): a pulsing veil of light says so (dev164)
+	for e in enemies:
+		if e.type == "hive_mother" and not e.get("arrived", false):
+			var pulse := 0.5 + 0.5 * sin(time_alive * 6.0)
+			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			Backdrop.soft_glow(_fx, e.pos, float(e.r) * 1.7, Color(0.8, 0.55, 1.0, 0.2 + 0.12 * pulse))
 	for t in turrets:
 		if t.drop >= 1.0 and CHARGE_COL.has(t.type):
 			# charge-up: light gathers at the weapon in the last moments before a shot,
