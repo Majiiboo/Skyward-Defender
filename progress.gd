@@ -87,6 +87,14 @@ static func grant(d: Dictionary, reward: Dictionary) -> Dictionary:
 			var p: Dictionary = Parts.read(d)
 			p[k] = int(p[k]) + int(reward[k])
 			d["parts"] = p
+	# gear copies (dev139): "gear": [{"id": item id, "rarity": r}, ...]
+	var gl = reward.get("gear", [])
+	if typeof(gl) == TYPE_ARRAY and not gl.is_empty():
+		var g := GearData.read(d)
+		for piece in gl:
+			if typeof(piece) == TYPE_DICTIONARY:
+				GearData.add_copy(g, String(piece.get("id", "")), String(piece.get("rarity", "common")))
+		d["gear"] = GearData.write(g)
 	return d
 
 static func reward_text(reward: Dictionary) -> String:
@@ -100,6 +108,11 @@ static func reward_text(reward: Dictionary) -> String:
 	for k in Parts.ORDER:
 		if int(reward.get(k, 0)) > 0:
 			parts.append("%d %s" % [int(reward[k]), Parts.KINDS[k].name])
+	var gl = reward.get("gear", [])
+	if typeof(gl) == TYPE_ARRAY:
+		for piece in gl:
+			if typeof(piece) == TYPE_DICTIONARY and GearData.ITEMS.has(String(piece.get("id", ""))):
+				parts.append("%s %s" % [GearData.rarity_name(String(piece.get("rarity", "common"))), GearData.ITEMS[String(piece.id)].name])
 	return " + ".join(parts)
 
 # ------------------------------------------------------------------ stats

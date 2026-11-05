@@ -14,3 +14,8 @@ Screen captures of a scene: write a small SceneTree script that writes a test sa
 changes scene, put override.cfg = tools/sim_override.cfg + "[display] window/size/mode=0"
 next to project.godot (the sim save folder, so the real save is never touched), run
 `G --path . --script that.gd --write-movie out/f.png --quit-after N`, then delete override.cfg.
+- `smoke.gd`: loads every script and runs rule checks (energy, gear rarity/merging/drops,
+  loadouts, card pictures). `G --headless --path . --script res://tools/dev/smoke.gd`; exit 1 on failure.
+  Run it before every build.
+- `capture.gd`: screenshot of a menu page with a made-up save (save_rich.json) in the sim save
+  folder. Env CAP_SCENE, CAP_PAGE (Gear tab), CAP_WS (Workshop sub-tab), CAP_SAVE; see the file head.

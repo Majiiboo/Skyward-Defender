@@ -36,6 +36,9 @@ static func per_wave(stage: int) -> Dictionary:
 		out["cell"] = 0.0015 + 0.00004 * (stage - 11)
 	if stage >= 21:
 		out["core"] = 0.0003 + 0.00001 * (stage - 21)
+	# a gear copy of that stage's set now and then (dev139; about one every 3-4 hours at
+	# full speed, rarity by stage: GearData.roll_drop)
+	out["gear"] = 0.002 + 0.00004 * stage
 	return out
 
 # speed at this many seconds since the last collect: 1, then 0.5, then 0.25
@@ -98,9 +101,16 @@ static func claim(save: Dictionary) -> Dictionary:
 	if collects_left(p) <= 0:
 		return {}
 	var got := ready(p)
-	Progress.grant(save, got)
 	for k in got:
 		p.store[k] = float(p.store[k]) - float(got[k])
+	# whole gear copies become real pieces of the farmed stage's set
+	if got.has("gear"):
+		var rng := RandomNumberGenerator.new()
+		var pieces: Array = []
+		for i in int(got.gear):
+			pieces.append(GearData.roll_drop(int(p.stage), rng))
+		got["gear"] = pieces
+	Progress.grant(save, got)
 	p.stored_s = 0.0
 	p.day_claims = int(p.day_claims) + 1
 	save["patrol"] = p

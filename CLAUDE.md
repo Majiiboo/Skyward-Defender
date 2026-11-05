@@ -15,8 +15,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 - DECIDED (Rudy, 2026-11-04, dev138): Normal stages 1-5 are free of power tokens (Energy.FREE_STAGES);
   Elite always pays.
 - Turret card pictures arrived (dev138, art_src/cards_r2). Still waiting on Luna: merge sparks sheet.
-- Next in the queue (Rudy picks): item 16 (e) pilot talent map, (f) gear rarity + Workshop
-  gear merging + inventory filter + Quick Merge + loadouts, (g) long-game difficulty re-tune;
+- Next in the queue (Rudy picks): item 16 (e) pilot talent map, (g) long-game difficulty re-tune ((f) gear rarity DONE dev139);
   item 17 enemy variants/support enemies/families; item 18 Store 2.0 (key chests with pity);
   items 15, 19, 20 later. Luna briefs: always standalone, exact render names (memory).
 - Helpers: tools/dev/ (build bump, contact sheets, crops, captures; see its README).
@@ -32,7 +31,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev138 (code 138).
+  go UP every package (same signing key, install-over). Current: dev139 (code 139).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -146,7 +145,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    each a small permanent % (bolt damage, turret damage, crit rate e.g. +0.5%, crit damage, base
    HP...). Costs rise: coins first, then crystals and a new in-game currency that is harder to
    collect later (e.g. Star Shards from bosses). Every 10th node unlocks a NEW power card for runs
-   or a new pilot power. Needs more power cards first. A Gear sub-tab or its own page. (f) Gear rarity: max level 30, rarity caps the level, raised by
+   or a new pilot power. Needs more power cards first. A Gear sub-tab or its own page. (f) DONE dev139: GearData.RARITY caps (10/15/20/25/30), copies {id: {rarity: n}} + recent, merge/quick_merge, roll_drop(stage) by planet (DROP_WEIGHTS), drop_chance (boss/elite 100%, else 35%); battle _gear_got on the end screen; Patrol per_wave "gear"; Progress.grant "gear" list; gear.gd Workshop sub-tabs Parts/Gear (_refresh_ws_gear, _inv_filter, _stack_box, _quick_merge, _filter_box); loadouts.gd Loadouts (3 kits, gear.gd _paint_loadouts). Was: Gear rarity: max level 30, rarity caps the level, raised by
    merging copies in the Workshop (needs gear drops). INVENTORY (Rudy): a filter button (by rarity, slot,
    set, newest) because players collect a lot; a QUICK MERGE button that merges all Common and
    Uncommon copies automatically, while Epic and above are merged by hand only (players keep

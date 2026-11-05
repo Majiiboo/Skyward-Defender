@@ -1109,10 +1109,10 @@ func _patrol_fill() -> void:
 		var rate := HBoxContainer.new()
 		rate.alignment = BoxContainer.ALIGNMENT_CENTER
 		rate.add_theme_constant_override("separation", 14)
-		for k in ["coins", "alloy", "cell", "core"]:
+		for k in ["coins", "alloy", "cell", "core", "gear"]:
 			if pw.has(k):
 				var per_h: float = float(pw[k]) * Patrol.WAVES_PER_HOUR
-				rate.add_child(_patrol_amount(k, ("%d" % roundi(per_h)) if k == "coins" else "%.1f" % per_h))
+				rate.add_child(_patrol_amount(k, ("%d" % roundi(per_h)) if k == "coins" else ("%.2f" if k == "gear" else "%.1f") % per_h))
 		v.add_child(rate)
 		# it slows down the longer it waits (Patrol.speed_at), and has daily limits
 		var spd := Patrol.speed_at(float(p.stored_s))
@@ -1133,7 +1133,7 @@ func _patrol_fill() -> void:
 		var have := HBoxContainer.new()
 		have.alignment = BoxContainer.ALIGNMENT_CENTER
 		have.add_theme_constant_override("separation", 14)
-		for k in ["coins", "alloy", "cell", "core"]:
+		for k in ["coins", "alloy", "cell", "core", "gear"]:
 			if got.has(k):
 				have.add_child(_patrol_amount(k, str(got[k])))
 		if got.is_empty():
@@ -1175,7 +1175,7 @@ func _patrol_amount(kind: String, text: String) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 4)
 	var tr := TextureRect.new()
-	tr.texture = load("res://icons/ui_coin.png") if kind == "coins" else Parts.icon(kind)
+	tr.texture = load("res://icons/ui_coin.png") if kind == "coins" else (load("res://icons/gear_on.png") if kind == "gear" else Parts.icon(kind))
 	tr.custom_minimum_size = Vector2(22, 22)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED

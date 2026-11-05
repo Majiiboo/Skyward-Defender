@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev138 (version/code=138 and version/name="1.0-dev138" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev139 (version/code=139 and version/name="1.0-dev139" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,36 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev139: gear rarity, gear copies and merging, inventory, Quick Merge, loadouts
+
+- Every gear piece now has a RARITY: Common, Uncommon, Rare, Epic, Legendary. Rarity caps
+  the upgrade level: Common Lv.10, Uncommon 15, Rare 20, Epic 25, Legendary 30 (max 30).
+  Everything you own today is Common, so nothing changes until you merge.
+- Gear COPIES drop: clearing a stage gives a copy about a third of the time, always on
+  boss and mini-boss stages (every 5th) and in Elite. The piece comes from that planet's set
+  (stages 1-10 Ion, 11-20 Scavenger...), now and then an older set. Rarity rises with the
+  planet: Common only on planet 1, Uncommon from planet 2, Rare from 3, Epic from 4,
+  Legendary from 5 (rare). The Stage Cleared screen shows the piece. Patrol farms copies too
+  (about one every 3-4 hours at full speed), shown in its window and on Collect.
+- WORKSHOP now has two sub-tabs: Parts (as before) and GEAR, your inventory of copies:
+  one tile per piece and rarity ("x3 · Common"), the piece you wear outlined in white,
+  MERGE marked on stacks of 3 or more. Tap a stack: Merge 3 -> 1 of the next rarity (with
+  Luna's merge animation). Your piece's rarity is the best copy you hold, so merging raises
+  its level cap.
+- FILTER button: by rarity, slot, set, and sort by Newest / Rarity / Set.
+- QUICK MERGE button: merges every Common and Uncommon stack in one go (shows how many).
+  Rare and above are merged by hand only, as agreed.
+- Gear page: the slot tiles show the level in the rarity colour; the detail line reads
+  "Lv.10 / 15 · Uncommon"; at the cap the Upgrade button says "Merge copies in Workshop".
+  Milestones now continue every 5 levels up to Lv.30.
+- Parts for Lv.10-29 upgrades grow slowly (Lv.29 -> 30: 78 Alloy, 14 Cells, 7 Cores).
+- LOADOUTS (KIT row at the top of the Pilot page): three saved kits of the gear you wear,
+  the turrets on the mounts and the drone's body and pod. Tap "+ Save" to store what you
+  wear now, tap a kit to switch to it in one go, tap the kit in use to rename it or save
+  over it. Upgrade levels are never part of a kit.
+- Dev: tools/dev/capture.gd (page screenshots with a made-up save, tools/dev/save_rich.json),
+  tools/dev/smoke.gd now also checks gear rules, merging, drops, parts and loadouts.
 
 ## dev138: free tutorial stages and Luna's turret card pictures
 

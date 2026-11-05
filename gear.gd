@@ -4,8 +4,15 @@ extends Control
 # coins), the three pieces you can wear in that slot (Ion / Scavenger / Void sets),
 # and the set bonuses you have. Rules and numbers: gear_data.gd. Turrets page: mounts
 # and turret upgrades. Saved in user://skybound_save.json ("gear", "turrets").
+# dev139: a piece's RARITY caps its level; the Workshop's Gear tab is the inventory of
+# copies (filter, merge by hand, Quick Merge); LOADOUTS (Loadouts) switch whole kits.
 
-var gear := {}             # GearData.read(save): {equipped, levels}
+var gear := {}             # GearData.read(save): {equipped, levels, copies, recent}
+var _loadout_row: HBoxContainer
+var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
+var _ws_parts_box: VBoxContainer
+var _ws_gear_box: VBoxContainer
+var _inv_filter := {"rarity": "", "slot": "", "set": "", "sort": "newest"}   # "" = any
 var selected_slot := "Weapon"
 var _slot_tiles := {}
 var _power_label: Label
@@ -45,6 +52,9 @@ func _ready() -> void:
 	if get_tree().root.has_meta("gear_page"):
 		_start_page = int(get_tree().root.get_meta("gear_page"))
 		get_tree().root.remove_meta("gear_page")
+	if get_tree().root.has_meta("gear_ws_tab"):   # Workshop sub-tab (0 Parts, 1 Gear)
+		_ws_tab = int(get_tree().root.get_meta("gear_ws_tab"))
+		get_tree().root.remove_meta("gear_ws_tab")
 	_load()
 	_build()
 	_select(selected_slot)
@@ -76,7 +86,7 @@ func _load() -> void:
 
 func _save() -> void:
 	var data := _read()
-	data["gear"] = {"equipped": gear.equipped, "levels": gear.levels}
+	data["gear"] = GearData.write(gear)
 	data["coins"] = coins
 	# the jetpack sets the thruster style (the Home wallpaper reads "thruster")
 	data["thruster"] = GearData.SETS[GearData.ITEMS[gear.equipped["Jetpack"]].set].thruster
@@ -143,6 +153,11 @@ func _build() -> void:
 	_pilot_box.add_theme_constant_override("separation", 10)
 	col.add_child(_pilot_box)
 	col = _pilot_box
+	# loadouts (Rudy): three saved kits, one tap to switch; tap the one in use to rename / overwrite
+	_loadout_row = HBoxContainer.new()
+	_loadout_row.add_theme_constant_override("separation", 6)
+	col.add_child(_loadout_row)
+	_paint_loadouts()
 	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(0, 318)
@@ -259,7 +274,8 @@ func _paint_slot(s: String) -> void:
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(tr)
 	v.add_child(UIKit.label(s, 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Lv.%d" % _lvl(id), 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	# the level in the piece's rarity colour (Common grey ... Legendary gold)
+	v.add_child(UIKit.label("Lv.%d" % _lvl(id), 11, GearData.rarity_color(GearData.rarity(gear, id)), HORIZONTAL_ALIGNMENT_CENTER))
 	b.add_child(v)
 
 # the tile itself: a glass square, lit in its set's colour when selected
@@ -276,9 +292,10 @@ func _fill_bag() -> void:
 	for set_id in GearData.SETS:
 		var id: String = "%s_%s" % [set_id, selected_slot.to_lower()]
 		var info: Dictionary = GearData.ITEMS[id]
-		var open := GearData.set_unlocked(set_id, t_unlocked)
+		var open := GearData.set_unlocked(set_id, t_unlocked) or GearData.owned(gear, id)
 		var is_on: bool = gear.equipped[selected_slot] == id
-		var sub := "Wearing" if is_on else ("Lv.%d" % _lvl(id) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
+		var rn := GearData.rarity_name(GearData.rarity(gear, id))
+		var sub := ("Wearing · %s" % rn) if is_on else (("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
 		var t := UIKit.tile(info.name, sub, set_id, GearData.SETS[set_id].name, _pic(id) if open else load("res://icons/ui_padlock.png"), Vector2(108, 88))
 		if not open:
 			t.tooltip_text = "Clear stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
@@ -302,21 +319,29 @@ func _select(slot: String) -> void:
 	var lv := _lvl(id)
 	var st: Dictionary = GearData.SLOT_STAT[slot]
 	var set_info: Dictionary = GearData.SETS[info.set]
-	# short and plain (Rudy): name, the main stat with its next level, the set's extra
-	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < GearData.MAX_LEVEL else "  (max)"
-	_detail.text = "%s  Lv.%d\n%s %s%s\n%s" % [info.name, lv, st.text, _stat_text(slot, lv), next_txt, set_info.minor]
-	# its milestone (Lv.5 and Lv.10): what it gives, and how many it has reached
+	# short and plain (Rudy): name, level over its rarity's cap, the main stat with its next
+	# level, the set's extra
+	var rar := GearData.rarity(gear, id)
+	var cap := GearData.level_cap(rar)
+	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < cap else "  (cap)"
+	_detail.text = "%s  Lv.%d / %d  ·  %s\n%s %s%s\n%s" % [info.name, lv, cap, GearData.rarity_name(rar), st.text, _stat_text(slot, lv), next_txt, set_info.minor]
+	# its milestone (every 5 levels): what it gives, and how many it has reached
 	var gms: Dictionary = GearData.MILESTONE[slot]
 	var got := GearData.milestones(lv)
-	if got >= 2:
-		_detail.text += "\n%s  x2 (max)" % gms.text
+	if got >= GearData.max_milestones():
+		_detail.text += "\n%s  x%d (max)" % [gms.text, got]
 	else:
-		_detail.text += "\n%s  %s" % [gms.text, ("x%d, next Lv.10" % got) if got > 0 else "at Lv.5"]
+		_detail.text += "\n%s  %s" % [gms.text, ("x%d, next Lv.%d" % [got, (got + 1) * GearData.MILESTONE_EVERY]) if got > 0 else "at Lv.%d" % GearData.MILESTONE_EVERY]
 	if slot == "Weapon":
 		_detail.text += "\n" + GearData.WEAPON_TEXT[set_info.weapon]
 	var cost := GearData.upgrade_cost(lv)
-	_upgrade_btn.disabled = lv >= GearData.MAX_LEVEL or coins < cost
-	_upgrade_btn.text = "MAX" if lv >= GearData.MAX_LEVEL else _upgrade_text(cost, lv)
+	_upgrade_btn.disabled = lv >= cap or coins < cost
+	if lv >= GearData.MAX_LEVEL:
+		_upgrade_btn.text = "MAX"
+	elif lv >= cap:
+		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
+	else:
+		_upgrade_btn.text = _upgrade_text(cost, lv)
 	_power_label.text = "POWER %d  ·  %d coins" % [GearData.power(gear), coins]
 	var lines: Array = []
 	for set_id in GearData.SETS:
@@ -360,7 +385,7 @@ func _on_upgrade_pressed() -> void:
 	var id: String = gear.equipped[selected_slot]
 	var lv := _lvl(id)
 	var cost := GearData.upgrade_cost(lv)
-	if lv >= GearData.MAX_LEVEL or coins < cost:
+	if lv >= GearData.cap_of(gear, id) or coins < cost:
 		return
 	if not await _pay_upgrade(cost, lv):
 		return
@@ -466,14 +491,37 @@ func _stat_rows(box: VBoxContainer, rows: Array) -> void:
 		box.add_child(h)
 
 # ------------------------------------------------------------------ workshop page
-# Merging (Rudy): 3 of a part -> 1 of the next (Parts.MERGE). Your parts in a row, then
-# one card per merge with Merge (one) and All. Gear and turret merging come later.
+# Two sub-tabs (Rudy: sub-tabs, not long scrolls). PARTS: 3 of a part -> 1 of the next
+# (Parts.MERGE), one card per merge with Merge (one) and All. GEAR: the inventory of gear
+# copies, a Filter, Quick Merge (Common and Uncommon) and merging by hand (any rarity).
 func _refresh_workshop(pop: String = "") -> void:
 	for c in _workshop_box.get_children():
 		c.queue_free()
+	var on_tab := func(i: int):
+		_ws_tab = i
+		_ws_parts_box.visible = i == 0
+		_ws_gear_box.visible = i == 1
+		if i == 1:
+			_refresh_ws_gear()
+	_workshop_box.add_child(UIKit.tabs(["Parts", "Gear"], on_tab, _ws_tab))
+	_ws_parts_box = VBoxContainer.new()
+	_ws_parts_box.add_theme_constant_override("separation", 10)
+	_ws_parts_box.visible = _ws_tab == 0
+	_workshop_box.add_child(_ws_parts_box)
+	_ws_gear_box = VBoxContainer.new()
+	_ws_gear_box.add_theme_constant_override("separation", 10)
+	_ws_gear_box.visible = _ws_tab == 1
+	_workshop_box.add_child(_ws_gear_box)
+	_refresh_ws_parts(pop)
+	if _ws_tab == 1:
+		_refresh_ws_gear()
+
+func _refresh_ws_parts(pop: String = "") -> void:
+	for c in _ws_parts_box.get_children():
+		c.queue_free()
 	_ws_icons = {}
 	var have := Parts.read(_read())
-	_workshop_box.add_child(UIKit.header("YOUR PARTS"))
+	_ws_parts_box.add_child(UIKit.header("YOUR PARTS"))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	for k in Parts.ORDER:
@@ -488,8 +536,8 @@ func _refresh_workshop(pop: String = "") -> void:
 		v.add_child(UIKit.label("x%d" % int(have[k]), 20, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 		p.add_child(v)
 		row.add_child(p)
-	_workshop_box.add_child(row)
-	_workshop_box.add_child(UIKit.header("MERGE"))
+	_ws_parts_box.add_child(row)
+	_ws_parts_box.add_child(UIKit.header("MERGE"))
 	for k in Parts.MERGE:
 		var to: String = Parts.MERGE[k]
 		var n: int = int(have[k]) / Parts.MERGE_COST
@@ -517,8 +565,8 @@ func _refresh_workshop(pop: String = "") -> void:
 		all.pressed.connect(func(): _merge(kind, -1))
 		h.add_child(all)
 		p.add_child(h)
-		_workshop_box.add_child(p)
-	_workshop_box.add_child(UIKit.label("Gear and turret merging: coming soon", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		_ws_parts_box.add_child(p)
+	_ws_parts_box.add_child(UIKit.label("Gear copies: the Gear tab  ·  turret modules: coming soon", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	if pop != "" and _ws_icons.has(pop):
 		var tr: TextureRect = _ws_icons[pop]
 		await get_tree().process_frame
@@ -554,6 +602,328 @@ func _merge(kind: String, times: int) -> void:
 	add_child(fx)
 	await fx.finished
 	_refresh_workshop(to)
+
+# ---- gear inventory (Workshop > Gear) ----
+# Every stack of copies you hold (one tile per piece and rarity, "x3"), filtered and
+# sorted (Rudy: by rarity, slot, set, newest). Tap a stack to merge 3 -> 1 of the next
+# rarity by hand; QUICK MERGE does every Common and Uncommon stack at once.
+const INV_SORTS := ["newest", "rarity", "set"]
+const INV_SORT_NAMES := {"newest": "Newest", "rarity": "Rarity", "set": "Set"}
+
+func _inv_stacks() -> Array:
+	var out: Array = []
+	for id in gear.copies:
+		var info: Dictionary = GearData.ITEMS[id]
+		if _inv_filter.slot != "" and info.slot != _inv_filter.slot:
+			continue
+		if _inv_filter.set != "" and info.set != _inv_filter.set:
+			continue
+		for r in gear.copies[id]:
+			if _inv_filter.rarity != "" and r != _inv_filter.rarity:
+				continue
+			out.append({"id": id, "rarity": r, "n": int(gear.copies[id][r]), "recent": gear.recent.rfind(id)})
+	match String(_inv_filter.sort):
+		"newest":
+			out.sort_custom(func(a, b): return a.recent > b.recent if a.recent != b.recent else GearData.rarity_index(a.rarity) > GearData.rarity_index(b.rarity))
+		"rarity":
+			out.sort_custom(func(a, b): return GearData.rarity_index(a.rarity) > GearData.rarity_index(b.rarity) if a.rarity != b.rarity else a.id < b.id)
+		"set":
+			out.sort_custom(func(a, b):
+				var sa := GearData.SET_ORDER.find(GearData.ITEMS[a.id].set)
+				var sb := GearData.SET_ORDER.find(GearData.ITEMS[b.id].set)
+				return sa < sb if sa != sb else (GearData.SLOTS.find(GearData.ITEMS[a.id].slot) < GearData.SLOTS.find(GearData.ITEMS[b.id].slot) if a.id != b.id else GearData.rarity_index(a.rarity) > GearData.rarity_index(b.rarity)))
+	return out
+
+func _filter_text() -> String:
+	var bits: Array = []
+	if _inv_filter.rarity != "":
+		bits.append(GearData.rarity_name(_inv_filter.rarity))
+	if _inv_filter.slot != "":
+		bits.append(_inv_filter.slot)
+	if _inv_filter.set != "":
+		bits.append(GearData.SETS[_inv_filter.set].name)
+	return ("All" if bits.is_empty() else " · ".join(bits)) + "  ·  " + INV_SORT_NAMES[_inv_filter.sort]
+
+func _refresh_ws_gear() -> void:
+	for c in _ws_gear_box.get_children():
+		c.queue_free()
+	gear = GearData.read(_read())
+	var total := 0
+	for id in gear.copies:
+		total += GearData.total_copies(gear, id)
+	# Filter and Quick Merge on one row, the filter in words under it
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var fb := UIKit.ghost_button("Filter", 13)
+	fb.custom_minimum_size = Vector2(90, 40)
+	fb.pressed.connect(_filter_box)
+	row.add_child(fb)
+	var ft := UIKit.label(_filter_text(), 11, UIKit.MUTED)
+	ft.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ft.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	row.add_child(ft)
+	var qn := GearData.quick_merge_count(gear)
+	var qb := UIKit.gold_button("Quick Merge" + ((" (%d)" % qn) if qn > 0 else ""), 13)
+	qb.custom_minimum_size = Vector2(118, 40)
+	qb.disabled = qn <= 0
+	qb.pressed.connect(_quick_merge)
+	row.add_child(qb)
+	_ws_gear_box.add_child(row)
+	_ws_gear_box.add_child(UIKit.label("Quick Merge: Common and Uncommon. Rare and up: by hand (tap a stack).  ·  %d copies" % total, 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var stacks := _inv_stacks()
+	if stacks.is_empty():
+		var lp := UIKit.panel(12)
+		var t := UIKit.label("Nothing here yet.\nGear copies drop when you clear a stage (always on boss stages) and from Patrol." if total == 0 else "Nothing matches this filter.", 12, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		lp.add_child(t)
+		_ws_gear_box.add_child(lp)
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for s in stacks:
+		grid.add_child(_inv_tile(s))
+	_ws_gear_box.add_child(grid)
+	_power_label.text = "GEAR  %d copies  ·  %d coins" % [total, coins]
+
+# a stack tile: the piece in its rarity colour, "x3", the set name as the badge
+func _inv_tile(s: Dictionary) -> Button:
+	var info: Dictionary = GearData.ITEMS[s.id]
+	var worn: bool = gear.equipped[info.slot] == s.id and GearData.rarity(gear, s.id) == s.rarity
+	var sub := "x%d  ·  %s" % [int(s.n), GearData.rarity_name(s.rarity)]
+	var t := UIKit.tile(info.name, sub, s.rarity, GearData.SETS[info.set].name, _pic(s.id), Vector2(108, 96))
+	if worn:
+		t.add_theme_stylebox_override("normal", UIKit.box(Color(GearData.rarity_color(s.rarity), 0.28), Color.WHITE, 12, 2))
+	if GearData.can_merge(gear, s.id, s.rarity):
+		var m := UIKit.label("MERGE", 9, UIKit.GOLD, HORIZONTAL_ALIGNMENT_RIGHT)
+		m.position = Vector2(108 - 44, 3)
+		m.size = Vector2(40, 12)
+		t.add_child(m)
+	var stack := s
+	t.pressed.connect(func(): _stack_box(stack))
+	return t
+
+# the stack's box: picture, what it is, Merge 3 -> 1 (any rarity, by hand)
+func _stack_box(s: Dictionary) -> void:
+	var info: Dictionary = GearData.ITEMS[s.id]
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.7)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var p := UIKit.panel(14)
+	var w := minf(size.x - 40.0, 340.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, size.y * 0.22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	var pic := TextureRect.new()
+	pic.texture = _pic(s.id)
+	pic.custom_minimum_size = Vector2(0, 96)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	v.add_child(pic)
+	v.add_child(UIKit.label(info.name, 17, GearData.rarity_color(s.rarity), HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("%s %s  ·  %s  ·  x%d" % [GearData.rarity_name(s.rarity), info.slot, GearData.SETS[info.set].name, int(s.n)], 12, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	var worn_r := GearData.rarity(gear, s.id)
+	v.add_child(UIKit.label("Your %s is %s: cap Lv.%d" % [info.name, GearData.rarity_name(worn_r), GearData.level_cap(worn_r)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var nxt := GearData.next_rarity(s.rarity)
+	var mb := UIKit.gold_button(("Merge %d  ->  1 %s" % [GearData.MERGE_COST, GearData.rarity_name(nxt)]) if nxt != "" else "Top rarity", 14)
+	mb.custom_minimum_size = Vector2(0, 44)
+	mb.disabled = not GearData.can_merge(gear, s.id, s.rarity)
+	mb.pressed.connect(func():
+		layer.queue_free()
+		_merge_gear(s.id, s.rarity))
+	v.add_child(mb)
+	if nxt != "" and int(s.n) < GearData.MERGE_COST:
+		v.add_child(UIKit.label("Need %d copies (you have %d)" % [GearData.MERGE_COST, int(s.n)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var close := UIKit.ghost_button("Close", 13)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)
+
+func _merge_gear(id: String, r: String) -> void:
+	var data := _read()
+	var g := GearData.read(data)
+	var to := GearData.merge(g, id, r)
+	if to == "":
+		return
+	data["gear"] = GearData.write(g)
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()
+	gear = g
+	var fx := MergeFX.new()
+	fx.src = _pic(id)
+	fx.dst = _pic(id)
+	fx.col = GearData.rarity_color(to)
+	fx.title = "+1 %s %s" % [GearData.rarity_name(to), GearData.ITEMS[id].name]
+	add_child(fx)
+	await fx.finished
+	_refresh_ws_gear()
+
+func _quick_merge() -> void:
+	var data := _read()
+	var g := GearData.read(data)
+	var made := GearData.quick_merge(g)
+	if made <= 0:
+		return
+	data["gear"] = GearData.write(g)
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()
+	gear = g
+	var fx := MergeFX.new()
+	fx.src = load("res://parts/alloy.png") if ResourceLoader.exists("res://parts/alloy.png") else null
+	fx.dst = load("res://icons/gear_on.png")
+	fx.col = GearData.rarity_color("rare")
+	fx.title = "%d merge%s" % [made, "s" if made > 1 else ""]
+	add_child(fx)
+	await fx.finished
+	_refresh_ws_gear()
+
+# the Filter box: rows of chips for rarity, slot, set and sort order; Done closes it
+func _filter_box() -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.7)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var p := UIKit.panel(14)
+	var w := minf(size.x - 24.0, 440.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, 60.0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UIKit.label("FILTER", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var rows := [
+		["rarity", "RARITY", [["", "Any"]] + GearData.RARITIES.map(func(r): return [r, GearData.rarity_name(r)])],
+		["slot", "SLOT", [["", "Any"]] + GearData.SLOTS.map(func(s): return [s, s])],
+		["set", "SET", [["", "Any"]] + GearData.SET_ORDER.filter(func(s): return GearData.set_unlocked(s, t_unlocked)).map(func(s): return [s, GearData.SETS[s].name])],
+		["sort", "SORT", INV_SORTS.map(func(s): return [s, INV_SORT_NAMES[s]])],
+	]
+	for spec in rows:
+		v.add_child(UIKit.header(spec[1]))
+		var flow := HFlowContainer.new()
+		flow.add_theme_constant_override("h_separation", 6)
+		flow.add_theme_constant_override("v_separation", 6)
+		var key: String = spec[0]
+		for opt in spec[2]:
+			var b := UIKit.ghost_button(opt[1], 12)
+			b.custom_minimum_size = Vector2(0, 30)
+			var val: String = opt[0]
+			var on: bool = _inv_filter[key] == val
+			if on:
+				b.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.CYAN, 0.25), UIKit.CYAN, 10))
+			b.pressed.connect(func():
+				_inv_filter[key] = val
+				layer.queue_free()
+				_filter_box())
+			flow.add_child(b)
+		v.add_child(flow)
+	var done := UIKit.gold_button("Done", 14)
+	done.custom_minimum_size = Vector2(0, 42)
+	done.pressed.connect(func():
+		layer.queue_free()
+		_refresh_ws_gear())
+	v.add_child(done)
+	p.add_child(v)
+	layer.add_child(p)
+
+# ---- loadouts (Pilot page top row) ----
+# Three kits (Loadouts): tap an empty one to save what you wear now; tap a saved one to
+# wear it (gear, turrets, drone); tap the one in use to rename it or save over it.
+func _paint_loadouts() -> void:
+	for c in _loadout_row.get_children():
+		c.queue_free()
+	var data := _read()
+	var slots := Loadouts.read(data)
+	var act := Loadouts.active(data)
+	_loadout_row.add_child(UIKit.label("KIT", 11, UIKit.MUTED))
+	for i in Loadouts.SLOTS:
+		var s: Dictionary = slots[i]
+		var b := UIKit.ghost_button(String(s.name) if s.set else "+ Save", 12)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 32)
+		if i == act:
+			b.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.GOLD, 0.22), UIKit.GOLD, 10))
+		elif not s.set:
+			b.modulate = Color(1, 1, 1, 0.7)
+		var idx := i
+		b.pressed.connect(func(): _on_loadout(idx))
+		_loadout_row.add_child(b)
+
+func _on_loadout(i: int) -> void:
+	var data := _read()
+	var slots := Loadouts.read(data)
+	if not slots[i].set:
+		Loadouts.save_slot(data, i)
+		_write_data(data)
+		_paint_loadouts()
+		_toast("%s saved" % Loadouts.read(data)[i].name)
+		return
+	if Loadouts.active(data) == i:
+		_loadout_box(i)
+		return
+	if Loadouts.apply(data, i):
+		_write_data(data)
+		_load()
+		_paint_loadouts()
+		_select(selected_slot)
+		if _plat:
+			_plat.flash()
+
+# the kit in use: rename (a text box) or save what you wear now over it
+func _loadout_box(i: int) -> void:
+	var data := _read()
+	var s: Dictionary = Loadouts.read(data)[i]
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.7)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var p := UIKit.panel(14)
+	var w := minf(size.x - 40.0, 320.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, size.y * 0.22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	v.add_child(UIKit.label("KIT IN USE", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var input := LineEdit.new()
+	input.text = String(s.name)
+	input.max_length = 14
+	input.placeholder_text = "Name"
+	input.add_theme_font_size_override("font_size", 14)
+	input.custom_minimum_size = Vector2(0, 38)
+	v.add_child(input)
+	var ren := UIKit.teal_button("Rename", 13)
+	ren.pressed.connect(func():
+		var d2 := _read()
+		Loadouts.rename(d2, i, input.text)
+		_write_data(d2)
+		layer.queue_free()
+		_paint_loadouts())
+	v.add_child(ren)
+	var over := UIKit.gold_button("Save what I wear now", 13)
+	over.pressed.connect(func():
+		var d2 := _read()
+		Loadouts.save_slot(d2, i, input.text)
+		_write_data(d2)
+		layer.queue_free()
+		_paint_loadouts()
+		_toast("%s saved" % Loadouts.read(d2)[i].name))
+	v.add_child(over)
+	var close := UIKit.ghost_button("Cancel", 13)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)
+
+func _write_data(data: Dictionary) -> void:
+	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+	if out:
+		out.store_string(JSON.stringify(data))
+		out.close()
 
 # ------------------------------------------------------------------ drone page
 # The drone sidekick (DroneData): a big preview, its body and weapon pod to choose,
@@ -989,7 +1359,11 @@ func _on_track_upgrade(k: String) -> void:
 
 # a gold line that rises over the screen when something reaches a milestone
 func _milestone_toast(text: String) -> void:
-	var l := UIKit.label("MILESTONE!  " + text, 15, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	_toast("MILESTONE!  " + text)
+
+# a gold line that rises over the screen (kit saved, milestone...)
+func _toast(text: String) -> void:
+	var l := UIKit.label(text, 15, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	l.position = Vector2(0, size.y * 0.42)
 	l.size = Vector2(size.x, 30)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE

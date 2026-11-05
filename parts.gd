@@ -14,8 +14,12 @@ const ORDER := ["alloy", "cell", "core"]
 
 # Parts needed to go from `level` to level + 1 (coins come from each system's own cost).
 # Lv.1-4: none. Lv.5-6: alloy. Lv.7-8: alloy + cells. Lv.9: alloy + cells + a core.
+# Lv.10-29 (gear above Common, dev139): grows more slowly, so a Legendary piece's last
+# step (Lv.29 -> 30) needs 78 Alloy, 14 Cells and 7 Cores.
 static func need(level: int) -> Dictionary:
 	var n := {}
+	if level >= 10:
+		return {"alloy": 18 + 3 * (level - 9), "cell": 4 + (level - 9) / 2, "core": 2 + (level - 9) / 4}
 	if level >= 4:
 		n["alloy"] = 3 * (level - 3)
 	if level >= 6:

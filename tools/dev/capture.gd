@@ -1,0 +1,27 @@
+extends SceneTree
+# Screen capture of a menu scene with a made-up save (headless check of a page's layout).
+# Uses the sim save folder, so the real save is never touched:
+#   cp tools/sim_override.cfg override.cfg; printf '[display]\nwindow/size/viewport_width=480\nwindow/size/viewport_height=960\nwindow/size/mode=0\n' >> override.cfg
+#   CAP_SCENE=res://gear.tscn CAP_PAGE=3 CAP_WS=1 CAP_SAVE=tools/dev/save_rich.json \
+#     godot --path . --script res://tools/dev/capture.gd --write-movie out/gear.png --quit-after 40
+#   rm override.cfg
+# Env: CAP_SCENE (scene to open), CAP_PAGE (Gear tab 0-3), CAP_WS (Workshop sub-tab),
+# CAP_SAVE (json file copied over the sim save; none = keep what is there).
+
+func _initialize() -> void:
+	var sv := OS.get_environment("CAP_SAVE")
+	if sv != "":
+		var f := FileAccess.open(sv, FileAccess.READ)
+		if f:
+			var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
+			out.store_string(f.get_as_text())
+			out.close()
+			print("save written from ", sv, " to ", ProjectSettings.globalize_path("user://skybound_save.json"))
+	var page := OS.get_environment("CAP_PAGE")
+	if page != "":
+		root.set_meta("gear_page", int(page))
+	var ws := OS.get_environment("CAP_WS")
+	if ws != "":
+		root.set_meta("gear_ws_tab", int(ws))
+	var scene := OS.get_environment("CAP_SCENE")
+	change_scene_to_file(scene if scene != "" else "res://gear.tscn")

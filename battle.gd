@@ -199,6 +199,7 @@ var _hull_rate := 0.0              # its overcharge: share of the max hull per s
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
 var _parts_got := {}              # upgrade parts picked up this run (Parts)
+var _gear_got := {}               # the gear copy this clear dropped ({id, rarity}, GearData)
 var _drone := {}                  # the sidekick from Gear (DroneData.read): body, pod, level
 var _drone_on := false
 var _drone_cd := 0.5
@@ -1763,6 +1764,14 @@ func _end_run(won: bool) -> void:
 	for k in _parts_got:
 		owned[k] = int(owned.get(k, 0)) + int(_parts_got[k])
 	patch["parts"] = owned
+	# a gear copy for merging (dev139): always on boss stages and in Elite, else about a
+	# third of the time; the piece comes from this planet's set (GearData.roll_drop)
+	_gear_got = {}
+	if won and rng.randf() < GearData.drop_chance(stage, elite):
+		_gear_got = GearData.roll_drop(stage, rng)
+		var g := GearData.read(d)
+		GearData.add_copy(g, _gear_got.id, _gear_got.rarity)
+		patch["gear"] = GearData.write(g)
 	if won:
 		patch["stage_unlocked"] = maxi(stage + 1, was)
 		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
@@ -2455,6 +2464,21 @@ func _show_end(won: bool) -> void:
 			if int(_parts_got.get(k, 0)) > 0:
 				bits.append("+%d %s" % [int(_parts_got[k]), Parts.KINDS[k].name])
 		v.add_child(UIKit.label("Parts:  " + "   ".join(bits), 12, Color(0.7, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+	if not _gear_got.is_empty():
+		# the gear copy this clear dropped: its picture, name and rarity (merge it in the Workshop)
+		var gid: String = _gear_got.id
+		var grow := HBoxContainer.new()
+		grow.alignment = BoxContainer.ALIGNMENT_CENTER
+		grow.add_theme_constant_override("separation", 8)
+		var gpic := TextureRect.new()
+		var gpath := "res://gear/%s_t1.png" % gid
+		gpic.texture = load(gpath) if ResourceLoader.exists(gpath) else load("res://gear/%s.png" % gid)
+		gpic.custom_minimum_size = Vector2(36, 36)
+		gpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		gpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		grow.add_child(gpic)
+		grow.add_child(UIKit.label("GEAR:  %s %s" % [GearData.rarity_name(_gear_got.rarity), GearData.ITEMS[gid].name], 12, GearData.rarity_color(_gear_got.rarity)))
+		v.add_child(grow)
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 		for id in Turrets.TURRETS:
