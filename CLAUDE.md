@@ -121,8 +121,11 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    and spread out). Gear copies need (f). Rewards come PER WAVE CLEARED (Rudy): the Home
    AFK battle plays the chosen stage wave by wave; each cleared wave adds that wave's drops to the
    Patrol store; offline time is counted as simulated waves (waves per hour from that stage's
-   length). Farm older stages for their element. (e) Pilot talent points (Offense / Defense /
-   Utility tree, a Gear sub-tab). (f) Gear rarity: max level 30, rarity caps the level, raised by
+   length). Farm older stages for their element. (e) PILOT TALENT MAP (Rudy): a path/map of nodes you buy in order,
+   each a small permanent % (bolt damage, turret damage, crit rate e.g. +0.5%, crit damage, base
+   HP...). Costs rise: coins first, then crystals and a new in-game currency that is harder to
+   collect later (e.g. Star Shards from bosses). Every 10th node unlocks a NEW power card for runs
+   or a new pilot power. Needs more power cards first. A Gear sub-tab or its own page. (f) Gear rarity: max level 30, rarity caps the level, raised by
    merging copies in the Workshop (needs gear drops). INVENTORY (Rudy): a filter button (by rarity, slot,
    set, newest) because players collect a lot; a QUICK MERGE button that merges all Common and
    Uncommon copies automatically, while Epic and above are merged by hand only (players keep
