@@ -22,6 +22,7 @@ func _initialize() -> void:
 	_check_repeat()
 	_check_cards()
 	_check_unlocks()
+	_check_heroes()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
 
@@ -223,3 +224,40 @@ func _check_unlocks() -> void:
 	Unlocks.settle(old)
 	_expect(Unlocks.fresh(old).is_empty(), "an old save takes what it has as seen")
 	_expect(UIKit.tab_shown([0, 1, 2, 3], 2, [2, 3]) == 0 and UIKit.tab_shown([0, 1, 2, 3], 1, [2]) == 1, "hidden tab falls back to the first shown")
+
+# heroes (dev172): roster, elements, levels, stars, the old-save conversion
+func _check_heroes() -> void:
+	var s := {"coins": 1000, "stage_unlocked": 1, "pilot_xp": 0}
+	var h := Heroes.read(s)
+	_expect(Heroes.selected(h) == "rook" and Heroes.level(h, "rook") == 1 and Heroes.stars(h, "rook") == 0, "fresh save: Rook, Lv.1, no stars")
+	_expect(Heroes.unlocked(s, "rook") and not Heroes.unlocked(s, "sparks"), "fresh save: only Rook")
+	s["stage_unlocked"] = 11
+	_expect(Heroes.unlocked(s, "sparks") and not Heroes.unlocked(s, "frost"), "stage 11: Sparks opens")
+	_expect(Heroes.level_up(s, h, "rook") and Heroes.level(h, "rook") == 2 and int(s.coins) == 1000 - Heroes.level_cost(1), "level up costs 60 + 30 x level")
+	Heroes.add_shards(h, "rook", 12)
+	_expect(Heroes.can_evolve(h, "rook") and Heroes.evolve(h, "rook") and Heroes.stars(h, "rook") == 1 and Heroes.shards(h, "rook") == 2, "10 shards = the first star")
+	_expect(not Heroes.can_evolve(h, "rook"), "the second star needs 20")
+	s["hero"] = Heroes.write(h)
+	var back := Heroes.read(s)
+	_expect(Heroes.level(back, "rook") == 2 and Heroes.stars(back, "rook") == 1, "write / read round trip")
+	# elements: Fire is strong on Hive World (stages 1-10), Ice weak there; Energy neutral everywhere
+	_expect(is_equal_approx(Heroes.element_mult("solar", 3), Heroes.WEAK_MULT) and is_equal_approx(Heroes.element_mult("frost", 3), Heroes.RESIST_MULT) and is_equal_approx(Heroes.element_mult("ion", 3), 1.0), "Hive World: Fire strong, Ice weak, Energy neutral")
+	_expect(Heroes.hero_for_planet(15) == "sparks" and Heroes.hero_for_planet(5) == "ember", "shards drop for the planet's strong hero")
+	for id in Heroes.ORDER:
+		_expect(GearData.ITEMS.has(String(Heroes.ROSTER[id].weapon)) and GearData.SETS.has(String(Heroes.ROSTER[id].element)), "hero %s: weapon and element exist" % id)
+	# stats: the keys battle reads are all there, and a hero level raises damage
+	var st := Heroes.stats(s)
+	for k in ["damage", "fire_rate", "aim", "recovery", "hearts", "magnet", "auto_fire", "gem_xp", "coins", "weapon", "thruster", "crit_rate", "fortress", "element", "hero"]:
+		_expect(st.has(k), "stats has %s" % k)
+	_expect(float(st.gem_xp) > 1.0 and String(st.weapon) == "laser_pistol", "Rook's passive and weapon in the stats")
+	# old save: five armour pieces at Lv.6 each (5 x 1800 coins) and some spare copies -> Rook level + shards
+	var old := {"stage_unlocked": 12, "gear": {"equipped": GearData.DEFAULT.duplicate(),
+		"levels": {"ion_helmet": 6, "ion_chest": 6, "ion_gauntlets": 6, "ion_boots": 6, "ion_jetpack": 6, "ion_weapon": 4},
+		"copies": {"ion_helmet": {"common": 4, "rare": 1}, "ion_weapon": {"common": 3}}}}
+	var mh := Heroes.read(old)
+	_expect(Heroes.level(mh, "rook") > 10, "old armour coins become Rook levels (got Lv.%d)" % Heroes.level(mh, "rook"))
+	_expect(Heroes.stars(mh, "rook") == 1 and Heroes.shards(mh, "rook") == 2, "3 spare commons + 1 rare = 12 shards = 1 star + 2 (got %d stars, %d shards)" % [Heroes.stars(mh, "rook"), Heroes.shards(mh, "rook")])
+	var og := GearData.read(old)
+	_expect(GearData.level(og, "ion_weapon") == 4 and int(og.copies["ion_weapon"]["common"]) == 3, "the weapon keeps its level and copies")
+	var drop := GearData.roll_drop(7, RandomNumberGenerator.new())
+	_expect(String(GearData.ITEMS[drop.id].slot) == "Weapon", "drops are weapons only")

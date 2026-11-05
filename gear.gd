@@ -89,6 +89,7 @@ func _load() -> void:
 	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
 	t_unlocked = int(data.get("stage_unlocked", 1))
 	gear = GearData.read(data)
+	hero = Heroes.read(data)   # heroes (dev172)
 	drone = DroneData.read(data)
 	PilotRig.set_gear(data)
 
@@ -136,7 +137,7 @@ func _build() -> void:
 	back.custom_minimum_size = Vector2(70, 32)
 	back.pressed.connect(_on_back_pressed)
 	top.add_child(back)
-	top.add_child(UIKit.screen_title("GEAR"))
+	top.add_child(UIKit.screen_title("HEROES"))
 	var sp := Control.new(); sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(sp)
 	_power_label = UIKit.label("", 13, UIKit.GOLD)
@@ -146,7 +147,7 @@ func _build() -> void:
 	col.add_child(top)
 	# Pilot / Turrets switch
 	# pages the player has not reached yet are not built (Unlocks: turrets, drone, workshop)
-	_tabs_row = UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages())
+	_tabs_row = UIKit.tabs(["Hero", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages())
 	col.add_child(_tabs_row)
 	_paint_dots()
 	_workshop_box = VBoxContainer.new()
@@ -167,6 +168,11 @@ func _build() -> void:
 	col.add_child(_pilot_box)
 	col = _pilot_box
 	# loadouts (Rudy): three saved kits, one tap to switch; tap the one in use to rename / overwrite
+	# the roster (heroes, dev172): six characters, tap one to put him on duty
+	_roster_row = HBoxContainer.new()
+	_roster_row.add_theme_constant_override("separation", 6)
+	col.add_child(_roster_row)
+	_paint_roster()
 	_loadout_row = HBoxContainer.new()
 	_loadout_row.add_theme_constant_override("separation", 6)
 	col.add_child(_loadout_row)
@@ -186,7 +192,7 @@ func _build() -> void:
 	hero.set_anchors_preset(Control.PRESET_FULL_RECT)
 	hero.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(hero)
-	for i in GearData.SLOTS.size():
+	for i in 1:   # heroes (dev172): the weapon is the only gear slot left; armour is the hero himself
 		var s: String = GearData.SLOTS[i]
 		var b := Button.new()
 		b.size = Vector2(SLOT_PX, SLOT_PX)
@@ -200,7 +206,7 @@ func _build() -> void:
 		stage.add_child(b)
 		_slot_tiles[s] = b
 	stage.resized.connect(func():
-		for i in GearData.SLOTS.size():
+		for i in 1:
 			var tb: Button = _slot_tiles[GearData.SLOTS[i]]
 			tb.position.x = stage.size.x - SLOT_PX if i >= 3 else 0.0)
 	plat.tiles = _slot_tiles
@@ -217,6 +223,32 @@ func _build() -> void:
 	stage.add_child(stats_btn)
 	stage.resized.connect(func(): stats_btn.position = Vector2(stage.size.x - SLOT_PX - 74.0, 4.0))
 	_paint_suit()
+	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
+	_hero_panel = UIKit.panel(10)
+	var hv := VBoxContainer.new()
+	hv.add_theme_constant_override("separation", 4)
+	_hero_name = UIKit.label("", 16, Color.WHITE)
+	hv.add_child(_hero_name)
+	_hero_line = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
+	_hero_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(_hero_line)
+	var hrow := HBoxContainer.new()
+	hrow.add_theme_constant_override("separation", 8)
+	_stars_l = UIKit.label("", 13, UIKit.GOLD)
+	_stars_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hrow.add_child(_stars_l)
+	_evolve_btn = UIKit.teal_button("Evolve", 13)
+	_evolve_btn.custom_minimum_size = Vector2(84, 34)
+	_evolve_btn.pressed.connect(_on_evolve)
+	hrow.add_child(_evolve_btn)
+	_level_btn = UIKit.gold_button("Level up", 13)
+	_level_btn.custom_minimum_size = Vector2(118, 44)
+	_level_btn.pressed.connect(_on_level_up)
+	hrow.add_child(_level_btn)
+	hv.add_child(hrow)
+	_hero_panel.add_child(hv)
+	col.add_child(_hero_panel)
+	_paint_hero()
 	# selected piece: stats + upgrade, right under the pilot (used most)
 	var up_row := HBoxContainer.new()
 	up_row.add_theme_constant_override("separation", 10)
@@ -248,6 +280,7 @@ func _build() -> void:
 
 # The suit (PilotRig.suit_for): Rookie, or the Commander armour once the Area 1 boss is beaten.
 func _paint_suit() -> void:
+	_suit_btn.visible = _hero_id() == Heroes.DEFAULT   # only Rook has two suits (heroes, dev172)
 	var data := _read()
 	if PilotRig.commander_unlocked(data):
 		_suit_btn.text = "Suit: Commander" if PilotRig.suit_for(data) == "commander" else "Suit: Rookie"
@@ -327,7 +360,7 @@ func _fill_bag() -> void:
 
 func _select(slot: String) -> void:
 	selected_slot = slot
-	for s in GearData.SLOTS:
+	for s in ["Weapon"]:
 		_paint_slot(s)
 	_fill_bag()
 	var id: String = gear.equipped[slot]
@@ -358,30 +391,15 @@ func _select(slot: String) -> void:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
 		_upgrade_btn.text = _upgrade_text(cost, lv)
-	_power_label.text = "POWER %d" % GearData.power(gear)
+	_power_label.text = "POWER %d" % Heroes.power(_read())
 	_paint_wallet()
-	var lines: Array = []
-	for set_id in GearData.SETS:
-		var n := GearData.set_count(gear, set_id)
-		if n == 0:
-			continue
-		var s: Dictionary = GearData.SETS[set_id]
-		var b3: String = s.bonus3 if n >= 3 else "3: " + s.bonus3
-		var b6: String = s.bonus6 if n >= 6 else "6: " + s.bonus6
-		lines.append("%s %d/6  ·  %s  ·  %s" % [s.name, n, b3, b6])
-	_bonus.text = "SETS\n" + "\n".join(lines)
-	# the platform's buildings light up in the colour of your strongest set
-	if _plat:
-		var best := ""
-		var best_n := 0
-		for set_id in GearData.SETS:
-			var n := GearData.set_count(gear, set_id)
-			if n > best_n:
-				best = set_id
-				best_n = n
-		_plat.glow = 1.0 if best_n >= 6 else (0.5 if best_n >= 3 else 0.0)
-		if best != "":
-			_plat.glow_col = UIKit.RARITY[best]
+	# the hero's milestones so far (every 5 levels), in place of the old set bonuses
+	var hid := _hero_id()
+	var hlv := Heroes.level(hero, hid)
+	var hgot: Array = []
+	for m in Heroes.milestones(hlv):
+		hgot.append(String(Heroes.MILESTONES[m % Heroes.MILESTONES.size()].text))
+	_bonus.text = "%s MILESTONES\n%s" % [String(Heroes.ROSTER[hid].name).to_upper(), ", ".join(hgot) if not hgot.is_empty() else "First at Lv.%d: %s" % [Heroes.MILESTONE_EVERY, Heroes.MILESTONES[0].text]]
 
 func _stat_text(slot: String, lv: int) -> String:
 	var per: float = float(GearData.SLOT_STAT[slot].per)
@@ -455,7 +473,7 @@ const BATTLE := preload("res://battle.gd")
 
 func _show_stats() -> void:
 	var data := _read()
-	var gs := GearData.stats(data)
+	var gs := Heroes.stats(data)
 	var w: Dictionary = BATTLE.WEAPONS[gs.weapon]
 	var hit: float = float(w.damage) * float(gs.damage) * (1.0 + float(gs.dmg_boost))
 	var per_s: float = float(w.projectiles) * float(gs.fire_rate) / float(w.interval)
@@ -471,7 +489,7 @@ func _show_stats() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(UIKit.label("STATS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.header("PILOT"))
+	v.add_child(UIKit.header(String(Heroes.ROSTER[_hero_id()].name).to_upper()))
 	_stat_rows(v, [
 		["Damage per hit", "%.2f" % hit],
 		["Shots per second", "%.1f" % per_s],
@@ -650,6 +668,8 @@ func _inv_stacks() -> Array:
 	var out: Array = []
 	for id in gear.copies:
 		var info: Dictionary = GearData.ITEMS[id]
+		if String(info.slot) != "Weapon":
+			continue   # heroes (dev172): only weapons are gear now; old armour copies became shards
 		if _inv_filter.slot != "" and info.slot != _inv_filter.slot:
 			continue
 		if _inv_filter.set != "" and info.set != _inv_filter.set:
@@ -1672,3 +1692,122 @@ func _page_tips(i: int) -> void:
 			if _ws_tab == 1 and _quick_btn and is_instance_valid(_quick_btn):
 				list.append(["quick_merge", _quick_btn])
 	Tips.first(get_tree(), list)
+
+# ------------------------------------------------------------------ heroes (dev172)
+# The Pilot tab became the HERO page (DESIGN-heroes.md): a roster of complete characters
+# instead of armour slots. Roster row (six heroes, locked ones say their stage), the hero
+# on his platform, name + element + passive, LEVEL UP (coins), stars + shards + EVOLVE,
+# and the one gear slot that stays: the weapon.
+var hero := {}                 # Heroes.read(save): {selected, levels, stars, shards}
+var _roster_row: HBoxContainer
+var _hero_panel: PanelContainer
+var _hero_name: Label
+var _hero_line: Label
+var _level_btn: Button
+var _stars_l: Label
+var _evolve_btn: Button
+
+func _hero_id() -> String:
+	return Heroes.selected(hero)
+
+# six tiles: name, element, "Lv.N ★★" or "Stage N"; the hero on duty lit in his element
+func _paint_roster() -> void:
+	for c in _roster_row.get_children():
+		c.queue_free()
+	var data := _read()
+	for id in Heroes.ORDER:
+		var h: Dictionary = Heroes.ROSTER[String(id)]
+		var el: String = h.element
+		var open: bool = Heroes.unlocked(data, String(id))
+		var on: bool = String(id) == _hero_id()
+		var sub := ("Lv.%d  %s" % [Heroes.level(hero, id), "★".repeat(Heroes.stars(hero, id))]) if open else ("Stage %d" % int(h.stage))
+		var pic: Texture2D = _hero_portrait(id) if open else load("res://icons/ui_padlock.png")
+		var t := UIKit.tile(h.name, sub, el, Heroes.element_name(el), pic, Vector2(72, 86))
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if not open:
+			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
+		elif not on:
+			t.modulate = Color(0.8, 0.85, 0.95, 0.9)
+		var hid: String = id
+		t.pressed.connect(func():
+			if open:
+				_select_hero(hid))
+		_roster_row.add_child(t)
+
+# Luna's portrait when it exists, else his weapon picture as a stand-in
+func _hero_portrait(id: String) -> Texture2D:
+	var p := "res://heroes/%s/portrait.png" % id
+	if ResourceLoader.exists(p):
+		return load(p)
+	return _pic(String(Heroes.ROSTER[id].weapon))
+
+func _select_hero(id: String) -> void:
+	hero.selected = id
+	var data := _read()
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	PilotRig.set_gear(data)   # the showcase swaps to him at once
+	_paint_roster()
+	_paint_hero()
+	_paint_suit()
+
+# name, element, passive, level up, stars
+func _paint_hero() -> void:
+	var id := _hero_id()
+	var h: Dictionary = Heroes.ROSTER[id]
+	var el: String = h.element
+	var lv := Heroes.level(hero, id)
+	var st := Heroes.stars(hero, id)
+	var col := Heroes.element_color(el)
+	_hero_name.text = "%s  ·  %s" % [h.name, Heroes.element_name(el)]
+	_hero_name.add_theme_color_override("font_color", col)
+	var ms := Heroes.milestone_at(((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY)
+	var next_ms := ("Lv.%d: %s" % [((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY, ms.text]) if not ms.is_empty() else ""
+	_hero_line.text = "%s\n%s  ·  ATK +%d%%  ·  next %s" % [h.passive, "Lv.%d" % lv, roundi((float(Heroes.PER_LEVEL.atk) * (lv - 1) + Heroes.STAR_BONUS * st) * 100.0), next_ms]
+	var cost := Heroes.level_cost(lv)
+	_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
+	_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
+	var need := Heroes.next_star_cost(hero, id)
+	var have := Heroes.shards(hero, id)
+	_stars_l.text = "%s%s   %s" % ["★".repeat(st), "☆".repeat(Heroes.MAX_STARS - st), ("shards %d / %d" % [have, need]) if need > 0 else "max"]
+	_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
+	_evolve_btn.text = "Evolve" if need > 0 else "Max"
+	_power_label.text = "POWER %d" % Heroes.power(_read())
+	_paint_wallet()
+	# the platform's buildings light up with his stars, in his element colour
+	if _plat:
+		_plat.glow = 1.0 if st >= 5 else (0.5 if st >= 3 else 0.0)
+		_plat.glow_col = col
+
+func _on_level_up() -> void:
+	var data := _read()
+	var id := _hero_id()
+	var before := Heroes.level(hero, id)
+	if not Heroes.level_up(data, hero, id):
+		return
+	coins = int(data.coins)
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	Sfx.play("upgrade")
+	Progress.bump("upgrades")
+	var ms := Heroes.milestone_at(before + 1)
+	if not ms.is_empty():
+		_milestone_toast("%s reached Lv.%d: %s" % [Heroes.ROSTER[id].name, before + 1, ms.text])
+	if _plat:
+		_plat.flash()
+	_paint_roster()
+	_paint_hero()
+
+func _on_evolve() -> void:
+	var id := _hero_id()
+	if not Heroes.evolve(hero, id):
+		return
+	var data := _read()
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	Sfx.play("merge")
+	_toast("%s: %d stars" % [Heroes.ROSTER[id].name, Heroes.stars(hero, id)])
+	if _plat:
+		_plat.flash()
+	_paint_roster()
+	_paint_hero()

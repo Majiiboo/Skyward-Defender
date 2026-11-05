@@ -41,7 +41,7 @@ static func save_slot(save: Dictionary, i: int, name: String = "") -> void:
 	var dr := DroneData.read(save)
 	raw[i] = {"name": name if name != "" else (String(slots[i].name) if slots[i].set else default_name(i)),
 		"gear": gear.equipped.duplicate(), "turrets": Turrets.read(save).loadout.duplicate(),
-		"drone": {"body": dr.body, "pod": dr.pod}}
+		"drone": {"body": dr.body, "pod": dr.pod}, "hero": Heroes.selected(Heroes.read(save))}   # the hero too (dev172)
 	save["loadouts"] = raw
 	save["loadout_active"] = i
 
@@ -70,6 +70,11 @@ static func apply(save: Dictionary, i: int) -> bool:
 			if GearData.ITEMS.has(id) and GearData.ITEMS[id].slot == s and GearData.owned(gear, id):
 				gear.equipped[s] = id
 	save["gear"] = GearData.write(gear)
+	var hid := String(one.get("hero", ""))   # the kit's hero, if you have him (dev172)
+	if Heroes.unlocked(save, hid):
+		var hh := Heroes.read(save)
+		hh.selected = hid
+		save["hero"] = Heroes.write(hh)
 	save["thruster"] = GearData.SETS[GearData.ITEMS[gear.equipped["Jetpack"]].set].thruster
 	var t: Dictionary = save.get("turrets", {}) if typeof(save.get("turrets", {})) == TYPE_DICTIONARY else {}
 	var lo = one.get("turrets", [])

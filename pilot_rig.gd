@@ -68,6 +68,9 @@ static func commander_unlocked(save: Dictionary) -> bool:
 
 # the suit the save asks for; Commander once earned unless the player picked the rookie suit
 static func suit_for(save: Dictionary) -> String:
+	# heroes (dev172): a hero without his own art yet wears the Commander rig in his element colours
+	if Heroes.selected(Heroes.read(save)) != Heroes.DEFAULT:
+		return "commander"
 	if not commander_unlocked(save):
 		return "starter"
 	return "starter" if String(save.get("suit", "commander")) == "starter" else "commander"
@@ -113,8 +116,9 @@ static func set_gear(save: Dictionary) -> void:
 			"pv": Vector2(p.grip[0], p.grip[1]), "muzzle": Vector2(p.muzzle[0], p.muzzle[1])}
 		_tex["held"] = tx
 		held = wid
-	visor_set = GearData.ITEMS[g.equipped["Helmet"]].set
-	orb_set = GearData.ITEMS[g.equipped["Chest"]].set
+	var el := Heroes.element_of(Heroes.selected(Heroes.read(save)))   # the hero's element lights him (dev172)
+	visor_set = el
+	orb_set = el
 	for nm in ["visor", "visor_light", "orb", "helmet"]:
 		_tex.erase(nm)
 		tex(nm)   # recolour now: a picture made in the middle of a draw shows the old one

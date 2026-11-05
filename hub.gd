@@ -23,7 +23,7 @@ const GLASS_LINE := Color(1, 1, 1, 0.10)
 # Add or remove node names here to try different combinations.
 const LABELED := ["ChestButton", "PatrolButton", "StarterButton", "GiftsButton", "DailyButton", "RanksButton", "EventButton", "PromoButton"]   # dev141: every side button, same look
 
-const NAV_NAMES := {"NavStore": "Store", "NavGear": "Gear", "NavBattle": "Battle", "NavModes": "Modes", "NavQuests": "Quests"}
+const NAV_NAMES := {"NavStore": "Store", "NavGear": "Heroes", "NavBattle": "Battle", "NavModes": "Modes", "NavQuests": "Quests"}
 const NAV_ICONS := {"NavStore": "nav_store", "NavGear": "nav_gear", "NavBattle": "nav_battle",
 	"NavModes": "nav_modes", "NavQuests": "nav_quests"}
 
@@ -196,7 +196,9 @@ func _pilot_block() -> Control:
 	v.add_theme_constant_override("separation", 2)
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var name_l := _small_label(Promotion.rank_name(Progress.read()), 14, Color.WHITE)   # the pilot's rank (Promotion)
+	var hsave := Progress.read()
+	var hid := Heroes.selected(Heroes.read(hsave))   # the hero on duty and his element (heroes, dev172)
+	var name_l := _small_label("%s  ·  %s" % [Heroes.ROSTER[hid].name, Heroes.element_name(Heroes.element_of(hid))], 14, Color.WHITE)
 	name_l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	v.add_child(name_l)
 	# XP into this level (the ring round the profile button shows the same)
@@ -656,7 +658,7 @@ func _process(_delta: float) -> void:
 func _update_stage_label() -> void:
 	var is_elite := mode == "Elite"
 	var sec := StageData.sector(stage)
-	_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STANDARD", stage, String(StageData.area(stage).name).to_upper()]
+	_mode_tag.text = "%s %d  ·  %s  ·  WEAK TO %s" % ["ELITE" if is_elite else "STANDARD", stage, String(StageData.area(stage).name).to_upper(), Heroes.element_name(Heroes.family(stage).weak).to_upper()]   # the element to bring (heroes)
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5
@@ -678,6 +680,7 @@ func _update_stage_label() -> void:
 			kinds[entry[0]] = true
 	_info_text = "%s %d: %s\nSector: %s\nWaves: %d\nEnemies: %s\nBest run: Score %d, Kills %d" % [
 		"Elite" if is_elite else "Standard", stage, StageData.stage_name(stage), sec.name, w.size(), ", ".join(kinds.keys()).replace("_", " "), best_score, best_kills]
+	_info_text += "\nFamily: %s  ·  %s" % [Heroes.family(stage).name, Heroes.family_text(stage)]   # the element to bring (heroes, dev172)
 
 func _paint_segment(b: Button, selected: bool, left: bool) -> void:
 	var s := StyleBoxFlat.new()

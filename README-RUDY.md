@@ -142,6 +142,36 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
+## Next push (dev171 + the updates below)
+
+Update 1: HEROES replace the armour gear (your call, 2026-11-05; the plan is DESIGN-heroes.md,
+Luna's brief is LUNA-BRIEF-heroes.md).
+- The Gear tab is now HEROES. Six characters: Rook (Energy, the pilot you have), Sparks
+  (Electric, a junkyard robot, stage 11), Cpt. Frost (Ice, a penguin in a spacesuit, stage 21),
+  Hollow (Void, a ghost astronaut, stage 31), Nyx (Dark, a cat-eared huntress, stage 41), Ember
+  (Fire, a small dragon-kin, stage 51). Tap one on the roster to put him on duty.
+- Each hero has an ELEMENT. Every planet is weak to one element (x1.35 damage) and resists
+  one (x0.75): Hive World weak to Fire, Scrap Belt to Electric, Magma to Ice, Crystal to Void,
+  Plasma to Dark, Sentinel to Electric. Energy is neutral everywhere. Home's stage line says
+  WEAK TO ... so you know whom to bring; his bolts take his element colour.
+- A hero has a LEVEL (coins: 60 + 30 x level a step; ATK +3%, fire rate, aim, recovery, magnet
+  and auto-fire per level; a milestone every 5 levels: crit, a heart at 10, crit damage,
+  damage boost, base damage taken, fortress HP) and STARS (shards: 10, 20, 40, 80, 160; each
+  star ATK +4% and base +4%; 3 and 5 stars will be Luna's evolved looks). Each hero has a
+  passive: Rook gem XP +15%, Sparks coins +20%, Frost chills, Hollow pierces every 5th bolt,
+  Nyx crit +5%, Ember +1 heart.
+- SHARDS drop on boss stages and Elite wins, for the hero that planet is weak to (3 on a big
+  boss, 2 on a mini-boss, +1 in Elite). They show on the end screen. Chests and Patrol later.
+- The WEAPON is the one piece of gear left: it keeps its level, rarity, copies and merging,
+  and any owned weapon can be equipped. Weapon drops continue; armour drops are gone.
+  Workshop > Gear shows weapons only. Loadouts remember the hero.
+- YOUR SAVE: nothing is lost. The coins you spent on the five armour pieces became Rook's
+  level (same coins, the new cost table) and your spare armour copies became Rook shards.
+  The old gear block is still in the save, untouched, so this can be undone.
+- Until Luna paints the five new heroes, they wear the Commander armour with their element's
+  lights and hold their own weapon, so the whole system is playable now.
+- Dev: Settings > DEVELOPER > gear copies also gives 50 shards of every hero.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

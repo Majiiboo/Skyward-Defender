@@ -297,7 +297,7 @@ static func roll_drop(stage: int, rng: RandomNumberGenerator) -> Dictionary:
 	var set_id: String = SET_ORDER[planet]
 	if planet > 0 and rng.randf() < 0.25:
 		set_id = SET_ORDER[rng.randi_range(0, planet - 1)]   # a piece for an older set
-	var slot: String = SLOTS[rng.randi_range(0, SLOTS.size() - 1)]
+	var slot: String = "Weapon"   # heroes (dev172): the weapon is the only gear slot that drops; armour is gone
 	var w: Array = DROP_WEIGHTS[planet]
 	var total := 0
 	for x in w:

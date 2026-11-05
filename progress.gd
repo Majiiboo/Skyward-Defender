@@ -91,6 +91,13 @@ static func grant(d: Dictionary, reward: Dictionary) -> Dictionary:
 			var p: Dictionary = Parts.read(d)
 			p[k] = int(p[k]) + int(reward[k])
 			d["parts"] = p
+	# hero shards (heroes, dev172): "shards": {hero id: n}
+	var sh = reward.get("shards", {})
+	if typeof(sh) == TYPE_DICTIONARY and not sh.is_empty():
+		var hh := Heroes.read(d)
+		for hid in sh:
+			Heroes.add_shards(hh, String(hid), int(sh[hid]))
+		d["hero"] = Heroes.write(hh)
 	# gear copies (dev139): "gear": [{"id": item id, "rarity": r}, ...]
 	var gl = reward.get("gear", [])
 	if typeof(gl) == TYPE_ARRAY and not gl.is_empty():
@@ -112,6 +119,11 @@ static func reward_text(reward: Dictionary) -> String:
 	for k in Parts.ORDER:
 		if int(reward.get(k, 0)) > 0:
 			parts.append("%d %s" % [int(reward[k]), Parts.KINDS[k].name])
+	var sh = reward.get("shards", {})
+	if typeof(sh) == TYPE_DICTIONARY:
+		for hid in sh:
+			if Heroes.ROSTER.has(String(hid)):
+				parts.append("%d %s shards" % [int(sh[hid]), Heroes.ROSTER[String(hid)].name])
 	var gl = reward.get("gear", [])
 	if typeof(gl) == TYPE_ARRAY:
 		for piece in gl:

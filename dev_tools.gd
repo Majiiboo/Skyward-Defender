@@ -39,6 +39,10 @@ static func gear_copies() -> void:
 		GearData.add_copy(g, id, "rare", 3)
 		GearData.add_copy(g, id, "epic", 3)
 	d["gear"] = GearData.write(g)
+	var hh := Heroes.read(d)   # and 50 shards of every hero (heroes, dev172)
+	for hid in Heroes.ORDER:
+		Heroes.add_shards(hh, hid, 50)
+	d["hero"] = Heroes.write(hh)
 	Progress.write(d)
 
 # a brand-new player: the save file is deleted (the tips show again too)

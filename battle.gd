@@ -147,6 +147,8 @@ var _gem_xp_mult := 1.0
 var _coin_mult := 1.0
 var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
 var _bolt_set := "ion"             # the weapon's set: its colour on the pilot's bolts (Luna's bolts recoloured)
+var _elem_mult := 1.0              # the hero's element vs this planet's family (Heroes.element_mult): x1.35 weak, x0.75 resists
+var _shards_got := {}              # hero shards won on this stage (the end screen)
 var _coins_f := 0.0
 var _shield_regen := 1.0
 var _pierce5 := false
@@ -422,10 +424,10 @@ func _start_stage() -> void:
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
 	_speed_pack = bool(sv.get("speed_pack", false))
 	# the pilot's gear: every slot boosts a battle stat, sets add bonuses (gear_data.gd)
-	var gs := GearData.stats(sv)
+	var gs := Heroes.stats(sv)   # the hero and his weapon (heroes, dev172)
 	PilotRig.set_gear(sv)   # he holds the equipped weapon; visor and orb in the gear colours
-	var wset: String = GearData.ITEMS[GearData.read(sv).equipped["Weapon"]].set
-	_bolt_set = wset
+	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
+	_bolt_set = String(gs.element)   # bolts in the hero's element colour
 	for bk in ["bolt", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]:
 		if _fx_tex.has(bk):
 			PilotRig.tinted(_fx_tex[bk], _bolt_set)   # made now, not in the middle of a draw
@@ -976,6 +978,7 @@ func _update_bullets(delta: float) -> void:
 							bounced.append({"pos": e.pos, "vel": (Vector2(nxt.pos) - Vector2(e.pos)).normalized() * 420.0, "dmg": float(b.dmg) * 0.8, "r": 14.0,
 								"tid": -2, "col": "tracer", "src": b.src, "bounce": int(b.bounce) - 1, "splash": float(b.get("splash", 0.0)), "hits": hs})
 				else:
+					dmg *= _elem_mult   # the hero's element (Heroes): weak x1.35, resists x0.75
 					if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 						dmg *= 1.2
 					if b.get("frost", false):
@@ -1843,6 +1846,16 @@ func _end_run(won: bool) -> void:
 		var g := GearData.read(d)
 		GearData.add_copy(g, _gear_got.id, _gear_got.rarity)
 		patch["gear"] = GearData.write(g)
+	# hero shards (heroes, dev172): a boss stage or an Elite win drops shards of the hero this
+	# planet is weak to (Heroes.hero_for_planet), so stars come from playing where he shines
+	_shards_got = {}
+	if won and promo < 0 and (StageData.boss_kind(stage) != "" or elite):
+		var hid := Heroes.hero_for_planet(stage)
+		var sn := (3 if StageData.boss_kind(stage) == "boss" else 2) + (1 if elite else 0)
+		var hh := Heroes.read(d)
+		Heroes.add_shards(hh, hid, sn)
+		patch["hero"] = Heroes.write(hh)
+		_shards_got = {"id": hid, "n": sn}
 	if won and promo < 0 and elite:   # Elite is its own ladder (dev167): a win opens the next Elite stage
 		patch["elite_unlocked"] = maxi(stage + 1, int(d.get("elite_unlocked", 1)))
 	if won and promo < 0 and not elite:   # a trial never unlocks stages; Elite has its own ladder
@@ -2607,6 +2620,8 @@ func _show_end(won: bool) -> void:
 		gpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		grow.add_child(gpic)
 		grow.add_child(UIKit.label("GEAR:  %s %s" % [GearData.rarity_name(_gear_got.rarity), GearData.ITEMS[gid].name], 12, GearData.rarity_color(_gear_got.rarity)))
+		if not _shards_got.is_empty():
+			grow.add_child(UIKit.label("SHARDS:  %d for %s" % [int(_shards_got.n), Heroes.ROSTER[_shards_got.id].name], 12, Heroes.element_color(Heroes.element_of(_shards_got.id))))
 		v.add_child(grow)
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))

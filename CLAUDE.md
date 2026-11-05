@@ -5,7 +5,17 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 0 updates (next push = dev171 + that count; see the build rule).
+- UNPUSHED since dev171: 1 update (next push = dev171 + that count; see the build rule).
+  1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
+     (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
+     GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old
+     saves, level_up / evolve / add_shards); battle Heroes.stats, _elem_mult, _bolt_set = element,
+     shards on boss / Elite wins (_shards_got); gear.gd Hero page (_paint_roster / _paint_hero /
+     _select_hero / _on_level_up / _on_evolve, one Weapon tile, hero milestones text, Workshop
+     weapons only); PilotRig.suit_for -> commander for heroes without art, element lights;
+     Progress.grant "shards"; Loadouts "hero"; hub pilot block + WEAK TO tag; dev_tools shards;
+     smoke _check_heroes. GearData's armour ITEMS / SETS stay (colours, weapons, thrusters, old
+     saves). Luna: five hero art sets (parts, weapon, turn frames, portrait) -> art_src/heroes/.
   dev171 carried (README-RUDY dev171):
   1. Elite capped by Standard progress (StageData.elite_top) + Promotion ladder 10/20/25..60 retuned.
   2. FUN PASS part one: unlocks.gd Unlocks (progressive disclosure: UNLOCKS table by stage / level,
@@ -42,6 +52,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   buttons, Modes mystery rewards, Patrol offline farming with limits, power tokens.
 - DECIDED (Rudy, 2026-11-04, dev138): Normal stages 1-5 are free of power tokens (Energy.FREE_STAGES);
   Elite always pays.
+- HEROES (2026-11-05, Rudy): the six-slot gear is replaced by a roster of unique characters with
+  elements (DESIGN-heroes.md; code in heroes.gd; Luna brief LUNA-BRIEF-heroes.md, five art sets
+  wanted, Sparks first). Queue items 8 / 8b / 8c (gear slots, sets, gear on the pilot) and 16 f
+  (gear rarity) are superseded except for the WEAPON, which stays the one gear slot. Heroes must
+  look clearly different from each other, some off-theme for fun (penguin, dragon-kin).
 - Luna delivered: turret card pictures (dev138, art_src/cards_r2), animation parts round 1 (dev160-162,
   art_src/parts_r1: drone hull/thrusters, Swarm lid, bug legs/feelers/sac/chunks; Sentry head_nobarrels
   unused, wrong angle), pilot turn frames (dev161, art_src/turn). Still waiting: merge sparks sheet.
