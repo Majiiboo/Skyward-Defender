@@ -111,6 +111,24 @@ func _fill() -> void:
 	mh.add_child(mb)
 	map.add_child(mh)
 	_page.add_child(map)
+	var tp := UIKit.panel(12)
+	var th := HBoxContainer.new()
+	th.add_theme_constant_override("separation", 10)
+	var tv := VBoxContainer.new()
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.add_theme_constant_override("separation", 1)
+	tv.add_child(UIKit.label("Show the tips again", 15, Color(0.85, 0.9, 1.0)))
+	tv.add_child(UIKit.label("The first-time pointers on every screen", 11, UIKit.MUTED))
+	th.add_child(tv)
+	var tb := UIKit.teal_button("Reset", 13)
+	tb.custom_minimum_size = Vector2(70, 34)
+	tb.pressed.connect(func():
+		Tips.reset()
+		tb.text = "Done"
+		tb.disabled = true)
+	th.add_child(tb)
+	tp.add_child(th)
+	_page.add_child(tp)
 	# ---- about
 	_page.add_child(UIKit.header("ABOUT"))
 	var ab := UIKit.panel(12)

@@ -117,6 +117,7 @@ func _ready() -> void:
 	_setup_view_manager()
 	call_deferred("_animate_nav_in")
 	_on_energy_changed()   # the red dots, now that every button exists
+	call_deferred("_home_tips")   # guided first-time tips (Tips)
 
 func _load_save() -> void:
 	if FileAccess.file_exists("user://skybound_save.json"):
@@ -759,6 +760,7 @@ func _show_home() -> void:
 		_current_view = null
 	_current_view_name = "NavBattle"
 	_set_home_visible(true)
+	call_deferred("_home_tips")
 	# Home itself comes back with a short fade so the hand-off is seamless
 	$Safe.modulate.a = 0.0
 	$Safe.create_tween().tween_property($Safe, "modulate:a", 1.0, 0.22)
@@ -1249,3 +1251,19 @@ func _patrol_toast(text: String) -> void:
 	tw.tween_property(l, "position:y", l.position.y - 50.0, 1.2)
 	tw.tween_property(l, "modulate:a", 0.0, 0.5).set_delay(0.8)
 	tw.chain().tween_callback(l.queue_free)
+
+# Guided first-time tips on Home (Tips, dev163): one per visit, the first unseen of these
+func _home_tips() -> void:
+	if _current_view != null or _popup_layer != null:
+		return
+	var s := Progress.read()
+	var lvl := Turrets.pilot_level(int(s.get("pilot_xp", 0)))
+	var list: Array = []
+	if int(s.get("stage_unlocked", 1)) >= 2 and _dot_btns.has("PatrolButton"):
+		list.append(["patrol", _dot_btns["PatrolButton"]])
+	list.append(["stage_map", _stage_btn])
+	if lvl >= 10:
+		list.append(["elite", _elite_btn])
+	if Progress.attention(s).quests:
+		list.append(["red_dots", _nav_btn("NavQuests")])
+	Tips.first(get_tree(), list)

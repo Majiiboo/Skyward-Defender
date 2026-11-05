@@ -41,6 +41,7 @@ var d := {}
 var _page: VBoxContainer
 var _wallet: HBoxContainer
 var _tabs_row: HBoxContainer
+var _gift_btn: Button   # the daily gift (tips)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -105,6 +106,8 @@ func _fill() -> void:
 		2: _fill_parts()
 		3: _fill_packs()
 	UIKit.reveal(_page)
+	if tab == 0:
+		call_deferred("_tips")
 
 # A shop tile: a big picture, a big number, one short line, the button.
 func _tile(icon: Texture2D, big: String, small: String, color: String, button: Button) -> PanelContainer:
@@ -151,6 +154,7 @@ func _fill_offers() -> void:
 	# claimed ones ticked, day 7 in gold; FREE claims today's gift
 	var at := Progress.attend(d)
 	var gift := UIKit.gold_button("Tomorrow" if at.claimed_today else "FREE", 15)
+	_gift_btn = gift
 	gift.disabled = at.claimed_today
 	gift.custom_minimum_size = Vector2(100, 40)
 	gift.pressed.connect(func():
@@ -457,3 +461,6 @@ func _on_back_pressed() -> void:
 # the page rises and fades in over the world (UIKit.enter, dev157); no more black cut
 func _fade_in_overlay() -> void:
 	UIKit.enter(self)
+
+func _tips() -> void:
+	Tips.first(get_tree(), [["calendar", _gift_btn]])

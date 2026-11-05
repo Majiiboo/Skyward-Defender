@@ -21,6 +21,7 @@ var player_level := 1
 var selected_stage := 1
 var stage_unlocked := 1
 var _save := {}   # the save as read on open (Promotion rank)
+var _promo_btn: Control   # the Promotion card's button (tips)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -80,6 +81,7 @@ func _build() -> void:
 	for m in MODES:
 		col.add_child(_card(m))
 	UIKit.reveal(col, 0.06)
+	call_deferred("_tips")
 
 func _card(m: Dictionary) -> Control:
 	var locked: bool = player_level < int(m.unlock)
@@ -196,6 +198,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 				Promotion.start(s, nxt)
 				Progress.write(s)
 				get_tree().change_scene_to_file("res://battle.tscn"))
+	_promo_btn = b
 	b.custom_minimum_size = Vector2(110, 38)
 	row.add_child(b)
 	return row
@@ -301,3 +304,6 @@ func _mystery(icon: String, rarity: String) -> Control:
 	q.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	p.add_child(q)
 	return p
+
+func _tips() -> void:
+	Tips.first(get_tree(), [["promotion", _promo_btn]])

@@ -11,6 +11,8 @@ var gear := {}             # GearData.read(save): {equipped, levels, copies, rec
 var _loadout_row: HBoxContainer
 var _tabs_row: HBoxContainer       # Pilot / Turrets / Drone / Workshop (red dot on Workshop when a merge waits)
 var _ws_tabs_row: HBoxContainer    # Parts / Gear
+var _ws_merge_btn: Button          # the first parts Merge button (tips)
+var _quick_btn: Button             # Quick Merge (tips)
 var _wallet_box: HBoxContainer
 var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
 var _ws_parts_box: VBoxContainer
@@ -64,6 +66,7 @@ func _ready() -> void:
 	_select(selected_slot)
 	if _start_page != 0:
 		_show_page(_start_page)
+	call_deferred("_page_tips", _start_page)
 	_fade_in_overlay()
 
 func _read() -> Dictionary:
@@ -428,6 +431,7 @@ func _show_page(i: int) -> void:
 		_refresh_workshop()
 	else:
 		_select(selected_slot)
+	call_deferred("_page_tips", i)
 
 
 # ------------------------------------------------------------------ stats panel
@@ -568,6 +572,8 @@ func _refresh_ws_parts(pop: String = "") -> void:
 		sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(sp)
 		var one := UIKit.gold_button("Merge", 14)
+		if k == "alloy":
+			_ws_merge_btn = one
 		one.custom_minimum_size = Vector2(84, 40)
 		one.disabled = n <= 0
 		var kind: String = k
@@ -682,6 +688,7 @@ func _refresh_ws_gear() -> void:
 	row.add_child(ft)
 	var qn := GearData.quick_merge_count(gear)
 	var qb := UIKit.gold_button("Quick Merge" + ((" (%d)" % qn) if qn > 0 else ""), 13)
+	_quick_btn = qb
 	qb.custom_minimum_size = Vector2(118, 40)
 	qb.disabled = qn <= 0
 	qb.pressed.connect(_quick_merge)
@@ -1629,3 +1636,23 @@ class MergeFX extends Control:
 		_glow.draw_set_transform(c, rot, Vector2(s, s))
 		_glow.draw_texture(tex, -tex.get_size() * 0.5, mod)
 		_glow.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# Guided first-time tips per Gear tab (Tips, dev163): the first unseen one shows
+func _page_tips(i: int) -> void:
+	var list: Array = []
+	match i:
+		0:
+			list = [["gear_upgrade", _upgrade_btn], ["gear_kits", _loadout_row]]
+		1:
+			if Turrets.mount_open(0, t_unlocked):
+				list = [["turrets", _t_place]]
+		2:
+			if DroneData.unlocked(pilot_level):
+				list = [["drone", null]]
+		3:
+			list = [["workshop", _ws_merge_btn]]
+			if _ws_tabs_row and is_instance_valid(_ws_tabs_row) and _ws_tabs_row.get_child_count() > 1:
+				list.append(["workshop_gear", _ws_tabs_row.get_child(1)])
+			if _ws_tab == 1 and _quick_btn and is_instance_valid(_quick_btn):
+				list.append(["quick_merge", _quick_btn])
+	Tips.first(get_tree(), list)

@@ -948,6 +948,8 @@ func _update_bullets(delta: float) -> void:
 		for e in enemies:
 			if b.has("hits") and Array(b.hits).has(e.id):
 				continue   # a piercing bolt hits each bug once
+			if not _can_hurt(e):
+				continue   # a boss still arriving: bolts pass through her
 			if b.pos.distance_to(e.pos) < float(b.r) + float(e.r) * 0.5:
 				var dmg: float = float(b.dmg)
 				if e.type == "hive_mother" and e.laying > 1.2:
@@ -982,7 +984,7 @@ func _update_bullets(delta: float) -> void:
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
-							o.hp -= dmg * 0.6
+							o.hp -= (dmg * 0.6) if _can_hurt(o) else 0.0
 					_fx_add("nova", b.pos, float(b.splash) * 0.6, 0.3, 0.0, 1.8, Color(0.8, 0.5, 1.0))
 				if int(b.get("spark", 0)) > 0:
 					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
@@ -1130,6 +1132,7 @@ func _update_enemies(delta: float) -> void:
 				if e.pos.y < hover_y:
 					e.pos.y += e.speed * delta
 				else:
+					e.arrived = true   # settled on screen: only now can she be hurt (Rudy, dev163)
 					var want_x: float = FIELD_W * 0.5 + sin(e.t * (0.8 if enraged else 0.5)) * (FIELD_W * 0.28)
 					if enraged and absf(soldier_pos.x - e.pos.x) < 60.0:
 						want_x += 120.0 * (1.0 if e.pos.x < FIELD_W * 0.5 else -1.0)
@@ -1373,6 +1376,8 @@ func _turret_dmg(t: Dictionary) -> float:
 	return float(t.def.damage) * _turret_dmg_mult
 
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
+	if not _can_hurt(e):
+		return
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 	e.hp -= dmg
@@ -2055,6 +2060,8 @@ func _open_cards() -> void:
 		if refreshes > 0:
 			refreshes -= 1
 			_open_cards())
+	if _card_panel.get_child_count() > 3:
+		Tips.first(get_tree(), [["cards", _card_panel.get_child(3)]])   # the first card
 	_card_panel.add_child(refresh)
 	_card_panel.visible = true
 
@@ -2285,7 +2292,7 @@ func _chain(from: Dictionary, count: int, dmg: float) -> void:
 	near.sort_custom(func(a, b): return a.pos.distance_squared_to(from.pos) < b.pos.distance_squared_to(from.pos))
 	for i in mini(count, near.size()):
 		var o: Dictionary = near[i]
-		o.hp -= dmg
+		o.hp -= dmg if _can_hurt(o) else 0.0
 		stat_pilot_dmg += dmg
 		zaps.append({"a": from.pos, "b": o.pos, "life": 0.22, "seed": rng.randf() * 100.0})
 		_fx_add("spark", o.pos, 26.0, 0.2, rng.randf() * TAU, 1.6, Color(0.7, 0.9, 1.0))
@@ -2307,7 +2314,7 @@ func _bastion_blast() -> void:
 	var c := Vector2(FIELD_W / 2, BASE_Y)
 	for e in enemies:
 		if e.pos.distance_to(c) < 330.0:
-			e.hp -= 6.0 * damage_mult
+			e.hp -= (6.0 * damage_mult) if _can_hurt(e) else 0.0
 			if e.type != "hive_mother":
 				e.pos += (e.pos - c).normalized() * 70.0
 	_fx_add("nova", c + Vector2(0, -60), 220.0, 0.6, 0.0, 1.8, Color(0.55, 0.85, 1.0))
@@ -2380,7 +2387,7 @@ func _update_drone(delta: float) -> void:
 	match String(_drone.pod):
 		"beam":
 			# instant hit: a purple line to the target
-			best.hp -= dmg
+			best.hp -= dmg if _can_hurt(best) else 0.0
 			stat_pilot_dmg += dmg
 			_drone_beam = {"a": p + dir * 14.0, "b": best.pos, "life": 0.18, "col": Color(0.8, 0.5, 1.0)}
 			_fx_add("impact", best.pos, 24.0, 0.2, 0.0, 1.6, Color(0.85, 0.6, 1.0))
@@ -3708,3 +3715,8 @@ func _draw_hurt_edge() -> void:
 	_hc.draw_polygon(PackedVector2Array([Vector2(0, FIELD_H - w), Vector2(FIELD_W, FIELD_H - w), Vector2(FIELD_W, FIELD_H), Vector2(0, FIELD_H)]), PackedColorArray([clear, clear, red, red]))
 	_hc.draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(w, top), Vector2(w, FIELD_H), Vector2(0, FIELD_H)]), PackedColorArray([red, clear, clear, red]))
 	_hc.draw_polygon(PackedVector2Array([Vector2(FIELD_W - w, top), Vector2(FIELD_W, top), Vector2(FIELD_W, FIELD_H), Vector2(FIELD_W - w, FIELD_H)]), PackedColorArray([clear, red, red, clear]))
+
+# A boss cannot be hurt until she has fully arrived and can act (Rudy, dev163): the Hive
+# Mother (and the young one mid-stage) is untouchable while she descends to her hover height.
+func _can_hurt(e: Dictionary) -> bool:
+	return e.type != "hive_mother" or bool(e.get("arrived", false))
