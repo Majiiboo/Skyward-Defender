@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 2 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 3 updates (next push = dev171 + that count; see the build rule). Rudy
   (2026-11-05): do NOT push to Luna for now.
   2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
      _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
