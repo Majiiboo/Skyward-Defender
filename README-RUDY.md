@@ -268,6 +268,20 @@ Update 6: THE LOOK, from your playtest notes.
   them match.)
 - Modes: the Promotion row's three buttons fit the phone width again.
 
+Update 7: TURRETS BIGGER, WITH WEIGHT, RESTING AND FIRING (your note).
+- All six turrets are about a fifth bigger on the base (Sentry base 70 px wide, heads to
+  match), with a darker contact shadow in the socket.
+- WEIGHT: a turret that drops in now lands with a squat on its socket and springs back; the
+  Sentry's floating head dips on landing; the idle bob is slower and heavier.
+- REST AND FIRE: with no bug in reach a turret settles a few pixels lower, its lights dim to
+  a third, the Sentry parks its head pointing up and hovers lower, the Swarm Hive keeps its
+  lid shut. The moment a bug comes in reach it wakes: lights up, lifts, tracks and fires
+  (Sentry barrels recoil, heads overshoot, the Lance swells as it charges). The hand-over
+  takes about a quarter of a second to wake and a second to settle.
+- Not changed: the battle top bar. Your note said the spacing is off and space is wasted; I
+  would like a quick sketch or a screenshot with a mark of what to move, because on the PC
+  frame the bar is already two rows and the notch inset on your phone changes it.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

@@ -22,12 +22,12 @@ const TURRET_LOOK := {
 	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0, "cx": 0.481},
 	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0, "cx": 0.479},
 	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0, "cx": 0.435},
-	"swarm":   {"h": 72.0, "w": 72.0, "tip": 0.60, "bob": 2.5, "cx": 0.501},
+	"swarm":   {"h": 88.0, "w": 88.0, "tip": 0.60, "bob": 2.0, "cx": 0.501},   # bigger, with weight (Rudy, dev172)
 	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0, "cx": 0.441},
 }
 const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above the screen's bottom edge
-const SENTRY_BASE_W := 58.0
-const SENTRY_HEAD_H := 66.0
+const SENTRY_BASE_W := 70.0   # bigger turrets (Rudy, dev172: "bigger, with weight")
+const SENTRY_HEAD_H := 78.0
 const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a little left
 # The Sentry's gun head floats above its ring base, held up by a field: it hovers a
 # few px clear, bobs and drifts, leans into its swings, and dips toward the base on
@@ -1532,11 +1532,25 @@ func _update_turrets(delta: float) -> void:
 			if t.drop_wait <= 0.0:
 				t.drop = minf(t.drop + delta / 0.45, 1.0)
 				if t.drop >= 1.0:
+					t.squash = 1.0   # lands with weight: squats on the socket and springs back (dev172)
+					t.hov_v = 70.0
 					# landed: a flash on the socket
 					_fx_add("spark", t.pos + Vector2(0, -6), 70.0, 0.35, 0.0, 1.8)
 					_burst(t.pos, 18.0, Color(0.2, 0.85, 1.0), 8)
 			continue
 		t.fire_t = maxf(t.fire_t - delta, 0.0)
+		t.squash = maxf(float(t.get("squash", 0.0)) - delta * 2.6, 0.0)
+		# rest or fire pose (Rudy, dev172): a turret with a bug in reach wakes up (lights, lift,
+		# tracking); with the sky clear it settles, dims and parks
+		var reach: float = float(t.def.get("range", 560.0)) if t.type == "sentry" else 560.0
+		var awake := false
+		for e in enemies:
+			if e.pos.y > 90.0 and t.pos.distance_to(e.pos) < reach:
+				awake = true
+				break
+		t.alert = move_toward(float(t.get("alert", 0.0)), 1.0 if awake else 0.0, delta * (4.0 if awake else 1.4))
+		if t.type == "sentry" and not awake:
+			t.ang = lerp_angle(float(t.ang), -PI / 2.0, minf(1.0, delta * 1.2))   # parks pointing up
 		match String(t.type):
 			"lance": _update_lance(t, delta * _turret_rate)
 			"storm": _update_storm(t, delta * _turret_rate)
@@ -1550,7 +1564,7 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 	var def: Dictionary = t.def
 	# hover: lift off once landed, a spring for the shot dip, swing speed for the lean
 	if float(t.drop) >= 1.0:
-		t.lift = move_toward(float(t.get("lift", 0.0)), 1.0, delta * 1.4)
+		t.lift = move_toward(float(t.get("lift", 0.0)), 0.5 + 0.5 * float(t.get("alert", 0.0)), delta * 1.4)   # rests lower, lifts when awake
 	var hv: float = float(t.get("hov_v", 0.0))
 	var hy: float = float(t.get("hov_y", 0.0))
 	hv += (-hy * 140.0 - hv * 9.0) * delta
@@ -3069,10 +3083,10 @@ func _draw_enemy(e: Dictionary) -> void:
 # height; gap: how far the head floats above the base's top; art_dir: where the painted
 # head points (radians) for the ones that turn (Lance), 0 for round heads that hover.
 const SPLIT_LOOK := {
-	"lance":   {"base_w": 60.0, "head_h": 34.0, "gap": 2.0, "art_dir": 2.68, "turns": true},
-	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": 10.0, "art_dir": 0.0, "turns": false},
-	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": 8.0, "art_dir": 0.0, "turns": false},
-	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
+	"lance":   {"base_w": 72.0, "head_h": 42.0, "gap": 2.0, "art_dir": 2.68, "turns": true},
+	"storm":   {"base_w": 70.0, "head_h": 60.0, "gap": 12.0, "art_dir": 0.0, "turns": false},
+	"gravity": {"base_w": 72.0, "head_h": 44.0, "gap": 10.0, "art_dir": 0.0, "turns": false},
+	"prism":   {"base_w": 0.0, "head_h": 94.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
 }
 
 func _split_geo(t: Dictionary) -> Dictionary:
@@ -3082,7 +3096,8 @@ func _split_geo(t: Dictionary) -> Dictionary:
 		var bt: Texture2D = _tex[t.type + "_base"]
 		base_h = bt.get_height() * float(look.base_w) / bt.get_width()
 	var ph: float = float(t.mount) * 1.3
-	var bob: float = sin(time_alive * 2.0 + ph) * (2.0 if not look.turns else 0.6)
+	var alert: float = smoothstep(0.0, 1.0, float(t.get("alert", 1.0)))
+	var bob: float = sin(time_alive * 1.6 + ph) * (2.0 if not look.turns else 0.6) * (0.4 + 0.6 * alert) + 5.0 * (1.0 - alert)   # heavier, and it settles lower at rest
 	var ht: Texture2D = _tex[t.type + "_head"]
 	var hh: float = float(look.head_h)
 	var hw: float = ht.get_width() * hh / ht.get_height()
@@ -3101,7 +3116,8 @@ func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
 	var g := _split_geo(t)
 	var ht: Texture2D = _tex[t.type + "_head"]
 	var pose := _split_pose(t)
-	draw_set_transform(g.centre + Vector2(0, yo), pose.rot, Vector2(pose.sx, 1.0) * pose.pulse)
+	var sq: float = sin(clampf(float(t.get("squash", 0.0)), 0.0, 1.0) * PI)   # the landing squat
+	draw_set_transform(g.centre + Vector2(0, yo + 4.0 * sq), pose.rot, Vector2(pose.sx * (1.0 + 0.1 * sq), 1.0 - 0.14 * sq) * pose.pulse)
 	draw_texture_rect(ht, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
@@ -3121,6 +3137,7 @@ func _split_pose(t: Dictionary) -> Dictionary:
 	elif t.type == "prism":
 		rot = clampf(angle_difference(-PI / 2.0, float(t.ang)) * 0.25, -0.3, 0.3)   # leans toward its target
 	var pulse: float = 1.0 + 0.06 * kick + (0.03 * sin(time_alive * 3.0 + float(t.mount)) if not look.turns else 0.0)
+	pulse *= 0.97 + 0.03 * smoothstep(0.0, 1.0, float(t.get("alert", 1.0)))
 	return {"rot": rot, "sx": sx, "pulse": pulse}
 
 # The turrets' own light (dev154): the glow cut from each turret picture
@@ -3132,7 +3149,7 @@ func _draw_turret_lights() -> void:
 			continue
 		var lt: Texture2D = _fx_tex["light_" + String(t.type)]
 		var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
-		var strength: float = 0.5 + 0.22 * sin(time_alive * 2.1 + float(t.mount) * 1.7) + 0.6 * kick
+		var strength: float = (0.5 + 0.22 * sin(time_alive * 2.1 + float(t.mount) * 1.7)) * (0.35 + 0.65 * float(t.get("alert", 1.0))) + 0.6 * kick   # dim at rest, bright awake
 		if CHARGE_COL.has(t.type):
 			var every: float = float(t.def.every)
 			strength += 0.5 * smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd))
@@ -3154,7 +3171,7 @@ func _draw_turret_lights() -> void:
 			# the whole-picture turrets (Swarm): same placement as _draw_turret
 			var look: Dictionary = TURRET_LOOK[t.type]
 			var sz := lt.get_size() * minf(float(look.h) / lt.get_height(), float(look.w) / lt.get_width())
-			var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
+			var bob: float = sin(time_alive * 1.6 + float(t.mount)) * float(look.bob) * (0.4 + 0.6 * float(t.get("alert", 1.0))) + 4.0 * (1.0 - smoothstep(0.0, 1.0, float(t.get("alert", 1.0))))
 			var k2 := kick * kick
 			var ksz := Vector2(sz.x * (1.0 + 0.03 * k2), sz.y * (1.0 - 0.05 * k2))
 			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
@@ -3169,7 +3186,7 @@ func _draw_turret(t: Dictionary) -> void:
 	var k: float = t.drop
 	var yo: float = -90.0 * (1.0 - k) * (1.0 - k)
 	var a: float = clampf(k * 4.0, 0.0, 1.0)
-	Backdrop.draw_socket_shadow(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT, 0.55 * k)
+	Backdrop.draw_socket_shadow(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT, 0.7 * k)
 	if SPLIT_LOOK.has(t.type):
 		_draw_split_turret(t, yo, a)
 		return
@@ -3194,11 +3211,12 @@ func _draw_turret(t: Dictionary) -> void:
 		tex = _tex["swarm_body_nolid"]
 	var look: Dictionary = TURRET_LOOK[t.type]
 	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
-	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
+	var bob: float = sin(time_alive * 1.6 + float(t.mount)) * float(look.bob) * (0.4 + 0.6 * float(t.get("alert", 1.0))) + 4.0 * (1.0 - smoothstep(0.0, 1.0, float(t.get("alert", 1.0))))
 	# a shot kicks the turret: it squats a little on its socket and springs back
 	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
 	kick = kick * kick
-	var ksz := Vector2(sz.x * (1.0 + 0.03 * kick), sz.y * (1.0 - 0.05 * kick))
+	var sq: float = sin(clampf(float(t.get("squash", 0.0)), 0.0, 1.0) * PI)
+	var ksz := Vector2(sz.x * (1.0 + 0.03 * kick + 0.1 * sq), sz.y * (1.0 - 0.05 * kick - 0.14 * sq))
 	var rect := Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + yo + bob), ksz)
 	draw_texture_rect(tex, rect, false, Color(1, 1, 1, a))
 	if lidded:

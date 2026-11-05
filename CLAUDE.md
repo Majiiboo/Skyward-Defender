@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 6 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 7 updates (next push = dev171 + that count; see the build rule). Rudy
   (2026-11-05): do NOT push to Luna for now.
   2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
      _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
@@ -43,6 +43,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      UIKit.draw_bevel on every kit button via _style_btn (lift shadow 6 / 3, gloss, band, top
      line; disabled stays flat); card pick ch 228, refresh lower; Modes promotion row 62/54/94.
      Luna: the Uncommon card frame has no inset (reads taller than Common); ask for one later.
+  7. TURRETS bigger + weight + rest / fire poses: TURRET_LOOK swarm 88, SENTRY_BASE_W 70 /
+     HEAD_H 78, SPLIT_LOOK x1.2; t.squash on landing (squat in _draw_split_turret / _draw_turret),
+     t.alert (any enemy within reach, 4.0 up / 1.4 down) -> lights x(0.35 + 0.65 a), heads 4-5 px
+     lower at rest, slower bob, Sentry lift 0.5 + 0.5 a and parks at -PI/2. Battle top bar NOT
+     changed (asked Rudy for a sketch).
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old
