@@ -172,7 +172,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 	info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	info.add_theme_constant_override("separation", 0)
 	info.add_child(UIKit.label("%s  ·  %s" % [Promotion.rank_name(_save), Promotion.bonus_text(r)] if r > 0 else "Rookie  ·  no rank yet", 11, UIKit.GOLD))
-	var next_txt := "All ranks won" if nxt < 0 else ("Next: %s trial%s" % [Promotion.RANKS[nxt].name, "" if Promotion.unlocked(_save, player_level) else "  ·  pilot Lv.%d" % int(Promotion.RANKS[nxt].level)])
+	var next_txt := "All ranks won" if nxt < 0 else ("Next: %s trial  ·  recommended Lv.%d%s" % [Promotion.RANKS[nxt].name, int(Promotion.RANKS[nxt].level), "" if Promotion.unlocked(_save, player_level) else "  ·  opens at Lv.%d" % Promotion.open_level(nxt)])
 	info.add_child(UIKit.label(next_txt, 11, UIKit.MUTED))
 	row.add_child(info)
 	var ladder := UIKit.ghost_button("Ranks", 12)
@@ -184,7 +184,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 		b = UIKit.ghost_button("Done", 13)
 		b.disabled = true
 	elif not Promotion.unlocked(_save, player_level):
-		b = UIKit.ghost_button("Pilot Lv.%d" % int(Promotion.RANKS[nxt].level), 13)
+		b = UIKit.ghost_button("Pilot Lv.%d" % Promotion.open_level(nxt), 13)
 		b.disabled = true
 	else:
 		b = UIKit.gold_button("Challenge", 15)
@@ -213,7 +213,7 @@ func _ladder() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(UIKit.label("PILOT RANKS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(UIKit.label("Each trial: one hard stage, bugs x%.1f tougher. Win it once: +%d%% ATK and +%d%% base shield and hull, for good." % [Promotion.HP_MULT, roundi(Promotion.PER_RANK * 100.0), roundi(Promotion.PER_RANK * 100.0)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("Each trial: one hard stage, bugs %s tougher and more of them; power cards come 25%% faster. Win it once: +%d%% ATK and +%d%% base shield and hull, for good." % [Promotion.hp_range_text(), roundi(Promotion.PER_RANK * 100.0), roundi(Promotion.PER_RANK * 100.0)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for i in Promotion.RANKS.size():
 		var rk: Dictionary = Promotion.RANKS[i]
@@ -233,7 +233,7 @@ func _ladder() -> void:
 		var name_l := UIKit.label(rk.name, 14, Color.WHITE if won or is_next else Color(0.6, 0.66, 0.78))
 		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(name_l)
-		var status := "Won" if won else ("Next" if is_next and Promotion.unlocked(_save, player_level) else "Pilot Lv.%d" % int(rk.level))
+		var status := "Won" if won else (("Next  ·  rec. Lv.%d" if is_next and Promotion.unlocked(_save, player_level) else "Rec. Lv.%d") % int(rk.level))
 		h.add_child(UIKit.label(status, 11, col, HORIZONTAL_ALIGNMENT_RIGHT))
 		v.add_child(h)
 	var close := UIKit.ghost_button("Close", 13)

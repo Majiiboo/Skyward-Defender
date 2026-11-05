@@ -10,23 +10,44 @@ extends RefCounted
 # "selected_mode" == "promotion" + "promotion_rank" once and clears the mode again.
 
 const RANKS := [
-	{"id": "cadet",       "name": "Cadet",       "level": 3,  "stage": 5},
-	{"id": "pilot",       "name": "Pilot",       "level": 6,  "stage": 10},
-	{"id": "ace",         "name": "Ace",         "level": 10, "stage": 15},
-	{"id": "comet",       "name": "Comet",       "level": 14, "stage": 20},
-	{"id": "meteor",      "name": "Meteor",      "level": 18, "stage": 25},
-	{"id": "nova",        "name": "Nova",        "level": 22, "stage": 30},
-	{"id": "pulsar",      "name": "Pulsar",      "level": 26, "stage": 35},
-	{"id": "quasar",      "name": "Quasar",      "level": 30, "stage": 40},
-	{"id": "supernova",   "name": "Supernova",   "level": 35, "stage": 50},
-	{"id": "singularity", "name": "Singularity", "level": 40, "stage": 60},
+	{"id": "cadet",       "name": "Cadet",       "level": 4,  "stage": 5,  "hp": 2.4,  "count": 1.3},
+	{"id": "pilot",       "name": "Pilot",       "level": 7,  "stage": 10, "hp": 2.6,  "count": 1.35},
+	{"id": "ace",         "name": "Ace",         "level": 10, "stage": 15, "hp": 1.9,  "count": 1.2},
+	{"id": "comet",       "name": "Comet",       "level": 13, "stage": 20, "hp": 2.05, "count": 1.2},
+	{"id": "meteor",      "name": "Meteor",      "level": 16, "stage": 25, "hp": 1.85, "count": 1.15},
+	{"id": "nova",        "name": "Nova",        "level": 19, "stage": 30, "hp": 1.6,  "count": 1.15},
+	{"id": "pulsar",      "name": "Pulsar",      "level": 22, "stage": 35, "hp": 1.65, "count": 1.15},
+	{"id": "quasar",      "name": "Quasar",      "level": 24, "stage": 40, "hp": 1.6,  "count": 1.15},
+	{"id": "supernova",   "name": "Supernova",   "level": 27, "stage": 50, "hp": 1.9,  "count": 1.15},
+	{"id": "singularity", "name": "Singularity", "level": 30, "stage": 60, "hp": 1.75, "count": 1.15},
 ]
 const PER_RANK := 0.05        # +5% bolt damage and +5% base shield / hull per rank
-const HP_MULT := 2.2          # bug health on top of that stage's normal scaling (Elite is 1.85)
-const COUNT_MULT := 1.3       # more bugs per wave
+# "hp" and "count" per rank: bug health and bug numbers on top of that stage's normal scaling
+# (Elite is x1.85 health). Hard early, where the stages are small; gentler multipliers late,
+# where the stages themselves are already big (balance sim, dev144).
+const GEM_XP_MULT := 1.25     # run XP comes faster in a trial: power cards sooner, a better run (Rudy)
+const OPEN_EARLY := 3         # a trial opens this many pilot levels under its recommended level
 const WAVES := 10
 const XP_BONUS := 250         # pilot XP the first time a rank is won
 const NO_RANK := "Rookie"
+
+# the two difficulty knobs (the balance simulator can override them: SIM_PROMO_HP, SIM_PROMO_COUNT)
+static func hp_mult(i: int) -> float:
+	var e := OS.get_environment("SIM_PROMO_HP")
+	return float(e) if e != "" else float(RANKS[clampi(i, 0, RANKS.size() - 1)].hp)
+
+static func count_mult(i: int) -> float:
+	var e := OS.get_environment("SIM_PROMO_COUNT")
+	return float(e) if e != "" else float(RANKS[clampi(i, 0, RANKS.size() - 1)].count)
+
+# "x1.7 to x2.4" for the ladder text
+static func hp_range_text() -> String:
+	var lo := 99.0
+	var hi := 0.0
+	for r in RANKS:
+		lo = minf(lo, float(r.hp))
+		hi = maxf(hi, float(r.hp))
+	return "x%.1f to x%.1f" % [lo, hi]
 
 static func rank(save: Dictionary) -> int:
 	return clampi(int(save.get("promotion", 0)), 0, RANKS.size())
@@ -40,9 +61,13 @@ static func next(save: Dictionary) -> int:
 	var r := rank(save)
 	return r if r < RANKS.size() else -1
 
+# "level" in RANKS is the RECOMMENDED pilot level (shown on the card); the trial opens a bit earlier
+static func open_level(i: int) -> int:
+	return maxi(int(RANKS[clampi(i, 0, RANKS.size() - 1)].level) - OPEN_EARLY, 3)
+
 static func unlocked(save: Dictionary, pilot_level: int) -> bool:
 	var n := next(save)
-	return n >= 0 and pilot_level >= int(RANKS[n].level)
+	return n >= 0 and pilot_level >= open_level(n)
 
 # damage and fortress multiplier for `ranks` ranks won
 static func bonus(ranks: int) -> float:
@@ -63,7 +88,7 @@ static func waves(i: int) -> Array:
 		for spec in src[idx]:
 			var count := int(spec[1])
 			if spec[0] != "hive_mother":
-				count = int(ceil(count * COUNT_MULT))
+				count = int(ceil(count * count_mult(i)))
 			elif k != WAVES - 1 and idx == n - 1:
 				continue   # the boss only on the last wave, even if an earlier slot maps to the boss wave
 			wave.append([spec[0], count])

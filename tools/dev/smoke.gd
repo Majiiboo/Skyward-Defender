@@ -166,7 +166,7 @@ func _check_promotion() -> void:
 		_expect(boss_count <= 2, "trial %d: at most the mid-stage young mother plus the boss (%d)" % [i, boss_count])
 	var w0: Array = Promotion.waves(0)
 	var n5: Array = StageData.waves(5)
-	_expect(int(w0[0][0][1]) == int(ceil(int(n5[0][0][1]) * Promotion.COUNT_MULT)), "counts scaled by COUNT_MULT")
+	_expect(int(w0[0][0][1]) == int(ceil(int(n5[0][0][1]) * Promotion.count_mult(0))), "counts scaled by COUNT_MULT")
 	# the mode hand-off: start sets it, take reads it once and clears it
 	Promotion.start(s, 0)
 	_expect(Promotion.take(s) == 0 and Promotion.take(s) == -1, "take() is one-shot")

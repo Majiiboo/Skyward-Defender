@@ -18,6 +18,9 @@ extends SceneTree
 #   SIM_TURRETS loadout, e.g. "sentry,,," (default: a new player's loadout)
 #   SIM_LEVEL   turret level (1)
 #   SIM_KIT     "auto" = the gear + turrets a typical player has by that stage (_auto_kit)
+#   SIM_PROMO   "0-9" or "2,5": promotion trials by rank index instead of stages (dev144); the
+#               kit is the one for the trial's base stage, ranks below it already won
+#   SIM_KIT_PLUS n: the auto kit of a player n stages further on (a stronger player, dev144)
 #
 # Prints one line per run and a summary per stage.
 
@@ -44,6 +47,14 @@ func _initialize() -> void:
 		push_error("balance_sim: user data dir is %s; use tools/sim_override.cfg as override.cfg so the real save is not touched" % OS.get_user_data_dir())
 		quit(1)
 		return
+	var pr := OS.get_environment("SIM_PROMO")
+	if pr != "":
+		if pr.contains("-"):
+			for i in range(int(pr.get_slice("-", 0)), int(pr.get_slice("-", 1)) + 1):
+				promos.append(i)
+		else:
+			for p in pr.split(","):
+				promos.append(int(p))
 	var s := OS.get_environment("SIM_STAGES")
 	if s == "":
 		s = "1-10"
@@ -61,13 +72,23 @@ func _initialize() -> void:
 		loadout.append("")
 	tlevel = int(OS.get_environment("SIM_LEVEL")) if OS.get_environment("SIM_LEVEL") != "" else 1
 	kit_auto = OS.get_environment("SIM_KIT") == "auto"
-	for st in stages:
-		for i in runs:
-			queue.append([st, i])
+	if not promos.is_empty():
+		stages = []
+		for pi in promos:
+			stages.append(1000 + pi)   # trials are listed as 1000 + rank in the summary
+			for i in runs:
+				queue.append([1000 + pi, i])
+	else:
+		for st in stages:
+			for i in runs:
+				queue.append([st, i])
 	print("SIM pilot=%s turrets=%s lvl=%d runs=%d" % [pilot, loadout, tlevel, runs])
 	_next()
 
 func _write_save(stage: int) -> void:
+	var promo := stage - 1000 if stage >= 1000 else -1
+	if promo >= 0:
+		stage = int(Promotion.RANKS[promo].stage)
 	var levels := {}
 	for t in loadout:
 		if t != "":
@@ -79,6 +100,9 @@ func _write_save(stage: int) -> void:
 		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
 	if kit_auto:
 		_auto_kit(d, stage)
+	if promo >= 0:
+		Promotion.start(d, promo)
+		d["promotion"] = promo
 	var f := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))
 	f.close()
@@ -89,6 +113,7 @@ func _write_save(stage: int) -> void:
 # evenly (cost of Lv.L: gear 60 L(L-1) a piece, turret 75 L(L-1)).
 const COINS_SO_FAR := [[1, 0], [10, 964], [15, 2171], [20, 3964], [25, 5631], [30, 7970], [40, 12816], [50, 18548], [60, 25108]]
 var kit_auto := false
+var promos: Array = []
 
 static func _coins_before(stage: int) -> float:
 	for i in COINS_SO_FAR.size() - 1:
@@ -106,6 +131,7 @@ static func _level_for(budget: float, per: float) -> int:
 	return lv
 
 func _auto_kit(d: Dictionary, stage: int) -> void:
+	stage += int(OS.get_environment("SIM_KIT_PLUS")) if OS.get_environment("SIM_KIT_PLUS") != "" else 0
 	var spend := _coins_before(stage) * 1.5
 	var glv := _level_for(spend * 0.6 / 6.0, 60.0)
 	var lv := {}

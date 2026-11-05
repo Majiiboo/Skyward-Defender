@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev143 (version/code=143 and version/name="1.0-dev143" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev144 (version/code=144 and version/name="1.0-dev144" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -141,14 +141,33 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
+## dev144: promotion trials tuned with the autopilot, recommended levels, faster cards
+
+- Each rank now has its own difficulty (promotion.gd RANKS "hp" and "count"), set by running
+  the "human" autopilot through every trial with the gear a typical player has there, and
+  again with the gear of a player six stages further on. Target: a typical player loses most
+  tries at the recommended level, a player a bit stronger wins most. Bug health on top of the
+  stage's own scaling: Cadet x2.4, Pilot x2.6, Ace x1.9, Comet x2.05, Meteor x1.85, Nova x1.6,
+  Pulsar x1.65, Quasar x1.6, Supernova x1.9, Singularity x1.75; bugs +30% early, +15% late.
+  (The early stages are small, so they need the big multipliers; the late stages are already
+  big.) Autopilot wins with a typical kit, 4 tries each: 4, 3, 2, 3, 1, 1, 2, 3, 2, 3; six
+  stages stronger: 4, 4, 2, 1, 3, 4, 2, 3, 2, 1. The autopilot is noisy; Rudy's playtest decides.
+- RECOMMENDED LEVEL on every trial (Rudy): Cadet Lv.4, Pilot 7, Ace 10, Comet 13, Meteor 16,
+  Nova 19, Pulsar 22, Quasar 24, Supernova 27, Singularity 30 (pilot levels top out around 30
+  by stage 60). A trial opens three levels under its recommendation, so you can try early.
+  The card says "Next: Ace trial · recommended Lv.10" and the ladder shows each rank's level.
+- Power cards come 25% faster inside a trial (run XP x1.25), so the run powers up while the
+  bugs stay tanky: hard, but a good run.
+- Dev: tools/balance_sim.gd takes SIM_PROMO=0-9 (trials by rank), SIM_KIT_PLUS=6 (a stronger
+  player's kit), SIM_PROMO_HP / SIM_PROMO_COUNT (try a multiplier without editing the table).
+
 ## dev143: Promotion (rank trials)
 
 - A new PROMOTION card on the Modes page: ten pilot ranks, each with its own trial. A trial
   is one hard stage of 10 waves built from a boss stage's waves (Cadet = stage 5, Pilot = 10,
   Ace = 15, Comet = 20, Meteor = 25, Nova = 30, Pulsar = 35, Quasar = 40, Supernova = 50,
-  Singularity = 60): bugs x2.2 tougher than that stage (Elite is x1.85), 30% more of them,
-  and the boss at the end. Each trial opens at a pilot level (3, 6, 10, 14, 18, 22, 26, 30,
-  35, 40). It costs normal power tokens and can be retried.
+  Singularity = 60): bugs much tougher than that stage and more of them (tuned per rank in
+  dev144), and the boss at the end. Each trial has a recommended pilot level (dev144). It costs normal power tokens and can be retried.
 - Win a trial once and you are PROMOTED for good: every rank gives +5% bolt damage and +5%
   base shield and hull, stacking (Singularity = +50% each), plus 250 pilot XP the first
   time. The end screen says PROMOTED! with your new rank and what it gives; a lost trial

@@ -427,7 +427,7 @@ func _start_stage() -> void:
 	_magnet_base = MAGNET_BASE + float(gs.magnet)
 	magnet_radius = _magnet_base
 	idle_power = gs.auto_fire
-	_gem_xp_mult = gs.gem_xp
+	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if promo >= 0 else 1.0)   # trials: cards come faster
 	_coin_mult = gs.coins
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
@@ -2423,7 +2423,7 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label("RANK: %s" % String(Promotion.RANKS[promo].name).to_upper(), 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 		v.add_child(UIKit.label("For good: %s" % Promotion.bonus_text(pr), 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 	elif promo >= 0 and not won:
-		v.add_child(UIKit.label("Bugs are x%.1f tougher here. Upgrade, then try again." % Promotion.HP_MULT, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label("Bugs are x%.2f tougher here. Upgrade, then try again." % Promotion.hp_mult(promo), 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# three stars, popping in one after another (none in a trial)
 	var got: int = _stars_got if won and not elite and promo < 0 else 0
 	var srow := HBoxContainer.new()
@@ -3444,4 +3444,4 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, elite) * (Promotion.HP_MULT if promo >= 0 else 1.0)
+	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0)
