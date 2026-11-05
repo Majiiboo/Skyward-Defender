@@ -166,7 +166,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 19. LATER (Rudy): a turret SKIN LIBRARY: alternate designs / themes per turret (looks only, no
    stats), unlocked or bought (crystals, events, Exchange). Needs Luna art per skin.
 20. LATER (Rudy): RANKINGS with weekly rewards: leaderboards (e.g. highest stage, Horde score,
-   Boss Rush time) reset every 7 days; rewards by rank band at the end of the week. Needs a
+   Boss Rush time) run in 30-DAY SEASONS (Rudy) with a visible countdown ("Ends in 29 days");
+   rewards by rank band when the season ends, then everyone starts fresh. Needs a
    server (2.0 online), like codes and events.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
