@@ -44,3 +44,19 @@ static func level_mult(level: int) -> float:
 
 static func upgrade_cost(level: int) -> int:
 	return 140 * level
+
+# Milestones (Rudy, dev134): Lv.5 = fires 20% faster, Lv.10 = +25% damage.
+const MILESTONES := [[5, "Fire rate +20%"], [10, "Damage +25%"]]
+
+static func rate_bonus(level: int) -> float:
+	return 1.2 if level >= 5 else 1.0
+
+static func dmg_bonus(level: int) -> float:
+	return 1.25 if level >= 10 else 1.0
+
+# "Fire rate +20% at Lv.5" style line for the Gear page
+static func milestone_text(level: int) -> String:
+	var bits: Array = []
+	for m in MILESTONES:
+		bits.append(("%s (got)" if level >= int(m[0]) else "%s at Lv.%d") % ([m[1]] if level >= int(m[0]) else [m[1], m[0]]))
+	return "  ·  ".join(bits)

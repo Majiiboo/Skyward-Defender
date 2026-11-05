@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev133 (code 133).
+  go UP every package (same signing key, install-over). Current: dev134 (code 134).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -114,7 +114,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    offered when that turret is mounted: some CHANGE what it does, some EXTEND it and grow per
    level (e.g. Sentry bolts bounce to 1, 2, 3 more bugs); Luna card art later. (c) DONE dev130 for gear (GearData.MILESTONE at Lv.5/10 feed
    crit_rate, crit_dmg, dmg_boost, base_dr, fortress; battle _crit_rate/_base_dr; Gear STATS panel
-   _show_stats). Still to do: drone milestones. Was: Milestones for
+   _show_stats). Drone milestones DONE dev134 (DroneData.MILESTONES Lv.5 rate, Lv.10 dmg). Was: Milestones for
    gear pieces and the drone too. (d) AFK farming per stage: Patrol earns while the game is
    closed (and while open); pick a cleared stage, capped storage. MOSTLY COINS (by stage), plus
    that stage's element (early Alloy, later Cells, then Cores, slowly), plus RARE gear copies for

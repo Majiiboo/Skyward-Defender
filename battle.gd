@@ -2292,12 +2292,12 @@ func _update_drone(delta: float) -> void:
 		_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
 		return
 	_drone_aim = lerp_angle(_drone_aim, (Vector2(best.pos) - p).angle(), minf(1.0, delta * 10.0))
-	_drone_cd -= delta * float(body.rate)
+	_drone_cd -= delta * float(body.rate) * DroneData.rate_bonus(int(_drone.level))
 	if _drone_cd > 0.0:
 		return
 	_drone_cd = float(pod.every)
 	_drone_flash = 0.12
-	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level))
+	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level))
 	var dir := Vector2.from_angle(_drone_aim)
 	match String(_drone.pod):
 		"beam":

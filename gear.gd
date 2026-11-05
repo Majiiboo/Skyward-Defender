@@ -595,7 +595,8 @@ func _refresh_drone() -> void:
 	_drone_box.add_child(pv)
 	var lvl: int = int(drone.level)
 	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
-	var info := UIKit.label("%s + %s  Lv.%d\nATK %.1f  ·  every %.2f s\n%s  ·  %s" % [body.name, pod.name, lvl, dmg, float(pod.every) / float(body.rate), body.desc, pod.desc], 12, Color(0.85, 0.92, 1.0))
+	var info := UIKit.label("%s + %s  Lv.%d\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, dmg * DroneData.dmg_bonus(lvl),
+		float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl), body.desc, pod.desc, DroneData.milestone_text(lvl)], 12, Color(0.85, 0.92, 1.0))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var ip := UIKit.panel(10)
 	ip.add_child(info)
@@ -611,6 +612,9 @@ func _refresh_drone() -> void:
 		var cost := DroneData.upgrade_cost(int(drone.level))
 		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL and await _pay_upgrade(cost, int(drone.level)):
 			drone.level = int(drone.level) + 1
+			for m in DroneData.MILESTONES:
+				if int(drone.level) == int(m[0]):
+					_milestone_toast("Drone reached Lv.%d: %s" % [m[0], m[1]])
 			_save_drone()
 			_refresh_drone())
 	urow.add_child(up)
