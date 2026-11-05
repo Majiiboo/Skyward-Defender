@@ -33,7 +33,7 @@ var _ws_icons := {}        # part kind -> its TextureRect (merge pop)
 var _suit_btn: Button
 var _start_page := 0
 var drone := {}            # DroneData.read(save)
-var _plat                    # PlatformFloor (set-bonus glow)
+var _plat                    # HeroStand (the hero floats over it; glow = his tier)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
 
 # ---- turrets page ----
@@ -179,7 +179,7 @@ func _build() -> void:
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(0, 350)   # the hero big, front and centre (Rudy)
 	col.add_child(stage)
-	var plat := PlatformFloor.new()
+	var plat := HeroStand.new()   # the glowing hover disc (Rudy: no base look under the heroes)
 	plat.set_anchors_preset(Control.PRESET_FULL_RECT)
 	plat.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stage.add_child(plat)
@@ -1143,7 +1143,7 @@ class PilotShowcase extends Control:
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
 		# hovering just above the platform floor
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
-		view.update(delta, Vector2(size.x * 0.5, feet - 108.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+		view.update(delta, Vector2(size.x * 0.5, feet - 118.0 + sin(t * 1.1) * 6.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)   # floating over the stand
 
 # The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
 # buildings on the back rim, platform_rim.png), else her single picture (platform.png),
@@ -1985,3 +1985,110 @@ func _on_turret_unlock() -> void:
 	Progress.bump("turret_upgrades")
 	_toast("%s is yours" % def.name)
 	_refresh_turrets()
+
+# The HERO STAND (Rudy, dev172: no base under the heroes): a glowing hover disc the hero floats
+# over. Code-drawn for now in the hero's element colour (the disc, an etched grid, a floating
+# ring, a soft light column); Luna's painted layers (gear/stand_disc.png, stand_glow.png,
+# stand_beam.png, LUNA-BRIEF-hero-stand.md) replace the code shapes the moment they exist.
+# Same API as the old PlatformFloor: feet_y(), glow, glow_col, flash(), tiles.
+class HeroStand extends Control:
+	const FLOOR_UP := 40.0       # the disc's centre, up from the bottom of the stage
+	const DISC_W := 300.0
+	var tiles := {}
+	var t := 0.0
+	var glow := 0.0               # the hero's tier: 0 / 0.5 / 1 (brighter rings)
+	var glow_col := Glass.CYAN
+	var _flash := 0.0
+	var _disc: Texture2D
+	var _lights: Texture2D
+	var _beam: Texture2D
+	var _light_layer: Control
+	func _ready() -> void:
+		for spec in [["_disc", "stand_disc"], ["_lights", "stand_glow"], ["_beam", "stand_beam"]]:
+			var p := "res://gear/%s.png" % spec[1]
+			if ResourceLoader.exists(p):
+				set(spec[0], load(p))
+		_light_layer = Control.new()
+		_light_layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_light_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var add := CanvasItemMaterial.new()
+		add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_light_layer.material = add
+		_light_layer.draw.connect(_draw_lights)
+		add_child(_light_layer)
+	func flash() -> void:
+		_flash = 1.0
+	func _process(delta: float) -> void:
+		t += delta
+		_flash = maxf(_flash - delta * 1.6, 0.0)
+		queue_redraw()
+		_light_layer.queue_redraw()
+	func _centre() -> Vector2:
+		return Vector2(size.x * 0.5, size.y - FLOOR_UP)
+	func _radii() -> Vector2:
+		var rx := minf(size.x * 0.36, DISC_W * 0.5)
+		return Vector2(rx, rx * 0.36)
+	# where his feet hover: a little above the disc
+	func feet_y() -> float:
+		return _centre().y - _radii().y * 0.6
+	func _draw() -> void:
+		var c := _centre()
+		var r := _radii()
+		if _disc:
+			var w := r.x * 2.0 * 1.1
+			var h := w * _disc.get_height() / _disc.get_width()
+			draw_texture_rect(_disc, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false)
+		else:
+			# the disc: a dark glass ellipse with a metal rim, a thin lighter edge on top
+			draw_set_transform(c, 0.0, Vector2(1.0, r.y / r.x))
+			draw_circle(Vector2(0, 6), r.x * 1.02, Color(0.02, 0.03, 0.07, 0.9))   # the underside
+			draw_circle(Vector2.ZERO, r.x, Color(0.05, 0.08, 0.16, 0.95))
+			draw_arc(Vector2.ZERO, r.x, 0.0, TAU, 72, Color(0.5, 0.62, 0.8, 0.55), 2.0, true)
+			draw_arc(Vector2.ZERO, r.x * 0.86, 0.0, TAU, 64, Color(glow_col, 0.25), 1.0, true)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# thin lines from the slot tiles to the disc (the weapon tile)
+		for s in tiles:
+			var b: Button = tiles[s]
+			if not is_instance_valid(b):
+				continue
+			var from := b.position + Vector2(b.size.x * 0.5, b.size.y)
+			draw_line(from, Vector2(c.x - r.x * 0.7, c.y), Color(glow_col, 0.18), 1.0, true)
+	func _draw_lights() -> void:
+		var c := _centre()
+		var r := _radii()
+		var k: float = 0.55 + 0.25 * glow + 0.2 * sin(t * 2.0) + _flash * 0.8
+		var col := Color(glow_col, clampf(k, 0.0, 1.0))
+		if _beam:
+			var bw := r.x * 2.2
+			var bh := bw * _beam.get_height() / _beam.get_width()
+			_light_layer.draw_texture_rect(_beam, Rect2(c.x - bw * 0.5, c.y - bh, bw, bh), false, Color(glow_col, 0.35 * k))
+		else:
+			# the light column: a soft cone fading up from the disc
+			var top: float = c.y - size.y * 0.78
+			_light_layer.draw_polygon(PackedVector2Array([Vector2(c.x - r.x * 0.9, c.y), Vector2(c.x + r.x * 0.9, c.y), Vector2(c.x + r.x * 0.45, top), Vector2(c.x - r.x * 0.45, top)]),
+				PackedColorArray([Color(glow_col, 0.16 * k), Color(glow_col, 0.16 * k), Color(glow_col, 0.0), Color(glow_col, 0.0)]))
+		if _lights:
+			var w := r.x * 2.0 * 1.1
+			var h := w * _lights.get_height() / _lights.get_width()
+			_light_layer.draw_texture_rect(_lights, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false, col)
+			return
+		_light_layer.draw_set_transform(c, 0.0, Vector2(1.0, r.y / r.x))
+		# the etched grid: rings and spokes, faint
+		for i in 3:
+			_light_layer.draw_arc(Vector2.ZERO, r.x * (0.3 + 0.25 * i), 0.0, TAU, 48, Color(glow_col, 0.12 * k), 1.0, true)
+		for i in 8:
+			var a := TAU * i / 8.0 + t * 0.15
+			_light_layer.draw_line(Vector2.ZERO, Vector2.from_angle(a) * r.x * 0.84, Color(glow_col, 0.08 * k), 1.0, true)
+		# the rim light and a holographic ring floating above it, slowly turning
+		_light_layer.draw_arc(Vector2.ZERO, r.x, 0.0, TAU, 72, Color(glow_col, 0.5 * k), 2.5, true)
+		var ring_y: float = -r.x * 0.16 - sin(t * 1.3) * r.x * 0.02
+		var a0 := t * 0.6
+		for seg in 6:
+			var s0 := a0 + TAU * seg / 6.0
+			_light_layer.draw_arc(Vector2(0, ring_y), r.x * 0.92, s0, s0 + TAU / 6.0 * 0.7, 16, Color(glow_col, 0.7 * k), 2.0, true)
+		# a few specks rising in the column
+		for i in 7:
+			var ph := fmod(t * 0.25 + i * 0.137, 1.0)
+			var px := sin(i * 2.1 + t * 0.7) * r.x * 0.5
+			_light_layer.draw_circle(Vector2(px, -ph * r.x * 2.4 / (r.y / r.x)), 1.6, Color(glow_col, (1.0 - ph) * 0.5 * k))
+		_light_layer.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
