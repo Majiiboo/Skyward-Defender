@@ -34,6 +34,30 @@ static func draw_strip(c: CanvasItem, width: float, bottom_y: float) -> void:
 	var r := strip_rect(width, bottom_y)   # loads _strip on first use, so before it is read
 	c.draw_texture_rect(_strip, r, false)
 
+# The socket's front lip (dev149, Rudy: turrets looked like a layer on a layer). The lower
+# half of the socket ring, cut from Luna's strip, drawn again OVER a mounted turret's foot,
+# so the turret sits down inside the ring instead of on top of it. Fractions of the strip's
+# width and height around the socket centre.
+const SOCKET_LIP := Rect2(-0.074, 0.012, 0.148, 0.080)
+
+static func draw_socket_lip(c: CanvasItem, i: int, width: float, bottom_y: float, alpha: float = 1.0) -> void:
+	var r := strip_rect(width, bottom_y)
+	var s: Vector2 = STRIP_SOCKETS[i]
+	var tw := float(_strip.get_width())
+	var th := float(_strip.get_height())
+	var src := Rect2((s.x + SOCKET_LIP.position.x) * tw, (s.y + SOCKET_LIP.position.y) * th, SOCKET_LIP.size.x * tw, SOCKET_LIP.size.y * th)
+	var dst := Rect2(r.position + Vector2((s.x + SOCKET_LIP.position.x) * r.size.x, (s.y + SOCKET_LIP.position.y) * r.size.y), Vector2(SOCKET_LIP.size.x * r.size.x, SOCKET_LIP.size.y * r.size.y))
+	c.draw_texture_rect_region(_strip, dst, src, Color(1, 1, 1, alpha))
+
+# a soft dark pool under a turret's foot (contact shadow), scaled to the strip
+static func draw_socket_shadow(c: CanvasItem, i: int, width: float, bottom_y: float, alpha: float = 0.5) -> void:
+	var p := socket_pos(i, width, bottom_y)
+	var rx := width * 0.075
+	c.draw_set_transform(p + Vector2(0, width * 0.006), 0.0, Vector2(1.0, 0.34))
+	for k in 3:
+		c.draw_circle(Vector2.ZERO, rx * (1.0 - 0.25 * k), Color(0, 0, 0, alpha * 0.33))
+	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 # Lights painted on the command dome, in pixels of base/base_strip.png (1400 x 235):
 # the ring of window lights left to right, the two upper lamps, the antenna tip and
 # the dish's emitter. draw_base_lights brings them to life: a slow light chase round

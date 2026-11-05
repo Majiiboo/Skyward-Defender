@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev148 (version/code=148 and version/name="1.0-dev148" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev149 (version/code=149 and version/name="1.0-dev149" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,17 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev149: turrets seated in their sockets, gear cards with depth (Rudy's two notes)
+
+- TURRETS IN THE BASE: a mounted turret no longer sits on top of the strip like a sticker.
+  The front half of its socket ring (cut from Luna's own strip) is drawn again in front of
+  the turret's foot, so the foot sits down inside the ring, and a soft contact shadow pools
+  under it. Same in battle and on Home. No new art.
+- GEAR CARDS (and every item tile: Workshop stacks, turrets, drone parts): a soft drop
+  shadow under the card, a sheen across its top, a shade along the bottom, a light rim on
+  the top edge, and a glow in the card's colour behind the picture, so the piece looks lit
+  and lifted instead of flat.
 
 ## dev148: the drone follows on a spring
 

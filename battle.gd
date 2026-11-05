@@ -2792,6 +2792,7 @@ func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
 		var bt: Texture2D = _tex[t.type + "_base"]
 		var bs := bt.get_size() * (float(look.base_w) / bt.get_width())
 		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.55 + yo), bs), false, Color(1, 1, 1, a))
+		Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # seated in the socket
 	var g := _split_geo(t)
 	var ht: Texture2D = _tex[t.type + "_head"]
 	var rot := 0.0
@@ -2818,9 +2819,7 @@ func _draw_turret(t: Dictionary) -> void:
 	var k: float = t.drop
 	var yo: float = -90.0 * (1.0 - k) * (1.0 - k)
 	var a: float = clampf(k * 4.0, 0.0, 1.0)
-	draw_set_transform(t.pos + Vector2(0, 3), 0.0, Vector2(1.0, 0.32))
-	draw_circle(Vector2.ZERO, 30.0, Color(0, 0, 0, 0.45 * k))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	Backdrop.draw_socket_shadow(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT, 0.55 * k)
 	if SPLIT_LOOK.has(t.type):
 		_draw_split_turret(t, yo, a)
 		return
@@ -2828,6 +2827,7 @@ func _draw_turret(t: Dictionary) -> void:
 		var bt: Texture2D = _tex["sentry_base"]
 		var bs := bt.get_size() * (SENTRY_BASE_W / bt.get_width())
 		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.5 + yo), bs), false, Color(1, 1, 1, a))
+		Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # the foot sits inside the ring
 		var g := _sentry_geo(t)
 		var ht: Texture2D = _tex["sentry_head"]
 		var hs: float = SENTRY_HEAD_H / ht.get_height()

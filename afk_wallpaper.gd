@@ -415,6 +415,7 @@ func _draw_turrets() -> void:
 		var sz := tex.get_size() * s
 		var p := Backdrop.socket_pos(int(w.socket), size.x, bottom)
 		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * float(w.cx), -sz.y + 6.0 * size.x / 480.0), sz), false)
+		Backdrop.draw_socket_lip(self, int(w.socket), size.x, bottom)
 
 # The Sentry as in battle: Luna's base ring centred on the socket, the gun head floating
 # just above it and turning to its target (mirrored for targets on the right).
@@ -434,12 +435,11 @@ func _sentry_pivot(i: int, bottom: float) -> Vector2:
 func _draw_wall_sentry(i: int, bottom: float) -> void:
 	var k := size.x / 480.0
 	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
-	draw_set_transform(p + Vector2(0, 3 * k), 0.0, Vector2(1.0, 0.32))
-	draw_circle(Vector2.ZERO, 30.0 * k, Color(0, 0, 0, 0.45))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	Backdrop.draw_socket_shadow(self, int(_wall_turrets[i].socket), size.x, bottom)
 	var bt: Texture2D = _sentry_tex.base
 	var bs := bt.get_size() * (SENTRY_BASE_W * k / bt.get_width())
 	draw_texture_rect(bt, Rect2(p - bs * 0.5, bs), false)
+	Backdrop.draw_socket_lip(self, int(_wall_turrets[i].socket), size.x, bottom)   # seated in the ring (dev149)
 	var ang: float = _turret_ang[i]
 	var face := -1.0 if cos(ang) > 0.1 else 1.0
 	var art_dir: float = SENTRY_ART_DIR if face > 0.0 else PI - SENTRY_ART_DIR
@@ -478,11 +478,13 @@ func _draw_wall_split(i: int, bottom: float) -> void:
 	for n in [id + "_base", id + "_head"]:
 		if not _split_tex.has(n) and ResourceLoader.exists("res://turrets/%s.png" % n):
 			_split_tex[n] = load("res://turrets/%s.png" % n)
+	Backdrop.draw_socket_shadow(self, int(_wall_turrets[i].socket), size.x, bottom)
 	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
 	if float(look.base_w) > 0.0:
 		var bt: Texture2D = _split_tex[id + "_base"]
 		var bs := bt.get_size() * (float(look.base_w) * k / bt.get_width())
 		draw_texture_rect(bt, Rect2(p + Vector2(-bs.x * 0.5, -bs.y * 0.55), bs), false)
+		Backdrop.draw_socket_lip(self, int(_wall_turrets[i].socket), size.x, bottom)
 	var ht: Texture2D = _split_tex[id + "_head"]
 	var hh: float = float(look.head_h) * k
 	var hw: float = ht.get_width() * hh / ht.get_height()

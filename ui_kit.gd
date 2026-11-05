@@ -209,7 +209,31 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	var b := Button.new()
 	b.custom_minimum_size = size
 	b.clip_text = true
-	_style_btn(b, box(Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.55), Color(col, 0.7), 12), box(Color(col, 0.35), Color.WHITE, 12), Color.WHITE)
+	var normal := box(Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.78), Color(col, 0.7), 12)
+	# depth (dev149, Rudy: the cards looked flat): a soft drop shadow under the card
+	normal.shadow_color = Color(0, 0, 0, 0.42)
+	normal.shadow_size = 9
+	normal.shadow_offset = Vector2(0, 4)
+	_style_btn(b, normal, box(Color(col, 0.35), Color.WHITE, 12), Color.WHITE)
+	# ...a sheen across the top, a shade along the bottom, a light rim on the top edge, and
+	# a glow in the card's colour behind the picture, so the piece looks lit and lifted
+	var depth := Control.new()
+	depth.set_anchors_preset(Control.PRESET_FULL_RECT)
+	depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var has_icon := icon != null
+	depth.draw.connect(func():
+		var s := depth.size
+		var clear := Color(1, 1, 1, 0.0)
+		depth.draw_polygon(PackedVector2Array([Vector2(1, 1), Vector2(s.x - 1, 1), Vector2(s.x - 1, s.y * 0.45), Vector2(1, s.y * 0.45)]),
+			PackedColorArray([Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.16), clear, clear]))
+		depth.draw_polygon(PackedVector2Array([Vector2(1, s.y * 0.6), Vector2(s.x - 1, s.y * 0.6), Vector2(s.x - 1, s.y - 1), Vector2(1, s.y - 1)]),
+			PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.28), Color(0, 0, 0, 0.28)]))
+		depth.draw_line(Vector2(10, 1.5), Vector2(s.x - 10, 1.5), Color(1, 1, 1, 0.22), 1.0, true)
+		if has_icon:
+			var c := Vector2(s.x * 0.5, s.y * 0.36)
+			for k in 4:
+				depth.draw_circle(c, s.y * (0.34 - 0.07 * k), Color(col, 0.07 + 0.04 * k)))
+	b.add_child(depth)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
