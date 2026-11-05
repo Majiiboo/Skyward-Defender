@@ -5,18 +5,14 @@ extends Control
 # Add a mode = add an entry to MODES.
 
 const MODES := [
-	{"id": "standard", "name": "Campaign", "banner": "", "tint": Color(0.2, 0.85, 1.0), "unlock": 0,
-		"desc": "6 planets · bosses · up to 3 stars a stage",
-		"rewards": ["Coins", "Parts", "Stars"]},
+	{"id": "standard", "name": "Normal", "banner": "", "tint": Color(0.2, 0.85, 1.0), "unlock": 0,
+		"desc": "6 planets · bosses · up to 3 stars a stage"},
 	{"id": "elite", "name": "Elite", "banner": "sentinel", "tint": Color(0.71, 0.45, 1.0), "unlock": 10,
-		"desc": "Cleared stages, bugs x1.85 tougher",
-		"rewards": ["Coins", "Double parts", "Plasma Cells"]},
+		"desc": "Cleared stages, bugs x1.85 tougher"},
 	{"id": "horde", "name": "Horde", "banner": "magma", "tint": Color(1.0, 0.55, 0.25), "unlock": 5, "soon": true,
-		"desc": "Endless waves · beat your best score",
-		"rewards": ["Score", "Crystals"]},
+		"desc": "Endless waves · beat your best score"},
 	{"id": "boss", "name": "Boss Rush", "banner": "plasma", "tint": Color(1.0, 0.35, 0.5), "unlock": 20, "soon": true,
-		"desc": "Every boss you beat, back to back",
-		"rewards": ["Void Cores", "Crystals"]},
+		"desc": "Every boss you beat, back to back"},
 ]
 var player_level := 1
 var selected_stage := 1
@@ -133,8 +129,10 @@ func _card(m: Dictionary) -> Control:
 	v.add_child(d)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
-	for r in m.rewards:
-		row.add_child(UIKit.chip(r, tint))
+	# what you can win here: mystery silhouettes in their rarity colour (Rudy)
+	row.add_child(UIKit.label("REWARDS", 10, UIKit.MUTED))
+	for r in _rewards(String(m.id)):
+		row.add_child(_mystery(r[0], r[1]))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(sp)
@@ -165,3 +163,51 @@ func _fade_in_overlay() -> void:
 	var tw := create_tween()
 	tw.tween_property(overlay, "modulate:a", 0.0, 0.25)
 	tw.tween_callback(func(): overlay.queue_free())
+
+# ------------------------------------------------------------------ rewards preview
+# What a mode can give at your stage, shown as mystery silhouettes (picture darkened, a
+# "?" on it, the tile in its rarity colour). [icon, rarity]: coins, then the parts that can
+# drop there (Parts: Cells from mini-boss / every 5th stage / from stage 21, Cores from
+# bosses on stage 20+), crystals for the modes that pay them.
+const COIN := "res://icons/ui_coin.png"
+const CRYSTAL := "res://icons/ui_crystal.png"
+
+func _rewards(id: String) -> Array:
+	var s := selected_stage
+	var boss := StageData.boss_kind(s)
+	var out: Array = [[COIN, "common"], ["res://parts/alloy.png", "rare"]]
+	match id:
+		"standard":
+			if boss != "" or s % 5 == 0 or s >= 21:
+				out.append(["res://parts/cell.png", "epic"])
+			if boss == "boss" and s >= 20:
+				out.append(["res://parts/core.png", "legendary"])
+		"elite":
+			out.append(["res://parts/cell.png", "epic"])
+			if boss == "boss" and s >= 20:
+				out.append(["res://parts/core.png", "legendary"])
+		"horde":
+			out = [[COIN, "common"], [CRYSTAL, "epic"]]
+		"boss":
+			out = [["res://parts/core.png", "legendary"], [CRYSTAL, "epic"]]
+	return out
+
+func _mystery(icon: String, rarity: String) -> Control:
+	var col: Color = UIKit.RARITY.get(rarity, UIKit.RARITY.common)
+	var p := PanelContainer.new()
+	p.custom_minimum_size = Vector2(38, 38)
+	var sb := UIKit.box(Color(col.r * 0.25, col.g * 0.25, col.b * 0.32, 0.9), Color(col, 0.9), 8, 1)
+	sb.set_content_margin_all(3)
+	p.add_theme_stylebox_override("panel", sb)
+	var tr := TextureRect.new()
+	tr.texture = load(icon)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.modulate = Color(col.r * 0.35, col.g * 0.35, col.b * 0.45, 0.95)   # a silhouette in its colour
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(tr)
+	var q := UIKit.label("?", 18, Color(col.lerp(Color.WHITE, 0.5)), HORIZONTAL_ALIGNMENT_CENTER)
+	q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	q.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(q)
+	return p

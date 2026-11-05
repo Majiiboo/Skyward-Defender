@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev131 (version/code=131 and version/name="1.0-dev131" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev132 (version/code=132 and version/name="1.0-dev132" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev132: mystery rewards on Modes
+
+- The main mode is called Normal now (a story Campaign comes later as its own mode).
+- Each mode shows a REWARDS row of mystery silhouettes: the picture darkened with a "?",
+  on a tile in its rarity colour (coins grey, Alloy blue, Plasma Cell purple, Void Core
+  gold, crystals purple). What shows depends on your stage: Cells on mini-boss stages,
+  every 5th stage and from stage 21; Cores on boss stages from stage 20.
 
 ## dev131: Go buttons on Quests
 
