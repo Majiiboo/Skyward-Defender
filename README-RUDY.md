@@ -142,6 +142,52 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
+## dev166: developer build for Rudy's test, and a last sweep
+
+- Rudy chose to play this build as a new player, so the developer shortcuts are OFF in this
+  zip (build_info.gd DEV = false; set it true to use them). Settings then has a DEVELOPER
+  section with four buttons: Rich wallet (+500k coins, +20k crystals, 999
+  Alloy, 500 Cells, 200 Cores, 999 power), Unlock everything (all 60 stages with 3 stars,
+  pilot level 40, Commander suit, Elite, every turret and trial), Gear copies to merge
+  (9 Common, 3 Uncommon, 3 Rare, 3 Epic of every piece you own: Quick Merge the small ones,
+  merge the Epics by hand), and Fresh save (tap twice: a brand-new player, tips and all).
+  Use Fresh save first to see things unlock in order, Unlock everything to see them all.
+- Sweep: the Godot version in this file is now right (4.7.2), the menu wallpaper no longer
+  shadows a built-in name, the balance simulator has a proper Elite switch, the dev tools
+  are documented. Smoke test, headless stages and page captures all pass.
+- Balance experiments (not applied): steeper bug health (1.065 / 1.03 a stage) made stage 40+
+  a cliff; a gentler step with Elite at 1.35 still left Elite 30-60 unwinnable for the
+  autopilot. Normal stays as it is for this test; your own feel decides the re-tune (16 g).
+
+## dev165: repeat quests
+
+- Quests has a fourth tab, REPEAT: five goals that come back bigger every time you claim
+  them (destroy bugs, clear stages, collect gems, defeat bosses, pick power cards), each
+  with a level, and a reward that grows a quarter per level. Always something small to
+  chase. A fresh quest counts what you have done so far, so a veteran gets a welcome-back
+  claim or two. Red dots cover the new tab.
+
+## dev164: the boss's arrival reads on screen
+
+- While the Hive Mother descends and cannot be hurt, a soft pulsing veil of light wraps her,
+  and her health bar only slides in once she has settled and can be hit. So "my bolts do
+  nothing" is visibly "she is not here yet", not a bug.
+- Dev: tools/balance_sim.gd can try bug-health and Elite factors without editing the tables
+  (SIM_HP_A, SIM_HP_B, SIM_ELITE), for the long-game re-tune (queue 16 g).
+
+## dev163: guided first-time tips, and bosses cannot be hurt before they arrive
+
+- GUIDED TIPS (Rudy's queue item 15): the first time something new is on screen the game
+  dims, spotlights the one button to tap with a pulsing ring, and the chibi pilot explains it
+  in a small glass box ("Tap the lit button"). Only that button works; "Got it" closes the tip
+  without pressing. Each tip shows once, one per visit so new players are never buried.
+  Tips so far: Patrol, the Stage Map, Elite (at pilot level 10), red dots, gear upgrades,
+  saved kits, turrets, the drone, the Workshop, gear copies, Quick Merge, rank trials, the
+  daily gift calendar, power cards. Settings > "Show the tips again" resets them.
+- BOSSES (Rudy): the Hive Mother (and the young one mid-stage) cannot be damaged until she
+  has fully descended to her hover height. Bolts pass through her, turrets, drones, Nova and
+  splash do nothing to her, until she is on screen and acting.
+
 ## dev162: the Swarm Hive's hatch
 
 - The Swarm Hive is drawn from Luna's parts: the hive with its hatch open, and the lid over
