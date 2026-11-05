@@ -34,6 +34,7 @@ var _suit_btn: Button
 var _start_page := 0
 var drone := {}            # DroneData.read(save)
 var _plat                    # HeroStand (the hero floats over it; glow = his tier)
+var _showcase                # PilotShowcase (swivel)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
 
 # ---- turrets page ----
@@ -187,8 +188,9 @@ func _build() -> void:
 	var hero := PilotShowcase.new()
 	hero.plat = plat
 	hero.set_anchors_preset(Control.PRESET_FULL_RECT)
-	hero.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# (the showcase takes touches: drag to swivel him, dev172)
 	stage.add_child(hero)
+	_showcase = hero
 	for i in 1:   # heroes (dev172): the weapon is the only gear slot left; armour is the hero himself
 		var s: String = GearData.SLOTS[i]
 		var b := Button.new()
@@ -1128,22 +1130,52 @@ func _save_drone() -> void:
 		out.store_string(JSON.stringify(data))
 
 # The pilot standing in the Gear screen: the same live rig as in battle, idling, his
-# rifle drifting, flames in the equipped jetpack's style.
+# rifle drifting, flames in the equipped jetpack's style. SWIVEL (Rudy, dev172): drag a
+# finger across him to turn him left and right through Luna's turn frames (or Rook's side and
+# front poses); he holds the angle, then drifts back to face you after a few seconds.
 class PilotShowcase extends Control:
 	var view: PilotRigView
-	var plat   # PlatformFloor: where his feet go
+	var plat   # HeroStand: where his feet go
 	var t := 0.0
+	var swivel := 0.0          # -1 facing right .. 0 the camera .. 1 facing left
+	var _drag := false
+	var _idle := 0.0           # seconds since the finger left
+	var _hint := 1.0           # "drag to turn" fades once used
 	func _ready() -> void:
 		view = PilotRigView.new()
 		view.height = 200.0   # big on the platform (heroes, dev172)
 		view.front_only = true   # facing you, chunky and big-headed (Rudy)
+		view.face_override = 0.0
 		add_child(view)
+		mouse_filter = Control.MOUSE_FILTER_STOP
+	func _gui_input(ev: InputEvent) -> void:
+		if (ev is InputEventScreenTouch or ev is InputEventMouseButton):
+			_drag = ev.pressed
+			if not ev.pressed:
+				_idle = 0.0
+		elif (ev is InputEventScreenDrag or ev is InputEventMouseMotion) and _drag:
+			swivel = clampf(swivel - ev.relative.x * 0.011, -1.0, 1.0)
+			_hint = 0.0
+			queue_redraw()
 	func _process(delta: float) -> void:
 		t += delta
+		if not _drag:
+			_idle += delta
+			if _idle > 4.0:
+				swivel = move_toward(swivel, 0.0, delta * 0.8)   # drifts back to face you
+		view.face_override = swivel
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
 		# hovering just above the platform floor
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
-		view.update(delta, Vector2(size.x * 0.5, feet - 118.0 + sin(t * 1.1) * 6.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)   # floating over the stand
+		view.update(delta, Vector2(size.x * 0.5, feet - 118.0 + sin(t * 1.1) * 6.0), aim, sin(t * 0.5) * 0.2 + swivel * 0.1, 1.0 + sin(t * 0.9) * 0.2, 0.0)   # floating over the stand
+		if _hint > 0.0:
+			queue_redraw()
+	func _draw() -> void:
+		if _hint <= 0.0:
+			return
+		var a: float = _hint * (0.45 + 0.25 * sin(t * 3.0))
+		var y := size.y - 14.0
+		draw_string(ThemeDB.fallback_font, Vector2(0, y), "<  drag to turn  >", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.6, 0.85, 1.0, a))
 
 # The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
 # buildings on the back rim, platform_rim.png), else her single picture (platform.png),
@@ -2092,3 +2124,10 @@ class HeroStand extends Control:
 			var px := sin(i * 2.1 + t * 0.7) * r.x * 0.5
 			_light_layer.draw_circle(Vector2(px, -ph * r.x * 2.4 / (r.y / r.x)), 1.6, Color(glow_col, (1.0 - ph) * 0.5 * k))
 		_light_layer.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# dev capture hook (tools/dev/capture.gd CAP_CALL="_dbg_swivel|0.8"): turn the showcase hero
+func _dbg_swivel(v: String) -> void:
+	if _showcase:
+		_showcase.swivel = float(v)
+		_showcase._idle = -999.0
+		_showcase._hint = 0.0

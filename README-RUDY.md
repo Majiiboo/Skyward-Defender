@@ -298,6 +298,10 @@ parts/) is the next step for finer motion. Dev: tools/cut_heroes.gd.
   an etched grid, a holographic ring turning above the rim, a soft column of light with specks
   rising. It flashes on a level-up. Luna's painted stand (LUNA-BRIEF-hero-stand.md) replaces
   the code shapes the day it lands.
+- SWIVEL (your idea): drag a finger across the hero on the Heroes page and he turns left and
+  right through Luna's frames (Rook through his side and front poses); he holds the angle and
+  drifts back to face you after four seconds. A "drag to turn" hint fades once used. The full
+  spin to his back needs three more frames per hero (LUNA-BRIEF-hero-back-frames.md).
 
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
