@@ -116,7 +116,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    closed (and while open); pick a cleared stage, capped storage. MOSTLY COINS (by stage), plus
    that stage's element (early Alloy, later Cells, then Cores, slowly), plus RARE gear copies for
    merging (Rudy: common weapons/pieces on low stages, better rarities only on high stages, rare
-   and spread out). Gear copies need (f). (e) Pilot talent points (Offense / Defense /
+   and spread out). Gear copies need (f). Rewards come PER WAVE CLEARED (Rudy): the Home
+   AFK battle plays the chosen stage wave by wave; each cleared wave adds that wave's drops to the
+   Patrol store; offline time is counted as simulated waves (waves per hour from that stage's
+   length). Farm older stages for their element. (e) Pilot talent points (Offense / Defense /
    Utility tree, a Gear sub-tab). (f) Gear rarity: max level 30, rarity caps the level, raised by
    merging copies in the Workshop (needs gear drops). (g) Re-tune: gentle to 15, then each boss a
    soft wall; target 30-40 hours to stage 60; replays pay half coins.
