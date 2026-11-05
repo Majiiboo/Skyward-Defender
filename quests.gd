@@ -66,16 +66,16 @@ func _fill() -> void:
 					left -= 1
 			_note.text = "All 5 done: +%s  ·  %d left today" % [Progress.reward_text(Progress.DAILY_ALL_BONUS), left]
 			for m in ms:
-				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); _fill())
+				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); _fill(), String(m.def.stat))
 		1:
 			_note.text = "Milestones that never reset."
 			for m in Progress.career(d):
-				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); _fill())
+				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); _fill(), String(m.def.stat))
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
 			_trophy_grid()
 
-func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable) -> void:
+func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String = "") -> void:
 	var p := UIKit.panel(10)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
@@ -106,8 +106,8 @@ func _row(text: String, progress: float, goal: float, reward: Dictionary, done: 
 			on_claim.call()
 			_toast("+ " + Progress.reward_text(reward)))
 	else:
-		b = UIKit.ghost_button("Play", 13)
-		b.pressed.connect(func(): get_tree().change_scene_to_file("res://battle.tscn"))
+		b = UIKit.teal_button("Go", 13)
+		b.pressed.connect(func(): _go(stat))
 	b.custom_minimum_size = Vector2(76, 34)
 	var av := VBoxContainer.new()
 	av.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -197,3 +197,21 @@ class Medal extends Control:
 		draw_colored_polygon(pts, col)
 		for i in 3:
 			draw_circle(c + Vector2((i - 1) * 9.0, 26.0), 2.5, Progress.TIER_COLORS[i] if i < tier else Color(1, 1, 1, 0.15))
+
+# "Go" (Rudy): takes you to where the task is done. Fight tasks start a battle; boss,
+# stage, star and planet tasks open the Stage Map to pick one; upgrade and merge tasks
+# open Gear on the right tab (Gear reads the "gear_page" meta on the tree root).
+const GO := {
+	"bosses_any": "map", "bosses": "map", "best_stage": "map", "stars": "map", "planets": "map",
+	"upgrades": "gear:0", "turret_upgrades": "gear:1", "merges": "gear:3",
+}
+
+func _go(stat: String) -> void:
+	var where: String = GO.get(stat, "battle")
+	if where == "map":
+		get_tree().change_scene_to_file("res://stage_map.tscn")
+	elif where.begins_with("gear:"):
+		get_tree().root.set_meta("gear_page", int(where.get_slice(":", 1)))
+		get_tree().change_scene_to_file("res://gear.tscn")
+	else:
+		get_tree().change_scene_to_file("res://battle.tscn")

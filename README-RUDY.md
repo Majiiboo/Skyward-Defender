@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev130 (version/code=130 and version/name="1.0-dev130" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev131 (version/code=131 and version/name="1.0-dev131" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,12 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev131: Go buttons on Quests
+
+- Unfinished tasks now have a Go button that takes you to where the task is done: fight
+  tasks start a battle; boss, stage, star and planet tasks open the Stage Map; upgrade and
+  merge tasks (coming later) open Gear on the right tab. Finished tasks still show Claim.
 
 ## dev130: combat stats, gear milestones, Stats page
 

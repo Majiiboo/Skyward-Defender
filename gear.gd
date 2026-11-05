@@ -19,6 +19,7 @@ var _drone_box: VBoxContainer
 var _workshop_box: VBoxContainer
 var _ws_icons := {}        # part kind -> its TextureRect (merge pop)
 var _suit_btn: Button
+var _start_page := 0
 var drone := {}            # DroneData.read(save)
 var _plat                    # PlatformFloor (set-bonus glow)
 const SLOT_PX := 84.0       # gear slot tiles around the pilot
@@ -40,9 +41,15 @@ var _t_place: Button
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	# a Quests "Go" button can ask for a tab (0 Pilot, 1 Turrets, 2 Drone, 3 Workshop)
+	if get_tree().root.has_meta("gear_page"):
+		_start_page = int(get_tree().root.get_meta("gear_page"))
+		get_tree().root.remove_meta("gear_page")
 	_load()
 	_build()
 	_select(selected_slot)
+	if _start_page != 0:
+		_show_page(_start_page)
 	_fade_in_overlay()
 
 func _read() -> Dictionary:
@@ -118,7 +125,7 @@ func _build() -> void:
 	top.add_child(_power_label)
 	col.add_child(top)
 	# Pilot / Turrets switch
-	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, 0))
+	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page))
 	_workshop_box = VBoxContainer.new()
 	_workshop_box.add_theme_constant_override("separation", 10)
 	_workshop_box.visible = false
