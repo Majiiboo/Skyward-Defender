@@ -2292,7 +2292,18 @@ func _bastion_blast() -> void:
 # The drone sidekick (Gear > Drone, DroneData): one drone flies beside the pilot and
 # shoots with its pod. Scout fires faster, Striker hits harder and further, Warden
 # also blocks an enemy shot near the pilot every few seconds.
+# The drone follows on a spring (dev147, motion item 26 c): it lags behind the pilot when
+# he moves, overshoots a little and settles, bobbing on its own; it banks into the motion.
+var _drone_p := Vector2.ZERO        # where the drone is now
+var _drone_v := Vector2.ZERO        # and how fast it is going
+var _drone_bank := 0.0              # lean from its sideways speed
+const DRONE_K := 60.0               # spring stiffness
+const DRONE_DAMP := 10.0            # damping (a little under critical: a small overshoot)
+
 func _drone_pos() -> Vector2:
+	return _drone_p
+
+func _drone_target() -> Vector2:
 	return soldier_pos + Vector2(-54.0, 6.0 + sin(time_alive * 3.0) * 4.0)
 
 func _update_drone(delta: float) -> void:
@@ -2300,6 +2311,14 @@ func _update_drone(delta: float) -> void:
 	_drone_beam.life = maxf(float(_drone_beam.get("life", 0.0)) - delta, 0.0)
 	if not _drone_on:
 		return
+	var tgt := _drone_target()
+	if _drone_p == Vector2.ZERO:
+		_drone_p = tgt
+	# a damped spring toward the spot beside the pilot (stable at 30-120 fps)
+	var dt := minf(delta, 0.05)
+	_drone_v += ((tgt - _drone_p) * DRONE_K - _drone_v * DRONE_DAMP) * dt
+	_drone_p += _drone_v * dt
+	_drone_bank = lerpf(_drone_bank, clampf(_drone_v.x / 600.0, -0.35, 0.35), minf(1.0, dt * 8.0))
 	var body: Dictionary = DroneData.BODIES[_drone.body]
 	var pod: Dictionary = DroneData.PODS[_drone.pod]
 	var p := _drone_pos()
@@ -2359,7 +2378,8 @@ func _draw_drone() -> void:
 	var bh: float = bw * bt.get_height() / bt.get_width()
 	var pw := 18.0
 	var ph: float = pw * pt.get_height() / pt.get_width()
-	draw_set_transform(p, rot, Vector2.ONE)
+	# the body banks into its sideways motion and squeezes a touch as it does (3D feel)
+	draw_set_transform(p, rot + _drone_bank, Vector2(1.0 - absf(_drone_bank) * 0.25, 1.0))
 	draw_texture_rect(pt, Rect2(-pw * 0.5, -bh * 0.35 - ph * 0.5, pw, ph), false)
 	draw_texture_rect(bt, Rect2(-bw * 0.5, -bh * 0.5, bw, bh), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

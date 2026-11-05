@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev147 (version/code=147 and version/name="1.0-dev147" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev148 (version/code=148 and version/name="1.0-dev148" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev148: the drone follows on a spring
+
+- The drone no longer sits glued beside the pilot: it follows him on a spring, lagging a
+  little when he moves, overshooting a touch and settling, bobbing on its own, and banking
+  into its sideways motion with a slight squeeze (a 3D feel from a 2D picture). Stable at
+  any frame rate (30 to 120).
+- Checked headless on stage 12 with the drone active (no errors), smoke test passes.
 
 ## dev147: bugs flinch and shatter (first piece of the AAA motion work, no new art)
 
