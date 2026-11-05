@@ -1090,6 +1090,8 @@ func _update_enemies(delta: float) -> void:
 					e.pos.y += 8.0 * delta
 				else:
 					e.pos.y += e.speed * 1.3 * delta   # done hovering: comes down for the base
+				if e.fire_t > SPIT_WARN and e.fire_t - delta <= SPIT_WARN and e.pos.y > 40.0:
+					Sfx.play("spit")   # the telegraph starts (drawn in _draw_enemy)
 				e.fire_t -= delta
 				if e.fire_t <= 0.0 and e.pos.y > 40.0:
 					e.fire_t = float(def.fire_every)
@@ -2819,6 +2821,13 @@ func _draw_enemy(e: Dictionary) -> void:
 		if swell > 0.01:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
 			draw_circle(EnemyRig.anchor("spitter", "sac", e.pos, size, ang), size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(0.8, 0.4, 1.0, 0.25 * swell))
+		# the spit telegraph (dev168, Archero-style fairness): a third of a second before a
+		# glob, the sac flashes and a ring closes on the mouth, so you can see it coming and move
+		if float(e.fire_t) < SPIT_WARN and e.pos.y > 40.0:
+			var wk: float = 1.0 - float(e.fire_t) / SPIT_WARN
+			bright = maxf(bright, 1.0 + 0.7 * (0.5 + 0.5 * sin(e.t * 40.0)))
+			var mouth := EnemyRig.anchor("spitter", "muzzle", e.pos, size * 1.35, ang)
+			draw_arc(mouth, size * (0.6 - 0.4 * wk), 0.0, TAU, 24, Color(1.0, 0.45, 0.6, 0.3 + 0.5 * wk), 2.0)
 	if e.type == "hive_mother":
 		EnemyRig.draw_hive_mother(self, e.pos, size * (0.68 if e.get("mini", false) else 0.9), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
 	elif e.get("hatchling", false) and fold > 0.01:
@@ -3048,6 +3057,7 @@ func _turret_tip(t: Dictionary) -> Vector2:
 # its own painted body (regions of the body picture), thrown outward, tumbling under
 # gravity and fading. No new art: the pieces are cut from the picture at run time.
 const HIT_FLINCH_T := 0.12
+const SPIT_WARN := 0.35   # seconds before a Spitter spits: the sac flares and a ring closes on its mouth (dev168: see it coming, move)
 const SHARD_LIFE := 0.75
 var _shards: Array = []
 var _shard_atlas := {}   # enemy type -> [Texture2D]: Luna's chunk pieces (enemies/parts/<bug>_chunk_N.png, dev160), else six cuts of the body

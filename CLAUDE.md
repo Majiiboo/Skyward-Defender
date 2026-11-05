@@ -5,7 +5,11 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-04, build dev167)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev167: 3 updates (next push = dev167 + that count; see the build rule).
+- UNPUSHED since dev167: 4 updates (next push = dev167 + that count; see the build rule).
+  4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
+     in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
+     leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless,
+     not a bug of ours (Sfx.Pool already stops and drops them).
   3. SOUND: sfx.gd Sfx (DEFS synthesized layers -> AudioStreamWAV cache, pool under root, play /
      play_rising, gap throttle, res://sfx/<name>.ogg overrides, save "sound_on" via apply_from /
      set_on); hooks in battle (shot, hit, turret, kill, coin, gem, level, shield, hull, hurt, wave,

@@ -123,7 +123,7 @@ static func _ready() -> bool:
 	var root: Node = (loop as SceneTree).root
 	if root == null:
 		return false
-	_pool = Node.new()
+	_pool = Pool.new()
 	_pool.name = "SfxPool"
 	_players = []
 	for i in POOL:
@@ -216,3 +216,19 @@ static func _synth(layers: Array) -> AudioStreamWAV:
 	wav.stereo = false
 	wav.data = data
 	return wav
+
+# The node that holds the players. On shutdown it stops them and drops the streams, or a
+# headless run reports the playbacks as leaked at exit.
+class Pool extends Node:
+	func _exit_tree() -> void:
+		_drop()
+	func _notification(what: int) -> void:
+		if what == NOTIFICATION_PREDELETE:
+			_drop()
+	func _drop() -> void:
+		for p in get_children():
+			if p is AudioStreamPlayer:
+				p.stop()
+				p.stream = null
+		set_meta("cache", {})
+		Sfx._cache = {}

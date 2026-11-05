@@ -6,7 +6,8 @@ extends SceneTree
 #     godot --path . --script res://tools/dev/capture.gd --write-movie out/gear.png --quit-after 40
 #   rm override.cfg
 # Env: CAP_SCENE (scene to open), CAP_PAGE (Gear tab 0-3), CAP_WS (Workshop sub-tab),
-# CAP_SAVE (json file copied over the sim save; none = keep what is there).
+# CAP_SAVE (json file copied over the sim save; none = keep what is there), CAP_AUTOPICK=1
+# (battle: take the first card at every pick so a --write-movie run plays on).
 
 func _initialize() -> void:
 	var sv := OS.get_environment("CAP_SAVE")
@@ -37,6 +38,12 @@ var _pending := PackedStringArray()
 var _frames := 0
 
 func _process(_delta: float) -> bool:
+	# CAP_AUTOPICK=1: in a battle, take the first power card whenever the pick opens, so a
+	# movie of a run plays on by itself (dev168)
+	if OS.get_environment("CAP_AUTOPICK") == "1" and current_scene != null and current_scene.get("picking") == true:
+		var offer: Array = current_scene._offer()
+		if not offer.is_empty():
+			current_scene._pick_card(offer[0])
 	if _pending.is_empty() or current_scene == null:
 		return false
 	_frames += 1

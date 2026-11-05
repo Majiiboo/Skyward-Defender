@@ -18,6 +18,9 @@ next to project.godot (the sim save folder, so the real save is never touched), 
   loadouts, card pictures). `G --headless --path . --script res://tools/dev/smoke.gd`; exit 1 on failure.
   Run it before every build.
 - `capture.gd`: screenshot of a menu page with a made-up save (save_rich.json) in the sim save
+  folder; CAP_AUTOPICK=1 + CAP_SCENE=res://battle.tscn + --write-movie x.avi --quit-after N = a
+  battle movie that picks its own cards (pull frames with ffmpeg). Headless runs with sound end
+  with "N ObjectDB instances leaked": audio playbacks the dummy driver never closes, harmless.
   folder. Env CAP_SCENE, CAP_PAGE (Gear tab), CAP_WS (Workshop sub-tab), CAP_SAVE; see the file head.
 - `turn_capture.gd`: the pilot alone, swinging his aim left to right over a second (checks the
   turn-around). `bug_capture.gd`: the four Hive bugs drawn large and animating (tune EnemyRig

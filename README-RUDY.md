@@ -183,6 +183,12 @@ upgrades, merges, Store purchases and chest opens, quest claims. Settings > Soun
 the pause menu's Sound button switch it off. Music is still "coming". The list of sounds in
 sfx.gd is the shopping list for a sound pack.
 
+Update 4: the fun pass, part three: SEE IT COMING. A Spitter now telegraphs every spit: a
+third of a second before the glob, its sac flashes, a ring closes on its mouth and a short
+rising "charge" sound plays, so dodging is a decision you can make instead of luck (the
+Archero rule: every attack is announced). Dev: tools/dev/capture.gd CAP_AUTOPICK=1 lets a
+battle movie play on by itself (it takes the first card at every pick).
+
 ## dev167: your playtest, round one (the quick fixes)
 
 - TURRETS PAGE WAS EMPTY: a bug of mine from dev149 (the card depth layer took the spot the
