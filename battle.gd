@@ -79,6 +79,8 @@ var max_hearts := 3
 const MAGNET_BASE := 90.0           # gem pull range at the start of a run (px); each Magnet card adds 30
 var magnet_radius := MAGNET_BASE
 var magnet_level := 0
+const BASE_SHIELD := 140.0       # the base before gear (Gear's Stats page reads these too)
+const BASE_HULL := 100.0
 var hull_max := 100.0
 var shield_max := 150.0
 var card_levels := {}
@@ -186,6 +188,9 @@ var _boss_flash := 0.0            # the bar flashes when a layer breaks
 var _aegis_flash := 0.0           # the Aegis shell flares when the card is picked
 # card overcharges (third pick of a card, Cards.OVERCHARGE)
 var _crit6 := false
+var _crit_rate := 0.05            # chance a bolt crits (gear milestones)
+var _crit_dmg := 1.5              # a crit hits this many times as hard
+var _base_dr := 0.0               # the base takes this much less damage
 var _burst_pierce := false
 var _gem_shield := false
 var _shield_rate := 0.0            # Shield Recharge card: share of the max shield restored per second
@@ -336,8 +341,8 @@ func _start_stage() -> void:
 	game_over = false
 	hearts = 3
 	max_hearts = 3
-	shield_max = 140.0
-	hull_max = 100.0
+	shield_max = BASE_SHIELD
+	hull_max = BASE_HULL
 	shield = shield_max
 	hull = hull_max
 	score = 0
@@ -414,8 +419,15 @@ func _start_stage() -> void:
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
 	# the shield never regenerates (Rudy, dev108); the Ion 6-piece bonus makes it bigger instead
-	shield_max *= gs.shield
+	shield_max *= gs.shield * gs.fortress
 	shield = shield_max
+	# combat stats from gear milestones (GearData.MILESTONE): crits, damage boost, the base
+	hull_max *= gs.fortress
+	hull = hull_max
+	_crit_rate = gs.crit_rate
+	_crit_dmg = gs.crit_dmg
+	damage_mult *= 1.0 + gs.dmg_boost
+	_base_dr = clampf(gs.base_dr, 0.0, 0.6)
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
 	_turret_dmg_mult = gs.turret_dmg
@@ -846,12 +858,13 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		_shot_n += 1
 		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
 		var crit: bool = _crit6 and _shot_n % 6 == 0
+		var lucky: bool = rng.randf() < _crit_rate   # a critical hit (crit rate / crit damage)
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
-			"dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0),
-			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail,
+			"dmg": float(w.damage) * damage_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
+			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % 5 == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
 			"frost": frost_level > 0, "rail": rail or rail_gun})
@@ -1618,6 +1631,7 @@ func _update_prism(t: Dictionary, delta: float) -> void:
 # ------------------------------------------------------------------ damage, effects, end
 
 func _hurt_base(amount: float) -> void:
+	amount *= 1.0 - _base_dr   # gear milestones (Chest)
 	hit_t = 0.0
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)

@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev129 (version/code=129 and version/name="1.0-dev129" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev130 (version/code=130 and version/name="1.0-dev130" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,19 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev130: combat stats, gear milestones, Stats page
+
+- New combat stats: crit rate (5% to start), crit damage (x1.5 to start), damage boost,
+  base damage reduction and fortress HP (shield and hull).
+- Gear milestones: every piece earns a bonus at Lv.5 and again at Lv.10. Weapon = crit
+  rate +3%, Helmet = crit damage +15%, Chest = base damage taken -4%, Gauntlets = damage
+  boost +4%, Boots = fortress HP +6%, Jetpack = crit rate +2%. A gold "MILESTONE!" shows
+  when a piece reaches one; its details say what it gives.
+- In battle a critical bolt hits harder and looks bigger.
+- Gear page: a STATS button beside the pilot shows your damage per hit, shots per second,
+  damage per second, crits, hearts, the base's shield, hull and damage reduction, and each
+  turret on the base.
 
 ## dev129: level ring on Home
 

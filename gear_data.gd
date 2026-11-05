@@ -42,6 +42,22 @@ const SETS := {
 		"thruster": "pressure", "weapon": "frost_rifle"},
 }
 
+# Gear milestones (Rudy, dev130): every piece earns a bonus at Lv.5 and again at Lv.10, and these
+# are where the combat stats come from (crit rate, crit damage, damage boost, the base's damage
+# reduction and fortress HP). stat = key in stats(); per = added at each milestone.
+const MILESTONE := {
+	"Weapon":    {"stat": "crit_rate", "per": 0.03, "text": "Crit rate +3%"},
+	"Helmet":    {"stat": "crit_dmg", "per": 0.15, "text": "Crit damage +15%"},
+	"Chest":     {"stat": "base_dr", "per": 0.04, "text": "Base damage taken -4%"},
+	"Gauntlets": {"stat": "dmg_boost", "per": 0.04, "text": "Damage boost +4%"},
+	"Boots":     {"stat": "fortress", "per": 0.06, "text": "Fortress HP +6%"},
+	"Jetpack":   {"stat": "crit_rate", "per": 0.02, "text": "Crit rate +2%"},
+}
+const BASE_CRIT_RATE := 0.05
+const BASE_CRIT_DMG := 1.5
+
+static func milestones(level: int) -> int:
+	return level / 5
 # what each set's weapon does (Gear page)
 const WEAPON_TEXT := {"laser_pistol": "Single shots", "dual_minis": "Twin shots",
 	"pulse_cannon": "Heavy shots", "railgun": "Piercing shots",
@@ -136,6 +152,7 @@ static func stats(save: Dictionary) -> Dictionary:
 	var st := {"damage": 1.0, "fire_rate": 1.0, "aim": 1.0, "recovery": 1.0, "hearts": 0, "magnet": 0.0,
 		"auto_fire": 1.0, "gem_xp": 1.0, "coins": 1.0, "shield_regen": 1.0, "refreshes": 0, "pierce5": false,
 		"turret_dmg": 1.0, "turret_rate": 1.0, "pilot_xp": 1.0, "shield": 1.0, "chill": false,
+		"crit_rate": BASE_CRIT_RATE, "crit_dmg": BASE_CRIT_DMG, "dmg_boost": 0.0, "base_dr": 0.0, "fortress": 1.0,
 		"weapon": "laser_pistol", "thruster": "flame"}
 	for s in SLOTS:
 		var id: String = gear.equipped[s]
@@ -154,6 +171,9 @@ static func stats(save: Dictionary) -> Dictionary:
 			"Jetpack":
 				st.auto_fire = 1.0 + per * lv
 				st.thruster = SETS[ITEMS[id].set].thruster
+		# its milestones (Lv.5, Lv.10)
+		var ms: Dictionary = MILESTONE[s]
+		st[ms.stat] = float(st[ms.stat]) + float(ms.per) * milestones(lv)
 		# each piece's small set stat
 		match String(ITEMS[id].set):
 			"ion": st.gem_xp += 0.03

@@ -174,6 +174,12 @@ func _build() -> void:
 	_suit_btn.pressed.connect(_toggle_suit)
 	stage.add_child(_suit_btn)
 	stage.resized.connect(func(): _suit_btn.position = Vector2(stage.size.x * 0.5 - 80.0, stage.size.y - 30.0))
+	# Stats: your numbers right now (pilot, base, turrets)
+	var stats_btn := UIKit.ghost_button("STATS", 11)
+	stats_btn.custom_minimum_size = Vector2(64, 26)
+	stats_btn.pressed.connect(_show_stats)
+	stage.add_child(stats_btn)
+	stage.resized.connect(func(): stats_btn.position = Vector2(stage.size.x - SLOT_PX - 74.0, 4.0))
 	_paint_suit()
 	# selected piece: stats + upgrade, right under the pilot (used most)
 	var up_row := HBoxContainer.new()
@@ -292,6 +298,13 @@ func _select(slot: String) -> void:
 	# short and plain (Rudy): name, the main stat with its next level, the set's extra
 	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < GearData.MAX_LEVEL else "  (max)"
 	_detail.text = "%s  Lv.%d\n%s %s%s\n%s" % [info.name, lv, st.text, _stat_text(slot, lv), next_txt, set_info.minor]
+	# its milestone (Lv.5 and Lv.10): what it gives, and how many it has reached
+	var gms: Dictionary = GearData.MILESTONE[slot]
+	var got := GearData.milestones(lv)
+	if got >= 2:
+		_detail.text += "\n%s  x2 (max)" % gms.text
+	else:
+		_detail.text += "\n%s  %s" % [gms.text, ("x%d, next Lv.10" % got) if got > 0 else "at Lv.5"]
 	if slot == "Weapon":
 		_detail.text += "\n" + GearData.WEAPON_TEXT[set_info.weapon]
 	var cost := GearData.upgrade_cost(lv)
@@ -345,6 +358,8 @@ func _on_upgrade_pressed() -> void:
 	if not await _pay_upgrade(cost, lv):
 		return
 	gear.levels[id] = lv + 1
+	if GearData.milestones(lv + 1) > GearData.milestones(lv):
+		_milestone_toast("%s reached Lv.%d: %s" % [GearData.ITEMS[id].name, lv + 1, GearData.MILESTONE[selected_slot].text])
 	_save()
 	_select(selected_slot)
 	if _plat:
@@ -369,6 +384,79 @@ func _show_page(i: int) -> void:
 		_refresh_workshop()
 	else:
 		_select(selected_slot)
+
+
+# ------------------------------------------------------------------ stats panel
+# Your numbers right now (Rudy): the pilot's damage, crits and fire rate; the base's shield,
+# hull and damage reduction; each turret on the base. Power cards in a run add to these.
+const BATTLE := preload("res://battle.gd")
+
+func _show_stats() -> void:
+	var data := _read()
+	var gs := GearData.stats(data)
+	var w: Dictionary = BATTLE.WEAPONS[gs.weapon]
+	var hit: float = float(w.damage) * float(gs.damage) * (1.0 + float(gs.dmg_boost))
+	var per_s: float = float(w.projectiles) * float(gs.fire_rate) / float(w.interval)
+	var crit_avg: float = 1.0 + float(gs.crit_rate) * (float(gs.crit_dmg) - 1.0)
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.78)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var p := UIKit.panel(14)
+	var pw := minf(size.x - 32.0, 420.0)
+	p.custom_minimum_size = Vector2(pw, 0)
+	p.position = Vector2((size.x - pw) * 0.5, 70.0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UIKit.label("STATS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.header("PILOT"))
+	_stat_rows(v, [
+		["Damage per hit", "%.2f" % hit],
+		["Shots per second", "%.1f" % per_s],
+		["Damage per second", "%.1f" % (hit * per_s * crit_avg)],
+		["Crit rate", "%d%%" % roundi(float(gs.crit_rate) * 100.0)],
+		["Crit damage", "x%.2f" % float(gs.crit_dmg)],
+		["Damage boost", "+%d%%" % roundi(float(gs.dmg_boost) * 100.0)],
+		["Hearts", str(3 + int(gs.hearts))],
+	])
+	v.add_child(UIKit.header("BASE"))
+	_stat_rows(v, [
+		["Shield", "%d" % roundi(BATTLE.BASE_SHIELD * float(gs.shield) * float(gs.fortress))],
+		["Hull (fortress HP)", "%d" % roundi(BATTLE.BASE_HULL * float(gs.fortress))],
+		["Damage taken", "-%d%%" % roundi(float(gs.base_dr) * 100.0)],
+	])
+	v.add_child(UIKit.header("TURRETS"))
+	var tdat := Turrets.read(data)
+	var rows: Array = []
+	for i in Turrets.MOUNTS:
+		var id: String = tdat.loadout[i]
+		if id == "" or not Turrets.mount_open(i, t_unlocked) or pilot_level < int(Turrets.TURRETS[id].unlock):
+			continue
+		var tr := Turrets.one_tracks(tdat.tracks, id)
+		var s := Turrets.stats(id, tr)
+		var dmg: float = float(s.damage) * float(gs.turret_dmg)
+		var every: float = float(s.every) / float(gs.turret_rate)
+		rows.append(["%s Lv.%d" % [Turrets.TURRETS[id].name, Turrets.level_of(tr)], "%.1f every %.2f s" % [dmg, every]])
+	if rows.is_empty():
+		rows.append(["No turrets on the base", "-"])
+	_stat_rows(v, rows)
+	v.add_child(UIKit.label("Power cards in a run add to these", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var close := UIKit.ghost_button("Close", 14)
+	close.custom_minimum_size = Vector2(0, 40)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)
+
+# label on the left, value on the right
+func _stat_rows(box: VBoxContainer, rows: Array) -> void:
+	for r in rows:
+		var h := HBoxContainer.new()
+		var l := UIKit.label(r[0], 13, Color(0.82, 0.9, 1.0))
+		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		h.add_child(l)
+		h.add_child(UIKit.label(r[1], 13, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT))
+		box.add_child(h)
 
 # ------------------------------------------------------------------ workshop page
 # Merging (Rudy): 3 of a part -> 1 of the next (Parts.MERGE). Your parts in a row, then
