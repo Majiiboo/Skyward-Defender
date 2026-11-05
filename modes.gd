@@ -145,7 +145,8 @@ func _card(m: Dictionary) -> Control:
 		var elite: bool = m.id == "elite"
 		b.pressed.connect(func():
 			_save_patch({"selected_elite": elite})
-			get_tree().change_scene_to_file("res://battle.tscn"))
+			if Energy.try_play(self, elite):   # a stage costs power tokens
+				get_tree().change_scene_to_file("res://battle.tscn"))
 	b.custom_minimum_size = Vector2(110, 38)
 	row.add_child(b)
 	v.add_child(row)

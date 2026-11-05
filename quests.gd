@@ -213,5 +213,5 @@ func _go(stat: String) -> void:
 	elif where.begins_with("gear:"):
 		get_tree().root.set_meta("gear_page", int(where.get_slice(":", 1)))
 		get_tree().change_scene_to_file("res://gear.tscn")
-	else:
+	elif Energy.try_play(self, bool(Progress.read().get("selected_elite", false))):   # power tokens
 		get_tree().change_scene_to_file("res://battle.tscn")

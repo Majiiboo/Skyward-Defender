@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev136 (code 136).
+  go UP every package (same signing key, install-over). Current: dev137 (code 137).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -172,6 +172,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    Boss Rush time) run in 30-DAY SEASONS (Rudy) with a visible countdown ("Ends in 29 days");
    rewards by rank band when the season ends, then everyone starts fresh. Needs a
    server (2.0 online), like codes and events.
+21. POWER TOKENS DONE (dev137, Rudy): energy.gd Energy (MAX 60, +1 per 6 min, STAGE_COST 5, ELITE_COST 8,
+   PATROL_COST 5, crystal REFILL 30 for 50; save "energy"/"energy_t"). Energy.try_play() gates every
+   way into battle (hub nav + SelectGo, modes, stage_map, quests _go, battle Next/Retry); hub
+   _energy_btn counter (refreshes every 2 s). Open question for Rudy: free / cheaper tutorial stages.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

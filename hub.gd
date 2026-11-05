@@ -81,6 +81,7 @@ var _std_btn: Button
 var _elite_btn: Button
 var _coin_btn: Button
 var _crystal_btn: Button
+var _energy_btn: Button     # power tokens (Energy)
 var _tag_timer: SceneTreeTimer = null
 var _frame: HomeFrame = null
 var _nav_layers := {}   # tab name -> {layer name: TextureRect}
@@ -286,6 +287,16 @@ func _build_home() -> void:
 	_crystal_btn = _pill_button("CrystalButton", "ui_crystal", _fmt(crystals))
 	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Crystals: premium currency.\nComing soon."))
 	dockL.add_child(_crystal_btn)
+	# power tokens: playing a stage and collecting Patrol cost them (Energy)
+	_energy_btn = _pill_button("EnergyButton", "ui_energy", "")
+	_energy_btn.pressed.connect(func(): _side_popup("POWER", "A stage: %d  ·  Elite: %d\nCollect Patrol: %d\n+1 every 6 min, up to %d" % [Energy.STAGE_COST, Energy.ELITE_COST, Energy.PATROL_COST, Energy.MAX]))
+	dockL.add_child(_energy_btn)
+	_on_energy_changed()
+	var et := Timer.new()
+	et.wait_time = 2.0
+	et.autostart = true
+	et.timeout.connect(_on_energy_changed)
+	add_child(et)
 	var open := _icon_button("OpenCurrencyButton", "plus", 36.0, 26.0, 14, Color(CYAN, 0.4))
 	open.pressed.connect(func(): _on_nav_tap("NavStore", "res://store.tscn"))   # + opens the Store (coins, crystals)
 	dockL.add_child(open)
@@ -681,7 +692,7 @@ func _write_selection() -> void:
 
 func _wire_panels() -> void:
 	$SelectPanel/SelectClose.pressed.connect(func(): _hide_panels())
-	$SelectPanel/SelectGo.pressed.connect(func(): _smooth_change_scene("res://battle.tscn"))
+	$SelectPanel/SelectGo.pressed.connect(func(): if Energy.try_play(self, mode == "Elite"): _smooth_change_scene("res://battle.tscn"))
 	$PatrolPanel/PatrolClose.pressed.connect(func(): _hide_panels())
 	$PatrolPanel/PatrolClaim.pressed.connect(func(): $PatrolPanel/PatrolLabel.text = "Auto-Patrol Gain\nCoins 34/h, Parts 8/h\nClaim will give 612 coins, 18 parts, 144 gems (show-only).\nNo granting yet: battle rewards update enables it.")
 	$InfoPanel/InfoClose.pressed.connect(func(): _hide_panels())
@@ -704,6 +715,8 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 	if _transitioning: return
 	# on Home, the gold Battle tile is the Play button: tapping it starts the battle
 	if tapped == "NavBattle" and _current_view == null:
+		if not Energy.try_play(self, mode == "Elite"):   # a stage costs power tokens
+			return
 		_spawn_spark_burst(_nav_btn("NavBattle"))
 		_smooth_change_scene("res://battle.tscn")
 		return
@@ -1026,6 +1039,16 @@ func _find_button(n: Node, nm: String) -> Button:
 			return r
 	return null
 
+# the power counter: tokens / max, and the next one's countdown when not full
+func _on_energy_changed() -> void:
+	if _energy_btn == null:
+		return
+	var s := Progress.read()
+	var e := Energy.update(s)
+	_energy_btn.text = "%d/%d" % [e, Energy.MAX]
+	_load_save()
+	_crystal_btn.text = _fmt(crystals)
+
 # ------------------------------------------------------------- Patrol (offline farming)
 # Patrol farms a cleared stage wave by wave while you're away (Patrol class). This window:
 # pick the stage, see what an hour brings, see what is stored (up to 8 h), collect it.
@@ -1117,17 +1140,21 @@ func _patrol_fill() -> void:
 			have.add_child(UIKit.label("Nothing yet: a wave every 30 s", 12, MUTED))
 		v.add_child(have)
 		var left := Patrol.collects_left(p)
-		var claim := UIKit.gold_button("Collect  (%d left today)" % left if left > 0 else "Back tomorrow", 15)
+		var claim := UIKit.gold_button(("Collect  ·  %d power  (%d left today)" % [Energy.PATROL_COST, left]) if left > 0 else "Back tomorrow", 15)
 		claim.custom_minimum_size = Vector2(0, 44)
 		claim.disabled = got.is_empty() or left <= 0
 		claim.pressed.connect(func():
 			var s := Progress.read()
+			if not Energy.try_spend(s, Energy.PATROL_COST):   # collecting costs power tokens
+				Energy.show_short(self, Energy.PATROL_COST)
+				return
 			var g := Patrol.claim(s)
 			Progress.write(s)
 			_load_save()
 			_coin_btn.text = _fmt(coins)
 			_crystal_btn.text = _fmt(crystals)
 			_patrol_fill()
+			_on_energy_changed()
 			_patrol_toast("+ " + Progress.reward_text(g)))
 		v.add_child(claim)
 	var close := UIKit.ghost_button("Close", 14)

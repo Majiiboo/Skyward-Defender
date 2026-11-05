@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev136 (version/code=136 and version/name="1.0-dev136" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev137 (version/code=137 and version/name="1.0-dev137" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,15 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev137: power tokens
+
+- Playing costs power tokens: 5 for a stage (8 for Elite), whether you win or lose, and
+  collecting Patrol costs 5. They refill 1 every 6 minutes up to 60 (empty to full in 6 h).
+- The counter sits at the top of Home beside coins and crystals (e.g. 45/60).
+- Every way into a battle pays first: Home's Play, Modes, the Stage Map, Quests' Go and the
+  end screen's Next stage / Retry. Short of tokens: a box shows what you have, when the
+  next one comes, and a refill of +30 for 50 crystals.
 
 ## dev136: Patrol limits
 
