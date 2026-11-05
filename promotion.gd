@@ -224,3 +224,66 @@ static func etrial_won(save: Dictionary, el: String, k: int) -> bool:
 		save["etrials"] = t
 		return true
 	return false
+
+# ---- ADVANTAGES AND DISADVANTAGES (Rudy, dev172) ----
+# Every rank trial and every element step carries one or two advantages and one or two
+# disadvantages: named twists the fight is built around. battle.gd applies them (apply_mods),
+# the ladders show them, the HUD announces them at the start.
+const MODS := {
+	"rapid":        {"name": "Rapid fire",     "good": true,  "text": "Fire rate +25%"},
+	"sharpshooter": {"name": "Sharpshooter",   "good": true,  "text": "Crit rate +20%"},
+	"fortified":    {"name": "Fortified",      "good": true,  "text": "Base shield +50%"},
+	"reinforced":   {"name": "Reinforced",     "good": true,  "text": "Pilot HP +50%"},
+	"turret_boost": {"name": "Turret boost",   "good": true,  "text": "Turrets +50% damage"},
+	"overcharge":   {"name": "Overcharge",     "good": true,  "text": "Power cards come 50% faster"},
+	"swift_bugs":   {"name": "Swift bugs",     "good": false, "text": "Bugs move 25% faster"},
+	"thick_shells": {"name": "Thick shells",   "good": false, "text": "Bugs +25% health"},
+	"no_turrets":   {"name": "Turrets down",   "good": false, "text": "No turrets on the base"},
+	"double_spit":  {"name": "Double spit",    "good": false, "text": "Spitters spit twice as often"},
+	"weak_shield":  {"name": "Cracked shield", "good": false, "text": "Base shield halved"},
+}
+# per rank trial (index into RANKS), good ones first
+const RANK_MODS := [
+	["rapid", "swift_bugs"],
+	["fortified", "thick_shells"],
+	["sharpshooter", "double_spit"],
+	["overcharge", "no_turrets"],
+	["turret_boost", "weak_shield"],
+	["reinforced", "swift_bugs", "thick_shells"],
+	["rapid", "sharpshooter", "no_turrets"],
+	["fortified", "double_spit"],
+	["overcharge", "thick_shells", "weak_shield"],
+	["turret_boost", "swift_bugs", "double_spit"],
+]
+# per element step
+const ETRIAL_MODS := [
+	["rapid", "swift_bugs"],
+	["fortified", "thick_shells"],
+	["sharpshooter", "no_turrets"],
+	["overcharge", "double_spit"],
+	["reinforced", "thick_shells", "weak_shield"],
+]
+
+# the mods of the fight: a rank trial (promo >= 0), an element step, or none
+static func mods_for(promo: int, etrial: Dictionary) -> Array:
+	if promo >= 0:
+		return Array(RANK_MODS[clampi(promo, 0, RANK_MODS.size() - 1)])
+	if not etrial.is_empty():
+		return Array(ETRIAL_MODS[clampi(int(etrial.get("step", 0)), 0, ETRIAL_MODS.size() - 1)])
+	return []
+
+# "+ Rapid fire  − Swift bugs" (short, for a ladder row)
+static func mods_short(mods: Array) -> String:
+	var bits: Array = []
+	for m in mods:
+		if MODS.has(m):
+			bits.append(("+ " if MODS[m].good else "− ") + String(MODS[m].name))
+	return "   ".join(bits)
+
+# the long form, one per line, for the pause menu and the start banner
+static func mods_lines(mods: Array) -> Array:
+	var out: Array = []
+	for m in mods:
+		if MODS.has(m):
+			out.append("%s %s: %s" % ["ADVANTAGE" if MODS[m].good else "DISADVANTAGE", String(MODS[m].name).to_upper(), MODS[m].text])
+	return out

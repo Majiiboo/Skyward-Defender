@@ -25,6 +25,7 @@ func _initialize() -> void:
 	_check_heroes()
 	_check_turrets()
 	_check_etrials()
+	_check_mods()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
 
@@ -344,3 +345,20 @@ func _check_etrials() -> void:
 	_expect(int(Promotion.etrial_reward(0, false, "solar").coins) == 150 and not Promotion.etrial_reward(0, false, "solar").has("shards"), "a replay pays half the coins, no shards")
 	Progress.grant(s, r)
 	_expect(Heroes.shards(Heroes.read(s), "ember") == 10 and int(s.coins) == 300, "grant pays the shards and coins")
+
+# trial advantages and disadvantages (dev172)
+func _check_mods() -> void:
+	_expect(Promotion.RANK_MODS.size() == Promotion.RANKS.size() and Promotion.ETRIAL_MODS.size() == Promotion.ETRIAL_STEPS, "every rank and every element step has its twists")
+	for lst in Promotion.RANK_MODS + Promotion.ETRIAL_MODS:
+		var good := 0
+		var bad := 0
+		for m in lst:
+			_expect(Promotion.MODS.has(m), "unknown mod %s" % m)
+			if Promotion.MODS.has(m):
+				if Promotion.MODS[m].good:
+					good += 1
+				else:
+					bad += 1
+		_expect(good >= 1 and bad >= 1, "a trial has at least one advantage and one disadvantage (%s)" % str(lst))
+	_expect(Promotion.mods_for(-1, {}).is_empty() and Promotion.mods_for(0, {}) == ["rapid", "swift_bugs"] and Promotion.mods_for(-1, {"el": "ion", "step": 2}) == ["sharpshooter", "no_turrets"], "mods_for picks the right list")
+	_expect(Promotion.mods_short(["rapid", "swift_bugs"]).begins_with("+ Rapid fire") and Promotion.mods_lines(["no_turrets"])[0].begins_with("DISADVANTAGE"), "short and long texts")

@@ -34,6 +34,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      "etrial"); battle `etrial` + _is_trial() (replaces every `promo < 0` check), rewards via
      Progress.grant, HUD + end screen; modes.gd _etrials pop-up (Elements button). ROSTER
      DEPTH rule (Rudy): two heroes / drones / turrets per element over time, different builds.
+     TRIAL MODS (Rudy): Promotion.MODS (6 good, 5 bad), RANK_MODS per rank, ETRIAL_MODS per step,
+     mods_for / mods_short / mods_lines; battle _mods applied after stats (_bug_speed,
+     _spit_mult, no_turrets in the mount loop, thick_shells in _hp_mult), HUD banner 7 s, pause
+     lines; ladders show them. Hero cards carry "pic" (weapon art) until Luna paints card art.
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old

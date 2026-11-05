@@ -246,6 +246,14 @@ The first clear of a step pays that element's hero 10, 15, 20, 30, 40 shards plu
 1,800 coins, and the last step 20 crystals; a replay pays half the coins. No stars, no stage
 unlocks, no drops: the trial pays. The HUD says "FIRE TRIAL 2", the end screen shows the
 step and the reward.
+- ADVANTAGES AND DISADVANTAGES (your idea): every rank trial and every element step carries
+  one or two of each, named twists the fight is built around. Advantages: Rapid fire (+25%),
+  Sharpshooter (crit +20%), Fortified (base shield +50%), Reinforced (pilot HP +50%), Turret
+  boost (+50%), Overcharge (cards 50% faster). Disadvantages: Swift bugs (+25% speed), Thick
+  shells (+25% health), Turrets down, Double spit, Cracked shield (half). The ladders show
+  them under each row ("+ Rapid fire   − Swift bugs"), the battle announces them under the
+  top bar for the first seconds, and the pause menu lists them. The mix per rank and per step
+  is in promotion.gd (RANK_MODS, ETRIAL_MODS): easy to change.
 
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 

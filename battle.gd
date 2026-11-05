@@ -93,6 +93,9 @@ var _promoted := false            # this win earned the next rank (end screen)
 var etrial := {}                  # an element trial (Promotion.take_etrial): {"el", "step"}; {} = none
 var _etrial_first := false        # this win cleared the step for the first time
 var _etrial_reward := {}          # what it paid (end screen)
+var _mods: Array = []             # the trial advantages and disadvantages in force (Promotion.MODS)
+var _bug_speed := 1.0             # Swift bugs
+var _spit_mult := 1.0             # Double spit
 var waves: Array = []
 var wave_index := 0
 var wave_queue: Array = []        # enemy ids still to spawn this wave
@@ -464,6 +467,27 @@ func _start_stage() -> void:
 	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
 	_hero_id = String(gs.get("hero", "rook"))
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
+	# the trial twists (Promotion.MODS): advantages and disadvantages of this fight
+	_mods = Promotion.mods_for(promo, etrial)
+	_bug_speed = 1.25 if _mods.has("swift_bugs") else 1.0
+	_spit_mult = 0.5 if _mods.has("double_spit") else 1.0
+	if _mods.has("rapid"):
+		fire_rate_mult *= 1.25
+	if _mods.has("sharpshooter"):
+		_crit_rate += 0.2
+	if _mods.has("fortified"):
+		shield_max *= 1.5
+		shield = shield_max
+	if _mods.has("weak_shield"):
+		shield_max *= 0.5
+		shield = shield_max
+	if _mods.has("reinforced"):
+		pilot_hp_max *= 1.5
+		pilot_hp = pilot_hp_max
+	if _mods.has("turret_boost"):
+		_turret_dmg_mult *= 1.5
+	if _mods.has("overcharge"):
+		_gem_xp_mult *= 1.5
 	_bolt_set = String(gs.element)   # bolts in the hero's element colour
 	for bk in ["bolt", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]:
 		if _fx_tex.has(bk):
@@ -537,7 +561,7 @@ func _start_stage() -> void:
 	# a turret stands on the base only if its mount is open (stages) and you OWN it (bought, dev172)
 	var tdat := Turrets.read(sv)
 	for i in turret_loadout.size():
-		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]):
+		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]) and not _mods.has("no_turrets"):
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
 	for t in turrets:
 		if _lid_anim.has(t.mount):
@@ -603,7 +627,7 @@ func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var e := {"id": next_enemy_id, "type": id, "pos": pos,
 		"hp": float(def.hp) * _hp_mult(), "hp_max": float(def.hp) * _hp_mult(),
-		"speed": float(def.speed) * StageData.speed_mult(stage), "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
+		"speed": float(def.speed) * StageData.speed_mult(stage) * _bug_speed, "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
 	next_enemy_id += 1
@@ -1161,7 +1185,7 @@ func _update_enemies(delta: float) -> void:
 					Sfx.play("spit")   # the telegraph starts (drawn in _draw_enemy)
 				e.fire_t -= delta
 				if e.fire_t <= 0.0 and e.pos.y > 40.0:
-					e.fire_t = float(def.fire_every)
+					e.fire_t = float(def.fire_every) * _spit_mult
 					e.shots = int(e.get("shots", 0)) + 1
 					# every other shot goes for the base instead of the pilot
 					var aim_at: Vector2 = soldier_pos if e.shots % 3 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
@@ -2107,6 +2131,8 @@ func _fill_pause() -> void:
 	title.add_theme_font_override("font", title_font)
 	v.add_child(title)
 	v.add_child(UIKit.label(("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper()) if promo >= 0 else ("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()]), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	for ml in Promotion.mods_lines(_mods):   # the trial twists
+		v.add_child(UIKit.label(String(ml), 11, UIKit.GOLD if String(ml).begins_with("ADV") else Color(1.0, 0.5, 0.55), HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("%s  ·  Wave %d of %d  ·  %02d:%02d" % [String(StageData.area(stage).name), mini(wave_index + 1, waves.size()), waves.size(), int(time_alive) / 60, int(time_alive) % 60], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# objectives
 	v.add_child(UIKit.header("STARS"))
@@ -3607,6 +3633,14 @@ func _draw_hud() -> void:
 		_hc.draw_colored_polygon(Glass.box(fill, 3.0).slice(0, -1), Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25))
 	_hc.draw_polyline(Glass.box(bar, 3.0), Color(1.0, 0.45, 0.5, 0.5), 1.0, true)
 	_hc.draw_string(hud_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 8, Color.WHITE)
+	# a trial's advantages and disadvantages, announced under the bar for the first seconds
+	if not _mods.is_empty() and time_alive < 7.0:
+		var ma: float = clampf(7.0 - time_alive, 0.0, 1.0) * clampf(time_alive * 2.0, 0.0, 1.0)
+		var my := HUD_H + 30.0
+		for ml in Promotion.mods_lines(_mods):
+			var good: bool = String(ml).begins_with("ADV")
+			_hc.draw_string(hud_font, Vector2(0, my), String(ml), HORIZONTAL_ALIGNMENT_CENTER, int(FIELD_W), 11, Color(UIKit.GOLD if good else Color(1.0, 0.5, 0.55), ma))
+			my += 16.0
 	# run XP: a rounded track under the capsule, filled cyan to purple, level on a chip
 	var need := _xp_need()
 	var xp := clampf(run_xp / need, 0.0, 1.0)
@@ -3908,7 +3942,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0)
+	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0)
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
