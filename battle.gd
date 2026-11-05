@@ -2964,12 +2964,12 @@ func _draw_turret(t: Dictionary) -> void:
 	if lidded:
 		# hinge on the far edge of the hatch; closed = the lid lies flat as the hive's top face
 		# (squashed for the three-quarter view), open = flipped up and back past vertical
-		var k := smoothstep(0.0, 1.0, float(t.get("lid", 0.0)))
-		var sy := lerpf(0.42, -0.85, k)
+		var lk := smoothstep(0.0, 1.0, float(t.get("lid", 0.0)))
+		var sy := lerpf(0.42, -0.85, lk)
 		if absf(sy) > 0.03:
 			var hinge := rect.position + Vector2(rect.size.x * 0.5, rect.size.y * 0.035)
 			var lw := rect.size.x * 0.46
-			draw_set_transform(hinge, 0.0, Vector2(1.0 - 0.12 * k, sy))
+			draw_set_transform(hinge, 0.0, Vector2(1.0 - 0.12 * lk, sy))
 			draw_texture_rect(_tex["swarm_lid"], Rect2(-lw * 0.5, 0.0, lw, lw), false, Color(1, 1, 1, a))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
