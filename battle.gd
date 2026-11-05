@@ -2234,7 +2234,7 @@ func _card_pic(id: String, h: float) -> Control:
 			row.add_child(p)
 		return row
 	var icon := TextureRect.new()
-	var pic_path := "res://cards/pic_%s.png" % id
+	var pic_path := String(Cards.def(id).get("pic", "res://cards/pic_%s.png" % id))   # a card may name its own picture (hero cards borrow the weapon art until Luna paints them)
 	if ResourceLoader.exists(pic_path):
 		icon.texture = load(pic_path)
 		icon.custom_minimum_size = Vector2(0, h)

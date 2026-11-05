@@ -58,17 +58,17 @@ const CARDS := {
 	# hero cards (Rudy, dev172): one per hero, offered only while he is on duty ("hero" key).
 	# They BUILD UP like every card: pick 1 the basic form, pick 2 more of it, pick 3 (the
 	# overcharge) his max specialty. Not a legendary handed over: earned in the run.
-	"rook_twin":    {"name": "Twin Trigger",  "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "rook",
+	"rook_twin":    {"name": "Twin Trigger",  "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "rook", "pic": "res://gear/ion_weapon_t1.png",
 		"desc": "Every 4th bolt fires a twin (then every 3rd, then every 2nd)"},
-	"sparks_weld":  {"name": "Arc Weld",      "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "sparks",
+	"sparks_weld":  {"name": "Arc Weld",      "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "sparks", "pic": "res://gear/scavenger_weapon_t1.png",
 		"desc": "Every 3rd bolt arcs to 1 more bug per level"},
-	"frost_freeze": {"name": "Deep Freeze",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "frost",
+	"frost_freeze": {"name": "Deep Freeze",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "frost", "pic": "res://gear/frost_weapon_t1.png",
 		"desc": "Hits slow bugs 20% (more per level)"},
-	"hollow_phase": {"name": "Phase Bolts",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "hollow",
+	"hollow_phase": {"name": "Phase Bolts",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "hollow", "pic": "res://gear/void_weapon_t1.png",
 		"desc": "Bolts pass through 1 more bug per level"},
-	"nyx_mark":     {"name": "Marked Prey",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "nyx",
+	"nyx_mark":     {"name": "Marked Prey",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "nyx", "pic": "res://gear/nightmare_weapon_t1.png",
 		"desc": "Crit rate +10% per level"},
-	"ember_burn":   {"name": "Afterburn",     "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "ember",
+	"ember_burn":   {"name": "Afterburn",     "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "ember", "pic": "res://gear/solar_weapon_t1.png",
 		"desc": "Hits set bugs burning: 5% HP a second, longer per level"},
 	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
