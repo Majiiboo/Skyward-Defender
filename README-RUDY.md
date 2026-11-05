@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev159 (version/code=159 and version/name="1.0-dev159" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev160 (version/code=160 and version/name="1.0-dev160" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,19 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev160: Luna's parts round 1 is in (chunks and drones first)
+
+- Luna delivered everything in LUNA-BRIEF-animation-parts.md v2: 4 turret pieces, 22 bug
+  pieces, 9 drone pieces (sources kept in art_src/parts_r1, cut by tools/cut_parts_r1.gd).
+- Death shards are now her painted chunks: a killed bug breaks into its own shell, legs,
+  wing halves and goo instead of square cuts of its body.
+- The drone is drawn from her pieces: the hull banks into its motion, the two ring
+  thrusters sit either side, tilt a beat behind the hull (follow-through) and the Scout's
+  ring props spin. Striker and Warden use their thruster pairs.
+- Not swapped yet: the Sentry head (Luna's "head without barrels" is a different angle from
+  the Sentry in the game, so it would change its look; kept for a Sentry redo), the Swarm
+  lid and the bug legs and feelers (next).
 
 ## dev159: Settings page with performance modes
 

@@ -271,6 +271,11 @@ func _ready() -> void:
 		_tex[n] = load("res://turrets/%s.png" % n)
 	for n in ["body_scout", "body_striker", "body_warden", "pod_blaster", "pod_beam", "pod_missile"]:
 		_tex[n] = load("res://drone/%s.png" % n)
+	for b in ["scout", "striker", "warden"]:   # Luna's drone parts (dev160), when cut
+		if ResourceLoader.exists("res://drone/%s_hull.png" % b):
+			_tex["hull_" + b] = load("res://drone/%s_hull.png" % b)
+			_tex["thruster_l_" + b] = load("res://drone/%s_thruster_l.png" % b)
+			_tex["thruster_r_" + b] = load("res://drone/%s_thruster_r.png" % b)
 	for n in ["blaster", "beam", "missile"]:
 		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
@@ -2332,6 +2337,7 @@ func _update_drone(delta: float) -> void:
 	_drone_v += ((tgt - _drone_p) * DRONE_K - _drone_v * DRONE_DAMP) * dt
 	_drone_p += _drone_v * dt
 	_drone_bank = lerpf(_drone_bank, clampf(_drone_v.x / 600.0, -0.35, 0.35), minf(1.0, dt * 8.0))
+	_drone_tilt = lerpf(_drone_tilt, _drone_bank, minf(1.0, dt * 4.0))   # the thrusters follow a beat later
 	var body: Dictionary = DroneData.BODIES[_drone.body]
 	var pod: Dictionary = DroneData.PODS[_drone.pod]
 	var p := _drone_pos()
@@ -2391,11 +2397,45 @@ func _draw_drone() -> void:
 	var bh: float = bw * bt.get_height() / bt.get_width()
 	var pw := 18.0
 	var ph: float = pw * pt.get_height() / pt.get_width()
+	var sq := Vector2(1.0 - absf(_drone_bank) * 0.25, 1.0)
+	var hull_key := "hull_" + String(_drone.body)
+	if _tex.has(hull_key):
+		# Luna's parts (dev160): hull, left and right thrusters. The thrusters follow the
+		# hull's bank a beat late (follow-through) and their props spin.
+		var look: Dictionary = DRONE_PARTS[_drone.body]
+		var ht: Texture2D = _tex[hull_key]
+		var hw: float = float(look.hull_w)
+		var hh: float = hw * ht.get_height() / ht.get_width()
+		var base := Transform2D(rot + _drone_bank, sq, 0.0, p)
+		for side in [-1.0, 1.0]:
+			var tt: Texture2D = _tex["thruster_%s_%s" % ["l" if side < 0.0 else "r", String(_drone.body)]]
+			var th: float = float(look.thr_h)
+			var tw: float = th * tt.get_width() / tt.get_height()
+			var at := Vector2(side * (hw * 0.5 + tw * float(look.thr_out)), float(look.thr_y) * hh)
+			# lagging tilt, plus a spin for the ring props (the picture turns round its centre)
+			var spin: float = time_alive * 9.0 * side if look.spin else 0.0
+			draw_set_transform_matrix(base * Transform2D(_drone_tilt * 0.5 + spin, at))
+			draw_texture_rect(tt, Rect2(-tw * 0.5, -th * 0.5, tw, th), false)
+		draw_set_transform_matrix(base)
+		draw_texture_rect(pt, Rect2(-pw * 0.5, -hh * 0.35 - ph * 0.5, pw, ph), false)
+		draw_texture_rect(ht, Rect2(-hw * 0.5, -hh * 0.5, hw, hh), false)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		return
 	# the body banks into its sideways motion and squeezes a touch as it does (3D feel)
-	draw_set_transform(p, rot + _drone_bank, Vector2(1.0 - absf(_drone_bank) * 0.25, 1.0))
+	draw_set_transform(p, rot + _drone_bank, sq)
 	draw_texture_rect(pt, Rect2(-pw * 0.5, -bh * 0.35 - ph * 0.5, pw, ph), false)
 	draw_texture_rect(bt, Rect2(-bw * 0.5, -bh * 0.5, bw, bh), false)
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# Luna's drone parts (dev160): how wide the hull is drawn, how tall a thruster is, how far
+# out from the hull's edge it sits (as a share of its own width), its height on the hull
+# (share of hull height, 0 = centre), and whether its ring prop spins.
+const DRONE_PARTS := {
+	"scout":   {"hull_w": 30.0, "thr_h": 20.0, "thr_out": 0.35, "thr_y": 0.0, "spin": true},
+	"striker": {"hull_w": 36.0, "thr_h": 34.0, "thr_out": 0.25, "thr_y": 0.0, "spin": false},
+	"warden":  {"hull_w": 32.0, "thr_h": 32.0, "thr_out": 0.3, "thr_y": 0.0, "spin": false},
+}
+var _drone_tilt := 0.0   # the thrusters' lagging bank
 
 # on the light layer: the pod's muzzle flash and beams
 func _draw_drone_light() -> void:
@@ -2973,34 +3013,50 @@ func _turret_tip(t: Dictionary) -> Vector2:
 const HIT_FLINCH_T := 0.12
 const SHARD_LIFE := 0.75
 var _shards: Array = []
-var _shard_atlas := {}   # enemy type -> [AtlasTexture x6]
+var _shard_atlas := {}   # enemy type -> [Texture2D]: Luna's chunk pieces (enemies/parts/<bug>_chunk_N.png, dev160), else six cuts of the body
 
 func _spawn_shards(e: Dictionary, def: Dictionary) -> void:
 	if not ["scout", "drifter", "spitter", "diver"].has(String(e.type)) or _shards.size() > 90:
 		return
 	if not _shard_atlas.has(e.type):
-		var tex: Texture2D = EnemyRig._t(String(e.type) + "_body")
-		var ts := tex.get_size()
 		var list: Array = []
-		for gy in 3:
-			for gx in 2:
-				var at := AtlasTexture.new()
-				at.atlas = tex
-				at.region = Rect2(ts.x * gx * 0.5, ts.y * gy / 3.0, ts.x * 0.5, ts.y / 3.0)
-				list.append(at)
+		for i in 6:   # Luna's painted chunks (shell, leg, wing half, goo...), slivers skipped
+			var cp := "res://enemies/parts/%s_chunk_%d.png" % [e.type, i]
+			if ResourceLoader.exists(cp):
+				var ct: Texture2D = load(cp)
+				if ct.get_width() >= 20:
+					list.append(ct)
+		if list.is_empty():
+			var tex: Texture2D = EnemyRig._t(String(e.type) + "_body")
+			var ts := tex.get_size()
+			for gy in 3:
+				for gx in 2:
+					var at := AtlasTexture.new()
+					at.atlas = tex
+					at.region = Rect2(ts.x * gx * 0.5, ts.y * gy / 3.0, ts.x * 0.5, ts.y / 3.0)
+					list.append(at)
 		_shard_atlas[e.type] = list
-	var s: float = float(def.size) * 1.35 / 220.0
+	var bug_px: float = float(def.size) * 1.35
 	var tilt: float = float(e.get("tilt_s", 0.0))
 	var pieces: Array = _shard_atlas[e.type]
 	for i in pieces.size():
 		if Perf.lite() and i % 2 == 1:
 			continue   # battery saver: half the shards
-		var at: AtlasTexture = pieces[i]
-		# where this piece sat on the whole bug, so the burst starts from the right spot
-		var off := (Vector2(at.region.position.x + at.region.size.x * 0.5, at.region.position.y + at.region.size.y * 0.5) - at.atlas.get_size() * 0.5) * s
+		var at: Texture2D = pieces[i]
+		var off: Vector2
+		var sz: Vector2
+		if at is AtlasTexture:
+			# a cut of the body: starts where it sat on the whole bug
+			var s: float = bug_px / 220.0
+			off = (Vector2(at.region.position.x + at.region.size.x * 0.5, at.region.position.y + at.region.size.y * 0.5) - at.atlas.get_size() * 0.5) * s
+			sz = at.region.size * s
+		else:
+			# a painted chunk: about a third of the bug tall, thrown from a spot on the body
+			off = Vector2.from_angle(TAU * i / pieces.size() + rng.randf() * 0.6) * bug_px * 0.25
+			sz = at.get_size() * (bug_px * 0.42 / maxf(at.get_height(), 1.0))
 		var dir := off.normalized() if off.length() > 0.1 else Vector2.from_angle(rng.randf() * TAU)
-		_shards.append({"at": at, "pos": e.pos + off.rotated(tilt), "vel": dir.rotated(tilt) * rng.randf_range(90.0, 200.0) + Vector2(0, -60.0) + e.vel * 0.3,
-			"rot": tilt, "spin": rng.randf_range(-7.0, 7.0), "s": s, "life": SHARD_LIFE})
+		_shards.append({"at": at, "sz": sz, "pos": e.pos + off.rotated(tilt), "vel": dir.rotated(tilt) * rng.randf_range(90.0, 200.0) + Vector2(0, -60.0) + e.vel * 0.3,
+			"rot": tilt + rng.randf_range(-0.6, 0.6), "spin": rng.randf_range(-7.0, 7.0), "life": SHARD_LIFE})
 
 func _update_shards(delta: float) -> void:
 	var live: Array = []
@@ -3017,9 +3073,9 @@ func _update_shards(delta: float) -> void:
 
 func _draw_shards() -> void:
 	for sh in _shards:
-		var at: AtlasTexture = sh.at
+		var at: Texture2D = sh.at
 		var a: float = clampf(float(sh.life) / SHARD_LIFE * 1.6, 0.0, 1.0)
-		var sz: Vector2 = at.region.size * float(sh.s)
+		var sz: Vector2 = sh.sz
 		draw_set_transform(sh.pos, sh.rot, Vector2.ONE)
 		draw_texture_rect(at, Rect2(-sz * 0.5, sz), false, Color(1, 1, 1, a))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
