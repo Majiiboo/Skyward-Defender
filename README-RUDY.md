@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev132 (version/code=132 and version/name="1.0-dev132" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev133 (version/code=133 and version/name="1.0-dev133" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev133: turret power cards
+
+- Six new power cards, each only offered while its turret stands on your base. Levels 1-2
+  make the turret do more of what it does; the 3rd pick (overcharge) changes how it works:
+  - Ricochet (Sentry): bolts bounce to 1 more bug per level; Flak: hits splash nearby bugs.
+  - Focused Lance: beam +40% wider, +30% damage; Twin Lance: fires a second beam right after.
+  - Chain Storm: lightning jumps to 2 more bugs per level; Overload: zaps can stun bugs.
+  - Event Horizon (Gravity): pull area +25%; Black Hole: swallows enemy shots in its pull.
+  - Hive Surge (Swarm): 2 more drones per level; Kamikaze: drones explode on impact.
+  - Wide Prism: 2 more beams per level; Frozen Light: beams slow bugs.
+- The cards show their turret's picture until Luna paints them (LUNA-BRIEF-turret-cards.md).
 
 ## dev132: mystery rewards on Modes
 

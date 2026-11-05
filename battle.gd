@@ -909,6 +909,7 @@ func _pick_aim_target(from: Vector2) -> Dictionary:
 
 func _update_bullets(delta: float) -> void:
 	var live: Array = []
+	var bounced: Array = []   # Ricochet bolts made this frame
 	for b in bullets:
 		# drone missiles steer toward their target
 		if b.has("homing"):
@@ -930,6 +931,19 @@ func _update_bullets(delta: float) -> void:
 					dmg *= Turrets.trait_mult(b.src, StageData.ENEMIES[e.type].traits)
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
+					# Ricochet (turret card): the Sentry bolt bounces on to the nearest other bug
+					if int(b.get("bounce", 0)) > 0:
+						var nxt := {}
+						var nd := 220.0
+						for o in enemies:
+							if o != e and not Array(b.get("hits", [])).has(o.id) and o.pos.distance_to(e.pos) < nd:
+								nd = o.pos.distance_to(e.pos)
+								nxt = o
+						if not nxt.is_empty():
+							var hs: Array = Array(b.get("hits", [])).duplicate()
+							hs.append(e.id)
+							bounced.append({"pos": e.pos, "vel": (Vector2(nxt.pos) - Vector2(e.pos)).normalized() * 420.0, "dmg": float(b.dmg) * 0.8, "r": 14.0,
+								"tid": -2, "col": "tracer", "src": b.src, "bounce": int(b.bounce) - 1, "splash": float(b.get("splash", 0.0)), "hits": hs})
 				else:
 					if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 						dmg *= 1.2
@@ -964,6 +978,7 @@ func _update_bullets(delta: float) -> void:
 				break
 		if not hit and b.pos.y > -30.0 and b.pos.y < FIELD_H + 30.0 and b.pos.x > -30.0 and b.pos.x < FIELD_W + 30.0:
 			live.append(b)
+	live.append_array(bounced)
 	bullets = live
 	var live_eb: Array = []
 	for b in enemy_bullets:
@@ -1330,6 +1345,13 @@ func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
 	e.hp -= dmg
+	# turret card overcharges: Overload (Storm) stuns now and then, Frozen Light (Prism) slows
+	if t.get("stun", false) and rng.randf() < 0.2:
+		e.slow_t = 0.8
+		e.slow = 0.95
+	elif t.get("frost_light", false):
+		e.slow_t = 1.5
+		e.slow = maxf(float(e.get("slow", 0.0)), 0.3)
 
 func _update_turrets(delta: float) -> void:
 	for t in turrets:
@@ -1381,7 +1403,8 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			t.fire_t = FIRE_TIME.sentry
 			t.hov_v = float(t.hov_v) + 55.0      # the shot pushes the head down toward its base
 			var dir := Vector2.from_angle(t.ang)
-			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type})
+			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type,
+				"bounce": int(card_levels.get("sentry_ricochet", 0)), "splash": 55.0 if t.get("flak", false) else 0.0, "hits": []})
 	else:
 		# nothing in range: the head sweeps slowly from side to side, searching
 		var search: float = -PI / 2.0 + sin(time_alive * 0.7 + float(t.mount) * 1.3) * 0.9
@@ -1423,7 +1446,13 @@ func _update_lance(t: Dictionary, delta: float) -> void:
 			break
 	if not any:
 		return
-	t.charge = 0.0
+	# Twin Lance (card overcharge): a second beam a moment after the first
+	if t.get("twin", false) and not t.get("twin_shot", false):
+		t.charge = float(def.every) - 0.25
+		t.twin_shot = true
+	else:
+		t.charge = 0.0
+		t.twin_shot = false
 	t.fire_t = FIRE_TIME.lance
 	var dmg := _turret_dmg(t)
 	for e in enemies:
@@ -1514,6 +1543,9 @@ func _update_gravity(t: Dictionary, delta: float) -> void:
 	t.cd = maxf(t.cd - delta, 0.0)
 	var catching := false
 	var in_crush := false
+	# Black Hole (card overcharge): enemy shots inside the pull are swallowed
+	if t.get("horizon", false):
+		enemy_bullets = enemy_bullets.filter(func(b): return c.distance_to(b.pos) > float(def.radius))
 	if t.cd <= float(def.pull):
 		for e in enemies:
 			if e.pos.y < 100.0 or e.type == "hive_mother":
@@ -1557,7 +1589,7 @@ func _update_swarm(t: Dictionary, delta: float) -> void:
 	for i in int(def.count):
 		var a: float = -PI / 2.0 + lerpf(-0.7, 0.7, float(i) / maxf(float(def.count) - 1.0, 1.0))
 		drones.append({"type": "swarm", "pos": _turret_tip(t), "vel": Vector2.from_angle(a) * 120.0,
-			"life": float(def.life), "age": 0.0, "dmg": _turret_dmg(t)})
+			"life": float(def.life), "age": 0.0, "dmg": _turret_dmg(t), "boom": t.get("boom", false)})
 
 # Each drone steers toward the nearest enemy, hits once and is gone.
 func _update_drones(delta: float) -> void:
@@ -1577,6 +1609,11 @@ func _update_drones(delta: float) -> void:
 			dr.vel = dr.vel.lerp((best.pos - dr.pos).normalized() * speed, minf(1.0, delta * 4.0))
 			if bd < float(best.r) * 0.6 + 6.0:
 				_turret_hit(dr, best, float(dr.dmg))
+				if dr.get("boom", false):   # Kamikaze (card overcharge): the drone bursts on nearby bugs
+					for o in enemies:
+						if o != best and o.pos.distance_to(dr.pos) < 60.0:
+							_turret_hit(dr, o, float(dr.dmg) * 0.6)
+					_fx_add("nova", dr.pos, 50.0, 0.3, 0.0, 1.6, Color(0.4, 0.9, 1.0))
 				_fx_add("pop", dr.pos, 30.0, 0.3, rng.randf() * TAU)
 				continue
 		dr.pos += dr.vel * delta
@@ -1985,6 +2022,10 @@ func _card_pic(id: String, h: float) -> Control:
 			var add := CanvasItemMaterial.new()
 			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
 			icon.material = add
+	elif Cards.CARDS.has(id) and Cards.CARDS[id].has("turret"):
+		# a turret card shows its turret until Luna paints the card (LUNA-BRIEF-turret-cards.md)
+		icon.texture = _tex[Turrets.TURRETS[Cards.CARDS[id].turret].art + "_idle"]
+		icon.custom_minimum_size = Vector2(0, h * 0.9)
 	else:
 		icon.texture = Icons.get_icon(String(Cards.def(id).get("icon", "event")))
 		icon.custom_minimum_size = Vector2(0, h * 0.76)
@@ -2091,6 +2132,12 @@ func _pick_card(id: String) -> void:
 		"piercing_rounds": pierce_level += 1
 		"frost_rounds": frost_level += 1
 		"turret_overclock": _turret_rate *= 1.15
+		# turret cards: change that turret's own numbers (t.def)
+		"lance_focus": _turret_mod("lance", _lance_focus)
+		"storm_chain": _turret_mod("storm", func(t): t.def.chain = int(t.def.chain) + 2)
+		"gravity_horizon": _turret_mod("gravity", _gravity_grow)
+		"swarm_surge": _turret_mod("swarm", func(t): t.def.count = int(t.def.count) + 2)
+		"prism_fan": _turret_mod("prism", func(t): t.def.beams = int(t.def.beams) + 2)
 		"shield_recharge": _shield_rate += 0.01
 		"nova_burst":
 			for e in enemies.duplicate():
@@ -2106,8 +2153,28 @@ func _pick_card(id: String) -> void:
 	picking = false
 
 # The third pick of a card: its extra bonus (Cards.OVERCHARGE), with a gold flourish.
+# Turret cards: run `f` on every turret of this type on the base.
+func _turret_mod(type: String, f: Callable) -> void:
+	for t in turrets:
+		if String(t.type) == type:
+			f.call(t)
+
+func _lance_focus(t: Dictionary) -> void:
+	t.def.width = float(t.def.width) * 1.4
+	t.def.damage = float(t.def.damage) * 1.3
+
+func _gravity_grow(t: Dictionary) -> void:
+	t.def.radius = float(t.def.radius) * 1.25
+	t.def.crush_r = float(t.def.crush_r) * 1.25
+
 func _overcharge(id: String) -> void:
 	match id:
+		"sentry_ricochet": _turret_mod("sentry", func(t): t.flak = true)
+		"lance_focus": _turret_mod("lance", func(t): t.twin = true)
+		"storm_chain": _turret_mod("storm", func(t): t.stun = true)
+		"gravity_horizon": _turret_mod("gravity", func(t): t.horizon = true)
+		"swarm_surge": _turret_mod("swarm", func(t): t.boom = true)
+		"prism_fan": _turret_mod("prism", func(t): t.frost_light = true)
 		"rapid_pulse": _overdrive = true
 		"heavy_bolts": _crit6 = true
 		"piercing_rounds": _pierce_bonus = true
@@ -2141,7 +2208,7 @@ func _fuse(id: String) -> void:
 
 # The three cards of a pick; a ready fusion takes the middle slot.
 func _offer() -> Array:
-	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty())
+	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)))
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]

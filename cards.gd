@@ -41,6 +41,20 @@ const CARDS := {
 	# utility
 	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Pulls gems and coins from further, +10% XP"},
+	# turret cards (Rudy, dev133): only offered while that turret stands on the base ("turret").
+	# Levels 1-2 EXTEND it (more of what it does), the 3rd pick (overcharge) CHANGES how it works.
+	"sentry_ricochet": {"name": "Ricochet",       "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "sentry",
+		"desc": "Sentry bolts bounce to 1 more bug per level"},
+	"lance_focus":     {"name": "Focused Lance",  "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "lance",
+		"desc": "Lance beam +40% wider and +30% damage"},
+	"storm_chain":     {"name": "Chain Storm",    "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "storm",
+		"desc": "Lightning jumps to 2 more bugs per level"},
+	"gravity_horizon": {"name": "Event Horizon",  "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "gravity",
+		"desc": "Gravity pull area +25% per level"},
+	"swarm_surge":     {"name": "Hive Surge",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "swarm",
+		"desc": "Swarm launches 2 more drones per level"},
+	"prism_fan":       {"name": "Wide Prism",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "prism",
+		"desc": "Prism splits into 2 more beams per level"},
 	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen (one use)"},
@@ -60,6 +74,12 @@ const OVERCHARGE := {
 	"reinforced_hull": "Base shield +40",
 	"shield_recharge": "Also slowly repairs the hull",
 	"magnet":          "Each gem repairs 1 shield",
+	"sentry_ricochet": "Flak: Sentry hits splash nearby bugs",
+	"lance_focus":     "Twin Lance: fires a second beam right after",
+	"storm_chain":     "Overload: zaps can stun bugs",
+	"gravity_horizon": "Black Hole: swallows enemy shots in its pull",
+	"swarm_surge":     "Kamikaze: drones explode on impact",
+	"prism_fan":       "Frozen Light: beams slow bugs",
 }
 
 # Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
@@ -99,13 +119,14 @@ static func fusions_ready(levels: Dictionary) -> Array:
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 # run_level: cards with "from_level" only show up from that run level on.
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true) -> Array:
+# mounted: the turret types on the base (turret cards need theirs).
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = []) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)):
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("turret") or mounted.has(CARDS[id].turret)):
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

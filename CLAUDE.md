@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev132 (code 132).
+  go UP every package (same signing key, install-over). Current: dev133 (code 133).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -109,7 +109,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    over waves 1-5. Human bot: 22-50 win 4/4, 55 and 60 win 3/4. Turrets still ~15-25% of damage.
 16. LONG-GAME PLAN (Rudy, 2026-11-04), in this order: (a) DONE dev128 turret tracks ATK/Rate/Range
    Lv.1-20 (Turrets.TRACKS, stats() -> battle t.def, level_of = sum, milestone every 5 = +5% dmg;
-   save turrets.tracks; gear.gd _on_track_upgrade, _milestone_toast). (b) Turret power cards, only
+   save turrets.tracks; gear.gd _on_track_upgrade, _milestone_toast). (b) DONE dev133: 6 turret cards (Cards "turret" key, draw(mounted),
+   battle _turret_mod, flags flak/twin/stun/horizon/boom/frost_light, Sentry "bounce"). Was: Turret power cards, only
    offered when that turret is mounted: some CHANGE what it does, some EXTEND it and grow per
    level (e.g. Sentry bolts bounce to 1, 2, 3 more bugs); Luna card art later. (c) DONE dev130 for gear (GearData.MILESTONE at Lv.5/10 feed
    crit_rate, crit_dmg, dmg_boost, base_dr, fortress; battle _crit_rate/_base_dr; Gear STATS panel
