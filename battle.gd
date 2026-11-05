@@ -3634,8 +3634,8 @@ func _draw_hud() -> void:
 	_hc.draw_polyline(Glass.box(bar, 3.0), Color(1.0, 0.45, 0.5, 0.5), 1.0, true)
 	_hc.draw_string(hud_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 8, Color.WHITE)
 	# a trial's advantages and disadvantages, announced under the bar for the first seconds
-	if not _mods.is_empty() and time_alive < 7.0:
-		var ma: float = clampf(7.0 - time_alive, 0.0, 1.0) * clampf(time_alive * 2.0, 0.0, 1.0)
+	if not _mods.is_empty() and time_alive > 3.5 and time_alive < 11.0:   # after the objectives box has gone
+		var ma: float = clampf(11.0 - time_alive, 0.0, 1.0) * clampf((time_alive - 3.5) * 2.0, 0.0, 1.0)
 		var my := HUD_H + 30.0
 		for ml in Promotion.mods_lines(_mods):
 			var good: bool = String(ml).begins_with("ADV")
