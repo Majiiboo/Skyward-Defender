@@ -7,23 +7,28 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
 - UNPUSHED since dev171: 0 updates (next push = dev171 + that count; see the build rule).
   dev171 carried (README-RUDY dev171):
-  4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
-     in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
-     leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless,
-     not a bug of ours (Sfx.Pool already stops and drops them).
-  3. SOUND: sfx.gd Sfx (DEFS synthesized layers -> AudioStreamWAV cache, pool under root, play /
-     play_rising, gap throttle, res://sfx/<name>.ogg overrides, save "sound_on" via apply_from /
-     set_on); hooks in battle (shot, hit, turret, kill, coin, gem, level, shield, hull, hurt, wave,
-     boss, win, lose, card_open, card), UIKit.press_fx tap, hub nav tap, gear upgrade / merge, store
-     buy / chest, quests claim; Settings sound switch live. No music yet.
-  1. Elite capped by Standard progress + Promotion ladder 10/20/25..60 retuned (README "next push").
+  1. Elite capped by Standard progress (StageData.elite_top) + Promotion ladder 10/20/25..60 retuned.
   2. FUN PASS part one: unlocks.gd Unlocks (progressive disclosure: UNLOCKS table by stage / level,
      open / fresh / mark_seen / settle, save "seen_new"); UIKit.tabs hidden list + tab_map meta +
      tab_shown; gear _hidden_pages, store Parts tab, quests Repeat tab, modes teaser card, hub
      Patrol dock + _announce_new NEW pop-up, Progress.attention gated. Rudy's fear (2026-11-05):
      "too much to absorb, not enough fun gameplay" -> research in the chat (Vampire Survivors /
      Brotato / Archero loops, staggered unlocks, game feel); plan: hide-not-remove (done), sound
-     + hit feel, fight decisions (telegraphs, reasons to move), measure the first 10 minutes.
+     (done), fight decisions (Spitter telegraph done; reasons to move still open), measure the
+     first 10 minutes on a phone (Rudy).
+  3. SOUND: sfx.gd Sfx (DEFS synthesized layers -> AudioStreamWAV cache, Pool node under root,
+     play / play_rising, gap throttle, res://sfx/<name>.ogg overrides, save "sound_on" via
+     apply_from / set_on); hooks in battle (shot, hit, turret, kill, coin, gem, level, shield, hull,
+     hurt, wave, boss, win, lose, card_open, card), UIKit.press_fx tap, hub nav tap, gear upgrade /
+     merge, store buy / chest, quests claim; Settings sound switch live. No music yet.
+  4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
+     in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
+     leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless.
+- OPEN DECISION (Rudy, 2026-11-05): replace the six-slot gear with unlockable pre-built CHARACTERS
+  (each its own stats)? Recommendation given in the chat (heroes as the visible collection with
+  evolution looks, keep the weapon slot). Until he decides: no Gear page overhaul, no armour-parts
+  Luna brief. Promotion: 10 ranks; Rudy wants each trial themed on a different enemy once the
+  enemy families (item 17) exist.
 - dev138-171 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
