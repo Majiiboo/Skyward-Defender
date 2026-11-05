@@ -120,6 +120,13 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    Utility tree, a Gear sub-tab). (f) Gear rarity: max level 30, rarity caps the level, raised by
    merging copies in the Workshop (needs gear drops). (g) Re-tune: gentle to 15, then each boss a
    soft wall; target 30-40 hours to stage 60; replays pay half coins.
+17. ENEMY VARIETY (Rudy, 2026-11-04): today all 6 planets use the same Hive bugs (scout, drifter,
+   spitter, diver, spore) and the ONLY boss is the Hive Mother (mini at x5, big at x10, young one
+   mid-stage from 22). Plan: (a) code-only first: enemy tiers / variants (armoured shell, shielded,
+   fast, splitting...) using the turret traits that no enemy has yet, and a gradual mix: tier 1
+   early in each planet, tier 2 creeping in, a little tier 3 near its end. (b) A boss and a
+   mini-boss per planet, each with its own moves (Luna parts sheets, like the Hive Mother), plus
+   each planet's own enemy family (LUNA-BRIEF-areas.md), Scrap Belt first.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
