@@ -89,6 +89,10 @@ func _ready() -> void:
 	size = get_viewport_rect().size
 	var th := load("res://game_theme.tres")
 	if th: theme = th
+	# Patrol farms while the game is closed: count what it earned since last time
+	var ps := Progress.read()
+	Patrol.tick(ps)
+	Progress.write(ps)
 	_load_save()
 	_frame = HomeFrame.new()
 	_frame.name = "HomeFrame"
@@ -392,7 +396,7 @@ func _build_home() -> void:
 	chest.offset_bottom = -159.0
 	row.add_child(chest)
 	# (no START button here since dev107: on Home the gold Battle tab IS the Play button)
-	var patrol := _action_item("PatrolButton", "patrol", "Patrol", func(): _show_panel($PatrolPanel))
+	var patrol := _action_item("PatrolButton", "patrol", "Patrol", _patrol_open)   # offline farming (Patrol)
 	patrol.set_anchors_preset(Control.PRESET_CENTER_RIGHT)
 	patrol.grow_horizontal = Control.GROW_DIRECTION_BEGIN
 	patrol.grow_vertical = Control.GROW_DIRECTION_BOTH
@@ -1021,3 +1025,139 @@ func _find_button(n: Node, nm: String) -> Button:
 		if r != null:
 			return r
 	return null
+
+# ------------------------------------------------------------- Patrol (offline farming)
+# Patrol farms a cleared stage wave by wave while you're away (Patrol class). This window:
+# pick the stage, see what an hour brings, see what is stored (up to 8 h), collect it.
+var _patrol_layer: Control
+
+func _patrol_open() -> void:
+	var save := Progress.read()
+	Patrol.tick(save)
+	Progress.write(save)
+	if _patrol_layer and is_instance_valid(_patrol_layer):
+		_patrol_layer.queue_free()
+	_patrol_layer = ColorRect.new()
+	(_patrol_layer as ColorRect).color = Color(0, 0.01, 0.04, 0.75)
+	_patrol_layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_patrol_layer)
+	_patrol_fill()
+
+func _patrol_fill() -> void:
+	for c in _patrol_layer.get_children():
+		c.queue_free()
+	var save := Progress.read()
+	var p := Patrol.tick(save)
+	Progress.write(save)
+	var best := maxi(1, int(save.get("stage_unlocked", 1)) - 1)
+	var cleared := int(save.get("stage_unlocked", 1)) > 1
+	var panel := UIKit.panel(16)
+	var w := minf(size.x - 32.0, 400.0)
+	panel.custom_minimum_size = Vector2(w, 0)
+	panel.position = Vector2((size.x - w) * 0.5, size.y * 0.2)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(UIKit.label("PATROL", 18, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	if not cleared:
+		v.add_child(UIKit.label("Clear stage 1 to start a patrol", 13, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		# the stage it farms: arrows through the stages you have cleared
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 10)
+		var st: int = int(p.stage)
+		var prev := UIKit.ghost_button("<", 16)
+		prev.custom_minimum_size = Vector2(44, 36)
+		prev.disabled = st <= 1
+		prev.pressed.connect(func(): _patrol_stage(st - 1))
+		row.add_child(prev)
+		var name_l := UIKit.label("Stage %d  ·  %s" % [st, StageData.stage_name(st)], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+		name_l.custom_minimum_size = Vector2(200, 0)
+		row.add_child(name_l)
+		var nxt := UIKit.ghost_button(">", 16)
+		nxt.custom_minimum_size = Vector2(44, 36)
+		nxt.disabled = st >= best
+		nxt.pressed.connect(func(): _patrol_stage(st + 1))
+		row.add_child(nxt)
+		v.add_child(row)
+		# what an hour brings here
+		v.add_child(UIKit.label("PER HOUR", 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var pw := Patrol.per_wave(st)
+		var rate := HBoxContainer.new()
+		rate.alignment = BoxContainer.ALIGNMENT_CENTER
+		rate.add_theme_constant_override("separation", 14)
+		for k in ["coins", "alloy", "cell", "core"]:
+			if pw.has(k):
+				var per_h: float = float(pw[k]) * Patrol.WAVES_PER_HOUR
+				rate.add_child(_patrol_amount(k, ("%d" % roundi(per_h)) if k == "coins" else "%.1f" % per_h))
+		v.add_child(rate)
+		# stored so far, as a bar to the 8 hour cap
+		var hrs := float(p.stored_s) / 3600.0
+		v.add_child(UIKit.label("STORED  %dh %02dm / 8h" % [int(hrs), int(fmod(hrs, 1.0) * 60.0)], 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var bar := ProgressBar.new()
+		bar.max_value = Patrol.CAP_S
+		bar.value = float(p.stored_s)
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.add_theme_stylebox_override("background", UIKit.box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.0), 4))
+		bar.add_theme_stylebox_override("fill", UIKit.box(GOLD if float(p.stored_s) >= Patrol.CAP_S else CYAN, Color(CYAN, 0.0), 4))
+		v.add_child(bar)
+		var got := Patrol.ready(p)
+		var have := HBoxContainer.new()
+		have.alignment = BoxContainer.ALIGNMENT_CENTER
+		have.add_theme_constant_override("separation", 14)
+		for k in ["coins", "alloy", "cell", "core"]:
+			if got.has(k):
+				have.add_child(_patrol_amount(k, str(got[k])))
+		if got.is_empty():
+			have.add_child(UIKit.label("Nothing yet: a wave every 30 s", 12, MUTED))
+		v.add_child(have)
+		var claim := UIKit.gold_button("Collect", 15)
+		claim.custom_minimum_size = Vector2(0, 44)
+		claim.disabled = got.is_empty()
+		claim.pressed.connect(func():
+			var s := Progress.read()
+			var g := Patrol.claim(s)
+			Progress.write(s)
+			_load_save()
+			_coin_btn.text = _fmt(coins)
+			_crystal_btn.text = _fmt(crystals)
+			_patrol_fill()
+			_patrol_toast("+ " + Progress.reward_text(g)))
+		v.add_child(claim)
+	var close := UIKit.ghost_button("Close", 14)
+	close.custom_minimum_size = Vector2(0, 38)
+	close.pressed.connect(func(): _patrol_layer.queue_free())
+	v.add_child(close)
+	panel.add_child(v)
+	_patrol_layer.add_child(panel)
+
+func _patrol_stage(stage: int) -> void:
+	var s := Progress.read()
+	Patrol.set_stage(s, stage)
+	Progress.write(s)
+	_patrol_fill()
+
+# an icon with a number (coins, or an upgrade part)
+func _patrol_amount(kind: String, text: String) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 4)
+	var tr := TextureRect.new()
+	tr.texture = load("res://icons/ui_coin.png") if kind == "coins" else Parts.icon(kind)
+	tr.custom_minimum_size = Vector2(22, 22)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	h.add_child(tr)
+	h.add_child(UIKit.label(text, 14, Color.WHITE))
+	return h
+
+func _patrol_toast(text: String) -> void:
+	var l := UIKit.label(text, 16, GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	l.position = Vector2(0, size.y * 0.15)
+	l.size = Vector2(size.x, 30)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	var tw := l.create_tween().set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y - 50.0, 1.2)
+	tw.tween_property(l, "modulate:a", 0.0, 0.5).set_delay(0.8)
+	tw.chain().tween_callback(l.queue_free)

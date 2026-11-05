@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev134 (version/code=134 and version/name="1.0-dev134" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev135 (version/code=135 and version/name="1.0-dev135" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,17 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev135: Patrol farms while you are away
+
+- Patrol (on Home) now really farms: it plays a stage you have cleared, one wave every 30 s,
+  with the game open or closed, and stores what each wave drops for up to 8 hours.
+- Mostly coins (an hour pays about one clear of that stage), now and then that stage's
+  element: Alloy on any stage, Plasma Cells from stage 11, Void Cores (rare) from stage 21.
+- The Patrol window: arrows to pick which cleared stage to farm, what an hour brings there,
+  a bar of how much is stored (of 8 h), and Collect. Example: 3 h away on stage 24 =
+  822 coins, 19 Alloy, 1 Plasma Cell.
+- Gear copies join Patrol once gear rarities and merging are built.
 
 ## dev134: drone milestones
 
