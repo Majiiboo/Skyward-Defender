@@ -172,6 +172,17 @@ much to absorb). Nothing was removed; a new player just does not see it yet.
   "needs the online update") is hidden until that update exists.
 - The table is unlocks.gd; moving a system earlier or later is one number.
 
+Update 3: the fun pass, part two: SOUND. The game had none. There is still no sound pack, so
+every sound is made by code (short synthesized blips, thumps and chimes) and plays through a
+small pool of players; the day a real sound file is dropped into sfx/<name>.ogg it is used
+instead. What has a sound now: your shots (soft, so they never tire), turret shots, every hit,
+every kill (a thump; the boss a big one), gems and coins (each quick pickup a note higher), the
+card pick opening and the pick itself, a run level, shield and hull damage, losing a heart, each
+new wave, the boss arriving, Stage Cleared and Game Over, menu taps on every button, gear
+upgrades, merges, Store purchases and chest opens, quest claims. Settings > Sound effects and
+the pause menu's Sound button switch it off. Music is still "coming". The list of sounds in
+sfx.gd is the shopping list for a sound pack.
+
 ## dev167: your playtest, round one (the quick fixes)
 
 - TURRETS PAGE WAS EMPTY: a bug of mine from dev149 (the card depth layer took the spot the

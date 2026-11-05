@@ -104,6 +104,7 @@ func _ready() -> void:
 	Patrol.tick(ps)
 	Progress.write(ps)
 	Perf.apply_from(ps)   # performance mode and frame counter (Settings)
+	Sfx.apply_from(ps)    # sound on/off
 	_load_save()
 	# the Elite hue over the live world (hidden in Standard)
 	_elite_tint = ColorRect.new()
@@ -743,6 +744,7 @@ func _set_home_visible(visible: bool) -> void:
 
 func _on_nav_tap(tapped: String, path: String) -> void:
 	if _transitioning: return
+	Sfx.play("tap")
 	# on Home, the gold Battle tile is the Play button: tapping it starts the battle
 	if tapped == "NavBattle" and _current_view == null:
 		if not Energy.try_play(self, mode == "Elite", stage):   # a stage costs power tokens (stages 1-5 free)

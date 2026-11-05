@@ -78,18 +78,18 @@ func _fill() -> void:
 					left -= 1
 			_note.text = "All 5 done: +%s  ·  %d left today" % [Progress.reward_text(Progress.DAILY_ALL_BONUS), left]
 			for m in ms:
-				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); _fill(), String(m.def.stat))
+				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 		1:
 			_note.text = "Milestones that never reset."
 			for m in Progress.career(d):
-				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); _fill(), String(m.def.stat))
+				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
 			_trophy_grid()
 		3:
 			_note.text = "Goals that come back bigger every time you claim them. Always something to chase."
 			for m in Progress.repeat(d):
-				_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); _fill(), String(m.def.stat))
+				_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 	UIKit.reveal(_list)
 
 func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String = "") -> void:
@@ -163,6 +163,7 @@ func _trophy_grid() -> void:
 			var tid: String = t.def.id
 			b.pressed.connect(func():
 				d = Progress.claim_trophy(tid)
+				Sfx.play("claim")
 				_toast("+ %d crystals" % reward.crystals)
 				_fill())
 			v.add_child(b)

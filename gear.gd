@@ -404,6 +404,7 @@ func _on_upgrade_pressed() -> void:
 	var cost := GearData.upgrade_cost(lv)
 	if lv >= GearData.cap_of(gear, id) or coins < cost:
 		return
+	Sfx.play("upgrade")
 	if not await _pay_upgrade(cost, lv):
 		return
 	gear.levels[id] = lv + 1
@@ -622,6 +623,7 @@ func _merge(kind: String, times: int) -> void:
 	var made := Parts.merge(data, kind, times)
 	if made <= 0:
 		return
+	Sfx.play("merge")
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
 		out.store_string(JSON.stringify(data))
@@ -811,6 +813,7 @@ func _quick_merge() -> void:
 	var made := GearData.quick_merge(g)
 	if made <= 0:
 		return
+	Sfx.play("merge")
 	data["gear"] = GearData.write(g)
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:

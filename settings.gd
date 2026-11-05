@@ -1,6 +1,6 @@
 extends Control
 # Settings (dev159, queue 27). Opened from Home's menu button. Performance mode (Perf),
-# a frame counter switch, sound switches (greyed until sound exists), the build and
+# a frame counter switch, the sound switch (Sfx; music greyed until it exists), the build and
 # links to the Stage Map. Same glass look and planet wallpaper as every page.
 
 var d := {}
@@ -90,9 +90,14 @@ func _fill() -> void:
 		Perf.show_fps = v
 		Progress.write(d)
 		_fill()))
-	# ---- sound: not built yet, say so plainly
+	# ---- sound (Sfx, dev168: synthesized placeholders until a sound pack exists; music later)
 	_page.add_child(UIKit.header("SOUND"))
-	_page.add_child(_switch("Sound effects", "Coming with the sound pack", true, Callable(), true))
+	_page.add_child(_switch("Sound effects", "Shots, hits, pickups, cards and menu taps", bool(d.get("sound_on", true)), func(v: bool):
+		d = Progress.read()
+		d["sound_on"] = v
+		Sfx.set_on(v)
+		Progress.write(d)
+		_fill()))
 	_page.add_child(_switch("Music", "Coming with the sound pack", true, Callable(), true))
 	# ---- game
 	_page.add_child(UIKit.header("GAME"))

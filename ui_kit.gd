@@ -97,6 +97,7 @@ static func press_fx(b: Button) -> void:
 		return
 	b.set_meta("press_fx", true)
 	b.button_down.connect(func():
+		Sfx.play("tap")
 		b.pivot_offset = b.size * 0.5
 		var tw := b.create_tween()
 		tw.tween_property(b, "scale", Vector2(0.95, 0.95), 0.06))

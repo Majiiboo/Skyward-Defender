@@ -5,7 +5,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-04, build dev167)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev167: 2 updates (next push = dev167 + that count; see the build rule).
+- UNPUSHED since dev167: 3 updates (next push = dev167 + that count; see the build rule).
+  3. SOUND: sfx.gd Sfx (DEFS synthesized layers -> AudioStreamWAV cache, pool under root, play /
+     play_rising, gap throttle, res://sfx/<name>.ogg overrides, save "sound_on" via apply_from /
+     set_on); hooks in battle (shot, hit, turret, kill, coin, gem, level, shield, hull, hurt, wave,
+     boss, win, lose, card_open, card), UIKit.press_fx tap, hub nav tap, gear upgrade / merge, store
+     buy / chest, quests claim; Settings sound switch live. No music yet.
   1. Elite capped by Standard progress + Promotion ladder 10/20/25..60 retuned (README "next push").
   2. FUN PASS part one: unlocks.gd Unlocks (progressive disclosure: UNLOCKS table by stage / level,
      open / fresh / mark_seen / settle, save "seen_new"); UIKit.tabs hidden list + tab_map meta +

@@ -276,6 +276,7 @@ func _buy(o: Dictionary) -> void:
 	if int(d.get("crystals", 0)) < int(o.price):
 		return
 	d["crystals"] = int(d.get("crystals", 0)) - int(o.price)
+	Sfx.play("buy")
 	if o.has("flag"):
 		d[o.flag] = true
 		_toast(o.text)
@@ -330,6 +331,7 @@ func _open_chest(c: Dictionary) -> void:
 	var reward := open_chest_in(d, c)
 	if reward.is_empty():
 		return
+	Sfx.play("buy")
 	Progress.write(d)
 	_chest_fx(reward)
 	_fill()

@@ -255,6 +255,7 @@ var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	rng.randomize()
+	Sfx.apply_from(_read_save())   # sound on/off (pause menu, Settings)
 	PilotSprite.load_style()
 	_stars = Backdrop.make_stars(90, 11)
 	_city = Backdrop.make_city(44, 7)
@@ -510,6 +511,8 @@ func _start_stage() -> void:
 
 func _start_wave() -> void:
 	wave_queue.clear()
+	if wave_index > 0 and wave_index < waves.size():
+		Sfx.play("wave")
 	if wave_index >= waves.size():
 		return
 	if _aegis_heal and wave_index > 0 and hearts < max_hearts:
@@ -874,6 +877,7 @@ func _aim_and_fire(delta: float) -> void:
 
 func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = false) -> void:
 	var w: Dictionary = WEAPONS[weapon_id]
+	Sfx.play("shot", rng.randf_range(0.95, 1.05))
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
 	for i in count:
@@ -981,6 +985,7 @@ func _update_bullets(delta: float) -> void:
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
+				Sfx.play("boss_hit" if e.type == "hive_mother" else "hit", rng.randf_range(0.92, 1.08))
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
@@ -1133,6 +1138,7 @@ func _update_enemies(delta: float) -> void:
 					e.pos.y += e.speed * delta
 				else:
 					e.arrived = true   # settled on screen: only now can she be hurt (Rudy, dev163)
+					Sfx.play("boss")
 					var want_x: float = FIELD_W * 0.5 + sin(e.t * (0.8 if enraged else 0.5)) * (FIELD_W * 0.28)
 					if enraged and absf(soldier_pos.x - e.pos.x) < 60.0:
 						want_x += 120.0 * (1.0 if e.pos.x < FIELD_W * 0.5 else -1.0)
@@ -1252,6 +1258,7 @@ func _kill(e: Dictionary) -> void:
 	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
 	_spawn_shards(e, def)
+	Sfx.play("boss_kill" if e.type == "hive_mother" else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
@@ -1307,12 +1314,14 @@ func _update_gems(delta: float) -> void:
 			continue
 		if d < 16.0 and g.get("coin", false):
 			_coins_f += float(g.get("value", 1.0)) * _coin_mult
+			Sfx.play_rising("coin")
 			coins_earned = int(_coins_f)
 			_fx_add("spark", g.pos, 18.0, 0.2, 0.0, 1.7, Color(1.0, 0.85, 0.35))
 			continue
 		if d < 16.0:
 			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult)
 			_gems_got += 1
+			Sfx.play_rising("gem")
 			if _gem_shield:
 				shield = minf(shield + 1.0, shield_max)   # Magnet overcharged
 			if _barrage:
@@ -1334,6 +1343,7 @@ func _gain_xp(amount: float) -> void:
 	if run_xp >= need:
 		run_xp -= need
 		run_level += 1
+		Sfx.play("level")
 		_float_text(soldier_pos + Vector2(0, -40), "LEVEL %d" % run_level, Color(0.85, 0.75, 1.0), true)
 		_open_cards()
 
@@ -1441,6 +1451,7 @@ func _update_sentry(t: Dictionary, delta: float) -> void:
 			t.fire_t = FIRE_TIME.sentry
 			t.hov_v = float(t.hov_v) + 55.0      # the shot pushes the head down toward its base
 			var dir := Vector2.from_angle(t.ang)
+			Sfx.play("turret", rng.randf_range(0.9, 1.1))
 			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type,
 				"bounce": int(card_levels.get("sentry_ricochet", 0)), "splash": 55.0 if t.get("flak", false) else 0.0, "hits": []})
 	else:
@@ -1721,10 +1732,12 @@ func _hurt_base(amount: float) -> void:
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
 	if shield > 0.0:
+		Sfx.play("shield")
 		shield = maxf(shield - amount, 0.0)
 		if _bastion and shield <= 0.0:
 			_bastion_blast()
 	else:
+		Sfx.play("hull")
 		hull = maxf(hull - amount, 0.0)
 
 func _hurt_pilot() -> void:
@@ -1732,6 +1745,7 @@ func _hurt_pilot() -> void:
 		return
 	inv_t = 1.5 * _recovery
 	hearts -= 1
+	Sfx.play("hurt")
 	_hearts_lost += 1
 	_took_damage = true
 	shake = maxf(shake, 0.7)
@@ -1778,8 +1792,10 @@ func _step_effects(delta: float) -> void:
 func _end_run(won: bool) -> void:
 	if won:
 		stage_cleared = true
+		Sfx.play("win")
 	else:
 		game_over = true
+		Sfx.play("lose")
 	dragging = false
 	var d := _read_save()
 	# pilot XP: what you destroyed, plus a bonus the first time this stage is cleared
@@ -1968,6 +1984,8 @@ func _fill_pause() -> void:
 		b.pressed.connect(func():
 			var now := not bool(_read_save().get(key, true))
 			_write_save({key: now})
+			if key == "sound_on":
+				Sfx.set_on(now)
 			b.text = "%s: %s" % [spec[1], "On" if now else "Off"])
 		srow.add_child(b)
 	v.add_child(srow)
@@ -2001,6 +2019,7 @@ func _toggle_pause() -> void:
 
 func _open_cards() -> void:
 	picking = true
+	Sfx.play("card_open")
 	dragging = false
 	for c in _card_panel.get_children():
 		c.queue_free()
@@ -2148,6 +2167,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	return b
 
 func _pick_card(id: String) -> void:
+	Sfx.play("card")
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
 		_fuse(id)
