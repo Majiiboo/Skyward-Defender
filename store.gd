@@ -40,6 +40,7 @@ var tab := 0
 var d := {}
 var _page: VBoxContainer
 var _wallet: HBoxContainer
+var _tabs_row: HBoxContainer
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -78,7 +79,8 @@ func _build() -> void:
 	if get_tree().root.has_meta("store_tab"):
 		tab = int(get_tree().root.get_meta("store_tab"))
 		get_tree().root.remove_meta("store_tab")
-	col.add_child(UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab))
+	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab)
+	col.add_child(_tabs_row)
 	_page = VBoxContainer.new()
 	_page.add_theme_constant_override("separation", 10)
 	_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -95,6 +97,7 @@ func _fill() -> void:
 	for c in _wallet.get_children():
 		c.queue_free()
 	_wallet.add_child(UIKit.wallet(int(d.get("coins", 0)), int(d.get("crystals", 0))))
+	UIKit.tab_dots(_tabs_row, [Progress.attention(d).store, false, false, false])   # today's gift waiting
 	match tab:
 		0: _fill_offers()
 		1: _fill_chests()
@@ -141,43 +144,80 @@ func _price_button(price: int, ok: bool, gold: bool = false) -> Button:
 
 # ------------------------------------------------------------------ offers
 func _fill_offers() -> void:
-	# the daily gift, big across the top
-	var got_today := int(d.get("gift_day", -1)) == Progress.today()
-	var gift := UIKit.gold_button("Tomorrow" if got_today else "FREE", 15)
-	gift.disabled = got_today
-	gift.custom_minimum_size = Vector2(110, 44)
+	# the attendance calendar (Progress.ATTEND): seven days across the top, today's cell lit,
+	# claimed ones ticked, day 7 in gold; FREE claims today's gift
+	var at := Progress.attend(d)
+	var gift := UIKit.gold_button("Tomorrow" if at.claimed_today else "FREE", 15)
+	gift.disabled = at.claimed_today
+	gift.custom_minimum_size = Vector2(100, 40)
 	gift.pressed.connect(func():
 		d = Progress.read()
-		d["gift_day"] = Progress.today()
-		Progress.grant(d, DAILY_GIFT)
+		var got := Progress.claim_attend(d)
 		Progress.write(d)
-		_toast("+ " + Progress.reward_text(DAILY_GIFT))
+		if not got.is_empty():
+			_toast("+ " + Progress.reward_text(got))
 		_fill())
 	var gp := PanelContainer.new()
 	gp.add_theme_stylebox_override("panel", UIKit.box(Color(0.16, 0.12, 0.03, 0.8), Color(UIKit.GOLD, 0.7), 14))
+	var gv := VBoxContainer.new()
+	gv.add_theme_constant_override("separation", 6)
 	var gh := HBoxContainer.new()
 	gh.add_theme_constant_override("separation", 10)
 	var chest := TextureRect.new()
 	chest.texture = load("res://icons/chest3d_closed.png")
-	chest.custom_minimum_size = Vector2(84, 76)
+	chest.custom_minimum_size = Vector2(44, 40)
 	chest.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	chest.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	gh.add_child(chest)
-	var gv := VBoxContainer.new()
-	gv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	gv.alignment = BoxContainer.ALIGNMENT_CENTER
-	gv.add_child(UIKit.label("DAILY GIFT", 16, UIKit.GOLD))
-	var gr := HBoxContainer.new()
-	gr.add_theme_constant_override("separation", 12)
-	gr.add_child(UIKit.amount(load("res://icons/ui_coin.png"), int(DAILY_GIFT.coins), Color.WHITE, 20.0, 15))
-	gr.add_child(UIKit.amount(load("res://icons/ui_crystal.png"), int(DAILY_GIFT.crystals), Color.WHITE, 20.0, 15))
-	gv.add_child(gr)
-	gh.add_child(gv)
-	var gb := VBoxContainer.new()
-	gb.alignment = BoxContainer.ALIGNMENT_CENTER
-	gb.add_child(gift)
-	gh.add_child(gb)
-	gp.add_child(gh)
+	var tl := VBoxContainer.new()
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tl.alignment = BoxContainer.ALIGNMENT_CENTER
+	tl.add_theme_constant_override("separation", 0)
+	tl.add_child(UIKit.label("DAILY GIFT  ·  DAY %d OF %d" % [int(at.day), Progress.ATTEND.size()], 14, UIKit.GOLD))
+	tl.add_child(UIKit.label("Come back every day; day 7 is the big one", 10, UIKit.MUTED))
+	gh.add_child(tl)
+	gh.add_child(gift)
+	gv.add_child(gh)
+	var cells := HBoxContainer.new()
+	cells.add_theme_constant_override("separation", 4)
+	for i in Progress.ATTEND.size():
+		var day := i + 1
+		var r: Dictionary = Progress.ATTEND[i]
+		var is_today: bool = day == int(at.day)
+		var done: bool = day < int(at.next) or (day == int(at.day) and at.claimed_today)
+		var last: bool = day == Progress.ATTEND.size()
+		var col: Color = UIKit.GOLD if last else UIKit.CYAN
+		var c := PanelContainer.new()
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var sb := UIKit.box(Color(col, 0.22 if is_today else 0.06), Color(col, 0.95 if is_today else 0.3), 8, 2 if is_today else 1)
+		sb.set_content_margin_all(3)
+		c.add_theme_stylebox_override("panel", sb)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 0)
+		cv.alignment = BoxContainer.ALIGNMENT_CENTER
+		cv.add_child(UIKit.label("✓" if done else "D%d" % day, 9, Color(0.5, 1.0, 0.6) if done else UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		# the main thing in the gift: crystals if any, else coins, else the part
+		var icon: Texture2D
+		var amount := 0
+		if r.has("crystals"):
+			icon = load("res://icons/ui_crystal.png")
+			amount = int(r.crystals)
+		elif r.has("coins"):
+			icon = load("res://icons/ui_coin.png")
+			amount = int(r.coins)
+		var ci := TextureRect.new()
+		ci.texture = icon
+		ci.custom_minimum_size = Vector2(0, 20)
+		ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ci.modulate = Color(1, 1, 1, 0.45 if done else 1.0)
+		cv.add_child(ci)
+		cv.add_child(UIKit.label(str(amount) + ("+" if r.size() > 1 else ""), 10, Color.WHITE if not done else UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		c.add_child(cv)
+		c.tooltip_text = Progress.reward_text(r)
+		cells.add_child(c)
+	gv.add_child(cells)
+	gp.add_child(gv)
 	_page.add_child(gp)
 	var g := _grid()
 	for o in OFFERS:

@@ -46,7 +46,7 @@ const LEFT_RAIL := [
 		"go": ["NavStore", "store_tab", 3]},
 ]
 const RIGHT_RAIL := [
-	{"id": "DailyButton", "icon": "daily", "label": "Daily", "dot": true,
+	{"id": "DailyButton", "icon": "daily", "label": "Daily", "dot": false,
 		"go": ["NavQuests", "quests_tab", 0]},
 	{"id": "GiftsButton", "icon": "gifts", "label": "Gifts", "dot": false,
 		"go": ["NavStore", "store_tab", 0]},
@@ -58,6 +58,7 @@ const NAV_PATHS := {"NavStore": "res://store.tscn", "NavGear": "res://gear.tscn"
 var stage := 1
 var mode := "Normal"
 var _popup_layer: Control = null   # the open glass pop-up (_side_popup)
+var _dot_btns := {}                # Home buttons that can carry a red dot (_refresh_dots)
 var _info_text := ""               # the selected stage's facts (Chest tap)
 var elite_unlocked := false
 var level := 1
@@ -114,6 +115,7 @@ func _ready() -> void:
 	_fade_in_overlay()
 	_setup_view_manager()
 	call_deferred("_animate_nav_in")
+	_on_energy_changed()   # the red dots, now that every button exists
 
 func _load_save() -> void:
 	if FileAccess.file_exists("user://skybound_save.json"):
@@ -171,20 +173,7 @@ func _icon_button(node_name: String, icon_name: String, tap: float, drawn: float
 	return b
 
 func _add_dot(b: Control) -> void:
-	var d := Panel.new()
-	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var s := StyleBoxFlat.new()
-	s.bg_color = Color(1.0, 0.35, 0.42)
-	s.set_corner_radius_all(5)
-	s.set_border_width_all(1)
-	s.border_color = Color(0.04, 0.06, 0.17)
-	d.add_theme_stylebox_override("panel", s)
-	d.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	d.offset_left = -13.0
-	d.offset_right = -3.0
-	d.offset_top = 3.0
-	d.offset_bottom = 13.0
-	b.add_child(d)
+	UIKit.dot(b, true)
 
 # "Pilot 7" with a thin XP bar under it (cyan to purple) toward the next level.
 func _pilot_block() -> Control:
@@ -256,6 +245,7 @@ func _rail_item(def: Dictionary) -> Control:
 	_frame.add_dock(b, 2, Vector2(-5, -5))   # a glass tile behind it
 	if def.dot:
 		_add_dot(b)
+	_dot_btns[def.id] = b   # red dots follow Progress.attention (_refresh_dots)
 	if def.id in LABELED:
 		box.add_child(_small_label(def.label, 12, MUTED))
 	if def.has("go"):
@@ -448,6 +438,7 @@ func _action_item(node_name: String, icon_name: String, label: String, on_press:
 	var b := _icon_button(node_name, icon_name, 46.0, 40.0, 38, Color(0, 0, 0, 0))
 	b.add_theme_stylebox_override("normal", StyleBoxEmpty.new())
 	b.add_theme_stylebox_override("hover", StyleBoxEmpty.new())
+	_dot_btns[node_name] = b
 	# Chest and Patrol are Luna's 3D chest and drone, animated (home_prop.gd)
 	if node_name == "ChestButton" or node_name == "PatrolButton":
 		b.icon = null
@@ -1091,6 +1082,20 @@ func _on_energy_changed() -> void:
 	_energy_btn.text = "%d/%d" % [e, Energy.MAX]
 	_load_save()
 	_crystal_btn.text = _fmt(crystals)
+	_refresh_dots(s)
+
+# Red dots (dev142): one rule, Progress.attention, feeds the nav tabs (Store, Gear, Quests)
+# and the Home buttons (Daily = Quests, Gifts = today's gift, Patrol = something to collect).
+# Called every 2 s with the energy counter and whenever Home comes back.
+func _refresh_dots(s: Dictionary) -> void:
+	var at := Progress.attention(s)
+	UIKit.dot(_nav_btn("NavQuests"), at.quests)
+	UIKit.dot(_nav_btn("NavStore"), at.store)
+	UIKit.dot(_nav_btn("NavGear"), at.gear)
+	var want := {"DailyButton": at.quests, "GiftsButton": at.store, "PatrolButton": at.patrol}
+	for id in want:
+		if _dot_btns.has(id) and is_instance_valid(_dot_btns[id]):
+			UIKit.dot(_dot_btns[id], want[id])
 
 # ------------------------------------------------------------- Patrol (offline farming)
 # Patrol farms a cleared stage wave by wave while you're away (Patrol class). This window:

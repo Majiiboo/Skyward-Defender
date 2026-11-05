@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev141 (version/code=141 and version/name="1.0-dev141" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev142 (version/code=142 and version/name="1.0-dev142" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,21 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev142: red dots everywhere and the attendance calendar (from the Slayer Legend notes)
+
+- RED DOTS: one rule in the code (Progress.attention) decides where a red dot shows, and
+  every dot follows it: the Store, Gear and Quests tabs on the bottom bar; the Daily, Gifts
+  and Patrol buttons on Home; the Daily / Career / Trophies tabs in Quests; the Offers tab
+  in the Store; the Workshop tab in Gear and its Parts / Gear sub-tabs. A dot means
+  "something to claim or do here now": a finished task, today's gift, a merge you can make,
+  Patrol ready to collect. They refresh every 2 seconds on Home and after every claim.
+- DAILY GIFT is now a 7-day ATTENDANCE CALENDAR on Store > Offers: seven cells across the
+  top, today's lit, claimed ones ticked, day 7 in gold. One claim a day; the day advances
+  each claim and the week starts again after day 7. Missing a day does NOT reset the week
+  (kind on purpose). Gifts: 100 coins, 150 coins, 5 crystals, 200 coins + 3 Alloy,
+  10 crystals, 300 coins + 1 Plasma Cell, then 500 coins + 25 crystals on day 7.
+  A save that already took today's old gift counts as claimed today.
 
 ## dev141: Home rail and Store teasers (Rudy's picks from the dev140 list)
 

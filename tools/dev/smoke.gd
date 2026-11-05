@@ -17,6 +17,7 @@ func _initialize() -> void:
 				_fail("script does not load: " + f)
 	_check_energy()
 	_check_gear()
+	_check_attend()
 	_check_cards()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
@@ -113,6 +114,37 @@ func _check_gear() -> void:
 	_expect(GearData.copies_of(GearData.read(s3), "ion_helmet", "uncommon") == 1, "grant adds a copy")
 	_expect(Progress.reward_text({"gear": [{"id": "ion_helmet", "rarity": "uncommon"}]}).contains("Ion Visor"), "reward text names the piece")
 	_expect(Patrol.per_wave(24).has("gear"), "Patrol farms gear copies")
+
+func _check_attend() -> void:
+	# attendance: one claim a day, day advances, day 7 wraps to 1, missing a day keeps the week
+	var d := {"coins": 0}
+	var a := Progress.attend(d)
+	_expect(a.day == 1 and a.claimable, "fresh save: day 1 to claim")
+	var got := Progress.claim_attend(d)
+	_expect(int(got.get("coins", 0)) == 100 and int(d.coins) == 100, "day 1 pays 100 coins")
+	a = Progress.attend(d)
+	_expect(a.day == 1 and a.claimed_today and not a.claimable and a.next == 2, "after the claim: day 1 shown as done, next is 2")
+	_expect(Progress.claim_attend(d).is_empty(), "no second claim today")
+	d.attend.last = Progress.today() - 3   # three days away
+	_expect(Progress.attend(d).next == 2 and Progress.attend(d).claimable, "a gap keeps the week")
+	d.attend = {"day": 7, "last": Progress.today() - 1}
+	got = Progress.claim_attend(d)
+	_expect(int(got.get("crystals", 0)) == 25 and int(d.attend.day) == 1, "day 7 is the big one and wraps to 1")
+	# old saves: today's gift_day counts as claimed
+	var old := {"gift_day": Progress.today()}
+	_expect(not Progress.attend(old).claimable, "old gift_day counts as today's claim")
+	# attention: dots follow claimable things
+	var s := {"stage_unlocked": 12, "parts": {"alloy": 3}}
+	var at := Progress.attention(s)
+	_expect(at.store and at.gear and at.gear_ws[0] and not at.gear_ws[1] and not at.patrol, "attention: gift + parts merge (%s)" % str(at))
+	s.attend = {"day": 2, "last": Progress.today()}
+	s.parts = {}
+	var g := GearData.read(s)
+	for i in 3:
+		GearData.add_copy(g, "ion_boots", "common")
+	s.gear = GearData.write(g)
+	at = Progress.attention(s)
+	_expect(not at.store and at.gear and at.gear_ws[1], "attention: gear merge only (%s)" % str(at))
 
 func _check_cards() -> void:
 	for id in Cards.CARDS:

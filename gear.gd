@@ -9,6 +9,8 @@ extends Control
 
 var gear := {}             # GearData.read(save): {equipped, levels, copies, recent}
 var _loadout_row: HBoxContainer
+var _tabs_row: HBoxContainer       # Pilot / Turrets / Drone / Workshop (red dot on Workshop when a merge waits)
+var _ws_tabs_row: HBoxContainer    # Parts / Gear
 var _wallet_box: HBoxContainer
 var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
 var _ws_parts_box: VBoxContainer
@@ -138,7 +140,9 @@ func _build() -> void:
 	top.add_child(_wallet_box)
 	col.add_child(top)
 	# Pilot / Turrets switch
-	col.add_child(UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page))
+	_tabs_row = UIKit.tabs(["Pilot", "Turrets", "Drone", "Workshop"], _show_page, _start_page)
+	col.add_child(_tabs_row)
+	_paint_dots()
 	_workshop_box = VBoxContainer.new()
 	_workshop_box.add_theme_constant_override("separation", 10)
 	_workshop_box.visible = false
@@ -508,7 +512,9 @@ func _refresh_workshop(pop: String = "") -> void:
 		_ws_gear_box.visible = i == 1
 		if i == 1:
 			_refresh_ws_gear()
-	_workshop_box.add_child(UIKit.tabs(["Parts", "Gear"], on_tab, _ws_tab))
+	_ws_tabs_row = UIKit.tabs(["Parts", "Gear"], on_tab, _ws_tab)
+	_workshop_box.add_child(_ws_tabs_row)
+	_paint_dots()
 	_ws_parts_box = VBoxContainer.new()
 	_ws_parts_box.add_theme_constant_override("separation", 10)
 	_ws_parts_box.visible = _ws_tab == 0
@@ -770,6 +776,7 @@ func _merge_gear(id: String, r: String) -> void:
 	add_child(fx)
 	await fx.finished
 	_refresh_ws_gear()
+	_paint_dots()
 
 func _quick_merge() -> void:
 	var data := _read()
@@ -792,6 +799,7 @@ func _quick_merge() -> void:
 	add_child(fx)
 	await fx.finished
 	_refresh_ws_gear()
+	_paint_dots()
 
 # the Filter box: rows of chips for rarity, slot, set and sort order; Done closes it
 func _filter_box() -> void:
@@ -927,6 +935,15 @@ func _loadout_box(i: int) -> void:
 	v.add_child(close)
 	p.add_child(v)
 	layer.add_child(p)
+
+# red dots (Progress.attention): Workshop when a parts or gear merge is possible, and the
+# matching Workshop sub-tab
+func _paint_dots() -> void:
+	var at := Progress.attention(_read())
+	if _tabs_row:
+		UIKit.tab_dots(_tabs_row, [false, false, false, at.gear])
+	if _ws_tabs_row and is_instance_valid(_ws_tabs_row):
+		UIKit.tab_dots(_ws_tabs_row, at.gear_ws)
 
 # coins and crystals as icons at the top right (the same wallet as Store and Quests)
 func _paint_wallet() -> void:

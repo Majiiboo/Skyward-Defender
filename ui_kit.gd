@@ -186,8 +186,39 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 		b.add_child(bl)
 	return b
 
-static func tabs(names: Array, on_pick: Callable, selected: int = 0) -> HBoxContainer:
-	# A row of sub-tabs (Daily / Weekly / Monthly). Calls on_pick(index).
+# The red "something to claim" dot (dev142), the same on every page: on = add it, off =
+# remove it. Any Control can carry one; Progress.attention decides where they show.
+static func dot(b: Control, on: bool) -> void:
+	var old := b.get_node_or_null("Dot")
+	if not on:
+		if old:
+			old.queue_free()
+		return
+	if old:
+		return
+	var d := Panel.new()
+	d.name = "Dot"
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(1.0, 0.35, 0.42)
+	s.set_corner_radius_all(5)
+	s.set_border_width_all(1)
+	s.border_color = Color(0.04, 0.06, 0.17)
+	d.add_theme_stylebox_override("panel", s)
+	d.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	d.offset_left = -13.0
+	d.offset_right = -3.0
+	d.offset_top = 3.0
+	d.offset_bottom = 13.0
+	b.add_child(d)
+
+# dots on a tabs() row: flags[i] true = the i-th tab has something to claim
+static func tab_dots(row: HBoxContainer, flags: Array) -> void:
+	for i in mini(row.get_child_count(), flags.size()):
+		dot(row.get_child(i), bool(flags[i]))
+
+static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array = []) -> HBoxContainer:
+	# A row of sub-tabs (Daily / Weekly / Monthly). Calls on_pick(index). dots: see tab_dots.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
 	var buttons: Array = []
@@ -208,6 +239,7 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0) -> HBoxCont
 			paint.call(i)
 			on_pick.call(i))
 	paint.call(selected)
+	tab_dots(row, dots)
 	return row
 
 static func chip(text: String, col: Color = CYAN) -> PanelContainer:

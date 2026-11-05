@@ -7,6 +7,7 @@ var tab := 0
 var _list: VBoxContainer
 var _note: Label
 var _wallet: HBoxContainer
+var _tabs_row: HBoxContainer
 var d := {}
 
 func _ready() -> void:
@@ -48,7 +49,8 @@ func _build() -> void:
 	if get_tree().root.has_meta("quests_tab"):
 		tab = int(get_tree().root.get_meta("quests_tab"))
 		get_tree().root.remove_meta("quests_tab")
-	col.add_child(UIKit.tabs(["Daily", "Career", "Trophies"], func(i): tab = i; _fill(), tab))
+	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies"], func(i): tab = i; _fill(), tab)
+	col.add_child(_tabs_row)
 	_note = UIKit.label("", 12, UIKit.MUTED)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	col.add_child(_note)
@@ -63,6 +65,7 @@ func _fill() -> void:
 	for c in _wallet.get_children():
 		c.queue_free()
 	_wallet.add_child(UIKit.wallet(int(d.get("coins", 0)), int(d.get("crystals", 0))))
+	UIKit.tab_dots(_tabs_row, Progress.attention(d).quests_tabs)   # a dot on each tab with a claim
 	match tab:
 		0:
 			var ms := Progress.daily(d)

@@ -270,6 +270,73 @@ static func claim_trophy(id: String) -> Dictionary:
 	write(d)
 	return d
 
+# ------------------------------------------------------------------ attendance calendar
+# (dev142, from Rudy's Slayer Legend notes) Seven days, one claim a day, a bigger gift on
+# day 7, then the week starts again. Missing a day does not reset the week (gentle).
+# Save: "attend": {"day": the next day to claim (1-7), "last": day number of the last claim}.
+# Old saves: "gift_day" == today counts as today's claim.
+const ATTEND := [
+	{"coins": 100}, {"coins": 150}, {"crystals": 5}, {"coins": 200, "alloy": 3},
+	{"crystals": 10}, {"coins": 300, "cell": 1}, {"coins": 500, "crystals": 25},
+]
+
+# {day: 1-7 (the one to claim next, or the one claimed today), claimable, claimed_today}
+static func attend(d: Dictionary) -> Dictionary:
+	var a = d.get("attend", {})
+	if typeof(a) != TYPE_DICTIONARY:
+		a = {}
+	var day := clampi(int(a.get("day", 1)), 1, ATTEND.size())
+	var last := int(a.get("last", -1))
+	if last < 0 and int(d.get("gift_day", -1)) == today():
+		last = today()
+	var done_today := last == today()
+	# the cell lit today: the one just claimed, else the next to claim
+	var shown := day if not done_today else (ATTEND.size() if day == 1 else day - 1)
+	return {"day": shown, "next": day, "claimable": not done_today, "claimed_today": done_today}
+
+static func claim_attend(d: Dictionary) -> Dictionary:
+	var st := attend(d)
+	if not st.claimable:
+		return {}
+	var reward: Dictionary = ATTEND[int(st.next) - 1]
+	grant(d, reward)
+	d["attend"] = {"day": (int(st.next) % ATTEND.size()) + 1, "last": today()}
+	return reward
+
+# ------------------------------------------------------------------ attention (red dots)
+# One rule for every red dot in the game (dev142): what has something to claim or do right
+# now. Pages and Home read this; nothing else decides where a dot shows.
+#   quests / quests_tabs [daily, career, trophies]: a finished task to claim
+#   store: today's attendance gift
+#   gear / gear_ws [parts, gear]: a merge is possible in the Workshop
+#   patrol: something farmed and a collect left today
+static func attention(d: Dictionary) -> Dictionary:
+	var q := [false, false, false]
+	for m in daily(d):
+		if m.done and not m.claimed:
+			q[0] = true
+	for m in career(d):
+		if m.done and not m.claimed:
+			q[1] = true
+	for t in trophies(d):
+		if t.claimed < t.reached:
+			q[2] = true
+	var parts := Parts.read(d)
+	var parts_merge := false
+	for k in Parts.MERGE:
+		if int(parts[k]) >= Parts.MERGE_COST:
+			parts_merge = true
+	var g := GearData.read(d)
+	var gear_merge := false
+	for id in g.copies:
+		for r in g.copies[id]:
+			if GearData.can_merge(g, id, r):
+				gear_merge = true
+	var p := Patrol.tick(d.duplicate(true))   # a copy: looking must not count time
+	var patrol: bool = not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0
+	return {"quests": q[0] or q[1] or q[2], "quests_tabs": q, "store": bool(attend(d).claimable),
+		"gear": parts_merge or gear_merge, "gear_ws": [parts_merge, gear_merge], "patrol": patrol}
+
 # anything waiting to be claimed (for a red dot on Home)
 static func has_claimable(d: Dictionary) -> bool:
 	for m in daily(d):
