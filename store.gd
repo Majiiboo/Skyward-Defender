@@ -191,6 +191,34 @@ func _fill_offers() -> void:
 		var speed: bool = o.id == "speed"
 		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
 		g.add_child(_tile(load("res://icons/ui_energy.png") if speed else load("res://icons/ui_coin.png"), big, o.name, o.color, b))
+	g.add_child(_teaser(load("res://icons/gifts.png"), "Weekly Pack", "Free items every week"))
+
+# A tile for what the Store will sell later (Store 2.0, dev141): the picture dimmed, a
+# SOON chip where the price would be, so the page does not look half empty.
+func _teaser(icon: Texture2D, big: String, small: String) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	p.add_theme_stylebox_override("panel", UIKit.box(Color(0.05, 0.07, 0.14, 0.55), Color(1, 1, 1, 0.14), 14))
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	var tr := TextureRect.new()
+	tr.texture = icon
+	tr.custom_minimum_size = Vector2(0, 92)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.modulate = Color(0.5, 0.55, 0.68, 0.8)
+	v.add_child(tr)
+	v.add_child(UIKit.label(big, 18, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label(small, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	var chip := UIKit.chip("COMING SOON", UIKit.MUTED)
+	chip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var box := VBoxContainer.new()
+	box.custom_minimum_size = Vector2(0, 38)
+	box.alignment = BoxContainer.ALIGNMENT_CENTER
+	box.add_child(chip)
+	v.add_child(box)
+	p.add_child(v)
+	return p
 
 func _buy(o: Dictionary) -> void:
 	d = Progress.read()
@@ -224,6 +252,9 @@ func _fill_chests() -> void:
 			else:
 				jackpot = "%d%%: %d crystals" % [int(r[0]), int(r[1].crystals)]
 		g.add_child(_tile(load("res://icons/chest3d_closed.png"), "%s-%s" % [UIKit.num(lo), UIKit.num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
+	# Store 2.0 (queue 18): chests opened with keys, with a pity counter, and gear inside
+	g.add_child(_teaser(load("res://icons/chest3d_closed.png"), "Key Chest", "Opened with keys from battle"))
+	g.add_child(_teaser(load("res://icons/gear_on.png"), "Gear Chest", "Gear copies, Epic every 10th"))
 	_page.add_child(UIKit.label("Coins, or the crystal jackpot", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 func _open_chest(c: Dictionary) -> void:

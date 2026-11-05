@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev140 (version/code=140 and version/name="1.0-dev140" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev141 (version/code=141 and version/name="1.0-dev141" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev141: Home rail and Store teasers (Rudy's picks from the dev140 list)
+
+- Home: the Event and Promo buttons are hidden until events and deals exist (their table
+  entries stay in hub.gd with "hidden": true; remove the flag to bring one back). The four
+  side buttons that remain (Starter, Daily, Gifts, Ranks) all have labels now, like Chest
+  and Patrol, so the rail reads as one set.
+- Store: pages are no longer half empty. Offers has a "Weekly Pack · coming soon" tile next
+  to the Speed Pack; Chests has "Key Chest" (opened with keys from battle) and "Gear Chest"
+  (gear copies, Epic every 10th) tiles. Teasers are dimmed with a COMING SOON chip and no
+  price, so nobody mistakes them for something to buy. They become real with Store 2.0.
+- Dev: tools/dev/capture.gd takes CAP_META (e.g. store_tab=1) to open a page on a tab.
 
 ## dev140: polish pass (menus, notes, code)
 

@@ -21,7 +21,7 @@ const GLASS_LINE := Color(1, 1, 1, 0.10)
 
 # Small text under these round buttons (the ones whose icon isn't obvious).
 # Add or remove node names here to try different combinations.
-const LABELED := ["ChestButton", "PatrolButton", "StarterButton", "GiftsButton"]
+const LABELED := ["ChestButton", "PatrolButton", "StarterButton", "GiftsButton", "DailyButton", "RanksButton", "EventButton", "PromoButton"]   # dev141: every side button, same look
 
 const NAV_NAMES := {"NavStore": "Store", "NavGear": "Gear", "NavBattle": "Battle", "NavModes": "Modes", "NavQuests": "Quests"}
 const NAV_ICONS := {"NavStore": "nav_store", "NavGear": "nav_gear", "NavBattle": "nav_battle",
@@ -36,10 +36,11 @@ const STAGE_NAMES := {
 # Side buttons. "dot" = red notification dot. Events, offers and promos will go here later.
 # "go" = [nav tab, meta key, tab index]: the button opens that page on that tab (dev140:
 # Daily -> Quests, Gifts -> Store offers, Starter -> Store packs); the rest show a pop-up.
+# "hidden": not built on Home until its feature exists (dev141, Rudy: no dead buttons).
 const LEFT_RAIL := [
-	{"id": "EventButton", "icon": "event", "label": "Event", "dot": true,
+	{"id": "EventButton", "icon": "event", "label": "Event", "dot": true, "hidden": true,
 		"title": "EVENT", "body": "Seasonal events with their own stage and rewards are coming in a later update."},
-	{"id": "PromoButton", "icon": "promo", "label": "Promo", "dot": false,
+	{"id": "PromoButton", "icon": "promo", "label": "Promo", "dot": false, "hidden": true,
 		"title": "PROMO", "body": "Special deals and bundles will show here once the Store opens for real-money packs."},
 	{"id": "StarterButton", "icon": "starter", "label": "Starter", "dot": false,
 		"go": ["NavStore", "store_tab", 3]},
@@ -394,7 +395,8 @@ func _build_home() -> void:
 	left.offset_left = 8.0
 	home.add_child(left)
 	for d in LEFT_RAIL:
-		left.add_child(_rail_item(d))
+		if not d.get("hidden", false):
+			left.add_child(_rail_item(d))
 	var right := VBoxContainer.new()
 	right.name = "RightRail"
 	right.add_theme_constant_override("separation", 12)
@@ -405,7 +407,8 @@ func _build_home() -> void:
 	right.offset_right = -8.0
 	home.add_child(right)
 	for d in RIGHT_RAIL:
-		right.add_child(_rail_item(d))
+		if not d.get("hidden", false):
+			right.add_child(_rail_item(d))
 
 	# ---- bottom row: START centred, Chest and Patrol docked to the screen edges ----
 	var row := Control.new()

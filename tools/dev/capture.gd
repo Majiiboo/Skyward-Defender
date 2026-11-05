@@ -23,6 +23,9 @@ func _initialize() -> void:
 	var ws := OS.get_environment("CAP_WS")
 	if ws != "":
 		root.set_meta("gear_ws_tab", int(ws))
+	# CAP_META="store_tab=1,quests_tab=2": any root metas a page reads on open
+	for pair in OS.get_environment("CAP_META").split(",", false):
+		root.set_meta(pair.get_slice("=", 0), int(pair.get_slice("=", 1)))
 	var scene := OS.get_environment("CAP_SCENE")
 	change_scene_to_file(scene if scene != "" else "res://gear.tscn")
 	# CAP_CALL="method|arg|arg": call that on the scene once it has settled (opens a pop-up)
