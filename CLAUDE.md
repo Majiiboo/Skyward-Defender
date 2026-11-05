@@ -113,8 +113,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    offered when that turret is mounted: some CHANGE what it does, some EXTEND it and grow per
    level (e.g. Sentry bolts bounce to 1, 2, 3 more bugs); Luna card art later. (c) Milestones for
    gear pieces and the drone too. (d) AFK farming per stage: Patrol earns while the game is
-   closed; each cleared stage farms its own element (early stages Alloy, later Cells, then
-   Cores, slowly), pick the stage, capped storage. (e) Pilot talent points (Offense / Defense /
+   closed (and while open); pick a cleared stage, capped storage. MOSTLY COINS (by stage), plus
+   that stage's element (early Alloy, later Cells, then Cores, slowly), plus RARE gear copies for
+   merging (Rudy: common weapons/pieces on low stages, better rarities only on high stages, rare
+   and spread out). Gear copies need (f). (e) Pilot talent points (Offense / Defense /
    Utility tree, a Gear sub-tab). (f) Gear rarity: max level 30, rarity caps the level, raised by
    merging copies in the Workshop (needs gear drops). (g) Re-tune: gentle to 15, then each boss a
    soft wall; target 30-40 hours to stage 60; replays pay half coins.
