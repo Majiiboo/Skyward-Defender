@@ -1,12 +1,13 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev165 (version/code=165 and version/name="1.0-dev165" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev166 (version/code=166 and version/name="1.0-dev166" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
 
-- Godot 4.3 stable, on a PC. That is the exact version this project was built with.
+- Godot 4.7.2 stable, on a PC. That is the exact version this project is built with (Luna builds
+  the APK with it too).
 - Open Godot, choose Import, and pick the project.godot file in this folder.
 - Let it finish importing (it takes a minute the first time), then press Play.
   You will see the Home screen on your PC, and you can click the bottom tabs

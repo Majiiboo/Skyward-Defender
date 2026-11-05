@@ -129,12 +129,49 @@ func _fill() -> void:
 	th.add_child(tb)
 	tp.add_child(th)
 	_page.add_child(tp)
+	# ---- developer shortcuts (DevTools), only while BuildInfo.DEV is true
+	if BuildInfo.DEV:
+		_page.add_child(UIKit.header("DEVELOPER  ·  this build only"))
+		for spec in [
+			["Rich wallet", "+500k coins, +20k crystals, 999 Alloy, 500 Cells, 200 Cores, 999 power", DevTools.rich],
+			["Unlock everything", "All 60 stages with 3 stars, pilot level 40, Commander suit, Elite, every turret and trial", DevTools.unlock_all],
+			["Gear copies to merge", "9 Common, 3 Uncommon, 3 Rare, 3 Epic copies of every piece you own", DevTools.gear_copies],
+			["Fresh save", "Deletes the save: a brand-new player, tips and all (tap twice)", DevTools.fresh],
+		]:
+			var p := UIKit.panel(12)
+			var h := HBoxContainer.new()
+			h.add_theme_constant_override("separation", 10)
+			var v := VBoxContainer.new()
+			v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			v.add_theme_constant_override("separation", 1)
+			v.add_child(UIKit.label(spec[0], 15, Color(1.0, 0.85, 0.6)))
+			var hl := UIKit.label(spec[1], 11, UIKit.MUTED)
+			hl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			v.add_child(hl)
+			h.add_child(v)
+			var b := UIKit.gold_button("Do it", 13)
+			b.custom_minimum_size = Vector2(76, 34)
+			var fn: Callable = spec[2]
+			var armed := [false]
+			var fresh: bool = spec[0] == "Fresh save"
+			b.pressed.connect(func():
+				if fresh and not armed[0]:
+					armed[0] = true
+					b.text = "Sure?"
+					return
+				fn.call()
+				b.text = "Done"
+				b.disabled = true
+				d = Progress.read())
+			h.add_child(b)
+			p.add_child(h)
+			_page.add_child(p)
 	# ---- about
 	_page.add_child(UIKit.header("ABOUT"))
 	var ab := UIKit.panel(12)
 	var av := VBoxContainer.new()
 	av.add_theme_constant_override("separation", 1)
-	av.add_child(UIKit.label("Skybound Defender  ·  build %s" % BuildInfo.BUILD, 13, Color.WHITE))
+	av.add_child(UIKit.label("Skybound Defender  ·  build %s%s" % [BuildInfo.BUILD, "  ·  developer build" if BuildInfo.DEV else ""], 13, Color.WHITE))
 	av.add_child(UIKit.label("Art: Luna  ·  Design: Rudy  ·  Draws at your phone's own resolution", 11, UIKit.MUTED))
 	ab.add_child(av)
 	_page.add_child(ab)

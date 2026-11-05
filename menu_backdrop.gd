@@ -49,21 +49,20 @@ func _sz() -> Vector2:
 
 func _draw() -> void:
 	# the world, slowly drifting sideways; the bottom of the painting sits under the nav bar
-	var size := _sz()
+	var sz := _sz()
 	var shift := sin(_t * 0.05) * 0.6
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.012, 0.03))
-	Backdrop.draw_world(self, size, size.y + 40.0, _key, _stars, _t, shift, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, sz), Color(0.01, 0.012, 0.03))
+	Backdrop.draw_world(self, sz, sz.y + 40.0, _key, _stars, _t, shift, 1.0)
 	# darken so panels and text stay the subject
-	draw_rect(Rect2(Vector2.ZERO, size), Color(0.02, 0.03, 0.07, 1.0 - DIM.r))
+	draw_rect(Rect2(Vector2.ZERO, sz), Color(0.02, 0.03, 0.07, 1.0 - DIM.r))
 	# dust rising through the light
 	for m in _motes:
 		var y: float = fposmod(float(m.y) - _t * float(m.v), 1.0)
 		var x: float = float(m.x) + sin(_t * 0.4 + float(m.ph)) * 0.01
 		var a: float = 0.10 + 0.10 * sin(_t * 1.3 + float(m.ph))
-		draw_circle(Vector2(x * size.x, y * size.y), float(m.s), Color(0.6, 0.85, 1.0, a))
+		draw_circle(Vector2(x * sz.x, y * sz.y), float(m.s), Color(0.6, 0.85, 1.0, a))
 	# vignette: darker top band (under the title) and bottom (under the nav bar)
-	draw_rect(Rect2(0, 0, size.x, 120), Color(0.01, 0.015, 0.04, 0.0))
-	var top := PackedVector2Array([Vector2(0, 0), Vector2(size.x, 0), Vector2(size.x, 140), Vector2(0, 140)])
+	var top := PackedVector2Array([Vector2(0, 0), Vector2(sz.x, 0), Vector2(sz.x, 140), Vector2(0, 140)])
 	draw_polygon(top, PackedColorArray([Color(0.01, 0.015, 0.04, 0.55), Color(0.01, 0.015, 0.04, 0.55), Color(0.01, 0.015, 0.04, 0.0), Color(0.01, 0.015, 0.04, 0.0)]))
-	var bot := PackedVector2Array([Vector2(0, size.y - 160), Vector2(size.x, size.y - 160), Vector2(size.x, size.y), Vector2(0, size.y)])
+	var bot := PackedVector2Array([Vector2(0, sz.y - 160), Vector2(sz.x, sz.y - 160), Vector2(sz.x, sz.y), Vector2(0, sz.y)])
 	draw_polygon(bot, PackedColorArray([Color(0.01, 0.015, 0.04, 0.0), Color(0.01, 0.015, 0.04, 0.0), Color(0.01, 0.015, 0.04, 0.7), Color(0.01, 0.015, 0.04, 0.7)]))

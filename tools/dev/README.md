@@ -19,3 +19,11 @@ next to project.godot (the sim save folder, so the real save is never touched), 
   Run it before every build.
 - `capture.gd`: screenshot of a menu page with a made-up save (save_rich.json) in the sim save
   folder. Env CAP_SCENE, CAP_PAGE (Gear tab), CAP_WS (Workshop sub-tab), CAP_SAVE; see the file head.
+- `turn_capture.gd`: the pilot alone, swinging his aim left to right over a second (checks the
+  turn-around). `bug_capture.gd`: the four Hive bugs drawn large and animating (tune EnemyRig
+  part placement). Both via --write-movie like capture.gd.
+- Art cutters for Luna's parts: tools/cut_parts_r1.gd (animation parts round 1), tools/cut_turn.gd
+  (pilot turn frames, kept aligned on one canvas per suit), tools/cut_turret_light.gd (the glow
+  cut out of each turret picture). Run each headless, then `G --headless --import --path .`.
+- Chains that end in a commit must stop on "SCRIPT ERROR": capture the smoke output and exit
+  before committing (dev162 shipped a parse error for one commit when a chain did not).
