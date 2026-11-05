@@ -10,7 +10,7 @@ extends RefCounted
 # "selected_mode" == "promotion" + "promotion_rank" once and clears the mode again.
 
 const RANKS := [
-	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 15, "hp": 1.45, "count": 1.3},
+	{"id": "cadet",       "name": "Cadet",       "level": 10, "stage": 15, "hp": 1.3,  "count": 1.3},
 	{"id": "pilot",       "name": "Pilot",       "level": 20, "stage": 30, "hp": 1.45, "count": 1.3},
 	{"id": "ace",         "name": "Ace",         "level": 25, "stage": 40, "hp": 1.65, "count": 1.3},
 	{"id": "comet",       "name": "Comet",       "level": 30, "stage": 55, "hp": 1.6,  "count": 1.3},

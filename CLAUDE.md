@@ -365,7 +365,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    68-78% late (turrets ~25-30%); Elite 10 won, 20 half, 30 lost (hull 0 by wave 4-5), 40 half,
    50-60 won: a cliff at stage 30 only; trials with the hero kit: Cadet / Pilot / Ace / Meteor
    3 of 3, Comet 0 of 3 (Turrets down at stage 55 was a wall) -> ranks +0.15 hp, no_turrets moved
-   to Cadet only (stage 15); after: Cadet 1.45 + no turrets, Pilot 1.45, Ace 1.65, Comet 1.6,
+   to Cadet only (stage 15); after: Cadet 1.3 + no turrets (1.45 was 1 of 4), Pilot 1.45, Ace 1.65, Comet 1.6,
    Meteor 1.7, later +0.05 steps to 1.95: sim Cadet ~half, Pilot 2 of 3, Ace-Meteor won with HP
    lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
    threatened" is partly the bot. OLDER
