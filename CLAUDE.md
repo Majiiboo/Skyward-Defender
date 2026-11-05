@@ -107,6 +107,15 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   wanted, Sparks first). Queue items 8 / 8b / 8c (gear slots, sets, gear on the pilot) and 16 f
   (gear rarity) are superseded except for the WEAPON, which stays the one gear slot. Heroes must
   look clearly different from each other, some off-theme for fun (penguin, dragon-kin).
+- LUNA ART PROGRAM (Rudy, 2026-11-05): "put her to work": she renders pieces, the code places them.
+  LUNA-PROGRAM.md lists ten packages in order. Delivered 2026-11-05: ALL FIVE HERO SETS
+  (art_src/heroes/<id>/ reference, parts_sheet, weapon_side, turn_1..5, portrait; alts kept).
+  Missing: Hollow turn 4 + turn 5 at 1024, Ember turn frames + portrait, Frost parts cell 8
+  (LUNA-BRIEF-heroes-redo-1.md). Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
+  buttons / panels / bars / small), LUNA-BRIEF-icons.md (48-cell sheet), LUNA-BRIEF-drones-2.md
+  (Spark Bot / Wisp / Night Bat as hull + thrusters + glow, Repair + Magnet pods).
+  NEXT CODE JOB: cut the hero sets into heroes/<id>/ (a cut_heroes.gd like cut_pilot_art.gd +
+  cut_turn.gd), PilotRig per-hero PARTS tables and turn frames, PARTS pivots measured per hero.
 - Luna delivered: turret card pictures (dev138, art_src/cards_r2), animation parts round 1 (dev160-162,
   art_src/parts_r1: drone hull/thrusters, Swarm lid, bug legs/feelers/sac/chunks; Sentry head_nobarrels
   unused, wrong angle), pilot turn frames (dev161, art_src/turn). Still waiting: merge sparks sheet.
