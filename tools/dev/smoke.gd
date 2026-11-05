@@ -198,6 +198,25 @@ func _check_cards() -> void:
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("turret"):
 			_expect(ResourceLoader.exists("res://cards/pic_%s.png" % id), "turret card picture missing: " + id)
+	# hero cards (dev172): one per hero, only offered while he is on duty, three picks each
+	for id in Heroes.ORDER:
+		var found := ""
+		for cid in Cards.CARDS:
+			if String(Cards.CARDS[cid].get("hero", "")) == id:
+				found = cid
+		_expect(found != "" and int(Cards.CARDS[found].max) == 3 and Cards.OVERCHARGE.has(found), "hero %s has a 3-pick card with an overcharge" % id)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var seen_other := false
+	for i in 40:
+		for cid in Cards.draw({}, 3, rng, 99, true, [], "rook"):
+			if Cards.CARDS[cid].has("hero"):
+				_expect(String(Cards.CARDS[cid].hero) == "rook", "Rook on duty: only Rook's card shows (%s)" % cid)
+				seen_other = true
+	_expect(seen_other, "Rook's card does come up in 40 draws")
+	for i in 40:
+		for cid in Cards.draw({}, 3, rng, 99, true, [], ""):
+			_expect(not Cards.CARDS[cid].has("hero"), "no hero on duty: no hero card (%s)" % cid)
 
 # progressive disclosure (Unlocks, dev168): a new player sees little, systems open in order
 func _check_unlocks() -> void:

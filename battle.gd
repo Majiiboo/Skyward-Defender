@@ -150,6 +150,21 @@ var _coin_mult := 1.0
 var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
 var _bolt_set := "ion"             # the weapon's set: its colour on the pilot's bolts (Luna's bolts recoloured)
 var _elem_mult := 1.0              # the hero's element vs this planet's family (Heroes.element_mult): x1.35 weak, x0.75 resists
+# hero cards (Cards "hero", dev172): each hero has one card of his own and its overcharge
+var _hero_id := "rook"
+var _twin_every := 0               # Rook: every Nth bolt fires a twin (4, 3, 2)
+var _twin_bonus := false           # its overcharge: twins +15%
+var _weld_count := 0               # Sparks: bolts arc to this many bugs ...
+var _weld_every := 3               # ... every 3rd bolt (overcharge: every bolt)
+var _freeze_level := 0             # Frost: hits slow 20% a level
+var _shatter := false              # its overcharge: a slowed bug that dies blasts its neighbours
+var _phase_bonus := false          # Hollow overcharge: +30% damage per bug passed
+var _burn_level := 0               # Ember: hits set bugs burning (5% HP/s, longer per level)
+var _burn_spread := false          # its overcharge: a burning bug that dies spreads the fire
+# damage numbers (Rudy, dev172): per bug, batched over a quarter second; crits big and gold
+var _dmg_acc := {}                 # enemy id -> {"v": damage so far, "t": when it started, "pos"}
+const DMG_BATCH := 0.25
+const DMG_SHOW := 10.0             # damage is tiny inside (a bolt ~1.0): shown x10 so a hit reads "10", a crit "CRIT 15"
 var _move_mult := 1.0              # the hero's build (Heroes): small heroes slide faster under the finger, bulky ones slower
 var _shards_got := {}              # hero shards won on this stage (the end screen)
 var _coins_f := 0.0
@@ -387,6 +402,16 @@ func _start_stage() -> void:
 	_burst_pierce = false
 	_gem_shield = false
 	chain_level = 0
+	_twin_every = 0
+	_twin_bonus = false
+	_weld_count = 0
+	_weld_every = 3
+	_freeze_level = 0
+	_shatter = false
+	_phase_bonus = false
+	_burn_level = 0
+	_burn_spread = false
+	_dmg_acc = {}
 	_shield_rate = 0.0
 	_hull_rate = 0.0
 	_chain_mult = 1.0
@@ -430,6 +455,7 @@ func _start_stage() -> void:
 	var gs := Heroes.stats(sv)   # the hero and his weapon (heroes, dev172)
 	PilotRig.set_gear(sv)   # he holds the equipped weapon; visor and orb in the gear colours
 	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
+	_hero_id = String(gs.get("hero", "rook"))
 	_bolt_set = String(gs.element)   # bolts in the hero's element colour
 	for bk in ["bolt", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]:
 		if _fx_tex.has(bk):
@@ -906,7 +932,15 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % 5 == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
-			"frost": frost_level > 0, "rail": rail or rail_gun})
+			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
+			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
+		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
+		if _twin_every > 0 and _shot_n % _twin_every == 0:
+			var tw: Dictionary = bullets[-1].duplicate(true)
+			tw.vel = Vector2(tw.vel).rotated(0.09)
+			tw.pos = Vector2(tw.pos) + Vector2(10.0, 0.0)
+			tw.dmg = float(tw.dmg) * (1.15 if _twin_bonus else 1.0)
+			bullets.append(tw)
 		stat_shots += 1
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -992,7 +1026,15 @@ func _update_bullets(delta: float) -> void:
 					if b.get("frost", false):
 						e.slow_t = 1.5
 						e.slow = minf(0.15 * frost_level, 0.45)
+					# hero cards: Deep Freeze slows, Afterburn sets burning
+					if _freeze_level > 0:
+						e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
+						e.slow = maxf(float(e.get("slow", 0.0)), minf(0.2 * _freeze_level, 0.6))
+					if _burn_level > 0 and e.type != "spore":
+						e.burn_t = 1.5 + 0.75 * _burn_level
+						e.burn_dps = 0.05 * float(e.hp_max)
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
+					_show_dmg(e, dmg, bool(b.get("lucky", false)))
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
@@ -1002,6 +1044,8 @@ func _update_bullets(delta: float) -> void:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
 							o.hp -= (dmg * 0.6) if _can_hurt(o) else 0.0
 					_fx_add("nova", b.pos, float(b.splash) * 0.6, 0.3, 0.0, 1.8, Color(0.8, 0.5, 1.0))
+				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
+					_chain(e, int(b.weld), dmg * 0.6)
 				if int(b.get("spark", 0)) > 0:
 					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
 				# Void set bonus: every 5th bolt flies on through
@@ -1010,6 +1054,8 @@ func _update_bullets(delta: float) -> void:
 				if hit and int(b.get("pierce_left", 0)) > 0:
 					b.pierce_left = int(b.pierce_left) - 1
 					hit = false
+					if _phase_bonus:   # Phase Bolts overcharged (Hollow)
+						b.dmg = float(b.dmg) * 1.3
 					if _pierce_bonus:
 						b.dmg = float(b.dmg) * 1.25
 				if not hit:
@@ -1192,6 +1238,16 @@ func _update_enemies(delta: float) -> void:
 		if float(e.get("slow_t", 0.0)) > 0.0:
 			e.slow_t = float(e.slow_t) - delta
 			e.pos = prev.lerp(e.pos, 1.0 - float(e.get("slow", 0.0)))
+		# Afterburn (Ember card): a burning bug loses HP every frame and sheds embers
+		if float(e.get("burn_t", 0.0)) > 0.0:
+			e.burn_t = float(e.burn_t) - delta
+			if _can_hurt(e):
+				var bd: float = float(e.get("burn_dps", 0.0)) * delta
+				e.hp -= bd
+				stat_pilot_dmg += bd
+				_show_dmg(e, bd, false)
+			if rng.randf() < delta * 10.0:
+				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
 		# faster than its cruising speed (a dart, a dive): it stretches into the motion (dev153)
 		e.stretch_s = lerpf(float(e.get("stretch_s", 0.0)), clampf(e.vel.length() / maxf(float(e.speed), 1.0) - 1.0, 0.0, 1.2) * 0.16, minf(1.0, delta * 12.0))
@@ -1271,6 +1327,26 @@ func _kill(e: Dictionary) -> void:
 	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else 100)
 	score += worth
 	_spawn_shards(e, def)
+	_flush_dmg(int(e.id))   # the last number before it goes
+	# Shatter (Deep Freeze overcharged): a slowed bug blasts its neighbours
+	if _shatter and float(e.get("slow_t", 0.0)) > 0.0 and e.type != "hive_mother":
+		for o in enemies:
+			if o != e and o.hp > 0.0 and o.pos.distance_to(e.pos) < 90.0 and _can_hurt(o):
+				o.hp -= 0.35 * float(e.hp_max)
+				stat_pilot_dmg += 0.35 * float(e.hp_max)
+		_fx_add("nova", e.pos, 55.0, 0.3, 0.0, 1.6, Color(0.7, 0.9, 1.0))
+	# Afterburn overcharged: the fire jumps to the nearest bug
+	if _burn_spread and float(e.get("burn_t", 0.0)) > 0.0:
+		var nd := 140.0
+		var nxt := {}
+		for o in enemies:
+			if o != e and o.hp > 0.0 and o.type != "spore" and o.pos.distance_to(e.pos) < nd:
+				nd = o.pos.distance_to(e.pos)
+				nxt = o
+		if not nxt.is_empty():
+			nxt.burn_t = 2.5
+			nxt.burn_dps = 0.05 * float(nxt.hp_max)
+			zaps.append({"a": e.pos, "b": nxt.pos, "life": 0.2, "seed": rng.randf() * 100.0})
 	Sfx.play("boss_kill" if e.type == "hive_mother" else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
@@ -1774,7 +1850,41 @@ func _burst(p: Vector2, radius: float, col: Color, count: int = 7) -> void:
 func _float_text(p: Vector2, text: String, col: Color, big: bool = false) -> void:
 	floaters.append({"pos": p + Vector2(rng.randf_range(-6, 6), 0), "text": text, "life": 1.1 if big else 0.9, "col": col, "big": big})
 
+# Damage numbers (Rudy, dev172): a crit shows at once, big and gold; everything else on a bug
+# adds up for a quarter second and shows as one small number, coloured by the element: orange
+# when the hero is strong here, grey when the planet resists him.
+func _show_dmg(e: Dictionary, dmg: float, crit: bool) -> void:
+	if dmg <= 0.0:
+		return
+	if crit:
+		_float_text(e.pos + Vector2(0, -float(e.r) - 10.0), "CRIT %d" % roundi(dmg * DMG_SHOW), Color(1.0, 0.82, 0.32), true)
+		return
+	var a: Dictionary = _dmg_acc.get(int(e.id), {"v": 0.0, "t": time_alive})
+	a.v = float(a.v) + dmg
+	a.pos = e.pos + Vector2(0, -float(e.r) - 6.0)
+	_dmg_acc[int(e.id)] = a
+
+func _dmg_col() -> Color:
+	if _elem_mult > 1.01:
+		return Color(1.0, 0.6, 0.25)
+	if _elem_mult < 0.99:
+		return Color(0.7, 0.72, 0.8)
+	return Color(0.95, 0.97, 1.0, 0.9)
+
+# show what a bug has taken so far (its id; -1 = every bug whose batch is due)
+func _flush_dmg(id: int = -1) -> void:
+	var done: Array = []
+	for k in _dmg_acc:
+		var a: Dictionary = _dmg_acc[k]
+		if int(k) == id or (id < 0 and time_alive - float(a.t) >= DMG_BATCH):
+			if float(a.v) * DMG_SHOW >= 0.5:
+				_float_text(Vector2(a.get("pos", Vector2.ZERO)), str(roundi(float(a.v) * DMG_SHOW)), _dmg_col())
+			done.append(k)
+	for k in done:
+		_dmg_acc.erase(k)
+
 func _step_effects(delta: float) -> void:
+	_flush_dmg()
 	var live_fx: Array = []
 	for f in fxs:
 		f.life -= delta
@@ -2232,6 +2342,13 @@ func _pick_card(id: String) -> void:
 		"swarm_surge": _turret_mod("swarm", func(t): t.def.count = int(t.def.count) + 2)
 		"prism_fan": _turret_mod("prism", func(t): t.def.beams = int(t.def.beams) + 2)
 		"shield_recharge": _shield_rate += 0.01
+		# hero cards (Cards "hero"): the build-up over the three picks
+		"rook_twin": _twin_every = [4, 3, 2][clampi(int(card_levels[id]) - 1, 0, 2)]
+		"sparks_weld": _weld_count += 1
+		"frost_freeze": _freeze_level += 1
+		"hollow_phase": pierce_level += 1
+		"nyx_mark": _crit_rate += 0.10
+		"ember_burn": _burn_level += 1
 		"nova_burst":
 			for e in enemies.duplicate():
 				if e.type != "hive_mother":
@@ -2281,6 +2398,12 @@ func _overcharge(id: String) -> void:
 		"aegis": _aegis_heal = true
 		"chain_spark": _chain_mult = 2.0
 		"shield_recharge": _hull_rate = 0.004
+		"rook_twin": _twin_bonus = true
+		"sparks_weld": _weld_every = 1
+		"frost_freeze": _shatter = true
+		"hollow_phase": _phase_bonus = true
+		"nyx_mark": _crit_dmg += 1.0
+		"ember_burn": _burn_spread = true
 	var gold := Color(1.0, 0.82, 0.32)
 	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
 	_burst(soldier_pos, 34.0, gold, 18)
@@ -2301,7 +2424,7 @@ func _fuse(id: String) -> void:
 
 # The three cards of a pick; a ready fusion takes the middle slot.
 func _offer() -> Array:
-	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)))
+	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)), _hero_id)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]
@@ -2836,6 +2959,8 @@ func _draw_enemy(e: Dictionary) -> void:
 	if e.get("hatchling", false):
 		size *= lerpf(0.6, 1.0, smoothstep(0.2, 1.2, float(e.t)))   # grows out of the sac
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
+	if float(e.get("burn_t", 0.0)) > 0.0:   # Afterburn: an orange glow round a burning bug
+		draw_circle(e.pos, size * 0.55, Color(1.0, 0.45, 0.15, 0.14 + 0.08 * sin(time_alive * 20.0)))
 	var sac_k := -1.0   # the Spitter's sac: fills over its cycle, empties on the spit (Luna's sac parts, dev161)
 	if e.type == "spitter":
 		# the sac swells before it spits and settles right after, on smooth ramps

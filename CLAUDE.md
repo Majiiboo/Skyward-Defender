@@ -12,8 +12,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      25 a wave overcharged); Heroes BASE_HP 100 x build.tough x (1 + 2%/level) x tier x hp_mult
      (milestone "Max HP +15%", Ember +20%), DEF track (save hero.def, def_level / def_cost /
      def_up, DEF_PER 1.2% capped 50%); Hero page ATK up + DEF up buttons, HP / DEF line; sim
-     column "hp lost". Hero cards (Rudy): one per hero, offered only with him on duty, builds up
-     over its three picks like every card (Cards "hero" key): NOT built yet, DESIGN-heroes.md.
+     column "hp lost".
+  3. HERO CARDS + DAMAGE NUMBERS: Cards "hero" key (draw(.., hero)), rook_twin / sparks_weld /
+     frost_freeze / hollow_phase / nyx_mark / ember_burn with OVERCHARGE texts; battle _twin_every,
+     _weld_count / _weld_every, _freeze_level / _shatter, _phase_bonus, _burn_level / _burn_spread
+     (e.burn_t / burn_dps, orange glow + embers), _show_dmg / _flush_dmg (DMG_BATCH 0.25 s, crits
+     big gold, element colour). NEXT (Rudy, 2026-11-05): a REWORK + RETUNE + NEW IDEAS pass for
+     TURRETS and DRONES now that heroes, elements and HP changed (elements on turrets and drones,
+     roles, strong-vs = elements, drone as a hero sidekick with its own element...). Not started.
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old

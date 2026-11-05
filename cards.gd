@@ -55,6 +55,21 @@ const CARDS := {
 		"desc": "Swarm launches 2 more drones per level"},
 	"prism_fan":       {"name": "Wide Prism",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "prism",
 		"desc": "Prism splits into 2 more beams per level"},
+	# hero cards (Rudy, dev172): one per hero, offered only while he is on duty ("hero" key).
+	# They BUILD UP like every card: pick 1 the basic form, pick 2 more of it, pick 3 (the
+	# overcharge) his max specialty. Not a legendary handed over: earned in the run.
+	"rook_twin":    {"name": "Twin Trigger",  "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "rook",
+		"desc": "Every 4th bolt fires a twin (then every 3rd, then every 2nd)"},
+	"sparks_weld":  {"name": "Arc Weld",      "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "sparks",
+		"desc": "Every 3rd bolt arcs to 1 more bug per level"},
+	"frost_freeze": {"name": "Deep Freeze",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "frost",
+		"desc": "Hits slow bugs 20% (more per level)"},
+	"hollow_phase": {"name": "Phase Bolts",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "hollow",
+		"desc": "Bolts pass through 1 more bug per level"},
+	"nyx_mark":     {"name": "Marked Prey",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "nyx",
+		"desc": "Crit rate +10% per level"},
+	"ember_burn":   {"name": "Afterburn",     "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "ember",
+		"desc": "Hits set bugs burning: 5% HP a second, longer per level"},
 	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
 		"desc": "Clears every enemy on screen (one use)"},
@@ -80,6 +95,12 @@ const OVERCHARGE := {
 	"gravity_horizon": "Black Hole: swallows enemy shots in its pull",
 	"swarm_surge":     "Kamikaze: drones explode on impact",
 	"prism_fan":       "Frozen Light: beams slow bugs",
+	"rook_twin":       "Twins hit +15% harder",
+	"sparks_weld":     "EVERY bolt arcs",
+	"frost_freeze":    "Shatter: a slowed bug that dies blasts its neighbours",
+	"hollow_phase":    "+30% damage per bug passed",
+	"nyx_mark":        "Crits hit x2.5",
+	"ember_burn":      "A burning bug that dies spreads the fire",
 }
 
 # Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
@@ -119,14 +140,15 @@ static func fusions_ready(levels: Dictionary) -> Array:
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 # run_level: cards with "from_level" only show up from that run level on.
-# mounted: the turret types on the base (turret cards need theirs).
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = []) -> Array:
+# mounted: the turret types on the base (turret cards need theirs). hero: the hero on duty
+# (his own card only shows up for him).
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = [], hero: String = "") -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("turret") or mounted.has(CARDS[id].turret)):
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("turret") or mounted.has(CARDS[id].turret)) and (not CARDS[id].has("hero") or String(CARDS[id].hero) == hero):
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

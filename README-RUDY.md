@@ -198,6 +198,22 @@ Update 2: HP INSTEAD OF HEARTS (your call, so defence can be a real stat).
 - The Aegis card gives +30 max HP and heals 30 (its overcharge heals 25 HP each new wave).
   The third stage star is "Take no damage".
 
+Update 3: HERO CARDS and DAMAGE NUMBERS.
+- Each hero has ONE power card of his own that only shows up while he is on duty, and it
+  builds up over its three picks like every card: pick 1 the basic form, pick 2 more of it,
+  pick 3 his max specialty (the overcharge). Rook: Twin Trigger (every 4th, 3rd, then 2nd bolt
+  brings a twin; overcharge: twins +15%). Sparks: Arc Weld (every 3rd bolt arcs to 1, 2, 3
+  bugs; overcharge: every bolt arcs). Cpt. Frost: Deep Freeze (hits slow 20, 40, 60%; overcharge
+  Shatter: a slowed bug that dies blasts its neighbours). Hollow: Phase Bolts (bolts pass
+  through 1, 2, 3 more bugs; overcharge: +30% damage per bug passed). Nyx: Marked Prey (crit
+  rate +10, 20, 30%; overcharge: crits hit x2.5). Ember: Afterburn (hits set bugs burning, 5%
+  HP a second for longer each level, with embers and an orange glow; overcharge: a burning bug
+  that dies passes the fire to the nearest bug).
+- DAMAGE NUMBERS (your idea): small white numbers float off a bug as you hit it (added up over
+  a quarter second so five bolts a second do not spam), orange when your element is strong on
+  that planet and grey when it resists you, and a CRIT in big gold letters the moment it
+  lands. Hits on you already show as red numbers.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

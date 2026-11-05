@@ -32,12 +32,26 @@ attitude in it: Sparks leaning on one stubby leg, Captain Frost chest out, Hollo
 a hand's width off the ground (no feet contact; the code floats him), Nyx weight on one
 hip, Ember wings half open. Keep arms away from the body and the weapon upright.
 
+## Your earlier renders to match (open these first)
+- `art_src/pilot/reference.webp`: the Commander pilot assembled. This sets the HEIGHT, the
+  camera and the lighting for every hero.
+- `art_src/pilot/parts_sheet.webp`: the pilot's 4 x 4 parts sheet. Every hero's parts sheet
+  uses the same 16 cells in the same order (table below), the same cell size, the same
+  black background, and parts at the same size as in the hero's own reference.
+- `art_src/pilot/rifle_side.webp`: the weapon seen from the side, barrel up. Same for each
+  hero's weapon.
+- `art_src/turn/` (your `turn_commander_1..5.webp`): the five turn frames. Same five angles,
+  same feet and head heights, for each hero.
+- `art_src/starter/`: the Rookie suit, as an example of a second suit done the same way.
+
 ## Match the pilot's scale
-Open `art_src/pilot/reference.webp` (the Commander pilot). Every hero must be the SAME
-HEIGHT as him in the reference picture (helmet top to boot sole), same camera height, same
-lighting (light from above and a little in front, a cool rim light in the hero's element
-colour instead of cyan). If a hero is naturally short (the penguin, the robot), make him
-the same height anyway: chibi rules.
+Every hero must be the SAME HEIGHT as the pilot in `art_src/pilot/reference.webp` (helmet
+top to boot sole), same camera height, same lighting (light from above and a little in
+front, a cool rim light in the hero's element colour instead of cyan). If a hero is
+naturally short (the penguin, the robot), make him the same height anyway: chibi rules.
+Not layered files: every picture is a flat render on black. The game cuts the parts out of
+the sheet by their cells and the light layers (cell 2) are separate pictures, so nothing
+needs to be delivered as layers.
 
 ## Pictures per hero (all on a plain black background, no text, no frame, lower-case names)
 Put each hero's pictures in `art_src/heroes/<hero>/` where `<hero>` is `sparks`,
@@ -98,6 +112,24 @@ Head and shoulders, facing the camera, for the roster buttons. Black background.
 - [ ] Turn frames line up (feet and head heights).
 - [ ] Files named exactly as above, `.webp`, black backgrounds.
 
-If time is short: `reference.webp` + `parts_sheet.webp` + `weapon_side.webp` for Sparks
-first. The turn frames and the portrait can follow; the code has fallbacks for both.
-Thank you!
+## What the game does with each file (so the rules make sense)
+- `reference.webp`: the code measures where each part sits (shoulders, hips, knees) on it,
+  then puts the parts from the sheet back in those places and moves them: breathing, the
+  aim, the lean, recoil. That is why the parts must be at reference size and orientation.
+- `parts_sheet.webp` cell 2 (the face light) is drawn on top of cell 1 with a glow in the
+  element colour, pulsing. Cell 15 (the back piece) is drawn behind the body; the flame or
+  cloak animation is added by the code behind it.
+- `weapon_side.webp`: drawn in the right hand, turned with the aim; the muzzle flash and the
+  bolts (in the element colour) come from the code.
+- `turn_1..5.webp`: shown one after another when the hero turns round in a fight.
+- `portrait.webp`: the roster button on the Heroes page.
+
+## Order of delivery
+1. Sparks: `reference.webp`, `parts_sheet.webp`, `weapon_side.webp` (the game can use him
+   with just these three; turn frames and portrait after).
+2. Sparks: `turn_1..5.webp`, `portrait.webp`.
+3. Captain Frost, the same two steps. Then Hollow, Nyx, Ember.
+
+Any flag or doubt (a part that cannot be made, a design that does not read, a cell that
+does not fit): send it back through Rudy before painting the next hero and we adjust the
+brief. Thank you!
