@@ -225,38 +225,51 @@ func _check_unlocks() -> void:
 	_expect(Unlocks.fresh(old).is_empty(), "an old save takes what it has as seen")
 	_expect(UIKit.tab_shown([0, 1, 2, 3], 2, [2, 3]) == 0 and UIKit.tab_shown([0, 1, 2, 3], 1, [2]) == 1, "hidden tab falls back to the first shown")
 
-# heroes (dev172): roster, elements, levels, stars, the old-save conversion
+# heroes (dev172): roster, grades, buying, elements, levels, tiers, the old-save conversion
 func _check_heroes() -> void:
-	var s := {"coins": 1000, "stage_unlocked": 1, "pilot_xp": 0}
+	var s := {"coins": 3000, "crystals": 100, "stage_unlocked": 1, "pilot_xp": 0, "parts": {"alloy": 12}}
 	var h := Heroes.read(s)
-	_expect(Heroes.selected(h) == "rook" and Heroes.level(h, "rook") == 1 and Heroes.stars(h, "rook") == 0, "fresh save: Rook, Lv.1, no stars")
-	_expect(Heroes.unlocked(s, "rook") and not Heroes.unlocked(s, "sparks"), "fresh save: only Rook")
-	s["stage_unlocked"] = 11
-	_expect(Heroes.unlocked(s, "sparks") and not Heroes.unlocked(s, "frost"), "stage 11: Sparks opens")
+	_expect(Heroes.selected(h) == "rook" and Heroes.level(h, "rook") == 1 and Heroes.tier(h, "rook") == 1, "fresh save: Rook, Lv.1, tier 1")
+	_expect(Heroes.owned(h, "rook") and not Heroes.owned(h, "sparks"), "fresh save: only Rook")
+	_expect(Heroes.grade("rook") == 1 and Heroes.grade("nyx") == 4 and Heroes.stars_text("frost") == "★★", "grades: Rook 1 star, Frost 2, Nyx 4")
+	_expect(Heroes.can_afford(s, "sparks") and not Heroes.can_afford(s, "frost"), "3000 coins + 12 alloy buys Sparks, not Frost")
+	_expect(Heroes.unlock(s, h, "sparks", false) == "" and Heroes.owned(h, "sparks") and Heroes.selected(h) == "sparks", "buying Sparks puts him on duty")
+	_expect(int(s.coins) == 500 and int(Parts.read(s).alloy) == 0, "Sparks cost 2500 coins and 12 alloy")
+	_expect(Heroes.unlock(s, h, "sparks", false) == "Already yours", "cannot buy twice")
+	_expect(Heroes.unlock(s, h, "nyx", true) != "" and not Heroes.owned(h, "nyx"), "Nyx is gated by stage 20 even for crystals")
+	s["stage_unlocked"] = 21
+	_expect(Heroes.unlock(s, h, "nyx", true) == "Not enough crystals", "650 crystals needed for Nyx")
+	s["crystals"] = 700
+	_expect(Heroes.unlock(s, h, "nyx", true) == "" and int(s.crystals) == 50 and Heroes.owned(h, "nyx"), "Nyx for 650 crystals")
+	s["coins"] = 1000
 	_expect(Heroes.level_up(s, h, "rook") and Heroes.level(h, "rook") == 2 and int(s.coins) == 1000 - Heroes.level_cost(1), "level up costs 60 + 30 x level")
-	Heroes.add_shards(h, "rook", 12)
-	_expect(Heroes.can_evolve(h, "rook") and Heroes.evolve(h, "rook") and Heroes.stars(h, "rook") == 1 and Heroes.shards(h, "rook") == 2, "10 shards = the first star")
-	_expect(not Heroes.can_evolve(h, "rook"), "the second star needs 20")
+	Heroes.add_shards(h, "rook", 35)
+	_expect(Heroes.can_evolve(h, "rook") and Heroes.evolve(h, "rook") and Heroes.tier(h, "rook") == 2 and Heroes.shards(h, "rook") == 5, "30 shards = tier 2")
+	_expect(not Heroes.can_evolve(h, "rook"), "tier 3 needs 90")
 	s["hero"] = Heroes.write(h)
 	var back := Heroes.read(s)
-	_expect(Heroes.level(back, "rook") == 2 and Heroes.stars(back, "rook") == 1, "write / read round trip")
+	_expect(Heroes.level(back, "rook") == 2 and Heroes.tier(back, "rook") == 2 and Heroes.owned(back, "nyx") and Heroes.selected(back) == "nyx", "write / read round trip")
 	# elements: Fire is strong on Hive World (stages 1-10), Ice weak there; Energy neutral everywhere
 	_expect(is_equal_approx(Heroes.element_mult("solar", 3), Heroes.WEAK_MULT) and is_equal_approx(Heroes.element_mult("frost", 3), Heroes.RESIST_MULT) and is_equal_approx(Heroes.element_mult("ion", 3), 1.0), "Hive World: Fire strong, Ice weak, Energy neutral")
 	_expect(Heroes.hero_for_planet(15) == "sparks" and Heroes.hero_for_planet(5) == "ember", "shards drop for the planet's strong hero")
 	for id in Heroes.ORDER:
 		_expect(GearData.ITEMS.has(String(Heroes.ROSTER[id].weapon)) and GearData.SETS.has(String(Heroes.ROSTER[id].element)), "hero %s: weapon and element exist" % id)
-	# stats: the keys battle reads are all there, and a hero level raises damage
+	# stats: the keys battle reads are all there; Nyx (Legendary) hits harder than Rook
 	var st := Heroes.stats(s)
 	for k in ["damage", "fire_rate", "aim", "recovery", "hearts", "magnet", "auto_fire", "gem_xp", "coins", "weapon", "thruster", "crit_rate", "fortress", "element", "hero"]:
 		_expect(st.has(k), "stats has %s" % k)
-	_expect(float(st.gem_xp) > 1.0 and String(st.weapon) == "laser_pistol", "Rook's passive and weapon in the stats")
+	_expect(String(st.hero) == "nyx" and String(st.element) == "nightmare" and float(st.crit_rate) > GearData.BASE_CRIT_RATE, "Nyx on duty: her element and passive")
+	h.selected = "rook"
+	s["hero"] = Heroes.write(h)
+	var rst := Heroes.stats(s)
+	_expect(float(st.damage) > float(rst.damage) * 1.05, "a Legendary out-hits a Common")
 	# old save: five armour pieces at Lv.6 each (5 x 1800 coins) and some spare copies -> Rook level + shards
 	var old := {"stage_unlocked": 12, "gear": {"equipped": GearData.DEFAULT.duplicate(),
 		"levels": {"ion_helmet": 6, "ion_chest": 6, "ion_gauntlets": 6, "ion_boots": 6, "ion_jetpack": 6, "ion_weapon": 4},
 		"copies": {"ion_helmet": {"common": 4, "rare": 1}, "ion_weapon": {"common": 3}}}}
 	var mh := Heroes.read(old)
 	_expect(Heroes.level(mh, "rook") > 10, "old armour coins become Rook levels (got Lv.%d)" % Heroes.level(mh, "rook"))
-	_expect(Heroes.stars(mh, "rook") == 1 and Heroes.shards(mh, "rook") == 2, "3 spare commons + 1 rare = 12 shards = 1 star + 2 (got %d stars, %d shards)" % [Heroes.stars(mh, "rook"), Heroes.shards(mh, "rook")])
+	_expect(Heroes.tier(mh, "rook") == 1 and Heroes.shards(mh, "rook") == 12, "3 spare commons + 1 rare = 12 shards (got tier %d, %d shards)" % [Heroes.tier(mh, "rook"), Heroes.shards(mh, "rook")])
 	var og := GearData.read(old)
 	_expect(GearData.level(og, "ion_weapon") == 4 and int(og.copies["ion_weapon"]["common"]) == 3, "the weapon keeps its level and copies")
 	var drop := GearData.roll_drop(7, RandomNumberGenerator.new())

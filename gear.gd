@@ -168,11 +168,6 @@ func _build() -> void:
 	col.add_child(_pilot_box)
 	col = _pilot_box
 	# loadouts (Rudy): three saved kits, one tap to switch; tap the one in use to rename / overwrite
-	# the roster (heroes, dev172): six characters, tap one to put him on duty
-	_roster_row = HBoxContainer.new()
-	_roster_row.add_theme_constant_override("separation", 6)
-	col.add_child(_roster_row)
-	_paint_roster()
 	_loadout_row = HBoxContainer.new()
 	_loadout_row.add_theme_constant_override("separation", 6)
 	col.add_child(_loadout_row)
@@ -180,7 +175,7 @@ func _build() -> void:
 	_paint_loadouts()
 	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
 	var stage := Control.new()
-	stage.custom_minimum_size = Vector2(0, 318)
+	stage.custom_minimum_size = Vector2(0, 350)   # the hero big, front and centre (Rudy)
 	col.add_child(stage)
 	var plat := PlatformFloor.new()
 	plat.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -237,6 +232,12 @@ func _build() -> void:
 	_stars_l = UIKit.label("", 13, UIKit.GOLD)
 	_stars_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hrow.add_child(_stars_l)
+	_unlock_btn = UIKit.gold_button("Unlock", 13)
+	_unlock_btn.custom_minimum_size = Vector2(118, 44)
+	_unlock_btn.pressed.connect(func(): _on_unlock(false))
+	_crystal_btn = UIKit.teal_button("", 13)
+	_crystal_btn.custom_minimum_size = Vector2(110, 44)
+	_crystal_btn.pressed.connect(func(): _on_unlock(true))
 	_evolve_btn = UIKit.teal_button("Evolve", 13)
 	_evolve_btn.custom_minimum_size = Vector2(84, 34)
 	_evolve_btn.pressed.connect(_on_evolve)
@@ -245,9 +246,17 @@ func _build() -> void:
 	_level_btn.custom_minimum_size = Vector2(118, 44)
 	_level_btn.pressed.connect(_on_level_up)
 	hrow.add_child(_level_btn)
+	hrow.add_child(_crystal_btn)
+	hrow.add_child(_unlock_btn)
 	hv.add_child(hrow)
 	_hero_panel.add_child(hv)
 	col.add_child(_hero_panel)
+	# the roster under him (Rudy's layout): grade rows, scrolling sideways, locked ones dimmed
+	col.add_child(UIKit.header("HEROES"))
+	_roster_row = VBoxContainer.new()
+	_roster_row.add_theme_constant_override("separation", 4)
+	col.add_child(_roster_row)
+	_paint_roster()
 	_paint_hero()
 	# selected piece: stats + upgrade, right under the pilot (used most)
 	var up_row := HBoxContainer.new()
@@ -1116,7 +1125,7 @@ class PilotShowcase extends Control:
 	var t := 0.0
 	func _ready() -> void:
 		view = PilotRigView.new()
-		view.height = 156.0
+		view.height = 200.0   # big on the platform (heroes, dev172)
 		view.front_only = true   # facing you, chunky and big-headed (Rudy)
 		add_child(view)
 	func _process(delta: float) -> void:
@@ -1124,7 +1133,7 @@ class PilotShowcase extends Control:
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
 		# hovering just above the platform floor
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
-		view.update(delta, Vector2(size.x * 0.5, feet - 84.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
+		view.update(delta, Vector2(size.x * 0.5, feet - 108.0 + sin(t * 1.6) * 3.0), aim, sin(t * 0.5) * 0.2, 1.0 + sin(t * 0.9) * 0.2, 0.0)
 
 # The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
 # buildings on the back rim, platform_rim.png), else her single picture (platform.png),
@@ -1695,44 +1704,74 @@ func _page_tips(i: int) -> void:
 
 # ------------------------------------------------------------------ heroes (dev172)
 # The Pilot tab became the HERO page (DESIGN-heroes.md): a roster of complete characters
-# instead of armour slots. Roster row (six heroes, locked ones say their stage), the hero
-# on his platform, name + element + passive, LEVEL UP (coins), stars + shards + EVOLVE,
-# and the one gear slot that stays: the weapon.
-var hero := {}                 # Heroes.read(save): {selected, levels, stars, shards}
-var _roster_row: HBoxContainer
+# instead of armour slots, rated by star grade and BOUGHT (coins + parts, or crystals), a
+# few gated by a stage. Roster row (six heroes), the hero on duty on his platform, name +
+# grade + element + passive, LEVEL UP (coins), tier + shards + EVOLVE; a locked hero shows
+# his price and Unlock buttons instead. The weapon stays as the one gear slot under it.
+var hero := {}                 # Heroes.read(save): {selected, owned, levels, tiers, shards}
+var _view_id := ""             # the hero the panel talks about (the one on duty, or a locked one you tapped)
+var _roster_row: VBoxContainer   # the grade rows (one scrolling row per star grade)
 var _hero_panel: PanelContainer
 var _hero_name: Label
 var _hero_line: Label
 var _level_btn: Button
 var _stars_l: Label
 var _evolve_btn: Button
+var _unlock_btn: Button
+var _crystal_btn: Button
 
 func _hero_id() -> String:
 	return Heroes.selected(hero)
 
-# six tiles: name, element, "Lv.N ★★" or "Stage N"; the hero on duty lit in his element
+# The roster under the platform (Rudy's layout): one row per star grade (Common, Uncommon,
+# Epic ...), scrolling sideways, every hero a tile: name, "Lv.N · T2" when yours, else what
+# he needs (price, or the stage first); locked ones dimmed; the hero on duty lit.
 func _paint_roster() -> void:
 	for c in _roster_row.get_children():
 		c.queue_free()
 	var data := _read()
-	for id in Heroes.ORDER:
-		var h: Dictionary = Heroes.ROSTER[String(id)]
-		var el: String = h.element
-		var open: bool = Heroes.unlocked(data, String(id))
-		var on: bool = String(id) == _hero_id()
-		var sub := ("Lv.%d  %s" % [Heroes.level(hero, id), "★".repeat(Heroes.stars(hero, id))]) if open else ("Stage %d" % int(h.stage))
-		var pic: Texture2D = _hero_portrait(id) if open else load("res://icons/ui_padlock.png")
-		var t := UIKit.tile(h.name, sub, el, Heroes.element_name(el), pic, Vector2(72, 86))
-		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		if not open:
-			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
-		elif not on:
-			t.modulate = Color(0.8, 0.85, 0.95, 0.9)
-		var hid: String = id
-		t.pressed.connect(func():
-			if open:
-				_select_hero(hid))
-		_roster_row.add_child(t)
+	for g in Heroes.GRADES.size():
+		var ids: Array = []
+		for id in Heroes.ORDER:
+			if Heroes.grade(String(id)) == g + 1:
+				ids.append(String(id))
+		var gi: Dictionary = Heroes.GRADES[g]
+		var head := HBoxContainer.new()
+		head.add_theme_constant_override("separation", 8)
+		head.add_child(UIKit.label("%s  %s" % [String(gi.name).to_upper(), "★".repeat(g + 1)], 11, gi.color))
+		_roster_row.add_child(head)
+		if ids.is_empty():
+			head.add_child(UIKit.label("coming", 11, UIKit.MUTED))
+			continue
+		var scroll := ScrollContainer.new()
+		scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+		scroll.custom_minimum_size = Vector2(0, 100)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		for hid in ids:
+			var h: Dictionary = Heroes.ROSTER[hid]
+			var el: String = h.element
+			var own: bool = Heroes.owned(hero, hid)
+			var on: bool = hid == _hero_id()
+			var sub: String
+			if own:
+				sub = "Lv.%d  ·  T%d" % [Heroes.level(hero, hid), Heroes.tier(hero, hid)]
+			elif not Heroes.gate_open(data, hid):
+				sub = "Stage %d first" % Heroes.gate(hid)
+			else:
+				sub = "%s coins" % UIKit.num(int(h.cost.get("coins", 0))) if int(h.cost.get("coins", 0)) > 0 else "Unlock"
+			var pic: Texture2D = _hero_portrait(hid) if own else load("res://icons/ui_padlock.png")
+			var t := UIKit.tile(h.name, sub, el, Heroes.element_name(el), pic, Vector2(104, 92))
+			if not own:
+				t.modulate = Color(0.6, 0.6, 0.7, 0.85)
+			elif not on:
+				t.modulate = Color(0.8, 0.85, 0.95, 0.9)
+			var tap: String = hid
+			t.pressed.connect(func(): _tap_hero(tap))
+			row.add_child(t)
+		scroll.add_child(row)
+		_roster_row.add_child(scroll)
 
 # Luna's portrait when it exists, else his weapon picture as a stand-in
 func _hero_portrait(id: String) -> Texture2D:
@@ -1741,8 +1780,17 @@ func _hero_portrait(id: String) -> Texture2D:
 		return load(p)
 	return _pic(String(Heroes.ROSTER[id].weapon))
 
+# an owned hero goes on duty; a locked one is shown with his price
+func _tap_hero(id: String) -> void:
+	if Heroes.owned(hero, id):
+		_select_hero(id)
+	else:
+		_view_id = id
+		_paint_hero()
+
 func _select_hero(id: String) -> void:
 	hero.selected = id
+	_view_id = id
 	var data := _read()
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
@@ -1751,37 +1799,60 @@ func _select_hero(id: String) -> void:
 	_paint_hero()
 	_paint_suit()
 
-# name, element, passive, level up, stars
+# name + grade + element, passive and level, LEVEL UP, tier + EVOLVE; or the price + Unlock
 func _paint_hero() -> void:
-	var id := _hero_id()
+	if _view_id == "" or not Heroes.ROSTER.has(_view_id):
+		_view_id = _hero_id()
+	var id := _view_id
+	var data := _read()
 	var h: Dictionary = Heroes.ROSTER[id]
 	var el: String = h.element
-	var lv := Heroes.level(hero, id)
-	var st := Heroes.stars(hero, id)
 	var col := Heroes.element_color(el)
-	_hero_name.text = "%s  ·  %s" % [h.name, Heroes.element_name(el)]
+	var own := Heroes.owned(hero, id)
+	_hero_name.text = "%s  %s  ·  %s %s" % [h.name, Heroes.stars_text(id), Heroes.grade_name(id), Heroes.element_name(el)]
 	_hero_name.add_theme_color_override("font_color", col)
-	var ms := Heroes.milestone_at(((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY)
-	var next_ms := ("Lv.%d: %s" % [((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY, ms.text]) if not ms.is_empty() else ""
-	_hero_line.text = "%s\n%s  ·  ATK +%d%%  ·  next %s" % [h.passive, "Lv.%d" % lv, roundi((float(Heroes.PER_LEVEL.atk) * (lv - 1) + Heroes.STAR_BONUS * st) * 100.0), next_ms]
-	var cost := Heroes.level_cost(lv)
-	_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
-	_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
-	var need := Heroes.next_star_cost(hero, id)
-	var have := Heroes.shards(hero, id)
-	_stars_l.text = "%s%s   %s" % ["★".repeat(st), "☆".repeat(Heroes.MAX_STARS - st), ("shards %d / %d" % [have, need]) if need > 0 else "max"]
-	_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
-	_evolve_btn.text = "Evolve" if need > 0 else "Max"
+	_level_btn.visible = own
+	_evolve_btn.visible = own
+	_stars_l.visible = own
+	_unlock_btn.visible = not own
+	_crystal_btn.visible = not own and Heroes.crystal_price(id) > 0
+	if own:
+		var lv := Heroes.level(hero, id)
+		var t := Heroes.tier(hero, id)
+		var next_lv := ((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY
+		var ms := Heroes.milestone_at(next_lv)
+		var next_ms := ("next Lv.%d: %s" % [next_lv, ms.text]) if not ms.is_empty() else ""
+		var gm: float = float(Heroes.GRADES[Heroes.grade(id) - 1].mult)
+		var atk := roundi(((gm * (1.0 + float(Heroes.PER_LEVEL.atk) * (lv - 1)) * (1.0 + Heroes.TIER_BONUS * (t - 1))) - 1.0) * 100.0)
+		_hero_line.text = "%s\nLv.%d  ·  ATK +%d%%  ·  %s" % [h.passive, lv, atk, next_ms]
+		var cost := Heroes.level_cost(lv)
+		_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
+		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
+		var need := Heroes.next_tier_cost(hero, id)
+		var have := Heroes.shards(hero, id)
+		_stars_l.text = "Tier %d / %d   %s" % [t, Heroes.MAX_TIER, ("shards %d / %d" % [have, need]) if need > 0 else "final look"]
+		_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
+		_evolve_btn.text = "Evolve" if need > 0 else "Max"
+	else:
+		var gate_txt := "" if Heroes.gate_open(data, id) else "\nClear stage %d first" % Heroes.gate(id)
+		_hero_line.text = "%s\n%s\n%s%s" % [h.blurb, h.passive, Heroes.cost_text(id), gate_txt]
+		_unlock_btn.text = "Unlock"
+		_unlock_btn.disabled = not (Heroes.gate_open(data, id) and Heroes.can_afford(data, id))
+		_crystal_btn.text = "%d crystals" % Heroes.crystal_price(id)
+		_crystal_btn.disabled = not Heroes.gate_open(data, id) or int(data.get("crystals", 0)) < Heroes.crystal_price(id)
 	_power_label.text = "POWER %d" % Heroes.power(_read())
 	_paint_wallet()
-	# the platform's buildings light up with his stars, in his element colour
+	# the platform's buildings light up with the duty hero's tier, in his element colour
 	if _plat:
-		_plat.glow = 1.0 if st >= 5 else (0.5 if st >= 3 else 0.0)
-		_plat.glow_col = col
+		var dt := Heroes.tier(hero, _hero_id())
+		_plat.glow = 1.0 if dt >= 3 else (0.5 if dt >= 2 else 0.0)
+		_plat.glow_col = Heroes.element_color(Heroes.element_of(_hero_id()))
 
 func _on_level_up() -> void:
 	var data := _read()
-	var id := _hero_id()
+	var id := _view_id
+	if not Heroes.owned(hero, id):
+		return
 	var before := Heroes.level(hero, id)
 	if not Heroes.level_up(data, hero, id):
 		return
@@ -1799,15 +1870,42 @@ func _on_level_up() -> void:
 	_paint_hero()
 
 func _on_evolve() -> void:
-	var id := _hero_id()
+	var id := _view_id
 	if not Heroes.evolve(hero, id):
 		return
 	var data := _read()
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
 	Sfx.play("merge")
-	_toast("%s: %d stars" % [Heroes.ROSTER[id].name, Heroes.stars(hero, id)])
+	_toast("%s: tier %d" % [Heroes.ROSTER[id].name, Heroes.tier(hero, id)])
 	if _plat:
 		_plat.flash()
 	_paint_roster()
 	_paint_hero()
+
+# buy the hero shown: coins + parts, or the crystal price
+func _on_unlock(with_crystals: bool) -> void:
+	var id := _view_id
+	if Heroes.owned(hero, id):
+		return
+	var h: Dictionary = Heroes.ROSTER[id]
+	var body := "%s\n\n%s" % [h.blurb, ("%d crystals" % Heroes.crystal_price(id)) if with_crystals else Heroes.cost_text(id)]
+	if not await _confirm("UNLOCK %s?" % String(h.name).to_upper(), body, "Unlock", true):
+		return
+	var data := _read()
+	var why := Heroes.unlock(data, hero, id, with_crystals)
+	if why != "":
+		_toast(why)
+		return
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	Sfx.play("buy")
+	Progress.bump("upgrades")
+	_toast("%s joins the roster" % h.name)
+	PilotRig.set_gear(data)
+	if _plat:
+		_plat.flash()
+	_paint_roster()
+	_paint_hero()
+	_paint_suit()

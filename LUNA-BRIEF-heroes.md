@@ -25,6 +25,13 @@ some of them just for fun. The chibi proportions (big head, small body) and the 
 | 5 | **Ember** | Fire (orange-gold) | A small DRAGON-KIN: scales, two small horns, a tail, wings folded on the back, wearing a brass-and-leather flight harness. Fire comes out of the mouth instead of a jetpack flame. | Sun Rifle: a gold rifle with a glowing core |
 | 6 | **Rook** | Energy (cyan) | The pilot you already made. Nothing to do. | Ion Pistol (done) |
 
+## His own stance
+Each hero may stand his own way on the Heroes page and on Home (Rudy): the reference pose
+is still the relaxed "A" pose the code needs for the parts, but give each hero a little
+attitude in it: Sparks leaning on one stubby leg, Captain Frost chest out, Hollow drifting
+a hand's width off the ground (no feet contact; the code floats him), Nyx weight on one
+hip, Ember wings half open. Keep arms away from the body and the weapon upright.
+
 ## Match the pilot's scale
 Open `art_src/pilot/reference.webp` (the Commander pilot). Every hero must be the SAME
 HEIGHT as him in the reference picture (helmet top to boot sole), same camera height, same

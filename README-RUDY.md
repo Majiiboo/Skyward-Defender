@@ -146,20 +146,33 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 
 Update 1: HEROES replace the armour gear (your call, 2026-11-05; the plan is DESIGN-heroes.md,
 Luna's brief is LUNA-BRIEF-heroes.md).
-- The Gear tab is now HEROES. Six characters: Rook (Energy, the pilot you have), Sparks
-  (Electric, a junkyard robot, stage 11), Cpt. Frost (Ice, a penguin in a spacesuit, stage 21),
-  Hollow (Void, a ghost astronaut, stage 31), Nyx (Dark, a cat-eared huntress, stage 41), Ember
-  (Fire, a small dragon-kin, stage 51). Tap one on the roster to put him on duty.
+- The Gear tab is now HEROES. Six characters, rated by STAR GRADE and BOUGHT (your second
+  pass): Rook (1★ Energy, the pilot you have, free), Sparks (1★ Electric, a junkyard robot:
+  2,500 coins + 12 Alloy, or 60 crystals), Cpt. Frost (2★ Ice, a penguin in a spacesuit: 8,000 +
+  20 Alloy + 6 Cells, or 160 crystals), Hollow (3★ Void, a ghost astronaut: 18,000 + 12 Cells +
+  2 Cores, or 320 crystals), Nyx (4★ Dark, a cat-eared huntress: 40,000 + 20 Cells + 6 Cores, or
+  650 crystals, and stage 20 cleared first), Ember (4★ Fire, a small dragon-kin: 40,000 + 40
+  Alloy + 20 Cells + 6 Cores, or 650 crystals, stage 30 first). A higher grade starts stronger.
+  5★ Mythic is the row for the next-level designs later.
+- The page (your layout): the hero BIG on his platform, his panel under him (name, grade,
+  element, passive, Level up, tier + Evolve; or the price and Unlock / crystals for one you do
+  not own), then the roster as one scrolling row per grade, locked heroes dimmed with their
+  price or the stage they need. Tap an owned hero to put him on duty.
+- Builds: small heroes (Sparks, Nyx, Hollow) are drawn smaller and slide faster under your
+  finger; bulky ones (Cpt. Frost, Ember) are bigger, slower, and shrug hits off longer. A real
+  DEF stat waits for the HP change (see DESIGN-heroes.md).
+- The hero on duty, with his weapon, shows on Home's live battle and in the fight; the same
+  save line feeds all three.
 - Each hero has an ELEMENT. Every planet is weak to one element (x1.35 damage) and resists
   one (x0.75): Hive World weak to Fire, Scrap Belt to Electric, Magma to Ice, Crystal to Void,
   Plasma to Dark, Sentinel to Electric. Energy is neutral everywhere. Home's stage line says
   WEAK TO ... so you know whom to bring; his bolts take his element colour.
 - A hero has a LEVEL (coins: 60 + 30 x level a step; ATK +3%, fire rate, aim, recovery, magnet
   and auto-fire per level; a milestone every 5 levels: crit, a heart at 10, crit damage,
-  damage boost, base damage taken, fortress HP) and STARS (shards: 10, 20, 40, 80, 160; each
-  star ATK +4% and base +4%; 3 and 5 stars will be Luna's evolved looks). Each hero has a
-  passive: Rook gem XP +15%, Sparks coins +20%, Frost chills, Hollow pierces every 5th bolt,
-  Nyx crit +5%, Ember +1 heart.
+  damage boost, base damage taken, fortress HP) and a TIER (shards: tier 2 at 30, tier 3 at
+  90; each tier ATK +8% and base +8%; tiers 2 and 3 will be Luna's evolved looks). Each hero
+  has a passive: Rook gem XP +15%, Sparks coins +20%, Frost chills, Hollow pierces every 5th
+  bolt, Nyx crit +5%, Ember +1 heart.
 - SHARDS drop on boss stages and Elite wins, for the hero that planet is weak to (3 on a big
   boss, 2 on a mini-boss, +1 in Elite). They show on the end screen. Chests and Patrol later.
 - The WEAPON is the one piece of gear left: it keeps its level, rarity, copies and merging,

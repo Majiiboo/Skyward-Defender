@@ -148,6 +148,7 @@ var _coin_mult := 1.0
 var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
 var _bolt_set := "ion"             # the weapon's set: its colour on the pilot's bolts (Luna's bolts recoloured)
 var _elem_mult := 1.0              # the hero's element vs this planet's family (Heroes.element_mult): x1.35 weak, x0.75 resists
+var _move_mult := 1.0              # the hero's build (Heroes): small heroes slide faster under the finger, bulky ones slower
 var _shards_got := {}              # hero shards won on this stage (the end screen)
 var _coins_f := 0.0
 var _shield_regen := 1.0
@@ -460,6 +461,9 @@ func _start_stage() -> void:
 	_turret_dmg_mult = gs.turret_dmg
 	_turret_rate = gs.turret_rate
 	_pilot_xp_mult = gs.pilot_xp
+	_move_mult = float(gs.get("speed", 1.0))
+	if _rig_view:
+		_rig_view.height = PILOT_HEIGHT * float(gs.get("scale", 1.0))   # bulky or small (his build)
 	if gs.chill:
 		frost_level = maxi(frost_level, 1)
 	_shot_n = 0
@@ -654,6 +658,7 @@ func _ring_shape(c: Vector2, rx: float, ry: float, fill: Color, edge: Color) -> 
 	draw_polyline(pts, edge, 1.2, true)
 
 func _drag_by(d: Vector2) -> void:
+	d *= _move_mult   # his build: small = quick, bulky = slow
 	soldier_pos.x = clampf(soldier_pos.x + d.x, 24.0, FIELD_W - 24.0)
 	soldier_pos.y = clampf(soldier_pos.y + d.y, 110.0, BASE_Y - 40.0)
 

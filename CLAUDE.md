@@ -16,6 +16,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      Progress.grant "shards"; Loadouts "hero"; hub pilot block + WEAK TO tag; dev_tools shards;
      smoke _check_heroes. GearData's armour ITEMS / SETS stay (colours, weapons, thrusters, old
      saves). Luna: five hero art sets (parts, weapon, turn frames, portrait) -> art_src/heroes/.
+     SECOND PASS the same day (Rudy): heroes are BOUGHT, not stage-unlocked: GRADES 1-5 stars
+     (Common .. Mythic, base mult), ROSTER cost {coins + parts} or crystals, optional stage gate,
+     "build" {scale, speed, tough}; save "hero" {selected, owned, levels, tiers, shards}; TIERS
+     (30 / 90 shards) instead of stars; Hero page = big hero + panel (Unlock / crystals for a
+     locked one, _view_id) + grade rows under it; battle _move_mult + rig height by build; afk
+     rig height. OPEN (Rudy's ideas, DESIGN-heroes.md): per-hero weapon variants / shooting /
+     movement / stance, a unique power card each, ATK + DEF upgrades which need the pilot on HP
+     instead of hearts, element-locked Promotion ladders, objective / mission unlocks.
   dev171 carried (README-RUDY dev171):
   1. Elite capped by Standard progress (StageData.elite_top) + Promotion ladder 10/20/25..60 retuned.
   2. FUN PASS part one: unlocks.gd Unlocks (progressive disclosure: UNLOCKS table by stage / level,

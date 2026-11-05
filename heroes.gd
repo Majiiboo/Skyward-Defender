@@ -1,14 +1,17 @@
 class_name Heroes
 extends RefCounted
 # HEROES (Rudy, 2026-11-05; DESIGN-heroes.md): the player collects complete characters
-# instead of armour pieces. Each hero has an ELEMENT (what he shoots, strong or weak
-# against enemy families), a signature weapon (the one gear slot that stays), a passive,
-# a level (coins) and stars (shards). Element ids are the old set ids so every colour,
-# weapon and thruster in GearData.SETS carries over.
-# Save "hero": {"selected": id, "levels": {id: n}, "stars": {id: n}, "shards": {id: n}}.
-# An old save with no "hero" block is converted once (migrate): coins spent on the five
-# armour pieces become Rook's level, armour copies become Rook shards. The old gear block
-# stays untouched, so the change can be undone.
+# instead of armour pieces. A hero is RATED by a star GRADE (1 Common ... 5 Mythic), has an
+# ELEMENT (what he shoots: strong or weak against enemy families), a signature weapon (the
+# one gear slot that stays), a passive, a LEVEL (coins) and a TIER (shards: his evolved
+# looks). Heroes are BOUGHT, not handed out by stage: coins + parts ("elements": Alloy,
+# Cells, Cores), or crystals as the shortcut; a few are also gated by a stage; real-money
+# packs come with Store 2.0. Element ids are the old set ids so every colour, weapon and
+# thruster in GearData.SETS carries over.
+# Save "hero": {"selected": id, "owned": [ids], "levels": {id: n}, "tiers": {id: n},
+# "shards": {id: n}}. An old save with no "hero" block is converted once (migrate): coins
+# spent on the five armour pieces become Rook's level, armour copies become Rook shards.
+# The old gear block stays untouched, so the change can be undone.
 
 const ELEMENTS := {
 	"ion":       {"name": "Energy",   "short": "NRG"},
@@ -30,24 +33,43 @@ const FAMILIES := [
 const WEAK_MULT := 1.35
 const RESIST_MULT := 0.75
 
+# the star grades (Rudy): a rating, shown as stars; a higher grade is a stronger hero
+const GRADES := [
+	{"name": "Common",    "color": Color(0.72, 0.78, 0.88), "mult": 1.0},
+	{"name": "Uncommon",  "color": Color(0.45, 0.95, 0.5),  "mult": 1.06},
+	{"name": "Epic",      "color": Color(0.75, 0.5, 1.0),   "mult": 1.13},
+	{"name": "Legendary", "color": Color(1.0, 0.8, 0.3),    "mult": 1.2},
+	{"name": "Mythic",    "color": Color(1.0, 0.45, 0.55),  "mult": 1.3},
+]
+
+# "cost" = coins + parts, all needed; "crystals" = the whole price in crystals instead;
+# "stage" (optional) = must have cleared that stage first (a few are gated, most are not);
+# "build" (Rudy): small heroes are drawn smaller and move faster, bulky ones slower but
+# tougher ("tough" = hit recovery now; a DEF stat once the pilot is on HP, DESIGN-heroes.md)
 const ROSTER := {
-	"rook":   {"name": "Rook", "title": "Cadet of the Skybound Guard", "element": "ion", "stage": 1,
+	"rook":   {"name": "Rook", "title": "Cadet of the Skybound Guard", "element": "ion", "grade": 1,
 		"weapon": "ion_weapon", "passive": "Gem XP +15%", "look": "pilot",
+		"cost": {}, "crystals": 0, "build": {"scale": 1.0, "speed": 1.0, "tough": 1.0},
 		"blurb": "The pilot who held the first dome. Learns fast."},
-	"sparks": {"name": "Sparks", "title": "Junkyard maintenance unit", "element": "scavenger", "stage": 11,
+	"sparks": {"name": "Sparks", "title": "Junkyard maintenance unit", "element": "scavenger", "grade": 1,
 		"weapon": "scavenger_weapon", "passive": "Coins +20%", "look": "sparks",
+		"cost": {"coins": 2500, "alloy": 12}, "crystals": 60, "build": {"scale": 0.9, "speed": 1.15, "tough": 0.9},
 		"blurb": "A scrap-belt robot that fixes things by welding them to other things."},
-	"frost":  {"name": "Cpt. Frost", "title": "Captain Frost, penguin, decorated", "element": "frost", "stage": 21,
+	"frost":  {"name": "Cpt. Frost", "title": "Captain Frost, penguin, decorated", "element": "frost", "grade": 2,
 		"weapon": "frost_weapon", "passive": "Shots chill", "look": "frost",
+		"cost": {"coins": 8000, "alloy": 20, "cell": 6}, "crystals": 160, "build": {"scale": 1.12, "speed": 0.88, "tough": 1.25},
 		"blurb": "Took the suit from a bigger pilot. Keeps the medals."},
-	"hollow": {"name": "Hollow", "title": "What is left of a pilot", "element": "void", "stage": 31,
+	"hollow": {"name": "Hollow", "title": "What is left of a pilot", "element": "void", "grade": 3,
 		"weapon": "void_weapon", "passive": "Every 5th bolt pierces", "look": "hollow",
+		"cost": {"coins": 18000, "cell": 12, "core": 2}, "crystals": 320, "build": {"scale": 0.95, "speed": 1.1, "tough": 0.85},
 		"blurb": "Nobody remembers his ship. He does not either."},
-	"nyx":    {"name": "Nyx", "title": "Night huntress", "element": "nightmare", "stage": 41,
+	"nyx":    {"name": "Nyx", "title": "Night huntress", "element": "nightmare", "grade": 4,
 		"weapon": "nightmare_weapon", "passive": "Crit rate +5%", "look": "nyx",
+		"cost": {"coins": 40000, "cell": 20, "core": 6}, "crystals": 650, "stage": 20, "build": {"scale": 0.9, "speed": 1.2, "tough": 0.9},
 		"blurb": "Sees the weak spot before the bug knows it has one."},
-	"ember":  {"name": "Ember", "title": "Dragon-kin, flight harness", "element": "solar", "stage": 51,
+	"ember":  {"name": "Ember", "title": "Dragon-kin, flight harness", "element": "solar", "grade": 4,
 		"weapon": "solar_weapon", "passive": "+1 heart", "look": "ember",
+		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6}, "crystals": 650, "stage": 30, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},
 		"blurb": "Breathes fire instead of carrying a jetpack. Cheaper."},
 }
 const ORDER := ["rook", "sparks", "frost", "hollow", "nyx", "ember"]
@@ -66,9 +88,10 @@ const MILESTONES := [
 	{"stat": "fortress",  "per": 0.06, "text": "Fortress HP +6%"},
 ]
 const MILESTONE_EVERY := 5
-const STAR_SHARDS := [10, 20, 40, 80, 160]   # shards for star 1..5
-const STAR_BONUS := 0.04                      # ATK and base shield / hull per star
-const MAX_STARS := 5
+# TIERS (evolutions, Luna's three looks): tier 2 and 3 cost shards; each tier ATK and base +8%
+const TIER_SHARDS := [30, 90]
+const TIER_BONUS := 0.08
+const MAX_TIER := 3
 # armour copies -> shards when an old save is converted (their merge value)
 const SHARD_VALUE := {"common": 1, "uncommon": 3, "rare": 9, "epic": 27, "legendary": 81}
 
@@ -81,10 +104,15 @@ static func read(save: Dictionary) -> Dictionary:
 	var h = save.get("hero", null)
 	if typeof(h) != TYPE_DICTIONARY:
 		return migrate(save)
-	var out := {"selected": DEFAULT, "levels": {}, "stars": {}, "shards": {}}
-	if ROSTER.has(String(h.get("selected", ""))):
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "tiers": {}, "shards": {}}
+	var ow = h.get("owned", [])
+	if typeof(ow) == TYPE_ARRAY:
+		for id in ow:
+			if ROSTER.has(String(id)) and not out.owned.has(String(id)):
+				out.owned.append(String(id))
+	if ROSTER.has(String(h.get("selected", ""))) and out.owned.has(String(h.selected)):
 		out.selected = String(h.selected)
-	for key in ["levels", "stars", "shards"]:
+	for key in ["levels", "tiers", "shards"]:
 		var src = h.get(key, {})
 		if typeof(src) == TYPE_DICTIONARY:
 			for id in src:
@@ -93,12 +121,12 @@ static func read(save: Dictionary) -> Dictionary:
 	return out
 
 static func write(h: Dictionary) -> Dictionary:
-	return {"selected": h.selected, "levels": h.levels, "stars": h.stars, "shards": h.shards}
+	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "tiers": h.tiers, "shards": h.shards}
 
 # the hero block an old save gets the first time: spent armour coins -> Rook's level,
 # armour copies -> Rook shards (the weapon keeps everything it had)
 static func migrate(save: Dictionary) -> Dictionary:
-	var out := {"selected": DEFAULT, "levels": {}, "stars": {}, "shards": {}}
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "tiers": {}, "shards": {}}
 	var g := GearData.read(save)
 	var spent := 0
 	var shards := 0
@@ -119,12 +147,11 @@ static func migrate(save: Dictionary) -> Dictionary:
 		spent -= level_cost(lv)
 		lv += 1
 	out.levels[DEFAULT] = lv
-	# stars first, the rest stays as shards
-	var stars := 0
-	while stars < MAX_STARS and shards >= STAR_SHARDS[stars]:
-		shards -= STAR_SHARDS[stars]
-		stars += 1
-	out.stars[DEFAULT] = stars
+	var tier := 1
+	while tier < MAX_TIER and shards >= TIER_SHARDS[tier - 1]:
+		shards -= TIER_SHARDS[tier - 1]
+		tier += 1
+	out.tiers[DEFAULT] = tier
 	out.shards[DEFAULT] = shards
 	return out
 
@@ -133,8 +160,8 @@ static func migrate(save: Dictionary) -> Dictionary:
 static func level(h: Dictionary, id: String) -> int:
 	return clampi(int(h.levels.get(id, 1)), 1, MAX_LEVEL)
 
-static func stars(h: Dictionary, id: String) -> int:
-	return clampi(int(h.stars.get(id, 0)), 0, MAX_STARS)
+static func tier(h: Dictionary, id: String) -> int:
+	return clampi(int(h.tiers.get(id, 1)), 1, MAX_TIER)
 
 static func shards(h: Dictionary, id: String) -> int:
 	return maxi(int(h.shards.get(id, 0)), 0)
@@ -142,8 +169,83 @@ static func shards(h: Dictionary, id: String) -> int:
 static func selected(h: Dictionary) -> String:
 	return String(h.selected) if ROSTER.has(String(h.selected)) else DEFAULT
 
+static func owned(h: Dictionary, id: String) -> bool:
+	return id == DEFAULT or h.owned.has(id)
+
+# "unlocked" = owned (loadouts, the rig)
 static func unlocked(save: Dictionary, id: String) -> bool:
-	return ROSTER.has(id) and int(save.get("stage_unlocked", 1)) >= int(ROSTER[id].stage)
+	return ROSTER.has(id) and owned(read(save), id)
+
+static func grade(id: String) -> int:
+	return clampi(int(ROSTER[id].get("grade", 1)), 1, GRADES.size()) if ROSTER.has(id) else 1
+
+static func grade_name(id: String) -> String:
+	return String(GRADES[grade(id) - 1].name)
+
+static func grade_color(id: String) -> Color:
+	return GRADES[grade(id) - 1].color
+
+static func stars_text(id: String) -> String:
+	return "★".repeat(grade(id))
+
+# a stage gate, when the hero has one: the stage that must be cleared (0 = none)
+static func gate(id: String) -> int:
+	return int(ROSTER[id].get("stage", 0)) if ROSTER.has(id) else 0
+
+static func gate_open(save: Dictionary, id: String) -> bool:
+	return int(save.get("stage_unlocked", 1)) > gate(id)
+
+# "2,500 coins + 12 Alloy" and "or 60 crystals"
+static func cost_text(id: String) -> String:
+	var c: Dictionary = ROSTER[id].get("cost", {})
+	var bits: Array = []
+	if int(c.get("coins", 0)) > 0:
+		bits.append("%s coins" % UIKit.num(int(c.coins)))
+	var needs := parts_needed(id)
+	if not needs.is_empty():
+		bits.append(Parts.text(needs))
+	return " + ".join(bits) if not bits.is_empty() else "Free"
+
+static func parts_needed(id: String) -> Dictionary:
+	var c: Dictionary = ROSTER[id].get("cost", {})
+	var needs := {}
+	for k in Parts.ORDER:
+		if int(c.get(k, 0)) > 0:
+			needs[k] = int(c[k])
+	return needs
+
+static func crystal_price(id: String) -> int:
+	return int(ROSTER[id].get("crystals", 0))
+
+# can the coins + parts price be paid right now?
+static func can_afford(save: Dictionary, id: String) -> bool:
+	var c: Dictionary = ROSTER[id].get("cost", {})
+	return int(save.get("coins", 0)) >= int(c.get("coins", 0)) and Parts.has_all(Parts.read(save), parts_needed(id))
+
+# Buy a hero: with_crystals = the crystal price instead of coins + parts. Changes `save` and
+# `h` in place; returns "" on success or why it failed. The new hero goes on duty.
+static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: bool) -> String:
+	if not ROSTER.has(id):
+		return "No such hero"
+	if owned(h, id):
+		return "Already yours"
+	if not gate_open(save, id):
+		return "Clear stage %d first" % gate(id)
+	if with_crystals:
+		var price := crystal_price(id)
+		if price <= 0:
+			return "Not for crystals"
+		if int(save.get("crystals", 0)) < price:
+			return "Not enough crystals"
+		save["crystals"] = int(save.get("crystals", 0)) - price
+	else:
+		var c: Dictionary = ROSTER[id].get("cost", {})
+		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(id), false)
+		if why != "":
+			return why
+	h.owned.append(id)
+	h.selected = id
+	return ""
 
 static func milestones(lv: int) -> int:
 	return lv / MILESTONE_EVERY
@@ -154,17 +256,12 @@ static func milestone_at(lv: int) -> Dictionary:
 		return {}
 	return MILESTONES[(lv / MILESTONE_EVERY - 1) % MILESTONES.size()]
 
-static func next_star_cost(h: Dictionary, id: String) -> int:
-	var s := stars(h, id)
-	return int(STAR_SHARDS[s]) if s < MAX_STARS else 0
+static func next_tier_cost(h: Dictionary, id: String) -> int:
+	var t := tier(h, id)
+	return int(TIER_SHARDS[t - 1]) if t < MAX_TIER else 0
 
 static func can_evolve(h: Dictionary, id: String) -> bool:
-	return stars(h, id) < MAX_STARS and shards(h, id) >= next_star_cost(h, id)
-
-# the look tier from the stars: 1 base, 2 from 3 stars, 3 at 5 (Luna's evolutions)
-static func look_tier(h: Dictionary, id: String) -> int:
-	var s := stars(h, id)
-	return 3 if s >= 5 else (2 if s >= 3 else 1)
+	return tier(h, id) < MAX_TIER and shards(h, id) >= next_tier_cost(h, id)
 
 # ------------------------------------------------------------------ actions
 
@@ -180,8 +277,8 @@ static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 static func evolve(h: Dictionary, id: String) -> bool:
 	if not can_evolve(h, id):
 		return false
-	h.shards[id] = shards(h, id) - next_star_cost(h, id)
-	h.stars[id] = stars(h, id) + 1
+	h.shards[id] = shards(h, id) - next_tier_cost(h, id)
+	h.tiers[id] = tier(h, id) + 1
 	return true
 
 static func add_shards(h: Dictionary, id: String, n: int) -> void:
@@ -236,24 +333,29 @@ static func stats(save: Dictionary) -> Dictionary:
 		"turret_dmg": 1.0, "turret_rate": 1.0, "pilot_xp": 1.0, "shield": 1.0, "chill": false,
 		"crit_rate": GearData.BASE_CRIT_RATE, "crit_dmg": GearData.BASE_CRIT_DMG, "dmg_boost": 0.0, "base_dr": 0.0, "fortress": 1.0,
 		"weapon": "laser_pistol", "thruster": String(GearData.SETS[hero.element].thruster),
-		"hero": id, "element": String(hero.element)}
+		"hero": id, "element": String(hero.element),
+		"scale": float(hero.build.scale), "speed": float(hero.build.speed), "tough": float(hero.build.tough)}
+	# the grade: a higher-rated hero starts stronger
+	var gm: float = float(GRADES[grade(id) - 1].mult)
+	st.damage *= gm
+	st.fortress *= gm
 	# the hero's level
 	var lv := level(h, id)
 	var steps := lv - 1
 	st.damage *= 1.0 + float(PER_LEVEL.atk) * steps
 	st.fire_rate *= 1.0 + float(PER_LEVEL.rate) * steps
 	st.aim = 1.0 + float(PER_LEVEL.aim) * steps
-	st.recovery = 1.0 + float(PER_LEVEL.recovery) * steps
+	st.recovery = (1.0 + float(PER_LEVEL.recovery) * steps) * float(hero.build.tough)   # bulky heroes shrug hits off longer
 	st.magnet = float(PER_LEVEL.magnet) * steps
 	st.auto_fire = 1.0 + float(PER_LEVEL.auto_fire) * steps
 	for m in milestones(lv):
 		var ms: Dictionary = MILESTONES[m % MILESTONES.size()]
 		st[ms.stat] = float(st[ms.stat]) + float(ms.per)
 	st.hearts = int(st.hearts)
-	# stars
-	var s := stars(h, id)
-	st.damage *= 1.0 + STAR_BONUS * s
-	st.fortress *= 1.0 + STAR_BONUS * s
+	# the tier (evolutions)
+	var t := tier(h, id) - 1
+	st.damage *= 1.0 + TIER_BONUS * t
+	st.fortress *= 1.0 + TIER_BONUS * t
 	# the passive
 	match id:
 		"rook": st.gem_xp += 0.15
@@ -274,9 +376,9 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.fortress *= Promotion.bonus(pr)
 	return st
 
-# a single number for the Heroes page: level, stars and the weapon, weighted
+# a single number for the Heroes page: grade, level, tier and the weapon, weighted
 static func power(save: Dictionary) -> int:
 	var h := read(save)
 	var id := selected(h)
 	var gear := GearData.read(save)
-	return 40 + 18 * (level(h, id) - 1) + 60 * stars(h, id) + 18 * (GearData.level(gear, gear.equipped["Weapon"]) - 1)
+	return 40 + 25 * (grade(id) - 1) + 18 * (level(h, id) - 1) + 80 * (tier(h, id) - 1) + 18 * (GearData.level(gear, gear.equipped["Weapon"]) - 1)
