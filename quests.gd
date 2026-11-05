@@ -50,7 +50,7 @@ func _build() -> void:
 	if get_tree().root.has_meta("quests_tab"):
 		tab = int(get_tree().root.get_meta("quests_tab"))
 		get_tree().root.remove_meta("quests_tab")
-	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies"], func(i): tab = i; _fill(), tab)
+	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat"], func(i): tab = i; _fill(), tab)
 	col.add_child(_tabs_row)
 	_note = UIKit.label("", 12, UIKit.MUTED)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -84,6 +84,10 @@ func _fill() -> void:
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
 			_trophy_grid()
+		3:
+			_note.text = "Goals that come back bigger every time you claim them. Always something to chase."
+			for m in Progress.repeat(d):
+				_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); _fill(), String(m.def.stat))
 	UIKit.reveal(_list)
 
 func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String = "") -> void:

@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev164)
+## Where we are (hand-over, 2026-11-04, build dev165)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-164 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-165 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -17,7 +17,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   buttons, Modes mystery rewards, Patrol offline farming with limits, power tokens.
 - DECIDED (Rudy, 2026-11-04, dev138): Normal stages 1-5 are free of power tokens (Energy.FREE_STAGES);
   Elite always pays.
-- Turret card pictures arrived (dev138, art_src/cards_r2). Still waiting on Luna: merge sparks sheet.
+- Luna delivered: turret card pictures (dev138, art_src/cards_r2), animation parts round 1 (dev160-162,
+  art_src/parts_r1: drone hull/thrusters, Swarm lid, bug legs/feelers/sac/chunks; Sentry head_nobarrels
+  unused, wrong angle), pilot turn frames (dev161, art_src/turn). Still waiting: merge sparks sheet.
 - Next in the queue (Rudy picks): item 16 (e) pilot talent map, (g) long-game difficulty re-tune ((f) gear rarity DONE dev139);
   item 17 enemy variants/support enemies/families; item 18 Store 2.0 (key chests with pity);
   items 15, 19, 20 later. Luna briefs: always standalone, exact render names (memory).
@@ -34,7 +36,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev164 (code 164).
+  go UP every package (same signing key, install-over). Current: dev165 (code 165).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -212,7 +214,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    the map, Breakdown (copies -> parts), rank challenges (with 16 e), timed boosts, dungeon
    entries + difficulty dial (Horde / Boss Rush), collection bonuses (19), chest milestones (18).
    Rudy picks; systems only, never its art or names.
-   DONE dev142: red dots (Progress.attention, UIKit.dot / tab_dots, hub _refresh_dots) and the
+   DONE dev165: repeat quests (Progress.REPEAT / repeat / claim_repeat, Quests tab 4). DONE dev142: red dots (Progress.attention, UIKit.dot / tab_dots, hub _refresh_dots) and the
    attendance calendar (Progress.ATTEND / attend / claim_attend, store.gd Offers).
 24. PROMOTION DONE (dev143-144, Rudy's pick from the Slayer Legend video): promotion.gd Promotion
    (RANKS x10 with recommended level, base stage, per-rank "hp" / "count" tuned by the sim in dev144,

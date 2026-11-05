@@ -96,7 +96,7 @@ func _write_save(stage: int) -> void:
 	# stage_unlocked = stage: a player meeting this stage for the first time, so only the
 	# mounts opened by stages before it are open (Turrets.mount_open); every turret type is
 	# unlocked (pilot_xp), the loadout says which ones stand on the base
-	var d := {"selected_stage": stage, "selected_elite": false, "stage_unlocked": stage, "pilot_xp": 100000, "areas_briefed": [0, 1, 2, 3, 4, 5],
+	var d := {"selected_stage": stage, "selected_elite": true, "stage_unlocked": stage, "pilot_xp": 100000, "areas_briefed": [0, 1, 2, 3, 4, 5],
 		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
 	if kit_auto:
 		_auto_kit(d, stage)

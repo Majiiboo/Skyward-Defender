@@ -19,6 +19,7 @@ func _initialize() -> void:
 	_check_gear()
 	_check_attend()
 	_check_promotion()
+	_check_repeat()
 	_check_cards()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
 	quit(1 if fails > 0 else 0)
@@ -178,6 +179,17 @@ func _check_promotion() -> void:
 	var base: float = GearData.stats({"promotion": 0}).damage
 	var st := GearData.stats({"promotion": 4})
 	_expect(absf(float(st.damage) / float(base) - 1.2) < 0.001 and absf(float(st.fortress) - 1.2) < 0.001, "4 ranks = +20% damage and fortress")
+
+func _check_repeat() -> void:
+	var d := {"stats": {"kills": 400.0, "stages": 1.0}}
+	var r := Progress.repeat(d)
+	_expect(r[0].goal == 150 and r[0].done and r[0].lv == 1, "a fresh repeat quest counts the lifetime stat")
+	_expect(not r[1].done, "3 stages not yet")
+	d.repeat = {"r_kills": {"lv": 3, "base": 300.0}}
+	r = Progress.repeat(d)
+	_expect(r[0].goal == 350 and not r[0].done and absf(float(r[0].progress) - 100.0) < 0.01, "level 3: goal 350, progress from its base")
+	_expect(int(Progress.repeat_reward(Progress.REPEAT[0], 1).coins) == 60 and int(Progress.repeat_reward(Progress.REPEAT[0], 5).coins) == 120, "reward grows with the level")
+	_expect(Progress.attention({"stats": {"kills": 400.0}}).quests_tabs.size() == 4, "four quest tabs for the dots")
 
 func _check_cards() -> void:
 	for id in Cards.CARDS:

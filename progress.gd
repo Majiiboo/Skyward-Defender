@@ -311,7 +311,7 @@ static func claim_attend(d: Dictionary) -> Dictionary:
 #   gear / gear_ws [parts, gear]: a merge is possible in the Workshop
 #   patrol: something farmed and a collect left today
 static func attention(d: Dictionary) -> Dictionary:
-	var q := [false, false, false]
+	var q := [false, false, false, false]
 	for m in daily(d):
 		if m.done and not m.claimed:
 			q[0] = true
@@ -321,6 +321,9 @@ static func attention(d: Dictionary) -> Dictionary:
 	for t in trophies(d):
 		if t.claimed < t.reached:
 			q[2] = true
+	for m in repeat(d):
+		if m.done:
+			q[3] = true
 	var parts := Parts.read(d)
 	var parts_merge := false
 	for k in Parts.MERGE:
@@ -334,7 +337,7 @@ static func attention(d: Dictionary) -> Dictionary:
 				gear_merge = true
 	var p := Patrol.tick(d.duplicate(true))   # a copy: looking must not count time
 	var patrol: bool = not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0
-	return {"quests": q[0] or q[1] or q[2], "quests_tabs": q, "store": bool(attend(d).claimable),
+	return {"quests": q[0] or q[1] or q[2] or q[3], "quests_tabs": q, "store": bool(attend(d).claimable),
 		"gear": parts_merge or gear_merge, "gear_ws": [parts_merge, gear_merge], "patrol": patrol}
 
 # anything waiting to be claimed (for a red dot on Home)
@@ -348,4 +351,59 @@ static func has_claimable(d: Dictionary) -> bool:
 	for t in trophies(d):
 		if t.claimed < t.reached:
 			return true
+	for m in repeat(d):
+		if m.done:
+			return true
 	return false
+
+# ------------------------------------------------------------------ repeat quests
+# (dev165, from the Slayer Legend notes) Goals that come back bigger each time they are
+# claimed, so there is always a small target. A fresh quest counts the lifetime stat toward
+# its first level (a veteran gets a welcome-back claim or two).
+# Save: "repeat": {id: {"lv": n, "base": the stat's value when this level started}}.
+const REPEAT := [
+	{"id": "r_kills",  "text": "Destroy %d bugs",      "stat": "kills",      "goal": 150, "step": 100, "coins": 60,  "xp": 40},
+	{"id": "r_stages", "text": "Clear %d stages",      "stat": "stages",     "goal": 3,   "step": 1,   "coins": 90,  "xp": 60},
+	{"id": "r_gems",   "text": "Collect %d gems",      "stat": "gems",       "goal": 250, "step": 150, "coins": 50,  "xp": 40},
+	{"id": "r_bosses", "text": "Defeat %d bosses",     "stat": "bosses_any", "goal": 2,   "step": 1,   "coins": 120, "crystals": 2},
+	{"id": "r_cards",  "text": "Pick %d power cards",  "stat": "cards",      "goal": 25,  "step": 15,  "coins": 50,  "xp": 40},
+]
+
+# the reward grows a quarter per level, rounded to tens
+static func repeat_reward(m: Dictionary, lv: int) -> Dictionary:
+	var k := 1.0 + 0.25 * (lv - 1)
+	var r := {"coins": int(round(float(m.coins) * k / 10.0)) * 10}
+	if m.has("xp"):
+		r["pilot_xp"] = int(round(float(m.xp) * k / 10.0)) * 10
+	if m.has("crystals"):
+		r["crystals"] = int(m.crystals) + (lv - 1) / 2
+	return r
+
+# [{def, lv, goal, progress, done, claimed (always false), reward, text}]
+static func repeat(d: Dictionary) -> Array:
+	var rp = d.get("repeat", {})
+	if typeof(rp) != TYPE_DICTIONARY:
+		rp = {}
+	var out: Array = []
+	for m in REPEAT:
+		var st = rp.get(m.id, {})
+		var lv: int = int(st.get("lv", 1)) if typeof(st) == TYPE_DICTIONARY else 1
+		var base: float = float(st.get("base", 0.0)) if typeof(st) == TYPE_DICTIONARY else 0.0
+		var goal: int = int(m.goal) + int(m.step) * (lv - 1)
+		var p: float = stat(d, m.stat) - base
+		out.append({"def": m, "lv": lv, "goal": goal, "progress": p, "done": p >= float(goal), "claimed": false,
+			"reward": repeat_reward(m, lv), "text": String(m.text) % goal})
+	return out
+
+static func claim_repeat(id: String) -> Dictionary:
+	var d := read()
+	for m in repeat(d):
+		if m.def.id == id and m.done:
+			grant(d, m.reward)
+			var rp = d.get("repeat", {})
+			if typeof(rp) != TYPE_DICTIONARY:
+				rp = {}
+			rp[id] = {"lv": int(m.lv) + 1, "base": stat(d, m.def.stat)}
+			d["repeat"] = rp
+	write(d)
+	return d
