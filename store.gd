@@ -111,7 +111,7 @@ func _tile(icon: Texture2D, big: String, small: String, color: String, button: B
 	var col: Color = UIKit.RARITY.get(color, UIKit.CYAN)
 	var p := PanelContainer.new()
 	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	p.add_theme_stylebox_override("panel", UIKit.box(Color(col.r * 0.12, col.g * 0.12, col.b * 0.2, 0.75), Color(col, 0.6), 14))
+	p.add_theme_stylebox_override("panel", UIKit.lift(UIKit.box(Color(col.r * 0.12, col.g * 0.12, col.b * 0.2, 0.82), Color(col, 0.6), 14)))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	var tr := TextureRect.new()
@@ -125,6 +125,7 @@ func _tile(icon: Texture2D, big: String, small: String, color: String, button: B
 	button.custom_minimum_size = Vector2(0, 38)
 	v.add_child(button)
 	p.add_child(v)
+	UIKit.depth(p, col, true, 0.3)
 	return p
 
 func _grid() -> GridContainer:
@@ -240,7 +241,7 @@ func _fill_offers() -> void:
 func _teaser(icon: Texture2D, big: String, small: String) -> PanelContainer:
 	var p := PanelContainer.new()
 	p.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	p.add_theme_stylebox_override("panel", UIKit.box(Color(0.05, 0.07, 0.14, 0.55), Color(1, 1, 1, 0.14), 14))
+	p.add_theme_stylebox_override("panel", UIKit.lift(UIKit.box(Color(0.05, 0.07, 0.14, 0.62), Color(1, 1, 1, 0.14), 14)))
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	var tr := TextureRect.new()
@@ -260,6 +261,7 @@ func _teaser(icon: Texture2D, big: String, small: String) -> PanelContainer:
 	box.add_child(chip)
 	v.add_child(box)
 	p.add_child(v)
+	UIKit.depth(p, UIKit.MUTED, false)
 	return p
 
 func _buy(o: Dictionary) -> void:

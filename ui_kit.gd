@@ -217,23 +217,7 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	_style_btn(b, normal, box(Color(col, 0.35), Color.WHITE, 12), Color.WHITE)
 	# ...a sheen across the top, a shade along the bottom, a light rim on the top edge, and
 	# a glow in the card's colour behind the picture, so the piece looks lit and lifted
-	var depth := Control.new()
-	depth.set_anchors_preset(Control.PRESET_FULL_RECT)
-	depth.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var has_icon := icon != null
-	depth.draw.connect(func():
-		var s := depth.size
-		var clear := Color(1, 1, 1, 0.0)
-		depth.draw_polygon(PackedVector2Array([Vector2(1, 1), Vector2(s.x - 1, 1), Vector2(s.x - 1, s.y * 0.45), Vector2(1, s.y * 0.45)]),
-			PackedColorArray([Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.16), clear, clear]))
-		depth.draw_polygon(PackedVector2Array([Vector2(1, s.y * 0.6), Vector2(s.x - 1, s.y * 0.6), Vector2(s.x - 1, s.y - 1), Vector2(1, s.y - 1)]),
-			PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.28), Color(0, 0, 0, 0.28)]))
-		depth.draw_line(Vector2(10, 1.5), Vector2(s.x - 10, 1.5), Color(1, 1, 1, 0.22), 1.0, true)
-		if has_icon:
-			var c := Vector2(s.x * 0.5, s.y * 0.36)
-			for k in 4:
-				depth.draw_circle(c, s.y * (0.34 - 0.07 * k), Color(col, 0.07 + 0.04 * k)))
-	b.add_child(depth)
+	depth(b, col, icon != null)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -327,3 +311,35 @@ static func chip(text: String, col: Color = CYAN) -> PanelContainer:
 static func screen_title(text: String) -> Label:
 	var l := label(text, 22, Color.WHITE)
 	return l
+
+# ---- depth (dev149-150): every card in the game lifts the same way ----
+# A sheen across the top, a shade along the bottom, a light rim on the top edge and, when
+# asked, a glow in the card's colour behind its picture. draw_depth paints it into any
+# CanvasItem (slot squares); depth() adds it as a layer behind a container's children.
+static func draw_depth(c: CanvasItem, s: Vector2, col: Color, glow: bool, glow_y: float = 0.36) -> void:
+	var clear := Color(1, 1, 1, 0.0)
+	c.draw_polygon(PackedVector2Array([Vector2(1, 1), Vector2(s.x - 1, 1), Vector2(s.x - 1, s.y * 0.45), Vector2(1, s.y * 0.45)]),
+		PackedColorArray([Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.16), clear, clear]))
+	c.draw_polygon(PackedVector2Array([Vector2(1, s.y * 0.6), Vector2(s.x - 1, s.y * 0.6), Vector2(s.x - 1, s.y - 1), Vector2(1, s.y - 1)]),
+		PackedColorArray([Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.0), Color(0, 0, 0, 0.28), Color(0, 0, 0, 0.28)]))
+	c.draw_line(Vector2(10, 1.5), Vector2(s.x - 10, 1.5), Color(1, 1, 1, 0.22), 1.0, true)
+	if glow:
+		var centre := Vector2(s.x * 0.5, s.y * glow_y)
+		for k in 4:
+			c.draw_circle(centre, s.y * (0.34 - 0.07 * k), Color(col, 0.07 + 0.04 * k))
+
+static func depth(parent: Control, col: Color, glow: bool, glow_y: float = 0.36) -> void:
+	var d := Control.new()
+	d.name = "Depth"
+	d.set_anchors_preset(Control.PRESET_FULL_RECT)
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	d.draw.connect(func(): draw_depth(d, d.size, col, glow, glow_y))
+	parent.add_child(d)
+	parent.move_child(d, 0)
+
+# the drop shadow that goes with it, on an existing flat style
+static func lift(sb: StyleBoxFlat) -> StyleBoxFlat:
+	sb.shadow_color = Color(0, 0, 0, 0.42)
+	sb.shadow_size = 9
+	sb.shadow_offset = Vector2(0, 4)
+	return sb

@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev149 (version/code=149 and version/name="1.0-dev149" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev150 (version/code=150 and version/name="1.0-dev150" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,13 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev150: the same lift on every card
+
+- The six gear slot squares around the pilot and the Store tiles (offers, chests, parts,
+  packs, teasers) now carry the same depth as the item cards from dev149: drop shadow,
+  top sheen, bottom shade, light rim, and a glow in the card's colour behind the picture.
+  One shared routine in the UI kit, so every card in the game lifts the same way.
 
 ## dev149: turrets seated in their sockets, gear cards with depth (Rudy's two notes)
 

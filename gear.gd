@@ -293,6 +293,7 @@ func _draw_slot(b: Button, s: String) -> void:
 	var edge := Color(col, 0.95) if on else Color(col, 0.45)
 	var fill := Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.8) if on else Glass.FILL
 	Glass.panel(b, Glass.box(Rect2(Vector2.ZERO, b.size), 12.0), 1.0, edge, fill)
+	UIKit.draw_depth(b, b.size, col, true, 0.38)   # the same lift as every card (dev150)
 
 func _fill_bag() -> void:
 	for c in _bag_grid.get_children():
