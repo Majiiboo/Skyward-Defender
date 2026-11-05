@@ -112,7 +112,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   (art_src/heroes/<id>/ reference, parts_sheet, weapon_side, turn_1..5, portrait; alts kept).
   Round 2 DELIVERED the same day (Ember frames + portrait, Hollow 4 + 5, Frost cell 8, Nyx grey
   alts): every hero set is complete; no stand-ins left. gear.gd class HeroStand (code disc +
-  Luna's gear/stand_disc / stand_glow / stand_beam.png when present) replaced PlatformFloor. Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
+  Luna's gear/stand_disc / stand_glow / stand_beam.png when present) replaced PlatformFloor.
+  SWIVEL: PilotRigView.face_override (-1..1, 2 = off), PilotShowcase _gui_input drag -> swivel,
+  drifts back after 4 s, hint; gear _dbg_swivel for captures. Back frames turn_6..8 briefed
+  (LUNA-BRIEF-hero-back-frames.md): draw_hero needs an 8-frame ring once they land.
+  Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
   buttons / panels / bars / small), LUNA-BRIEF-icons.md (48-cell sheet), LUNA-BRIEF-drones-2.md
   (Spark Bot / Wisp / Night Bat as hull + thrusters + glow, Repair + Magnet pods).
   DONE (update 8): tools/cut_heroes.gd -> heroes/<id>/turn_1..5.png (640 tall, one union crop),
