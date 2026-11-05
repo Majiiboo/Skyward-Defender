@@ -322,6 +322,10 @@ func _check_turrets() -> void:
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
 	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "blaster", "support pods: job and borrowed art")
 	_expect(ResourceLoader.exists("res://drone/pod_%s.png" % DroneData.pod_art("repair")), "the Repair pod has a picture to borrow")
+	for hid in ["sparks", "frost", "hollow", "nyx", "ember"]:   # Luna's hero frames cut in (dev172, tools/cut_heroes.gd)
+		for n in range(1, 6):
+			_expect(ResourceLoader.exists("res://heroes/%s/turn_%d.png" % [hid, n]), "hero %s frame %d cut" % [hid, n])
+		_expect(ResourceLoader.exists("res://heroes/%s/portrait.png" % hid), "hero %s portrait" % hid)
 
 # element trials (dev172): ladders per element, hero of that element needed, rewards
 func _check_etrials() -> void:

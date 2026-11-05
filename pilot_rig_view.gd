@@ -80,6 +80,8 @@ func fire() -> void:
 func muzzle() -> Vector2:
 	if X.is_empty():
 		X = PilotRig.solve(rig)
+	if PilotRig.hero_mode():
+		return PilotRig.hero_muzzle(rig, pos, height * PilotRig.SIZE)
 	return PilotRig.muzzle_screen(rig, X, pos, height * PilotRig.SIZE)
 
 # The pilot: the side rig, and while he turns, the front pose taking over (Luna's
@@ -92,6 +94,9 @@ func _front_a() -> float:
 
 func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> void:
 	var h := height * PilotRig.SIZE
+	if PilotRig.hero_mode():   # a hero from Luna's frames (dev172)
+		PilotRig.draw_hero(c, rig, at, h, alpha, lift)
+		return
 	var sa := _side_a()
 	var fa := _front_a()
 	if not PilotRig.front_ready() or front_only:
@@ -144,8 +149,14 @@ func _draw_behind() -> void:
 	if not X.is_empty():
 		var h := height * PilotRig.SIZE
 		Backdrop.soft_glow(_behind, pos + Vector2(0, -h * 0.1), h * 0.5, Color(PilotRig.BACKLIGHT, PilotRig.BACKLIGHT.a * alpha))
-		PilotRig.draw_light(_behind, rig, X, pos, h, PilotSprite.style, 0.0, alpha)
+		if not PilotRig.hero_mode():   # heroes carry their own flames in the frames
+			PilotRig.draw_light(_behind, rig, X, pos, h, PilotSprite.style, 0.0, alpha)
 
 func _draw_front() -> void:
 	if not X.is_empty():
+		if PilotRig.hero_mode():
+			if rig.recoil > 0.2:   # the muzzle flash at the weapon's barrel
+				var m := PilotRig.hero_muzzle(rig, pos, height * PilotRig.SIZE)
+				_front.draw_circle(m, height * 0.09 * rig.recoil, Color(Heroes.element_color(Heroes.element_of(PilotRig.hero)), 0.7 * alpha))
+			return
 		PilotRig.draw_glow(_front, rig, X, pos, height * PilotRig.SIZE, 0.0, alpha)

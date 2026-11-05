@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 7 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 8 updates (next push = dev171 + that count; see the build rule). Rudy
   (2026-11-05): do NOT push to Luna for now.
   2. HP INSTEAD OF HEARTS (Rudy): battle pilot_hp / pilot_hp_max / _def / _hp_lost, GOO_DMG 25,
      _hurt_pilot(amount) x (1 - _def), HUD HP bar, star 3 "Take no damage", Aegis +30 HP (heal
@@ -114,8 +114,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   (LUNA-BRIEF-heroes-redo-1.md). Sent to Rudy: that redo brief + LUNA-BRIEF-ui-kit.md (9-slice
   buttons / panels / bars / small), LUNA-BRIEF-icons.md (48-cell sheet), LUNA-BRIEF-drones-2.md
   (Spark Bot / Wisp / Night Bat as hull + thrusters + glow, Repair + Magnet pods).
-  NEXT CODE JOB: cut the hero sets into heroes/<id>/ (a cut_heroes.gd like cut_pilot_art.gd +
-  cut_turn.gd), PilotRig per-hero PARTS tables and turn frames, PARTS pivots measured per hero.
+  DONE (update 8): tools/cut_heroes.gd -> heroes/<id>/turn_1..5.png (640 tall, one union crop),
+  portrait.png, ref.png, weapon.png, parts/p01..16.png (fallbacks: missing frames mirrored or the
+  reference); PilotRig.hero (set in set_gear), hero_mode(), draw_hero (frames by turn_u, lean tilt,
+  bounce squash, recoil kick, HERO_SCALE 1.08, HERO_FEET 0.645), hero_muzzle; PilotRigView draws
+  hero_mode instead of the rig (no flames / glow layers, a muzzle flash). NEXT: per-hero PARTS
+  rigs from heroes/<id>/parts (pivots per hero), then the stand (LUNA-BRIEF-hero-stand.md).
 - Luna delivered: turret card pictures (dev138, art_src/cards_r2), animation parts round 1 (dev160-162,
   art_src/parts_r1: drone hull/thrusters, Swarm lid, bug legs/feelers/sac/chunks; Sentry head_nobarrels
   unused, wrong angle), pilot turn frames (dev161, art_src/turn). Still waiting: merge sparks sheet.

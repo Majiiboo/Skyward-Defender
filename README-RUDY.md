@@ -282,6 +282,16 @@ Update 7: TURRETS BIGGER, WITH WEIGHT, RESTING AND FIRING (your note).
   would like a quick sketch or a screenshot with a mark of what to move, because on the PC
   frame the bar is already two rows and the notch inset on your phone changes it.
 
+Update 8: LUNA'S FIVE HEROES ARE IN THE GAME. Sparks, Cpt. Frost, Hollow, Nyx and Ember show
+on the Heroes page (big, with Luna's portraits on the roster), on Home's live battle and in
+the fight, with their own weapons painted in. How: each hero is drawn from Luna's five
+turn-around frames, picked by the way he faces (left, three-quarter, camera, three-quarter,
+right) and cross-faded, with the rig's lean, bounce and recoil moving the whole picture and a
+muzzle flash in his element colour. Hollow's frames 4 and 5 are mirrors of 2 and 1 and Ember
+stands in with his reference picture until Luna's round-2 frames arrive (the cutter swaps
+them in automatically). The per-part rig for the heroes (parts cut and ready in heroes/<id>/
+parts/) is the next step for finer motion. Dev: tools/cut_heroes.gd.
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

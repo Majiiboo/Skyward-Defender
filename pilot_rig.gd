@@ -98,6 +98,7 @@ static func gun() -> String:
 
 # Dress him from the save: weapon in hand, visor and chest orb in their sets' colours.
 static func set_gear(save: Dictionary) -> void:
+	hero = Heroes.selected(Heroes.read(save))   # heroes (dev172): Luna's frames for everyone but Rook
 	var want := suit_for(save)
 	if want != suit:
 		suit = want
@@ -676,3 +677,51 @@ static func draw_turn(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha:
 # how much the turn frames show: fully once the turn is under way
 static func turn_weight(r: Rig) -> float:
 	return 1.0 - smoothstep(0.86, 0.97, absf(r.face))
+
+# ---- HEROES (dev172): Luna's whole-body frames as the hero's body ----
+# A hero other than Rook is drawn from his five turn frames (heroes/<id>/turn_1..5.png, cut by
+# tools/cut_heroes.gd) at every facing: frame 1 facing left, 3 the camera, 5 right, cross-faded
+# by the rig's face, with the rig's lean, bounce and recoil applied to the whole picture. His
+# weapon is painted into the frames, so no held weapon is drawn. The per-part rig (parts/)
+# comes later; this makes every hero playable now.
+static var hero := "rook"
+static var _hero_tex := {}
+
+static func hero_mode() -> bool:
+	return hero != Heroes.DEFAULT and ResourceLoader.exists("res://heroes/%s/turn_1.png" % hero)
+
+static func hero_tex(n: int) -> Texture2D:
+	var key := "%s_%d" % [hero, n]
+	if not _hero_tex.has(key):
+		_hero_tex[key] = load("res://heroes/%s/turn_%d.png" % [hero, n])
+	return _hero_tex[key]
+
+const HERO_SCALE := 1.08    # the frames drawn a little bigger than `height` (chibi heads)
+const HERO_FEET := 0.645    # soles below pos, as a share of height (same as the rig's)
+
+static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
+	var f := turn_u(r) * 4.0
+	var i0 := int(floor(f))
+	var w := f - i0
+	var canvas_h := height * HERO_SCALE
+	var feet := Vector2(pos.x, pos.y + HERO_FEET * height)
+	var bob := sin(r.t * TAU / 2.6) * height * 0.006
+	# the body language the rig already computes: lean tilts him about his feet, bounce squashes
+	var tilt: float = clampf(r.lean * 0.14, -0.2, 0.2)
+	var sq: float = clampf(r.bounce, -0.3, 0.3)
+	var kick: float = r.recoil * height * 0.02
+	for k in 2:
+		var i := clampi(i0 + k, 0, 4)
+		var a: float = alpha * ((1.0 - w) if k == 0 else w)
+		if a <= 0.005 or (k == 1 and i == i0):
+			continue
+		var tx := hero_tex(i + 1)
+		var cw := canvas_h * tx.get_width() / tx.get_height()
+		c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5))
+		c.draw_texture_rect(tx, Rect2(-cw * 0.5, -canvas_h, cw, canvas_h), false, _lift_col(lift, a))
+	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# where his bolts start: the weapon is in his right hand, barrel up, on the side he faces
+static func hero_muzzle(r: Rig, pos: Vector2, height: float) -> Vector2:
+	var side: float = -signf(r.face) if absf(r.face) > 0.05 else -1.0
+	return pos + Vector2(side * height * 0.16, -height * 0.5)
