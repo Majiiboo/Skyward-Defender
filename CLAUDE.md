@@ -141,6 +141,19 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    machines+magma...). Waves built from a threat budget so mixing never spikes difficulty. The
    planet boss still announces each new family. Campaign/story mode later tells it family by
    family in one connected world.
+18. STORE 2.0 (Rudy, 2026-11-04). Tabs: Chests | Offers | Shop | Crystals | Exchange.
+   Chests: Uncommon / Epic / Legendary chests opened with KEYS (keys drop in battle or bought);
+   pity: every 10th Uncommon open = an Epic item, every 10th Epic open = a Legendary item;
+   one free Uncommon and one free Epic open every 24 h, Legendary only with crystals; a
+   chest-opening animation; odds shown. Contents: coins, parts, crystals, later gear copies.
+   Offers: daily / weekly / monthly packs, each with 1-2 FREE items (reasons to come back).
+   Stage packs: real-money pack unlocked by beating a stage (every 5th stage), better and
+   pricier higher up, buyable later. Shop (one scroll page, sections): coins, elements/parts
+   (crystals), keys, a Specialty section (high elements, keys, level-up items).
+   Crystals: real-money crystal packs at several prices. Exchange: event tokens and other
+   collected items traded for chests/items (event shops). Real money needs Google Play Billing
+   (until then "coming soon"). Keep the premium currency called Crystals: "gems" are the XP
+   pickups in battle.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with
