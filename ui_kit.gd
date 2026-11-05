@@ -313,6 +313,36 @@ static func screen_title(text: String) -> Label:
 	var l := label(text, 22, Color.WHITE)
 	return l
 
+# ---- page transitions (dev157): one style everywhere, no black cuts ----
+# A page arrives: it rises a little and fades in over the world behind it (the Home
+# wallpaper or its own MenuBackdrop). Replaces the old fade-from-black overlays.
+static func enter(page: Control) -> void:
+	page.modulate.a = 0.0
+	page.position.y += 28.0
+	var tw := page.create_tween().set_parallel(true)
+	tw.tween_property(page, "modulate:a", 1.0, 0.22)
+	tw.tween_property(page, "position:y", page.position.y - 28.0, 0.3).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+
+# A page leaves: it sinks and fades, then frees itself. Returns at once.
+static func leave(page: Control) -> void:
+	page.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for c in page.get_children():
+		if c is Control:
+			c.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tw := page.create_tween().set_parallel(true)
+	tw.tween_property(page, "modulate:a", 0.0, 0.16)
+	tw.tween_property(page, "position:y", page.position.y + 18.0, 0.16).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN)
+	tw.chain().tween_callback(page.queue_free)
+
+# A floating panel (pause menu, pop-ups) pops into place: from slightly small and clear.
+static func pop_in(panel: Control, from_scale: float = 0.92) -> void:
+	panel.pivot_offset = panel.size * 0.5 if panel.size != Vector2.ZERO else panel.custom_minimum_size * 0.5
+	panel.scale = Vector2(from_scale, from_scale)
+	panel.modulate.a = 0.0
+	var tw := panel.create_tween().set_parallel(true)
+	tw.tween_property(panel, "scale", Vector2.ONE, 0.26).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	tw.tween_property(panel, "modulate:a", 1.0, 0.16)
+
 # ---- depth (dev149-150): every card in the game lifts the same way ----
 # A sheen across the top, a shade along the bottom, a light rim on the top edge and, when
 # asked, a glow in the card's colour behind its picture. draw_depth paints it into any

@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev156)
+## Where we are (hand-over, 2026-11-04, build dev157)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-156 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-157 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev156 (code 156).
+  go UP every package (same signing key, install-over). Current: dev157 (code 157).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -203,7 +203,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    Progress.bump("upgrades" | "turret_upgrades" | "merges") from gear.gd + 3 daily tasks;
    Modes rewards show gear (GearData.best_drop_rarity); battle part pickup textures cached.
    DONE dev141: rail labels on all + Event/Promo hidden ("hidden" in LEFT_RAIL), Store teaser
-   tiles (store.gd _teaser). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
+   tiles (store.gd _teaser). dev157: UIKit.enter / leave / pop_in (page transitions, pause menu). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
    (none exists), Orbitron on Modes/Stage Map vs the Exo 2 rule, Luna trophy art, quest task icons, hide "x1 Common"
    base stacks in Workshop > Gear (DONE dev152, _inv_filter.show), a Settings page after sound, battle HUD/end-screen visual pass.
 23. IDEAS FROM SLAYER LEGEND (Rudy's video, 2026-11-04): IDEAS-slayer-legend.md lists what that

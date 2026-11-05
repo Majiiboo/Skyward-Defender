@@ -182,15 +182,9 @@ func _toast(text: String) -> void:
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://hub.tscn")
 
+# the page rises and fades in over the world (UIKit.enter, dev157); no more black cut
 func _fade_in_overlay() -> void:
-	var overlay = ColorRect.new()
-	overlay.color = Color(0, 0, 0, 1)
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
-	var tw := create_tween()
-	tw.tween_property(overlay, "modulate:a", 0.0, 0.25)
-	tw.tween_callback(func(): overlay.queue_free())
+	UIKit.enter(self)
 
 # A trophy medal drawn in thin lines: a star in a ring, in the tier's colour (dim when
 # no tier is reached yet). Luna can paint real trophy art later (LUNA-BRIEF).

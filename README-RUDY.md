@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev156 (version/code=156 and version/name="1.0-dev156" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev157 (version/code=157 and version/name="1.0-dev157" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,14 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev157: menus flow (no more black cuts)
+
+- Opening a page from Home no longer fades through black: the page rises and fades in over
+  the world, and the page you leave sinks and fades out under it. Home itself fades back in
+  the same way. Modes, Store, Quests and Gear all share the one transition.
+- The battle's pause menu pops into place (slightly small and clear, then full) instead
+  of appearing.
 
 ## dev156: hit feedback
 

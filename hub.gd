@@ -754,14 +754,17 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 
 func _show_home() -> void:
 	if _current_view != null:
-		_current_view.queue_free()
+		UIKit.leave(_current_view)   # sinks and fades out (dev157), then frees itself
 		_current_view = null
 	_current_view_name = "NavBattle"
 	_set_home_visible(true)
+	# Home itself comes back with a short fade so the hand-off is seamless
+	$Safe.modulate.a = 0.0
+	$Safe.create_tween().tween_property($Safe, "modulate:a", 1.0, 0.22)
 
 func _show_view(view_name: String, path: String) -> void:
 	if _current_view != null:
-		_current_view.queue_free()
+		UIKit.leave(_current_view)
 		_current_view = null
 	var view = load(path).instantiate()
 	_current_view = view

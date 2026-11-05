@@ -1497,15 +1497,9 @@ func _confirm(title: String, body: String, yes_text: String, yes_ok: bool) -> bo
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://hub.tscn")
 
+# the page rises and fades in over the world (UIKit.enter, dev157); no more black cut
 func _fade_in_overlay() -> void:
-	var overlay = ColorRect.new()
-	overlay.color = Color(0, 0, 0, 1)
-	overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
-	overlay.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	add_child(overlay)
-	var tw := create_tween()
-	tw.tween_property(overlay, "modulate:a", 0.0, 0.25)
-	tw.tween_callback(func(): overlay.queue_free())
+	UIKit.enter(self)
 
 # The merge animation (Workshop): three copies of the part spiral into a swirling ring,
 # a flash and a shock ring, then the new part pops out with a halo and "+1 Plasma Cell".

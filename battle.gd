@@ -1980,6 +1980,8 @@ func _fill_pause() -> void:
 	v.add_child(quit_b)
 	v.add_child(UIKit.label("Leaving ends this run (you restart the stage).", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	_pause_panel.add_child(box)
+	box.size = Vector2(340.0, box.get_combined_minimum_size().y)
+	UIKit.pop_in(box)   # the menu pops into place (dev157)
 
 func _toggle_pause() -> void:
 	if _cards_open:
