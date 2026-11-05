@@ -24,6 +24,7 @@ var _save := {}   # the save as read on open (Promotion rank)
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	MenuBackdrop.add_to(self)   # the living planet wallpaper behind the page
 	_load()
 	_build()
 	_fade_in_overlay()
@@ -78,6 +79,7 @@ func _build() -> void:
 	col.add_child(top)
 	for m in MODES:
 		col.add_child(_card(m))
+	UIKit.reveal(col, 0.06)
 
 func _card(m: Dictionary) -> Control:
 	var locked: bool = player_level < int(m.unlock)

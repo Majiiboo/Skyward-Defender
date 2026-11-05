@@ -51,6 +51,7 @@ var _t_place: Button
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	MenuBackdrop.add_to(self)   # the living planet wallpaper behind the page
 	# a Quests "Go" button can ask for a tab (0 Pilot, 1 Turrets, 2 Drone, 3 Workshop)
 	if get_tree().root.has_meta("gear_page"):
 		_start_page = int(get_tree().root.get_meta("gear_page"))
@@ -313,6 +314,7 @@ func _fill_bag() -> void:
 			if open:
 				_equip(item))
 		_bag_grid.add_child(t)
+	UIKit.reveal(_bag_grid, 0.03, 10.0)
 
 # ------------------------------------------------------------------ actions
 
@@ -696,6 +698,7 @@ func _refresh_ws_gear() -> void:
 	for s in stacks:
 		grid.add_child(_inv_tile(s))
 	_ws_gear_box.add_child(grid)
+	UIKit.reveal(grid, 0.02, 10.0)
 	_power_label.text = "%d copies" % total
 	_paint_wallet()
 
@@ -1302,6 +1305,7 @@ func _refresh_turrets() -> void:
 			_refresh_turrets())
 		_turret_grid.add_child(t)
 	_refresh_turret_detail()
+	UIKit.reveal(_turret_grid, 0.03, 10.0)
 
 func _refresh_turret_detail() -> void:
 	if t_focus == "" and not Turrets.mount_open(t_mount, t_unlocked):

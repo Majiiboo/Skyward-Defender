@@ -12,6 +12,7 @@ var d := {}
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	MenuBackdrop.add_to(self)   # the living planet wallpaper behind the page
 	d = Progress.read()
 	_build()
 	_fade_in_overlay()
@@ -83,6 +84,7 @@ func _fill() -> void:
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
 			_trophy_grid()
+	UIKit.reveal(_list)
 
 func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String = "") -> void:
 	var p := UIKit.panel(10)

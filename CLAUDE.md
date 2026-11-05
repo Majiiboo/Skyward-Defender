@@ -3,9 +3,9 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-04, build dev144)
+## Where we are (hand-over, 2026-11-04, build dev145)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- dev138-144 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-145 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
 - Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
@@ -34,7 +34,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev144 (code 144).
+  go UP every package (same signing key, install-over). Current: dev145 (code 145).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -231,6 +231,20 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    sockets (turrets), a hangar (drone + Patrol), a workshop (merging); each building's look
    levels up from what the player already does (no new currency), with Luna painting the
    building tiers. A separate "build your base" screen with its own costs is the version to avoid.
+26. AAA MOTION (Rudy, 2026-11-04: pilot, drone, turrets, enemies must move like a big-budget
+   game; renders if needed, else code). Luna: LUNA-BRIEF-animation-parts.md (drone hull +
+   thrusters + light, turret barrels / lid / light layers, bug legs / feelers / sac / chunks).
+   CODE (can start before the art, with the pieces we have): (a) a shared Motion helper:
+   spring (pos, vel, stiffness, damping), follow-through lag, squash-stretch from velocity;
+   (b) pilot: bank into drags, jetpack flame lag, rifle recoil spring (exists), landing /
+   lift-off squash, head look-at nearest bug, idle weight shift; (c) drone: bob + bank + lag
+   behind the pilot with a spring, roll on fire, thruster flicker; (d) turrets: barrel recoil
+   spring, head overshoot when tracking, charge swell on the light layer, lid flip; (e) bugs:
+   squash on hit (0.85/1.15 for 0.12 s), stretch when darting, feeler whip, death chunks
+   tumbling with gravity + fade, hatching pop; (f) hit-stop 40 ms on boss hits, screen
+   shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). Then LUNA-BRIEF-animation.md
+   (older in-between list) is mostly superseded by the parts approach.
+16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable.
 15. GUIDED FIRST-TIME TIPS (Rudy idea, queued 2026-11-04): when something unlocks or is used
    the first time (gear, turrets, Workshop, drone...), a short guided tip: dim the screen,
    spotlight the one button to tap (only it works), a small animated box "Tap here" with

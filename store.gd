@@ -44,6 +44,7 @@ var _tabs_row: HBoxContainer
 
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
+	MenuBackdrop.add_to(self)   # the living planet wallpaper behind the page
 	d = Progress.read()
 	_build()
 	_fade_in_overlay()
@@ -103,6 +104,7 @@ func _fill() -> void:
 		1: _fill_chests()
 		2: _fill_parts()
 		3: _fill_packs()
+	UIKit.reveal(_page)
 
 # A shop tile: a big picture, a big number, one short line, the button.
 func _tile(icon: Texture2D, big: String, small: String, color: String, button: Button) -> PanelContainer:

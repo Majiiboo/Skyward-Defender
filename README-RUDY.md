@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev144 (version/code=144 and version/name="1.0-dev144" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev145 (version/code=145 and version/name="1.0-dev145" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,25 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev145: living wallpapers behind every menu, motion everywhere, a battle sweep
+
+- Every menu page (Gear, Store, Quests, Modes) now sits on the SAME world as Home and
+  battle: the current planet's painting, drifting slowly with a slight zoom, darkened so the
+  glass panels read, stars twinkling, dust motes rising, a soft vignette (menu_backdrop.gd).
+  No more flat dark pages: it all reads as one game.
+- Motion: tiles, rows and cards rise and fade in one after another when a page or tab opens
+  (UIKit.reveal); every gold main-action button gets a light sweep every few seconds
+  (UIKit.sheen); buttons still squeeze when pressed.
+- BATTLE SWEEP (autopilot, typical gear, 2 runs each): Normal stages 1-60 every fifth stage
+  all won with the base never touched (hull 100 everywhere, 3 hearts lost only at 60). Elite
+  10 and 20 won; Elite 30, 40, 50, 60 all lost by wave 3-4 even with the kit of a player five
+  stages further on. Since dev127 the combat stats (crit, damage boost) and turret tracks
+  made the player much stronger, so Normal is too easy mid-game and Elite is a wall from
+  planet 3. This is queue item 16 g (the long-game re-tune), now with numbers.
+- LUNA-BRIEF-animation-parts.md: the pieces Luna needs to render so the drone, turrets and
+  bugs can be animated part by part (hulls, thrusters, barrels, lids, legs, feelers, light
+  layers, death chunks). The pilot needs nothing new. Code plan: queue item 26.
 
 ## dev144: promotion trials tuned with the autopilot, recommended levels, faster cards
 

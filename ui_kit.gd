@@ -103,6 +103,52 @@ static func press_fx(b: Button) -> void:
 		var tw := b.create_tween()
 		tw.tween_property(b, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT))
 
+# Entrance (dev145): the children of a container rise and fade in one after another, so a
+# page or a tab's content arrives instead of appearing. Call after filling the container.
+static func reveal(box: Node, stagger: float = 0.035, rise: float = 14.0) -> void:
+	var items: Array = []
+	for c in box.get_children():
+		if c is Control and c.visible:
+			c.modulate.a = 0.0
+			items.append(c)
+	if items.is_empty() or not box.is_inside_tree():
+		return
+	await box.get_tree().process_frame   # let the container lay them out first
+	var i := 0
+	for c in items:
+		if not is_instance_valid(c) or c.is_queued_for_deletion():
+			continue
+		var ctl: Control = c
+		var tw := ctl.create_tween().set_parallel(true)
+		tw.tween_property(ctl, "modulate:a", 1.0, 0.22).set_delay(i * stagger)
+		# a small rise, done through position so containers can still lay out
+		var y0 := ctl.position.y
+		ctl.position.y = y0 + rise
+		tw.tween_property(ctl, "position:y", y0, 0.28).set_delay(i * stagger).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		i += 1
+
+# A light sweep across a gold button every few seconds (dev145): a thin bright band
+# slides over it, clipped to the button, so the main action catches the eye.
+static func sheen(b: Button) -> void:
+	if b.has_meta("sheen"):
+		return
+	b.set_meta("sheen", true)
+	b.clip_contents = true
+	var band := Control.new()
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	band.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var x := [-0.4]
+	band.draw.connect(func():
+		var w := band.size.x
+		var h := band.size.y
+		var cx: float = x[0] * w
+		var pts := PackedVector2Array([Vector2(cx - 18, 0), Vector2(cx + 10, 0), Vector2(cx - 10, h), Vector2(cx - 38, h)])
+		band.draw_colored_polygon(pts, Color(1, 1, 1, 0.22)))
+	b.add_child(band)
+	var tw := b.create_tween().set_loops()
+	tw.tween_method(func(v: float): x[0] = v; band.queue_redraw(), -0.4, 1.4, 0.7).set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.tween_interval(2.6)
+
 # an icon with a number beside it (coins, crystals, parts)
 static func amount(icon: Texture2D, n: int, col: Color, px: float = 18.0, font: int = 13) -> HBoxContainer:
 	var h := HBoxContainer.new()
@@ -136,6 +182,7 @@ static func gold_button(text: String, size_px: int = 16) -> Button:
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 40)
 	_style_btn(b, box(Color(0.92, 0.72, 0.22), Color(1.0, 0.9, 0.5), 10), box(Color(1.0, 0.85, 0.4), Color(1, 1, 0.8), 10), Color(0.12, 0.08, 0.0))
+	sheen(b)
 	return b
 
 static func teal_button(text: String, size_px: int = 14) -> Button:
