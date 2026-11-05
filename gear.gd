@@ -79,6 +79,7 @@ func _read() -> Dictionary:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				return d
+				DevTools.on = bool(d.get("dev_mode", false))
 	return {}
 
 func _load() -> void:
@@ -1101,7 +1102,7 @@ func _refresh_drone() -> void:
 		grid.add_theme_constant_override("h_separation", 8)
 		for id in spec[1]:
 			var def: Dictionary = spec[1][id]
-			var open: bool = pilot_level >= int(def.unlock)
+			var open: bool = pilot_level >= int(def.unlock) or DevTools.on
 			var on: bool = drone[spec[2]] == id
 			var sub := "Equipped" if on else ("Choose" if open else "Pilot Lv.%d" % int(def.unlock))
 			if spec[2] == "body":
@@ -1541,6 +1542,8 @@ func _upgrade_text(coin_cost: int, level: int) -> String:
 # Pays for an upgrade (coins + parts, or crystals for missing parts after asking).
 # Returns true when paid; the save already has the new coins, crystals and parts.
 func _pay_upgrade(coin_cost: int, level: int) -> bool:
+	if DevTools.on:
+		return true   # dev mode: free
 	var data := _read()
 	var needs := Parts.need(level)
 	var have := Parts.read(data)

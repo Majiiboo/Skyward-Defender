@@ -80,7 +80,7 @@ static func open_level(i: int) -> int:
 
 static func unlocked(save: Dictionary, pilot_level: int) -> bool:
 	var n := next(save)
-	return n >= 0 and pilot_level >= open_level(n)
+	return n >= 0 and (pilot_level >= open_level(n) or DevTools.on)
 
 # damage and fortress multiplier for `ranks` ranks won
 static func bonus(ranks: int) -> float:

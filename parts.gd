@@ -59,6 +59,8 @@ static func text(needs: Dictionary) -> String:
 # Try to pay: coins + parts (crystals cover missing parts when allowed). Changes `save`
 # in place; returns "" on success or why it failed.
 static func pay(save: Dictionary, coins: int, needs: Dictionary, allow_crystals: bool) -> String:
+	if DevTools.on:
+		return ""   # dev mode: everything is free
 	if int(save.get("coins", 0)) < coins:
 		return "Not enough coins"
 	var have := read(save)

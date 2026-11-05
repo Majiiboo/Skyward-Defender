@@ -383,6 +383,7 @@ func _read_save() -> Dictionary:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				return d
+				DevTools.on = bool(d.get("dev_mode", false))
 	return {}
 
 func _write_save(patch: Dictionary) -> void:
@@ -556,9 +557,9 @@ func _start_stage() -> void:
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	# the drone sidekick flies along once the pilot is level 8 (Gear > Drone)
 	_drone = DroneData.read(sv)
-	if plevel < int(DroneData.BODIES[_drone.body].unlock):
+	if plevel < int(DroneData.BODIES[_drone.body].unlock) and not DevTools.on:
 		_drone.body = "scout"
-	if plevel < int(DroneData.PODS[_drone.pod].unlock):
+	if plevel < int(DroneData.PODS[_drone.pod].unlock) and not DevTools.on:
 		_drone.pod = "blaster"
 	_drone_on = DroneData.unlocked(plevel)
 	_drone_cd = 0.5
@@ -3634,7 +3635,10 @@ func _draw_hud() -> void:
 	_draw_hurt_edge()
 	if _safe_top > 0.0:
 		_hc.draw_rect(Rect2(0, -_safe_top - 2.0, FIELD_W, _safe_top + 6.0), Color(0.02, 0.03, 0.08, 0.85))
-	Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
+	if UIKit.kit_ready("hud_frame"):   # Luna's top bar (dev172)
+		_hc.draw_style_box(UIKit.nine("hud_frame", 30.0, Vector2.ZERO), Rect2(2, 0, FIELD_W - 4, HUD_H - 4))
+	else:
+		Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
 	# row 1: stage number (white) and name (cyan), then the run time
 	var num := "%d " % stage
 	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
@@ -3688,11 +3692,17 @@ func _draw_hud() -> void:
 	# the pilot's HP bar (dev172: HP instead of hearts): red, with the number, at the right
 	var bar := Rect2(FIELD_W - 132.0, y2 - 10.0, 114.0, 9.0)
 	_hc.draw_string(hud_font, Vector2(bar.position.x - 20.0, y2), "HP", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	_hc.draw_colored_polygon(Glass.box(bar, 3.0).slice(0, -1), Color(0.12, 0.03, 0.06, 0.85))
+	if UIKit.kit_ready("bar_track"):   # Luna's bar track and red fill (dev172)
+		_hc.draw_style_box(UIKit.nine("bar_track", 5.0, Vector2.ZERO), bar.grow(1.0))
+	else:
+		_hc.draw_colored_polygon(Glass.box(bar, 3.0).slice(0, -1), Color(0.12, 0.03, 0.06, 0.85))
 	var hk := clampf(pilot_hp / maxf(pilot_hp_max, 1.0), 0.0, 1.0)
 	if hk > 0.0:
 		var fill := Rect2(bar.position, Vector2(maxf(bar.size.x * hk, 6.0), bar.size.y))
-		_hc.draw_colored_polygon(Glass.box(fill, 3.0).slice(0, -1), Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25))
+		if UIKit.kit_ready("bar_fill_red"):
+			_hc.draw_style_box(UIKit.nine("bar_fill_red", 5.0, Vector2.ZERO), fill)
+		else:
+			_hc.draw_colored_polygon(Glass.box(fill, 3.0).slice(0, -1), Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25))
 	_hc.draw_polyline(Glass.box(bar, 3.0), Color(1.0, 0.45, 0.5, 0.5), 1.0, true)
 	_hc.draw_string(hud_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 8, Color.WHITE)
 	# a trial's advantages and disadvantages, announced under the bar for the first seconds
@@ -3707,7 +3717,10 @@ func _draw_hud() -> void:
 	var need := _xp_need()
 	var xp := clampf(run_xp / need, 0.0, 1.0)
 	var track := Rect2(64, HUD_H - 1, FIELD_W - 82, 5)
-	_hc.draw_colored_polygon(Glass.box(track, 2.5).slice(0, -1), Color(0.03, 0.05, 0.12, 0.8))
+	if UIKit.kit_ready("bar_track"):
+		_hc.draw_style_box(UIKit.nine("bar_track", 5.0, Vector2.ZERO), track.grow(1.0))
+	else:
+		_hc.draw_colored_polygon(Glass.box(track, 2.5).slice(0, -1), Color(0.03, 0.05, 0.12, 0.8))
 	if xp > 0.02:
 		var fr := Rect2(track.position, Vector2(track.size.x * xp, track.size.y))
 		var pts := Glass.box(fr, 2.5).slice(0, -1)

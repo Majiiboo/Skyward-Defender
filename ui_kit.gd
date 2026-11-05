@@ -44,7 +44,7 @@ static func glass(radius: float = 12.0) -> StyleBoxFlat:
 
 static func panel(radius: float = 14.0) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", glass(radius))
+	p.add_theme_stylebox_override("panel", glass(radius))   # panels stay code glass: Luna's gloss band smears when a tall box stretches (dev172)
 	return p
 
 static func label(text: String, size_px: int = 14, col: Color = Color.WHITE, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
@@ -60,6 +60,15 @@ static func header(text: String) -> Control:
 	# Section header bar with an angled tag on the left (the style from the reference).
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
+	if kit_ready("header_bar"):   # Luna's header bar: the angled tag is painted in
+		var hp := PanelContainer.new()
+		var hs := nine("header_bar", 10.0, Vector2(26, 2))
+		hs.texture_margin_left = 56.0   # the painted angled tag stays whole
+		hp.add_theme_stylebox_override("panel", hs)
+		hp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		hp.add_child(label(text, 15, Color(0.75, 0.97, 1.0)))
+		row.add_child(hp)
+		return row
 	var tag := Control.new()
 	tag.custom_minimum_size = Vector2(10, 26)
 	tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -199,6 +208,9 @@ static func gold_button(text: String, size_px: int = 16) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 40)
+	if kit_ready("btn_gold"):
+		_kit_btn(b, "btn_gold", Color(0.12, 0.08, 0.0))
+		return b
 	_style_btn(b, box(Color(0.92, 0.72, 0.22), Color(1.0, 0.9, 0.5), 10), box(Color(1.0, 0.85, 0.4), Color(1, 1, 0.8), 10), Color(0.12, 0.08, 0.0))
 	sheen(b)
 	return b
@@ -209,6 +221,9 @@ static func teal_button(text: String, size_px: int = 14) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 36)
+	if kit_ready("btn_teal"):
+		_kit_btn(b, "btn_teal", Color(0.02, 0.1, 0.1))
+		return b
 	_style_btn(b, box(Color(0.16, 0.6, 0.62), Color(0.5, 0.95, 0.95), 10), box(Color(0.25, 0.8, 0.8), Color(0.8, 1, 1), 10), Color(0.02, 0.1, 0.1))
 	return b
 
@@ -217,6 +232,9 @@ static func ghost_button(text: String, size_px: int = 13) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 32)
+	if kit_ready("btn_glass"):
+		_kit_btn(b, "btn_glass", Color.WHITE)
+		return b
 	_style_btn(b, glass(10), box(Color(CYAN, 0.25), CYAN, 10), Color.WHITE)
 	return b
 
@@ -327,6 +345,9 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 	var paint := func(sel: int):
 		for j in buttons.size():
 			var on: bool = int(map[j]) == sel
+			if kit_ready("btn_tab"):
+				_kit_btn(buttons[j], "btn_tab" if on else "btn_glass", Color.WHITE if on else MUTED)
+				continue
 			_style_btn(buttons[j], box(Color(CYAN, 0.2) if on else Color(0.035, 0.06, 0.14, 0.45), Color(CYAN, 0.9) if on else Color(0.55, 0.85, 1.0, 0.22), 12), box(Color(CYAN, 0.3), CYAN, 12), Color.WHITE if on else MUTED)
 	for j in buttons.size():
 		var i: int = int(map[j])
@@ -339,6 +360,11 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 
 static func chip(text: String, col: Color = CYAN) -> PanelContainer:
 	var p := PanelContainer.new()
+	if kit_ready("chip"):
+		var ks := nine("chip", 11.0, Vector2(9, 2), Color(col.lerp(Color.WHITE, 0.35), 1.0))
+		p.add_theme_stylebox_override("panel", ks)
+		p.add_child(label(text, 11, Color.WHITE))
+		return p
 	var s := box(Color(col, 0.16), Color(col, 0.6), 8)
 	s.content_margin_top = 2
 	s.content_margin_bottom = 2
@@ -413,3 +439,47 @@ static func lift(sb: StyleBoxFlat) -> StyleBoxFlat:
 	sb.shadow_size = 9
 	sb.shadow_offset = Vector2(0, 4)
 	return sb
+
+# ---- Luna's UI kit (dev172, LUNA-BRIEF-ui-kit.md): ui/<name>.png stretched as 9-slice boxes ----
+# The corners stay as painted, the edges and the middle stretch, so one picture is every
+# button of any width. KIT_ON false = the code-drawn glass again.
+const KIT_ON := true
+static var _kit_cache := {}
+
+static func kit_ready(name: String) -> bool:
+	return KIT_ON and ResourceLoader.exists("res://ui/%s.png" % name)
+
+# a 9-slice box from a kit piece; `edge` = the corner size kept as painted (px of the
+# picture); `pad` = the content margins; `col` tints it (chips and bars)
+static func nine(name: String, edge: float = 40.0, pad: Vector2 = Vector2(12, 8), col: Color = Color.WHITE) -> StyleBoxTexture:
+	var key := "%s|%.0f|%s|%s" % [name, edge, str(pad), str(col)]
+	if _kit_cache.has(key):
+		return _kit_cache[key]
+	var s := StyleBoxTexture.new()
+	s.texture = load("res://ui/%s.png" % name)
+	s.texture_margin_left = edge
+	s.texture_margin_right = edge
+	s.texture_margin_top = edge
+	s.texture_margin_bottom = edge
+	s.axis_stretch_horizontal = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	s.axis_stretch_vertical = StyleBoxTexture.AXIS_STRETCH_MODE_STRETCH
+	s.content_margin_left = pad.x
+	s.content_margin_right = pad.x
+	s.content_margin_top = pad.y
+	s.content_margin_bottom = pad.y
+	s.modulate_color = col
+	_kit_cache[key] = s
+	return s
+
+# a kit button: Luna's face, pressed face and the grey disabled face
+static func _kit_btn(b: Button, face: String, text_col: Color) -> void:
+	b.add_theme_stylebox_override("normal", nine(face, 14.0, Vector2(6, 4)))
+	b.add_theme_stylebox_override("hover", nine(face, 14.0, Vector2(6, 4)))
+	b.add_theme_stylebox_override("pressed", nine(face + "_pressed" if kit_ready(face + "_pressed") else face, 14.0, Vector2(6, 5)))
+	b.add_theme_stylebox_override("disabled", nine("btn_off", 14.0, Vector2(6, 4)))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.add_theme_color_override("font_color", text_col)
+	b.add_theme_color_override("font_hover_color", text_col)
+	b.add_theme_color_override("font_pressed_color", text_col)
+	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.55, 0.65))
+	press_fx(b)

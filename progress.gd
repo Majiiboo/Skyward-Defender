@@ -70,6 +70,7 @@ static func read() -> Dictionary:
 		if f:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
+				DevTools.on = bool(d.get("dev_mode", false))   # the dev switch rides on the save
 				return d
 	return {}
 

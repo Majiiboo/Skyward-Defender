@@ -45,7 +45,7 @@ static func read(save: Dictionary) -> Dictionary:
 		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL)}
 
 static func unlocked(pilot_level: int) -> bool:
-	return pilot_level >= UNLOCK_LEVEL
+	return pilot_level >= UNLOCK_LEVEL or DevTools.on
 
 # +25% per level (Lv.10 = 3.25x)
 static func level_mult(level: int) -> float:

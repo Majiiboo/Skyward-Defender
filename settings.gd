@@ -51,6 +51,31 @@ func _build() -> void:
 func _fill() -> void:
 	for c in _page.get_children():
 		c.queue_free()
+	# ---- DEV MODE (Rudy, dev172): one switch, everything open and free, for trying things out
+	var dev_p := UIKit.panel(12)
+	if DevTools.on:
+		dev_p.add_theme_stylebox_override("panel", UIKit.box(Color(1.0, 0.6, 0.2, 0.18), Color(1.0, 0.6, 0.2), 12))
+	var dh := HBoxContainer.new()
+	dh.add_theme_constant_override("separation", 10)
+	var dv := VBoxContainer.new()
+	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	dv.add_theme_constant_override("separation", 1)
+	dv.add_child(UIKit.label("DEV MODE", 15, Color(1.0, 0.75, 0.3) if DevTools.on else Color(0.85, 0.9, 1.0)))
+	dv.add_child(UIKit.label("Every hero, turret, drone, weapon, mode and trial open; upgrades and unlocks free; no power cost. Your real progress stays as it is.", 11, UIKit.MUTED))
+	dv.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dh.add_child(dv)
+	var db := UIKit.gold_button("ON" if DevTools.on else "OFF", 14)
+	db.custom_minimum_size = Vector2(80, 40)
+	db.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	db.pressed.connect(func():
+		d = Progress.read()
+		d["dev_mode"] = not DevTools.on
+		DevTools.on = bool(d.dev_mode)
+		Progress.write(d)
+		_fill())
+	dh.add_child(db)
+	dev_p.add_child(dh)
+	_page.add_child(dev_p)
 	# ---- performance: three cards, the chosen one lit
 	_page.add_child(UIKit.header("PERFORMANCE"))
 	var cur := Perf.read(d)

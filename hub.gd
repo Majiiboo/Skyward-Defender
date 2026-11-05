@@ -723,6 +723,7 @@ func _write_selection() -> void:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				data = d
+				DevTools.on = bool(d.get("dev_mode", false))
 	data["selected_stage"] = stage
 	data["selected_elite"] = mode == "Elite"
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)

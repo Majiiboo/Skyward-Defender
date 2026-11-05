@@ -58,6 +58,8 @@ static func try_spend(save: Dictionary, n: int) -> bool:
 # `parent` otherwise.
 static func try_play(parent: Control, elite: bool, stage: int = 0) -> bool:
 	var c := cost(elite, stage)
+	if DevTools.on:
+		return true   # dev mode: power tokens never gate a fight
 	if c <= 0:
 		return true
 	var s := Progress.read()

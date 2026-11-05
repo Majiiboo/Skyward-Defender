@@ -182,7 +182,7 @@ static func selected(h: Dictionary) -> String:
 	return String(h.selected) if ROSTER.has(String(h.selected)) else DEFAULT
 
 static func owned(h: Dictionary, id: String) -> bool:
-	return id == DEFAULT or h.owned.has(id)
+	return id == DEFAULT or h.owned.has(id) or DevTools.on
 
 # "unlocked" = owned (loadouts, the rig)
 static func unlocked(save: Dictionary, id: String) -> bool:
@@ -205,7 +205,7 @@ static func gate(id: String) -> int:
 	return int(ROSTER[id].get("stage", 0)) if ROSTER.has(id) else 0
 
 static func gate_open(save: Dictionary, id: String) -> bool:
-	return int(save.get("stage_unlocked", 1)) > gate(id)
+	return int(save.get("stage_unlocked", 1)) > gate(id) or DevTools.on
 
 # "2,500 coins + 12 Alloy" and "or 60 crystals"
 static func cost_text(id: String) -> String:
@@ -273,13 +273,15 @@ static func next_tier_cost(h: Dictionary, id: String) -> int:
 	return int(TIER_SHARDS[t - 1]) if t < MAX_TIER else 0
 
 static func can_evolve(h: Dictionary, id: String) -> bool:
-	return tier(h, id) < MAX_TIER and shards(h, id) >= next_tier_cost(h, id)
+	return tier(h, id) < MAX_TIER and (shards(h, id) >= next_tier_cost(h, id) or DevTools.on)
 
 # ------------------------------------------------------------------ actions
 
 static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	var lv := level(h, id)
 	var cost := level_cost(lv)
+	if DevTools.on:
+		cost = 0   # dev mode: free
 	if lv >= MAX_LEVEL or int(save.get("coins", 0)) < cost:
 		return false
 	save["coins"] = int(save.get("coins", 0)) - cost
@@ -289,6 +291,8 @@ static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 static func def_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	var lv := def_level(h, id)
 	var cost := def_cost(lv)
+	if DevTools.on:
+		cost = 0
 	if lv >= MAX_DEF_LEVEL or int(save.get("coins", 0)) < cost:
 		return false
 	save["coins"] = int(save.get("coins", 0)) - cost
@@ -298,7 +302,7 @@ static func def_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 static func evolve(h: Dictionary, id: String) -> bool:
 	if not can_evolve(h, id):
 		return false
-	h.shards[id] = shards(h, id) - next_tier_cost(h, id)
+	h.shards[id] = maxi(shards(h, id) - next_tier_cost(h, id), 0)
 	h.tiers[id] = tier(h, id) + 1
 	return true
 

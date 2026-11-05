@@ -326,6 +326,23 @@ lines to the bugs it boosts: kill it first), HEALER (from 21: a green aura; it h
 near it 4% a second with green zaps: kill it first). Support bugs carry their name over them;
 the first of each kind in a run announces itself ("BOOSTER BUG: KILL IT FIRST"). Variants pay
 150 score instead of 100. Shielded bugs show a cyan shield bar over the health bar.
+Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
+- LUNA'S UI KIT is in (36 renders, all usable): every gold, teal and glass button, the
+  sub-tabs, the chips and the section headers are now her rendered pieces, stretched as
+  9-slice boxes (the corners stay as painted). The battle top bar, the HP bar and the XP track
+  use her frame and bar pieces. The big panels stay code glass for now: her panel renders
+  carry a gloss band across the middle that smears when a tall box stretches, so they need a
+  version with the gloss only in the top corners (a small redo, in the next brief). Her nav
+  dock, top bar, popup and nav tile pieces are cut and waiting for the same reason.
+- DEV MODE (for you): Settings has a DEV MODE switch at the top. ON = every hero, turret, drone
+  body and pod, weapon, mode and trial is open, all four mounts are open, every upgrade and
+  unlock is free, power tokens never gate a fight. Your real progress is untouched; switch it
+  OFF and the game is exactly as it was. It rides on the save, so it survives restarts.
+- WORKSHOP AND MATERIALS: your idea is written up in DESIGN-materials.md: materials per
+  domain (base parts as now; element ESSENCES for heroes and weapons, e.g. a Solar Flare for the
+  Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
+  with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
+  planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

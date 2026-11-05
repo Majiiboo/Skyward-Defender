@@ -62,7 +62,7 @@ const TRAIT_NAMES := {"armoured": "armoured", "boss": "bosses", "swarm": "swarm"
 
 # stage_unlocked = the save's highest playable stage (last cleared stage + 1).
 static func mount_open(i: int, stage_unlocked: int) -> bool:
-	return stage_unlocked > int(MOUNT_OPENS_AFTER[i])
+	return stage_unlocked > int(MOUNT_OPENS_AFTER[i]) or DevTools.on
 
 static func mounts_open(stage_unlocked: int) -> int:
 	var n := 0
@@ -217,7 +217,7 @@ static func track_parts(level: int) -> Dictionary:
 const TURRET_TUNE := 2.5   # one knob for the whole base damage (sim dev172, human bot + auto kit: 1.0 = turrets 7-17% of the damage, 2.0 = 10-25%, 2.5 = about 30% from stage 20)
 
 static func owned(t: Dictionary, id: String) -> bool:
-	return id == "sentry" or Array(t.get("owned", [])).has(id)
+	return id == "sentry" or Array(t.get("owned", [])).has(id) or DevTools.on
 
 static func grade(id: String) -> int:
 	return clampi(int(TURRETS[id].get("grade", 1)), 1, Heroes.GRADES.size()) if TURRETS.has(id) else 1
@@ -239,7 +239,7 @@ static func gate(id: String) -> int:
 	return int(TURRETS[id].get("stage", 0)) if TURRETS.has(id) else 0
 
 static func gate_open(save: Dictionary, id: String) -> bool:
-	return int(save.get("stage_unlocked", 1)) > gate(id)
+	return int(save.get("stage_unlocked", 1)) > gate(id) or DevTools.on
 
 static func parts_needed(id: String) -> Dictionary:
 	var c: Dictionary = TURRETS[id].get("cost", {})

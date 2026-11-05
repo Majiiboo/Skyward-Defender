@@ -3,6 +3,11 @@ extends RefCounted
 # Developer shortcuts (Rudy, dev166): on the Settings page while BuildInfo.DEV is true, so a
 # test build can show every unlock and merge without hours of play. Set BuildInfo.DEV false
 # for a store build and the section disappears.
+# DEV MODE (Rudy, dev172): a switch on the Settings page (save "dev_mode"): every hero, turret,
+# drone body and pod, weapon, mode and trial is open, mounts are open, upgrades and unlocks are
+# free, power tokens never gate a fight. Progress.read sets `on` from the save; the pages that
+# read the save file themselves set it too.
+static var on := false
 
 # a fat wallet: coins, crystals, parts and power
 static func rich() -> void:

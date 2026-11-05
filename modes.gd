@@ -37,6 +37,7 @@ func _load() -> void:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				_save = d
+				DevTools.on = bool(d.get("dev_mode", false))
 				player_level = Turrets.pilot_level(int(d.get("pilot_xp", 0)))
 				stage_unlocked = int(d.get("stage_unlocked", 1))
 				selected_stage = clampi(int(d.get("selected_stage", 1)), 1, stage_unlocked)
@@ -95,7 +96,7 @@ func _build() -> void:
 	call_deferred("_tips")
 
 func _card(m: Dictionary) -> Control:
-	var locked: bool = player_level < int(m.unlock)
+	var locked: bool = player_level < int(m.unlock) and not DevTools.on
 	var soon: bool = m.get("soon", false)
 	var tint: Color = m.tint
 	var p := UIKit.panel(16)

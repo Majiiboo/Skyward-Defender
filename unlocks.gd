@@ -31,6 +31,8 @@ const UNLOCKS := {
 
 # is this system shown yet?
 static func open(save: Dictionary, id: String) -> bool:
+	if DevTools.on:
+		return true
 	if not UNLOCKS.has(id):
 		return true
 	var u: Dictionary = UNLOCKS[id]

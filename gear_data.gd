@@ -198,7 +198,7 @@ static func level(gear: Dictionary, id: String) -> int:
 	return int(gear.levels.get(id, 1))
 
 static func owned(gear: Dictionary, id: String) -> bool:
-	return gear.copies.has(id)
+	return gear.copies.has(id) or DevTools.on
 
 static func copies_of(gear: Dictionary, id: String, r: String) -> int:
 	return int(gear.copies.get(id, {}).get(r, 0))

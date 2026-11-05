@@ -5,7 +5,17 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev171)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 10 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev171: 11 updates (next push = dev171 + that count; see the build rule). Rudy
+  11. LUNA UI KIT in (art_src/ui/ui-*.webp, 36; tools/cut_ui_kit.gd -> ui/*.png at on-screen SCALE):
+     UIKit KIT_ON, kit_ready, nine() (StyleBoxTexture 9-slice, cached), _kit_btn (gold / teal /
+     glass / off / tab), chip, header_bar (left margin 56 keeps the tag); battle _draw_hud
+     hud_frame + bar_track + bar_fill_red via draw_style_box. Panels / popup / nav_dock / topbar
+     NOT used yet (gloss band smears when stretched tall: ask Luna for gloss-in-corners versions).
+     DEV MODE: DevTools.on (save "dev_mode", set in Progress.read and the pages' own readers),
+     Settings switch; gates: Heroes.owned / gate_open / level_up / def_up / can_evolve,
+     Turrets.owned / mount_open / gate_open, DroneData.unlocked, GearData.owned, Energy.try_play,
+     Parts.pay, gear _pay_upgrade, Unlocks.open, Promotion.unlocked, modes locked, battle drone
+     unlocks. DESIGN-materials.md: materials per domain + Workshop CRAFT tab (not built).
   10. ENEMY VARIANTS (17 a): battle VARIANTS table (armoured 6 / shielded 11 / booster 16 /
      healer 21), _roll_variant in _make_enemy (p 0.06 + 0.006/stage, cap 0.32), _traits(e) feeds
      Turrets.trait_mult (armoured / shielded / support), _through_shield on pilot and turret hits,

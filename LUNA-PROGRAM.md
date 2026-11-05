@@ -13,6 +13,7 @@ Priority order (Rudy picks; the code side of each is noted):
 | 1 | Heroes round 2 (the missing frames) | LUNA-BRIEF-heroes-redo-1.md (sent) | finish the five rigs |
 | 1a | HERO BACK FRAMES: turn_6..8 per hero (and the pilot) so the swivel goes all the way round | LUNA-BRIEF-hero-back-frames.md | 8-frame swivel on the Heroes page |
 | 1b | HERO STAND: a glowing hover disc the hero floats over (Rudy: no base look) | LUNA-BRIEF-hero-stand.md | replaces PlatformFloor on the Heroes page; code floats, pulses, spins |
+| 2a | UI KIT round 2: seven panels with the gloss only in the corner | LUNA-BRIEF-ui-kit-redo-1.md | panels, popup, nav dock, top bar switch to her pieces |
 | 2 | UI KIT: buttons, panels, headers, tabs, chips, nav bar, HUD frame, HP and shield bars, red dot, stars, padlock | LUNA-BRIEF-ui-kit.md | 9-slice pieces replace the code-drawn glass; UIKit keeps the layout |
 | 3 | ICONS: every menu icon, currency, parts, elements, roles, grades, stats, the six element symbols | LUNA-BRIEF-icons.md | one sheet, cut into icons/ |
 | 4 | DRONE BODIES: Electric spark bot, Void wisp, Dark bat (+ Repair and Magnet pods) | LUNA-BRIEF-drones-2.md | DroneData bodies by grade, pods get their own pictures |
