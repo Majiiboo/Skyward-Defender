@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev160 (version/code=160 and version/name="1.0-dev160" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev161 (version/code=161 and version/name="1.0-dev161" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,22 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev161: Luna's pilot turn frames and bug parts are in
+
+- THE TURN IS REAL NOW (Rudy's question). Luna rendered five whole-body frames per suit
+  (left three-quarter, eighth, front, eighth, right three-quarter; sources in art_src/turn,
+  cut by tools/cut_turn.gd onto one shared canvas per suit so they stay aligned). When the
+  pilot turns, the moving rig hands over to these frames and the code cross-fades through
+  them over the 0.6 s turn, then hands back: a rotation, not a mirror. Sized and footed to
+  the rig by measurement (feet match within 3 px). Rookie and Commander both.
+- BUGS from Luna's parts: Scout, Drifter, Spitter and Diver are drawn as a clean body plus
+  legs (one painted piece per bug, mirrored for the other side so both always match),
+  feelers from the head, and the Spitter's sac full / empty. Legs paddle as they fly and
+  tuck when a bug folds, feelers sway and trail behind a turn, the sac fills over the
+  Spitter's cycle and empties on the spit. Wings as before. First placement; the hips and
+  sizes are four numbers per bug in enemy_rig.gd (LEGS) to tune on a phone.
+- Dev: tools/dev/bug_capture.gd draws the four bugs large to tune the parts.
 
 ## dev160: Luna's parts round 1 is in (chunks and drones first)
 

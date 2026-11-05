@@ -2792,9 +2792,11 @@ func _draw_enemy(e: Dictionary) -> void:
 	if e.get("hatchling", false):
 		size *= lerpf(0.6, 1.0, smoothstep(0.2, 1.2, float(e.t)))   # grows out of the sac
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
+	var sac_k := -1.0   # the Spitter's sac: fills over its cycle, empties on the spit (Luna's sac parts, dev161)
 	if e.type == "spitter":
 		# the sac swells before it spits and settles right after, on smooth ramps
 		var every: float = float(def.fire_every)
+		sac_k = 1.0 - smoothstep(0.15, every * 0.8, float(e.fire_t))
 		var swell: float = maxf(smoothstep(0.8, 0.2, e.fire_t), smoothstep(every - 0.3, every, e.fire_t))
 		if swell > 0.01:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
@@ -2808,9 +2810,9 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_set_transform(e.pos, ang, Vector2.ONE)
 		draw_texture_rect(ht, Rect2(-hs * 0.5, hs), false, Color(1, 1, 1, a * fold))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle(), bright)
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
 	else:
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright)
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
 	if e.hp < e.hp_max and e.type != "hive_mother":
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))

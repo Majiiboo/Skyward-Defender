@@ -620,3 +620,53 @@ static func front_head_weight(r: Rig) -> float:
 
 static func side_head_weight(r: Rig) -> float:
 	return smoothstep(0.38, 0.47, absf(_head_face(r)))
+
+# ------------------------------------------------------------------ turn frames (dev161)
+# Luna's whole-body turn-around (pilot_turn/<suit>_1..5.png, LUNA-BRIEF-pilot-turn.md):
+# frame 1 faces left (rifle on the left of the screen, rig face +1), 3 faces the camera,
+# 5 faces right (face -1). During a turn the view cross-fades through them in place of the
+# rig. All five share one canvas per suit, so they stay aligned as rendered; TURN_BODY is
+# how much of that canvas the pilot (helmet top to soles) fills.
+const TURN_BODY := {"commander": 0.908, "rookie": 0.975}
+const TURN_TINT := {"commander": Color(1, 1, 1), "rookie": Color(0.86, 0.87, 0.92)}   # Luna's rookie frames are lighter than the rig's rookie parts
+const TURN_SCALE := 1.10   # the rig draws a little bigger than `height` (chunky parts); measured dev161
+const TURN_FEET := 0.645   # the rig's soles, as a share of `height` below pos (measured)
+static var _turn_tex := {}
+
+static func _turn_suit() -> String:
+	return "rookie" if suit == "starter" else "commander"
+
+static func turn_ready() -> bool:
+	return ResourceLoader.exists("res://pilot_turn/%s_1.png" % _turn_suit())
+
+static func turn_tex(n: int) -> Texture2D:
+	var key := "%s_%d" % [_turn_suit(), n]
+	if not _turn_tex.has(key):
+		_turn_tex[key] = load("res://pilot_turn/%s.png" % key)
+	return _turn_tex[key]
+
+# 0 at face +1 (frame 1) .. 1 at face -1 (frame 5)
+static func turn_u(r: Rig) -> float:
+	return clampf((1.0 - r.face) * 0.5, 0.0, 1.0)
+
+static func draw_turn(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
+	var f := turn_u(r) * 4.0
+	var i0 := int(floor(f))
+	var w := f - i0
+	var frac: float = float(TURN_BODY[_turn_suit()])
+	var canvas_h := height * TURN_SCALE / frac
+	var feet_y := pos.y + TURN_FEET * height
+	var bob := sin(r.t * TAU / 2.6) * height * 0.004
+	for k in 2:
+		var i := clampi(i0 + k, 0, 4)
+		var a: float = alpha * ((1.0 - w) if k == 0 else w)
+		if a <= 0.005 or (k == 1 and i == i0):
+			continue
+		var tx := turn_tex(i + 1)
+		var cw := canvas_h * tx.get_width() / tx.get_height()
+		var col := _lift_col(lift, a) * Color(TURN_TINT[_turn_suit()], 1.0)
+		c.draw_texture_rect(tx, Rect2(pos.x - cw * 0.5, feet_y + canvas_h * 0.01 - canvas_h + bob, cw, canvas_h), false, col)
+
+# how much the turn frames show: fully once the turn is under way
+static func turn_weight(r: Rig) -> float:
+	return 1.0 - smoothstep(0.86, 0.97, absf(r.face))

@@ -19,6 +19,28 @@ const PARTS := {
 static var _tex := {}
 const WING_BLUR := [0.55, 0.42, 0.3]   # alpha of each motion-blur copy of a beating wing
 
+# Luna's parts round 1 (dev161): a clean body (no legs or feelers painted on) plus legs as
+# one piece per side, feelers as one piece, and the Spitter's sac full / empty. Each leg
+# piece: pv = the joint in its own picture (0..1), at = where it attaches on the body
+# (0..1 of the OLD body picture, so the wing hinges stay right), rot = its rest angle,
+# s = its size as a share of the body scale. Legs paddle, feelers trail and sway.
+# One piece per bug (the LEFT legs); the right side is the same piece mirrored, so both
+# sides always match. pv = the hip joints in the picture, at = where they attach on the
+# left side of the body, rot = rest angle (+ = legs swept back, toward the top), s = size.
+const LEGS := {
+	"scout":   {"pv": Vector2(0.90, 0.10), "at": Vector2(0.24, 0.42), "rot": 0.15, "s": 0.46},
+	"drifter": {"pv": Vector2(0.92, 0.30), "at": Vector2(0.18, 0.44), "rot": 0.10, "s": 0.50},
+	"spitter": {"pv": Vector2(0.95, 0.50), "at": Vector2(0.20, 0.48), "rot": -0.20, "s": 0.44},
+	"diver":   {"pv": Vector2(0.95, 0.50), "at": Vector2(0.30, 0.48), "rot": -0.10, "s": 0.40},
+}
+const FEELERS := {"pv": Vector2(0.5, 0.97), "at": Vector2(0.5, 0.92), "s": 0.42}   # the V's vertex sits on the head
+static var _exists := {}
+
+static func _has(name: String) -> bool:
+	if not _exists.has(name):
+		_exists[name] = ResourceLoader.exists("res://enemies/parts/%s.png" % name)
+	return _exists[name]
+
 static func _t(name: String) -> Texture2D:
 	if not _tex.has(name):
 		_tex[name] = load("res://enemies/parts/%s.png" % name)
@@ -42,8 +64,9 @@ static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float,
 # stretch (dev153): the whole bug is stretched by `stretch` along the world direction
 # `stretch_ang` (its motion) and squeezed across it, around its centre: darting and diving
 # bugs lengthen into their motion like a drawn animation would.
-static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: float, phase: float, tilt: float = 0.0, fold: float = 0.0, speed_mult: float = 1.0, alpha: float = 1.0, stretch: float = 0.0, stretch_ang: float = 0.0, bright: float = 1.0) -> void:
+static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: float, phase: float, tilt: float = 0.0, fold: float = 0.0, speed_mult: float = 1.0, alpha: float = 1.0, stretch: float = 0.0, stretch_ang: float = 0.0, bright: float = 1.0, sac: float = -1.0) -> void:
 	var p: Dictionary = PARTS[kind]
+	var parts := _has(kind + "_body_clean") and LEGS.has(kind)
 	var pre := Transform2D.IDENTITY
 	if stretch > 0.001:
 		pre = Transform2D(0.0, pos) * Transform2D(stretch_ang, Vector2.ZERO) * Transform2D(0.0, Vector2(1.0 + stretch, 1.0 - stretch * 0.5), 0.0, Vector2.ZERO) * Transform2D(-stretch_ang, Vector2.ZERO) * Transform2D(0.0, -pos)
@@ -71,7 +94,37 @@ static func draw_bug(c: CanvasItem, kind: String, pos: Vector2, size: float, t: 
 			continue
 		_draw_tex(c, wing, hr_w, ws, tilt - flap, Vector2(0.02, 0.5), false, wa, pre)
 		_draw_tex(c, wing, hl_w, ws, tilt + flap, Vector2(0.02, 0.5), true, wa, pre)
-	_draw_tex(c, body, pos, s, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
+	if not parts:
+		_draw_tex(c, body, pos, s, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
+		return
+	# legs behind the body, paddling (each side half a beat apart); folded bugs tuck them in
+	var spec: Dictionary = LEGS[kind]
+	var legs_tex: Texture2D = _t(kind + "_legs_l")
+	var paddle_amp := 0.13 * (1.0 - k)
+	for side in ["l", "r"]:
+		var sg: float = -1.0 if side == "l" else 1.0
+		var at_rel := Vector2(spec.at) - Vector2(0.5, 0.5)
+		if side == "r":
+			at_rel.x = -at_rel.x
+		var at_w: Vector2 = pos + (at_rel * bsz).rotated(tilt)
+		var paddle: float = sin(t * 9.0 * speed_mult + phase + (0.0 if side == "l" else PI)) * paddle_amp
+		var tuck: float = 0.5 * k   # fold: legs pulled in under the body
+		# the left piece as painted; the right side is the same piece mirrored (rot mirrored too)
+		_draw_tex(c, legs_tex, at_w, s * float(spec.s), tilt + sg * -(float(spec.rot) + paddle + tuck), spec.pv, side == "r", alpha, pre, bright)
+	# the clean body, drawn the same size as the old body picture
+	var clean: Texture2D = _t(kind + "_body_clean")
+	var cs: float = s * body.get_height() / maxf(clean.get_height(), 1.0)
+	_draw_tex(c, clean, pos, cs, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
+	# the Spitter's sac: full before a spit, empty right after (sac 0..1), over the body
+	if kind == "spitter" and sac >= 0.0 and _has("spitter_sac_full"):
+		var sac_at: Vector2 = pos + ((Vector2(p.sac) - Vector2(0.5, 0.5)) * bsz).rotated(tilt)
+		var ss: float = s * 0.38
+		_draw_tex(c, _t("spitter_sac_empty"), sac_at, ss, tilt, Vector2(0.5, 0.5), false, alpha * (1.0 - sac), pre, bright)
+		_draw_tex(c, _t("spitter_sac_full"), sac_at, ss * (0.9 + 0.15 * sac), tilt, Vector2(0.5, 0.5), false, alpha * sac, pre, bright)
+	# feelers in front, from the head, trailing the turn and swaying
+	var f_at: Vector2 = pos + ((Vector2(FEELERS.at) - Vector2(0.5, 0.5)) * bsz).rotated(tilt)
+	var sway: float = sin(t * 2.6 + phase) * 0.06 - tilt * 0.35
+	_draw_tex(c, _t(kind + "_feelers"), f_at, s * float(FEELERS.s), tilt + PI + sway, FEELERS.pv, false, alpha, pre, bright)
 
 # World position of a named anchor on the body art ("muzzle", "sac"), for a bug
 # drawn by draw_bug with the same size and tilt. Falls back to the body centre.
