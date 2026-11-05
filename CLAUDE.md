@@ -242,7 +242,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    spring, head overshoot when tracking, charge swell on the light layer, lid flip; (e) bugs:
    squash on hit (0.85/1.15 for 0.12 s), stretch when darting, feeler whip, death chunks
    tumbling with gravity + fade, hatching pop; (f) hit-stop 40 ms on boss hits, screen
-   shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). DONE dev147: (e) bug flinch (e.hit_t, HIT_FLINCH_T) + death shards (_spawn_shards / _update_shards / _draw_shards, AtlasTexture cuts of the body). DONE dev148: (c) drone spring (_drone_p / _drone_v, DRONE_K / DRONE_DAMP, _drone_bank). NEXT: (a) Motion helper, (b) pilot bank + flame lag, (d) turret recoil / overshoot, (e) stretch on dart + feeler whip (needs parts), (f) hit-stop. Then LUNA-BRIEF-animation.md
+   shake exists; (g) menus: done dev145 (wallpaper, reveal, sheen). DONE dev147: (e) bug flinch (e.hit_t, HIT_FLINCH_T) + death shards (_spawn_shards / _update_shards / _draw_shards, AtlasTexture cuts of the body). DONE dev148: (c) drone spring (_drone_p / _drone_v, DRONE_K / DRONE_DAMP, _drone_bank). NEXT: (a) Motion helper, (b) pilot bank + flame lag, (d) turret recoil / overshoot, (e) stretch on dart + feeler whip (needs parts). (f) hit-stop + shake already exist in battle._process (hitstop, shake). Then LUNA-BRIEF-animation.md
    (older in-between list) is mostly superseded by the parts approach.
 16g DATA (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable.
 27. PERFORMANCE MODES + SETTINGS PAGE (Rudy, 2026-11-04). Facts: draws at native phone
