@@ -202,8 +202,16 @@ class Rig:
 	var spread := 0.08         # legs apart (dropping) or together (climbing)
 	var jet_lag := 0.0         # jetpack bob that lags the body
 	var jet_vel := 0.0
+	# motion pass (dev155): the lean is a spring (he overshoots into a drag and settles),
+	# the flames flare when he throttles up, and a sudden stop squashes him a little
+	var lean_vel := 0.0
+	var flare := 0.0           # 0..1, a burst of extra flame on a throttle-up
+	var bounce := 0.0          # + = squashed (shorter, wider), - = stretched
+	var bounce_vel := 0.0
+	var _vy_prev := 0.0
 	func update(delta: float, aim_angle: float, lean_in: float, hover_in: float, vy_in: float) -> void:
 		t += delta
+		var dt := minf(delta, 0.05)
 		var dx := cos(aim_angle)
 		if dx > 0.25:
 			face_target = -1.0
@@ -212,9 +220,18 @@ class Rig:
 		# turning takes about half a second, passing through the front view (draw_front)
 		face = move_toward(face, face_target, delta * (4.0 if PilotRig.front_ready() else 12.0))
 		aim = lerp_angle(aim, aim_angle, 1.0 - exp(-delta * 16.0))
-		lean = lerpf(lean, lean_in, 1.0 - exp(-delta * 8.0))
+		# the lean on a spring: he tips into a drag, overshoots a touch, settles
+		lean_vel += ((clampf(lean_in, -1.5, 1.5) - lean) * 80.0 - lean_vel * 9.5) * dt
+		lean = clampf(lean + lean_vel * dt, -1.6, 1.6)
+		# a throttle-up flares the flames before the hover value catches up
+		flare = maxf(flare * exp(-delta * 5.0), clampf((hover_in - hover) * 1.2, 0.0, 1.0))
 		hover = lerpf(hover, hover_in, 1.0 - exp(-delta * 6.0))
 		vy = lerpf(vy, vy_in, 1.0 - exp(-delta * 5.0))
+		# a sudden change of vertical speed (a stop, a climb) squashes him, then he springs back
+		var dv := vy_in - _vy_prev
+		_vy_prev = vy_in
+		bounce_vel += (-dv * 0.0025) - (bounce * 120.0 + bounce_vel * 10.0) * dt
+		bounce = clampf(bounce + bounce_vel * dt, -0.12, 0.12)
 		recoil = maxf(recoil - delta * 7.0, 0.0)
 		# springs: legs swing behind the lean, jetpack settles after climbs and drops
 		var leg_goal := -lean * 0.55
@@ -250,13 +267,16 @@ static func solve(r: Rig) -> Dictionary:
 	var aim := r.local_aim()
 	var aim_dir := Vector2(cos(aim), sin(aim))
 	var lean := r.lean * (1.0 if r.face >= 0.0 else -1.0)
-	# hips are the root; the body leans from there
-	var hip_at: Vector2 = PARTS.hips.at
-	var body_rot := lean * 0.30
-	X.hips = _place("hips", hip_at, body_rot)
+	# hips are the root; the body leans from there; a slow weight shift while he hovers
+	var shift := sin(t * 0.5)
+	var hip_at: Vector2 = PARTS.hips.at + Vector2(shift * 9.0, 0.0)
+	var body_rot := lean * 0.30 + shift * 0.02
+	# squash / stretch from vertical stops and starts (r.bounce), shared by hips and torso
+	var sq := Vector2(1.0 + r.bounce * 0.45, 1.0 - r.bounce)
+	X.hips = _place("hips", hip_at, body_rot, Vector2(1.0 + r.bounce * 0.3, 1.0 - r.bounce * 0.5))
 	var torso_rot := body_rot + lean * 0.10 + breath * 0.008 - aim_dir.x * kick * 0.04
 	var torso_at: Vector2 = X.hips * _rel("torso", "hips") - aim_dir * kick * 10.0
-	X.torso = _place("torso", torso_at, torso_rot, Vector2(1.0, 1.0 + breath * 0.012))
+	X.torso = _place("torso", torso_at, torso_rot, Vector2(sq.x, sq.y + breath * 0.012))
 	X.orb = _child(X.torso, "torso", "orb")
 	var helmet_at: Vector2 = X.torso * _rel("helmet", "torso") + Vector2(0, sin(t * TAU / 2.6 - 0.6) * 5.0)
 	# the head turns a little toward the target (tilts as he looks up-left / up-right) and
@@ -402,12 +422,15 @@ static func _flick(t: float, seed_v: float) -> float:
 static func draw_light(c: CanvasItem, r: Rig, X: Dictionary, pos: Vector2, height: float, style: String, tilt: float = 0.0, alpha: float = 1.0) -> void:
 	var base := base_xform(r, pos, height, tilt)
 	var st: Dictionary = STYLE_TEX.get(style, STYLE_TEX.flame)
-	var p := clampf(r.hover, 0.2, 2.2)
+	# the flames: longer with hover power, a burst longer on a throttle-up (r.flare), and
+	# trailing behind a sideways move (they swing opposite to the lean) (dev155)
+	var p := clampf(r.hover * (1.0 + 0.55 * r.flare), 0.2, 2.6)
+	var lean_l := r.lean * (1.0 if r.face >= 0.0 else -1.0)
 	var jet_sz := size_of("jetpack")
 	for i in NOZZLES.size():
 		var nz: Vector2 = X.jetpack * local("jetpack", NOZZLES[i])
 		var down: Vector2 = X.jetpack.basis_xform(Vector2.DOWN).normalized()
-		var rot := down.angle() - PI / 2.0
+		var rot := down.angle() - PI / 2.0 + lean_l * 0.45 + sin(r.t * 7.0 + i) * 0.03 * p
 		var seed_v := float(i) * 7.31
 		var fl := 0.85 + 0.3 * _flick(r.t, seed_v)
 		var nw := jet_sz.x * 0.13               # nozzle width in reference px

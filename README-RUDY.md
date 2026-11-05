@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev154 (version/code=154 and version/name="1.0-dev154" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev155 (version/code=155 and version/name="1.0-dev155" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,18 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev155: pilot motion pass
+
+- The pilot's lean is a spring now: he tips into a drag, overshoots a touch and settles,
+  so starting and stopping have weight. A slow weight shift while he hovers (hips drift,
+  body rocks a little) so he never stands dead still.
+- Jetpack flames flare up for a moment when he throttles up (a climb, a stop of a fall)
+  before settling to the new power, and they trail behind a sideways move, swinging the
+  opposite way to his lean.
+- A sudden change of vertical speed squashes him slightly and he springs back (short and
+  wide on a stop, stretched on a push), like a drawn character with weight.
+- Checked headless on a stage and in captures; smoke test passes.
 
 ## dev154: the turrets' own light
 
