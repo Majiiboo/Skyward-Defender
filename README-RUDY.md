@@ -227,10 +227,13 @@ Update 4: TURRETS AND DRONES follow the heroes (DESIGN-turrets-drones.md).
   Cells + 4 Cores or 500 (stage 25 first). Pilot level no longer gates turrets. On the Turrets
   page a locked turret shows its price; its button says Unlock and offers crystals when parts
   are short. YOUR SAVE keeps every turret your pilot level had already unlocked.
-- The DRONE shoots the hero's element (it is his partner), and two SUPPORT PODS join the
+- The DRONE has its OWN element, by body (your call): Scout Energy, Striker Fire, Warden Ice.
+  A drone you own can be strong on a planet none of your heroes are, so the pair is the
+  choice. Its hits and its damage numbers use its own colour. Two SUPPORT PODS join the
   attack pods: Repair Pod (no guns, patches the base shield 1.5 a second; pilot level 10) and
   Magnet Pod (no guns, gathers gems and coins near it; pilot level 12). They borrow the Beam
-  and Blaster pictures until Luna paints them. The Drone page says the element.
+  and Blaster pictures until Luna paints them. The Drone page shows each body's element.
+  Later: more bodies (an Electric spark bot, a Void wisp, a Dark bat), bought by grade.
 - Balance: turrets have one tune knob now (Turrets.TURRET_TUNE) so the base's share of the
   damage can be set from the simulator in one place.
 

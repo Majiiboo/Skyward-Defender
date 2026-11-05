@@ -25,6 +25,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      "job" + borrowed "art", battle _update_drone jobs); gear.gd Turrets page element colours,
      role + stars, price + Unlock (_on_turret_unlock), t_owned saved; Drone page element line.
      Later ideas in the design doc (Repair Node, Beacon, Mark pod, Decoy, turret skins).
+     Drone element = its BODY's own (DroneData body_element: scout ion, striker solar, warden
+     frost; battle _drone_mult on "drone" bullets and the beam; _show_dmg(.., mult)), Rudy: a
+     drone you own can cover a planet your heroes cannot. More bodies by grade later.
   1. HEROES replace the six-slot gear (DESIGN-heroes.md, LUNA-BRIEF-heroes.md): heroes.gd Heroes
      (ROSTER x6, ELEMENTS keyed like GearData.SETS, FAMILIES by planet, stats() = the old
      GearData.stats keys from hero level / stars / passive + the weapon slot, read() migrates old

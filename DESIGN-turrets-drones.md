@@ -24,8 +24,11 @@ base and the sidekick follow the same rules so the game has ONE language.
   turret skins (queue item 19); turrets with a resting and a firing pose (Rudy's note).
 
 ## Drones
-- **Element.** The drone takes the HERO's element: it is his partner. Its hits use the same
-  weak / resist table, its bolts his colour.
+- **Element: its own, by body** (Rudy, second pass). Scout Energy (the neutral starter),
+  Striker Fire, Warden Ice; later an Electric spark bot, a Void wisp, a Dark bat, bought by
+  grade. The point: a drone you own can be strong on a planet none of your heroes are, so hero
+  + drone is the pairing you choose (cover your weak side). Pods stay jobs; support pods deal
+  no damage, so they have no element.
 - **Pods are jobs.** Attack pods (Twin Blaster, Beam, Missiles) stay. New: Repair Pod (no
   guns: patches the base shield 1.5 a second while the fight is on), Magnet Pod (no guns:
   gathers gems and coins near the drone and brings them to the pilot). More later: a Mark
@@ -34,6 +37,12 @@ base and the sidekick follow the same rules so the game has ONE language.
   buying model follows once the turrets' version has been played.
 - **Retune.** Target: drone about 10% of the damage; the Repair and Magnet pods trade that
   damage for safety or speed.
+
+## Roster depth (Rudy)
+Same rule as the heroes: over time at least two drones and two turrets per element, each a
+different job or build (a fast Fire drone that shoots, a slow Fire drone that burns and
+repairs), so nothing is "the Fire one you must use", and hero + drone + turrets balance each
+other out. New bodies and turrets come with Luna's art and their own grade and price.
 
 ## Page changes
 - Turrets page: each tile shows the element colour, grade stars and role; locked turrets

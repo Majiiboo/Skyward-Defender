@@ -1066,8 +1066,8 @@ func _refresh_drone() -> void:
 	_drone_box.add_child(pv)
 	var lvl: int = int(drone.level)
 	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
-	var hero_el := Heroes.element_name(Heroes.element_of(_hero_id()))
-	var info := UIKit.label("%s + %s  Lv.%d  ·  Element: %s (the hero)\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, hero_el, dmg * DroneData.dmg_bonus(lvl),
+	var hero_el := Heroes.element_name(DroneData.body_element(drone.body))   # the body has its own element (Rudy)
+	var info := UIKit.label("%s + %s  Lv.%d  ·  %s\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, hero_el, dmg * DroneData.dmg_bonus(lvl),
 		float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl), body.desc, pod.desc, DroneData.milestone_text(lvl)], 12, Color(0.85, 0.92, 1.0))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var ip := UIKit.panel(10)
@@ -1102,7 +1102,9 @@ func _refresh_drone() -> void:
 			var open: bool = pilot_level >= int(def.unlock)
 			var on: bool = drone[spec[2]] == id
 			var sub := "Equipped" if on else ("Choose" if open else "Pilot Lv.%d" % int(def.unlock))
-			var tile := UIKit.tile(def.name, sub, "ion" if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
+			if spec[2] == "body":
+				sub = "%s  ·  %s" % [Heroes.element_name(DroneData.body_element(id)), sub]
+			var tile := UIKit.tile(def.name, sub, (DroneData.body_element(id) if spec[2] == "body" else "ion") if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
 			if not open:
 				tile.modulate = Color(0.55, 0.55, 0.65, 0.8)
 			var key: String = spec[2]

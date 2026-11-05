@@ -5,18 +5,19 @@ extends RefCounted
 # POD (how it shoots), and upgrade it with coins. Pictures: drone/body_*.png,
 # drone/pod_*.png, drone/flash_*.png (Luna's batch D, tools/cut_batch_d.gd).
 # Save: "drone": {"body": id, "pod": id, "level": 1..10}.
-# Element (dev172): the drone takes the HERO's element (it is his partner): its hits use the
-# same weak / resist table and its damage numbers his colour.
+# Element (dev172, Rudy): each BODY has its OWN element (Scout Energy, Striker Fire, Warden Ice):
+# a drone you own can be strong on a planet your heroes are not. Same weak / resist table.
+# Pods stay jobs (what it does with the element). Support pods deal no damage.
 
 const UNLOCK_LEVEL := 8        # pilot level that unlocks the drone
 const MAX_LEVEL := 10
 
 const BODIES := {
-	"scout":   {"name": "Scout",   "unlock": 8,  "rate": 1.3, "dmg": 0.8, "range": 380.0,
+	"scout":   {"name": "Scout",   "unlock": 8,  "rate": 1.3, "dmg": 0.8, "range": 380.0, "element": "ion",
 		"desc": "Fire rate +30%"},
-	"striker": {"name": "Striker", "unlock": 14, "rate": 1.0, "dmg": 1.15, "range": 520.0,
+	"striker": {"name": "Striker", "unlock": 14, "rate": 1.0, "dmg": 1.15, "range": 520.0, "element": "solar",
 		"desc": "Harder hits, longer range"},
-	"warden":  {"name": "Warden",  "unlock": 20, "rate": 0.8, "dmg": 1.0, "range": 420.0, "guard": 5.0,
+	"warden":  {"name": "Warden",  "unlock": 20, "rate": 0.8, "dmg": 1.0, "range": 420.0, "guard": 5.0, "element": "frost",
 		"desc": "Blocks a shot every 5 s"},
 }
 const PODS := {
@@ -75,3 +76,7 @@ static func pod_art(pod: String) -> String:
 
 static func pod_job(pod: String) -> String:
 	return String(PODS[pod].get("job", "attack")) if PODS.has(pod) else "attack"
+
+# the body's own element (Heroes.ELEMENTS ids); Energy when unknown
+static func body_element(body: String) -> String:
+	return String(BODIES[body].get("element", "ion")) if BODIES.has(body) else "ion"

@@ -39,6 +39,14 @@ Heroes are not handed out by stage. They are RATED by a star grade and BOUGHT:
   hero of that element may be used, each ladder with its own stages. Needs several owned
   heroes first.
 
+## Roster depth (Rudy, 2026-11-05)
+Variety is the point of elements. The target is at least TWO heroes, two drones and two
+turrets per element over time, each with a different build, passive and role, so inside one
+element the choice is about play style ("this Fire hero is bulky and tanks, that one is small
+and crits"), never "the one Fire hero you must use". Pairs then balance each other: a glass
+cannon hero with a Repair drone, a tank with a Magnet drone. New heroes come in grade batches
+with Luna's art; the sixth element always gets its pair before a seventh element appears.
+
 ## The roster (six to start)
 | Hero | Grade | Element | Price | Weapon | Passive | Who |
 |---|---|---|---|---|---|---|

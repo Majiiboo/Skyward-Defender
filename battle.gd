@@ -150,6 +150,7 @@ var _coin_mult := 1.0
 var _pilot_xp_mult := 1.0         # Solar gear: more pilot XP per run
 var _bolt_set := "ion"             # the weapon's set: its colour on the pilot's bolts (Luna's bolts recoloured)
 var _elem_mult := 1.0              # the hero's element vs this planet's family (Heroes.element_mult): x1.35 weak, x0.75 resists
+var _drone_mult := 1.0             # the DRONE BODY element vs this planet (DroneData.body_element): its own, not the hero (Rudy)
 # hero cards (Cards "hero", dev172): each hero has one card of his own and its overcharge
 var _hero_id := "rook"
 var _twin_every := 0               # Rook: every Nth bolt fires a twin (4, 3, 2)
@@ -456,6 +457,7 @@ func _start_stage() -> void:
 	PilotRig.set_gear(sv)   # he holds the equipped weapon; visor and orb in the gear colours
 	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
 	_hero_id = String(gs.get("hero", "rook"))
+	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
 	_bolt_set = String(gs.element)   # bolts in the hero's element colour
 	for bk in ["bolt", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]:
 		if _fx_tex.has(bk):
@@ -1021,7 +1023,8 @@ func _update_bullets(delta: float) -> void:
 							bounced.append({"pos": e.pos, "vel": (Vector2(nxt.pos) - Vector2(e.pos)).normalized() * 420.0, "dmg": float(b.dmg) * 0.8, "r": 14.0,
 								"tid": -2, "col": "tracer", "src": b.src, "bounce": int(b.bounce) - 1, "splash": float(b.get("splash", 0.0)), "hits": hs})
 				else:
-					dmg *= _elem_mult   # the hero's element (Heroes): weak x1.35, resists x0.75
+					var emult: float = _drone_mult if b.get("drone", false) else _elem_mult   # the drone has its own element
+					dmg *= emult
 					if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 						dmg *= 1.2
 					if b.get("frost", false):
@@ -1035,7 +1038,7 @@ func _update_bullets(delta: float) -> void:
 						e.burn_t = 1.5 + 0.75 * _burn_level
 						e.burn_dps = 0.05 * float(e.hp_max)
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
-					_show_dmg(e, dmg, bool(b.get("lucky", false)))
+					_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
@@ -1246,7 +1249,7 @@ func _update_enemies(delta: float) -> void:
 				var bd: float = float(e.get("burn_dps", 0.0)) * delta
 				e.hp -= bd
 				stat_pilot_dmg += bd
-				_show_dmg(e, bd, false)
+				_show_dmg(e, bd, false, _elem_mult)
 			if rng.randf() < delta * 10.0:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
 		e.vel = (e.pos - prev) / maxf(delta, 0.001)
@@ -1854,21 +1857,21 @@ func _float_text(p: Vector2, text: String, col: Color, big: bool = false) -> voi
 # Damage numbers (Rudy, dev172): a crit shows at once, big and gold; everything else on a bug
 # adds up for a quarter second and shows as one small number, coloured by the element: orange
 # when the hero is strong here, grey when the planet resists him.
-func _show_dmg(e: Dictionary, dmg: float, crit: bool) -> void:
+func _show_dmg(e: Dictionary, dmg: float, crit: bool, mult: float = 1.0) -> void:
 	if dmg <= 0.0:
 		return
 	if crit:
 		_float_text(e.pos + Vector2(0, -float(e.r) - 10.0), "CRIT %d" % roundi(dmg * DMG_SHOW), Color(1.0, 0.82, 0.32), true)
 		return
-	var a: Dictionary = _dmg_acc.get(int(e.id), {"v": 0.0, "t": time_alive})
+	var a: Dictionary = _dmg_acc.get(int(e.id), {"v": 0.0, "t": time_alive, "m": mult})
 	a.v = float(a.v) + dmg
 	a.pos = e.pos + Vector2(0, -float(e.r) - 6.0)
 	_dmg_acc[int(e.id)] = a
 
-func _dmg_col() -> Color:
-	if _elem_mult > 1.01:
+func _dmg_col(mult: float) -> Color:
+	if mult > 1.01:
 		return Color(1.0, 0.6, 0.25)
-	if _elem_mult < 0.99:
+	if mult < 0.99:
 		return Color(0.7, 0.72, 0.8)
 	return Color(0.95, 0.97, 1.0, 0.9)
 
@@ -1879,7 +1882,7 @@ func _flush_dmg(id: int = -1) -> void:
 		var a: Dictionary = _dmg_acc[k]
 		if int(k) == id or (id < 0 and time_alive - float(a.t) >= DMG_BATCH):
 			if float(a.v) * DMG_SHOW >= 0.5:
-				_float_text(Vector2(a.get("pos", Vector2.ZERO)), str(roundi(float(a.v) * DMG_SHOW)), _dmg_col())
+				_float_text(Vector2(a.get("pos", Vector2.ZERO)), str(roundi(float(a.v) * DMG_SHOW)), _dmg_col(float(a.get("m", 1.0))))
 			done.append(k)
 	for k in done:
 		_dmg_acc.erase(k)
@@ -2551,22 +2554,24 @@ func _update_drone(delta: float) -> void:
 		return
 	_drone_cd = float(pod.every)
 	_drone_flash = 0.12
-	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level)) * _elem_mult   # the drone shoots the hero element (dev172)
+	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level))   # its own element is applied on the hit (_drone_mult)
 	var dir := Vector2.from_angle(_drone_aim)
 	match String(_drone.pod):
 		"beam":
 			# instant hit: a purple line to the target
+			dmg *= _drone_mult   # the beam hits now: the drone element
 			best.hp -= dmg if _can_hurt(best) else 0.0
+			_show_dmg(best, dmg, false, _drone_mult)
 			stat_pilot_dmg += dmg
 			_drone_beam = {"a": p + dir * 14.0, "b": best.pos, "life": 0.18, "col": Color(0.8, 0.5, 1.0)}
 			_fx_add("impact", best.pos, 24.0, 0.2, 0.0, 1.6, Color(0.85, 0.6, 1.0))
 		"missile":
-			bullets.append({"pos": p + dir * 12.0, "vel": dir * 260.0, "dmg": dmg, "r": 12.0, "tid": int(best.id), "col": "missile",
+			bullets.append({"pos": p + dir * 12.0, "vel": dir * 260.0, "dmg": dmg, "r": 12.0, "tid": int(best.id), "col": "missile", "drone": true,
 				"big": false, "pierce": false, "hits": [], "homing": int(best.id), "splash": float(pod.splash)})
 		_:
 			for s in [-1.0, 1.0]:
 				var off: Vector2 = dir.orthogonal() * 5.0 * float(s)
-				bullets.append({"pos": p + dir * 12.0 + off, "vel": dir * 500.0, "dmg": dmg, "r": 9.0, "tid": int(best.id), "col": "cyan",
+				bullets.append({"pos": p + dir * 12.0 + off, "vel": dir * 500.0, "dmg": dmg, "r": 9.0, "tid": int(best.id), "col": "cyan", "drone": true,
 					"big": false, "pierce": false, "hits": []})
 
 func _draw_drone() -> void:
