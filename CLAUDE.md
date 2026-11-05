@@ -3,6 +3,24 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
+## Where we are (hand-over, 2026-11-04, build dev137, tag backup-dev137)
+A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
+- Done in the last long session (details in README-RUDY.md dev118-dev137 and the queue below):
+  six 3D gear sets with tier art, Workshop + merge animation (Luna's layers), gear on the
+  pilot (weapon in hand, visor/orb/bolt colours), rookie starter suit + Commander unlock,
+  new Store tabs, menu tidy-up, balance pass 21-60 (SIM_KIT=auto), turret tracks
+  ATK/Rate/Range + milestones, turret power cards, combat stats (crit, damage boost, base
+  reduction, fortress HP) + gear/drone milestones + Gear STATS panel, Home XP ring, Quests Go
+  buttons, Modes mystery rewards, Patrol offline farming with limits, power tokens.
+- OPEN QUESTION for Rudy: should the tutorial stages (1-5) be free or cheaper in power
+  tokens? (A new player has 60 = 12 stages, then waits.)
+- Waiting on Luna: turret card pictures (LUNA-BRIEF-turret-cards.md), merge sparks sheet.
+- Next in the queue (Rudy picks): item 16 (e) pilot talent map, (f) gear rarity + Workshop
+  gear merging + inventory filter + Quick Merge + loadouts, (g) long-game difficulty re-tune;
+  item 17 enemy variants/support enemies/families; item 18 Store 2.0 (key chests with pity);
+  items 15, 19, 20 later. Luna briefs: always standalone, exact render names (memory).
+- Helpers: tools/dev/ (build bump, contact sheets, crops, captures; see its README).
+
 ## Who and what
 - Owner: Rudy (non-coder; explain changes in plain English, deliver working results,
   test before saying it works). Art: Luna paints all sprites/icons with an image tool
