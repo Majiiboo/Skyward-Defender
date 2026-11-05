@@ -27,14 +27,15 @@ const SLOT_PX := 84.0       # gear slot tiles around the pilot
 var coins := 0
 var pilot_level := 1
 var t_loadout: Array = Turrets.DEFAULT_LOADOUT.duplicate()
-var t_levels := {}         # turret id -> level (1 if missing)
+var t_levels := {}         # turret id -> level (the three tracks added up; 1 if missing)
+var t_tracks := {}         # turret id -> {atk, rate, range} (Turrets upgrade tracks)
+var _t_tracks_btn := {}    # track -> its Upgrade button
 var t_mount := 0           # selected mount
 var t_unlocked := 1        # save stage_unlocked: which mounts are open (Turrets.mount_open)
 var t_focus := ""          # turret shown in the detail panel
 var _mount_row: HBoxContainer
 var _turret_grid: GridContainer
 var _t_detail: Label
-var _t_upgrade: Button
 var _t_place: Button
 
 func _ready() -> void:
@@ -58,6 +59,7 @@ func _load() -> void:
 	var t := Turrets.read(data)
 	t_loadout = t.loadout
 	t_levels = t.levels
+	t_tracks = t.tracks
 	coins = int(data.get("coins", 0))
 	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
 	t_unlocked = int(data.get("stage_unlocked", 1))
@@ -695,7 +697,7 @@ func _save_turrets() -> void:
 			var d = JSON.parse_string(f.get_as_text())
 			if typeof(d) == TYPE_DICTIONARY:
 				data = d
-	data["turrets"] = {"loadout": t_loadout, "levels": t_levels}
+	data["turrets"] = {"loadout": t_loadout, "levels": t_levels, "tracks": t_tracks}
 	data["coins"] = coins
 	var out := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	if out:
@@ -712,25 +714,31 @@ func _build_turrets(box: VBoxContainer) -> void:
 	box.add_child(_mount_row)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)
-	var btns := VBoxContainer.new()
-	btns.add_theme_constant_override("separation", 8)
-	_t_upgrade = UIKit.gold_button("Upgrade", 14)
-	_t_upgrade.custom_minimum_size = Vector2(130, 40)
-	_t_upgrade.pressed.connect(_on_turret_upgrade)
-	btns.add_child(_t_upgrade)
-	_t_place = UIKit.teal_button("Place")
-	_t_place.custom_minimum_size = Vector2(130, 36)
-	_t_place.pressed.connect(_on_turret_place)
-	btns.add_child(_t_place)
-	row.add_child(btns)
 	var dp := UIKit.panel(10)
 	dp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_t_detail = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
 	_t_detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_t_detail.custom_minimum_size = Vector2(0, 84)
+	_t_detail.custom_minimum_size = Vector2(0, 66)
 	dp.add_child(_t_detail)
 	row.add_child(dp)
+	_t_place = UIKit.teal_button("Place")
+	_t_place.custom_minimum_size = Vector2(110, 40)
+	_t_place.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	_t_place.pressed.connect(_on_turret_place)
+	row.add_child(_t_place)
 	box.add_child(row)
+	# the three upgrade tracks (Turrets.TRACKS): ATK, Rate, Range
+	var tracks := HBoxContainer.new()
+	tracks.add_theme_constant_override("separation", 8)
+	for k in Turrets.TRACKS:
+		var tb := UIKit.gold_button(Turrets.TRACK_NAMES[k], 12)
+		tb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tb.custom_minimum_size = Vector2(0, 58)
+		var key: String = k
+		tb.pressed.connect(func(): _on_track_upgrade(key))
+		tracks.add_child(tb)
+		_t_tracks_btn[k] = tb
+	box.add_child(tracks)
 	box.add_child(UIKit.header("TURRETS"))
 	_turret_grid = GridContainer.new()
 	_turret_grid.columns = 3
@@ -792,33 +800,42 @@ func _refresh_turrets() -> void:
 func _refresh_turret_detail() -> void:
 	if t_focus == "" and not Turrets.mount_open(t_mount, t_unlocked):
 		_t_detail.text = "Mount %d opens after stage %d" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]]
-		_t_upgrade.disabled = true
-		_t_upgrade.text = "Upgrade"
+		_set_tracks_off()
 		_t_place.disabled = true
 		_t_place.text = "Locked"
 		return
 	if t_focus == "":
 		_t_detail.text = "Mount %d is empty\nPick a turret, then Place" % (t_mount + 1)
-		_t_upgrade.disabled = true
-		_t_upgrade.text = "Upgrade"
+		_set_tracks_off()
 		_t_place.disabled = true
 		_t_place.text = "Place"
 		return
 	var def: Dictionary = Turrets.TURRETS[t_focus]
-	var lvl := _t_lvl(t_focus)
+	var tr := Turrets.one_tracks(t_tracks, t_focus)
+	var lvl := Turrets.level_of(tr)
 	var locked: bool = pilot_level < int(def.unlock)
-	var lines := "%s  Lv.%d  (%s)\n%s" % [def.name, lvl, Turrets.strong_text(t_focus), def.desc]
+	var ms := Turrets.milestones(lvl)
+	# name and level, its milestone stars, then the next milestone (every 5 levels)
+	var lines := "%s  Lv.%d  %s\n%s" % [def.name, lvl, "*".repeat(ms), def.desc]
 	if locked:
 		lines += "\nNeeds pilot Lv.%d" % def.unlock
 	elif not def.ready:
 		lines += "\nComing soon"
-	elif lvl < Turrets.MAX_LEVEL:
-		lines += "\nATK x%.2f  ->  x%.2f" % [Turrets.level_mult(lvl), Turrets.level_mult(lvl + 1)]
+	else:
+		lines += "\nNext milestone Lv.%d: ATK +5%%" % ((ms + 1) * 5)
 	_t_detail.text = lines
-	var cost := Turrets.upgrade_cost(lvl)
 	var usable: bool = not locked and def.ready
-	_t_upgrade.disabled = not usable or lvl >= Turrets.MAX_LEVEL or coins < cost
-	_t_upgrade.text = "MAX" if lvl >= Turrets.MAX_LEVEL else _upgrade_text(cost, lvl)
+	for k in Turrets.TRACKS:
+		var b: Button = _t_tracks_btn[k]
+		var l: int = int(tr[k])
+		if l >= Turrets.MAX_TRACK:
+			b.text = "%s %d\nMAX" % [Turrets.TRACK_NAMES[k], l]
+			b.disabled = true
+			continue
+		var cost := Turrets.track_cost(l)
+		var needs := Turrets.track_parts(l)
+		b.text = "%s %d -> %d\n%d coins%s" % [Turrets.TRACK_NAMES[k], l, l + 1, cost, ("\n" + Parts.text(needs)) if not needs.is_empty() else ""]
+		b.disabled = not usable or coins < cost
 	var here: bool = t_loadout[t_mount] == t_focus
 	_t_place.disabled = not usable
 	_t_place.text = "Remove" if here else "Place on %d" % (t_mount + 1)
@@ -826,6 +843,12 @@ func _refresh_turret_detail() -> void:
 		_t_detail.text = "Mount %d opens after stage %d\n\n" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]] + lines
 		_t_place.disabled = true
 		_t_place.text = "Locked"
+
+func _set_tracks_off() -> void:
+	for k in Turrets.TRACKS:
+		var b: Button = _t_tracks_btn[k]
+		b.text = Turrets.TRACK_NAMES[k]
+		b.disabled = true
 
 func _on_turret_place() -> void:
 	if t_focus == "":
@@ -840,16 +863,42 @@ func _on_turret_place() -> void:
 	_save_turrets()
 	_refresh_turrets()
 
-func _on_turret_upgrade() -> void:
-	var lvl := _t_lvl(t_focus)
-	var cost := Turrets.upgrade_cost(lvl)
-	if t_focus == "" or coins < cost or lvl >= Turrets.MAX_LEVEL:
+func _on_track_upgrade(k: String) -> void:
+	if t_focus == "":
 		return
-	if not await _pay_upgrade(cost, lvl):
+	var tr: Dictionary = Turrets.one_tracks(t_tracks, t_focus).duplicate()
+	var l: int = int(tr[k])
+	var cost := Turrets.track_cost(l)
+	if coins < cost or l >= Turrets.MAX_TRACK:
 		return
-	t_levels[t_focus] = lvl + 1
+	# parts for a track level follow Parts.need on a 1-10 scale (Turrets.track_parts)
+	if not await _pay_upgrade(cost, l / 2):
+		return
+	var was := Turrets.milestones(Turrets.level_of(tr))
+	tr[k] = l + 1
+	t_tracks[t_focus] = tr
+	t_levels[t_focus] = Turrets.level_of(tr)
 	_save_turrets()
 	_refresh_turrets()
+	var b: Button = _t_tracks_btn[k]
+	b.pivot_offset = b.size * 0.5
+	var tw := b.create_tween()
+	tw.tween_property(b, "scale", Vector2(1.1, 1.1), 0.08)
+	tw.tween_property(b, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if Turrets.milestones(Turrets.level_of(tr)) > was:
+		_milestone_toast("%s reached Lv.%d: ATK +5%%" % [Turrets.TURRETS[t_focus].name, Turrets.level_of(tr)])
+
+# a gold line that rises over the screen when something reaches a milestone
+func _milestone_toast(text: String) -> void:
+	var l := UIKit.label("MILESTONE!  " + text, 15, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	l.position = Vector2(0, size.y * 0.42)
+	l.size = Vector2(size.x, 30)
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(l)
+	var tw := l.create_tween().set_parallel(true)
+	tw.tween_property(l, "position:y", l.position.y - 70.0, 1.4).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_property(l, "modulate:a", 0.0, 0.6).set_delay(1.0)
+	tw.chain().tween_callback(l.queue_free)
 
 # ------------------------------------------------------------------ upgrade costs
 # Every upgrade: coins, and from Lv.5 also parts (Parts.need). The button shows both,

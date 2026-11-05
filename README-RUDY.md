@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev127 (version/code=127 and version/name="1.0-dev127" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev128 (version/code=128 and version/name="1.0-dev128" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev128: turret upgrade tracks and milestones
+
+- Every turret now has three upgrades instead of one level: ATK (damage), Rate (fires or
+  charges faster) and Range (Sentry range, Lance beam width, Storm cloud, Gravity pull,
+  Swarm drone flight time, Prism fan). Each goes to Lv.20, with coins and, higher up, parts.
+- A turret's level is the three added up. Every 5 levels is a milestone: +5% damage, a
+  star on its card and a gold "MILESTONE!" when you reach it.
+- Old saves: a turret's old level becomes its ATK level, so nothing is lost.
+- Balance re-checked with the autopilot (stages 20, 35, 50, 60 all win).
 
 ## dev127: balance pass for stages 21-60
 

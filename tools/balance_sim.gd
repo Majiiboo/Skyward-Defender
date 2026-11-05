@@ -119,12 +119,13 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 		if stage > int(Turrets.MOUNT_OPENS_AFTER[i]):
 			lo[i] = types[i]
 			n += 1
-	var tl := _level_for(spend * 0.4 / maxf(1.0, n), 75.0) if n > 0 else 1
-	var tlv := {}
+	# each turret's share split evenly over its three tracks (a track costs 60 x level a step)
+	var tl := _level_for(spend * 0.4 / maxf(1.0, n) / 3.0, 30.0) if n > 0 else 1
+	var ttr := {}
 	for t in lo:
 		if t != "":
-			tlv[t] = tl
-	d["turrets"] = {"loadout": lo, "levels": tlv}
+			ttr[t] = {"atk": tl, "rate": tl, "range": tl}
+	d["turrets"] = {"loadout": lo, "tracks": ttr}
 	r_kit = "gear Lv.%d, %d turrets Lv.%d" % [glv, n, tl]
 var r_kit := ""
 

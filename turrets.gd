@@ -122,10 +122,71 @@ static func read(save: Dictionary) -> Dictionary:
 			var id := String(saved[i])
 			# each turret stands on one mount at most
 			loadout[i] = id if TURRETS.has(id) and TURRETS[id].ready and not loadout.slice(0, i).has(id) else ""
-	var levels := {}
+	# upgrade tracks {id: {atk, rate, range}}; an old save's single level becomes its ATK
+	var tracks := {}
 	var lv = t.get("levels", {})
 	if typeof(lv) == TYPE_DICTIONARY:
 		for id in lv:
 			if TURRETS.has(id):
-				levels[id] = clampi(int(lv[id]), 1, MAX_LEVEL)
-	return {"loadout": loadout, "levels": levels}
+				tracks[id] = {"atk": clampi(int(lv[id]), 1, MAX_TRACK), "rate": 1, "range": 1}
+	var tr = t.get("tracks", {})
+	if typeof(tr) == TYPE_DICTIONARY:
+		for id in tr:
+			if TURRETS.has(id) and typeof(tr[id]) == TYPE_DICTIONARY:
+				var one := {}
+				for k in TRACKS:
+					one[k] = clampi(int(tr[id].get(k, 1)), 1, MAX_TRACK)
+				tracks[id] = one
+	var levels := {}
+	for id in tracks:
+		levels[id] = level_of(tracks[id])
+	return {"loadout": loadout, "levels": levels, "tracks": tracks}
+
+# ---- upgrade tracks and milestones (Rudy, dev128) ----
+# Every turret has three tracks, each Lv.1-20, bought separately: ATK (damage per hit),
+# Rate (fires / charges faster) and Range (its reach: Sentry range, Lance beam width, Storm
+# cloud, Gravity pull, Swarm drone flight time, Prism fan). Its special tricks come from
+# power cards in a run, not from here. The turret's level = the three added up (Lv.1-58);
+# every 5 levels is a milestone: +5% damage each and a star on its tile.
+const TRACKS := ["atk", "rate", "range"]
+const TRACK_NAMES := {"atk": "ATK", "rate": "Rate", "range": "Range"}
+const MAX_TRACK := 20
+const REACH := {"sentry": ["range"], "lance": ["width"], "storm": ["cloud_r"], "gravity": ["radius", "crush_r"],
+	"swarm": ["life"], "prism": ["spread", "split_h"]}
+
+static func one_tracks(tracks: Dictionary, id: String) -> Dictionary:
+	return tracks.get(id, {"atk": 1, "rate": 1, "range": 1})
+
+static func level_of(tr: Dictionary) -> int:
+	return int(tr.get("atk", 1)) + int(tr.get("rate", 1)) + int(tr.get("range", 1)) - 2
+
+static func milestones(level: int) -> int:
+	return level / 5
+
+static func atk_mult(l: int) -> float:
+	return 1.0 + 0.2 * (l - 1)          # Lv.20 = 4.8x
+
+static func rate_mult(l: int) -> float:
+	return 1.0 + 0.04 * (l - 1)         # Lv.20 = 1.76x as often
+
+static func reach_mult(l: int) -> float:
+	return 1.0 + 0.03 * (l - 1)         # Lv.20 = +57% reach
+
+static func milestone_mult(level: int) -> float:
+	return 1.0 + 0.05 * milestones(level)
+
+# The turret's numbers with its upgrades in (battle uses this copy, t.def).
+static func stats(id: String, tr: Dictionary) -> Dictionary:
+	var d: Dictionary = TURRETS[id].duplicate(true)
+	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr))
+	d.every = float(d.every) / rate_mult(int(tr.rate))
+	for k in REACH.get(id, []):
+		d[k] = float(d[k]) * reach_mult(int(tr.range))
+	return d
+
+# coins for one track from `level` to level + 1, and the parts (Parts.need on a 1-10 scale)
+static func track_cost(level: int) -> int:
+	return 60 * level
+
+static func track_parts(level: int) -> Dictionary:
+	return Parts.need(level / 2)

@@ -123,6 +123,7 @@ var gems: Array = []
 var turrets: Array = []           # {type, lvl, pos, cd, fire_t, ang, flip, charge, build, bolt}
 var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
+var turret_tracks := {}           # id -> {atk, rate, range} (Turrets upgrade tracks)
 var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
 var _new_mount := -1              # a mount this win just opened (shown on the end screen)
 var _lid_anim := {}               # mount -> seconds into its hatch opening (first run after it opened)
@@ -304,6 +305,7 @@ func _load() -> void:
 	var t := Turrets.read(d)
 	turret_loadout = t.loadout
 	turret_levels = t.levels
+	turret_tracks = t.tracks
 
 func _read_save() -> Dictionary:
 	if FileAccess.file_exists(SAVE):
@@ -579,7 +581,7 @@ func _draw_range_ring() -> void:
 			t = tt
 	if t.is_empty():
 		return
-	var def: Dictionary = Turrets.TURRETS[t.type]
+	var def: Dictionary = t.def
 	var fill := Color(1.0, 0.25, 0.25, 0.12 * _range_a)
 	var edge := Color(1.0, 0.35, 0.35, 0.6 * _range_a)
 	var p: Vector2 = t.pos
@@ -1299,7 +1301,8 @@ func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true)
 		return false
 	# every turret drops onto its socket, one after another at the start of a run
 	# (fx = true drops it straight away, used by tests)
-	turrets.append({"type": type, "lvl": lvl, "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
+	# t.def = this turret's numbers with its upgrade tracks and milestones in (Turrets.stats)
+	turrets.append({"type": type, "lvl": lvl, "def": Turrets.stats(type, Turrets.one_tracks(turret_tracks, type)), "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
 		"fire_t": 0.0, "ang": -PI / 2.0, "face": 1.0, "charge": 0.0, "build": 0.0, "bolt": [],
 		"drop": 0.0, "drop_wait": 0.0 if fx else 0.3 + 0.18 * mount})
 	return true
@@ -1308,7 +1311,7 @@ func _socket(i: int) -> Vector2:
 	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT)
 
 func _turret_dmg(t: Dictionary) -> float:
-	return float(Turrets.TURRETS[t.type].damage) * Turrets.level_mult(int(t.lvl)) * _turret_dmg_mult
+	return float(t.def.damage) * _turret_dmg_mult
 
 func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, StageData.ENEMIES[e.type].traits)
@@ -1338,7 +1341,7 @@ func _update_turrets(delta: float) -> void:
 	_update_drones(delta)
 
 func _update_sentry(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS[t.type]
+	var def: Dictionary = t.def
 	# hover: lift off once landed, a spring for the shot dip, swing speed for the lean
 	if float(t.drop) >= 1.0:
 		t.lift = move_toward(float(t.get("lift", 0.0)), 1.0, delta * 1.4)
@@ -1380,13 +1383,13 @@ func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
 	var dir := Vector2.from_angle(float(t.ang))
 	var rel: Vector2 = e.pos - tip
 	var along := rel.dot(dir)
-	return along > 0.0 and absf(rel.cross(dir)) < float(Turrets.TURRETS.lance.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 90.0
+	return along > 0.0 and absf(rel.cross(dir)) < float(t.def.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 90.0
 
 # Lance: turns its cannon toward the nearest bug in range (sweeping slowly while it
 # waits), charges, and fires a spear of light along that line that hits everything on
 # it (enemy shots included).
 func _update_lance(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS.lance
+	var def: Dictionary = t.def
 	var best := -1
 	var bd := 650.0
 	for i in enemies.size():
@@ -1421,14 +1424,14 @@ func _update_lance(t: Dictionary, delta: float) -> void:
 	enemy_bullets = enemy_bullets.filter(func(b): return (b.pos - tip).dot(dir) < 0.0 or absf((b.pos - tip).cross(dir)) > half)
 
 func _storm_centre(t: Dictionary) -> Vector2:
-	var def: Dictionary = Turrets.TURRETS.storm
+	var def: Dictionary = t.def
 	var sway: float = sin(time_alive * 0.4 + float(t.mount)) * 18.0
 	return Vector2(clampf(t.pos.x, float(def.cloud_r) * 0.7, FIELD_W - float(def.cloud_r) * 0.7) + sway, BASE_Y - float(def.cloud_h))
 
 # Storm Spire: the cloud builds over 3 s; then lightning strikes the enemy
 # nearest the cloud's middle and jumps to up to `chain` more nearby (70% each).
 func _update_storm(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS.storm
+	var def: Dictionary = t.def
 	t.build = minf(t.build + delta / 3.0, 1.0)
 	# the cloud gathers when bugs come near and thins away when the sky is clear
 	var near := false
@@ -1486,14 +1489,14 @@ func _update_storm(t: Dictionary, delta: float) -> void:
 		_fx_add("storm_zap", p, 40.0, 0.3, rng.randf() * TAU)
 
 func _gravity_centre(t: Dictionary) -> Vector2:
-	var def: Dictionary = Turrets.TURRETS.gravity
+	var def: Dictionary = t.def
 	return Vector2(clampf(t.pos.x, float(def.radius), FIELD_W - float(def.radius)), BASE_Y - float(def.height))
 
 # Gravity Anchor: for the last `pull` seconds of each cycle it drags enemies near
 # its well toward the middle (bosses are too heavy), then crushes everything in
 # the inner circle with a pulse. With nothing in reach it keeps pulling and waits.
 func _update_gravity(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS.gravity
+	var def: Dictionary = t.def
 	var c := _gravity_centre(t)
 	t.cd = maxf(t.cd - delta, 0.0)
 	var catching := false
@@ -1524,7 +1527,7 @@ func _update_gravity(t: Dictionary, delta: float) -> void:
 
 # Swarm Hive: lets out a handful of micro-drones; they live in `drones`.
 func _update_swarm(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS.swarm
+	var def: Dictionary = t.def
 	t.cd -= delta
 	if t.cd > 0.0:
 		return
@@ -1574,7 +1577,7 @@ func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 # Prism Tower: sends a bright orb up; at the split height it breaks into a fan of
 # beams aimed around the nearest enemy, each hitting everything along its line.
 func _update_prism(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = Turrets.TURRETS.prism
+	var def: Dictionary = t.def
 	var split := Vector2(t.pos.x, BASE_Y - float(def.split_h))
 	if float(t.get("orb_t", 0.0)) > 0.0:
 		t.orb_t -= delta
@@ -2815,7 +2818,7 @@ func _draw_fx() -> void:
 		if t.drop >= 1.0 and CHARGE_COL.has(t.type):
 			# charge-up: light gathers at the weapon in the last moments before a shot,
 			# holds (softly pulsing) while it waits for a target, and empties when it fires
-			var every: float = float(Turrets.TURRETS[t.type].every)
+			var every: float = float(t.def.every)
 			var kc: float = smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd)) * (0.85 + 0.15 * sin(time_alive * 6.0 + float(t.mount)))
 			if kc > 0.02:
 				var col: Color = CHARGE_COL[t.type]
@@ -2828,7 +2831,7 @@ func _draw_fx() -> void:
 			"lance":
 				# the tip gathers light while it charges; firing throws a beam to the sky
 				var tip := _turret_tip(t)
-				var kc: float = clampf(t.charge / float(Turrets.TURRETS.lance.every), 0.0, 1.0)
+				var kc: float = clampf(t.charge / float(t.def.every), 0.0, 1.0)
 				_fx_sprite("lance_flare", tip, 8.0 + 26.0 * kc * kc, 0.25 + 0.6 * kc)
 				if t.fire_t > 0.0:
 					var kf: float = t.fire_t / FIRE_TIME.lance
@@ -2848,7 +2851,7 @@ func _draw_fx() -> void:
 			"prism":
 				if float(t.get("orb_t", 0.0)) > 0.0:
 					var kk: float = smoothstep(0.0, 1.0, 1.0 - float(t.orb_t) / 0.25)
-					var p: Vector2 = _turret_tip(t).lerp(Vector2(t.pos.x, BASE_Y - float(Turrets.TURRETS.prism.split_h)), kk)
+					var p: Vector2 = _turret_tip(t).lerp(Vector2(t.pos.x, BASE_Y - float(t.def.split_h)), kk)
 					_fx_sprite("prism_burst", p, 26.0, 0.9)
 				if t.fire_t > 0.0 and t.has("beams"):
 					var fa: float = smoothstep(0.0, FIRE_TIME.prism, float(t.fire_t))
@@ -2872,7 +2875,7 @@ func _draw_turret_back() -> void:
 			_draw_gravity_well(t)
 		if t.type != "storm":
 			continue
-		var def: Dictionary = Turrets.TURRETS.storm
+		var def: Dictionary = t.def
 		var c := _storm_centre(t)
 		var r: float = float(def.cloud_r)
 		var a: float = float(t.build) * smoothstep(0.0, 1.0, float(t.get("storm_a", 0.0)))
@@ -2892,7 +2895,7 @@ func _draw_turret_back() -> void:
 # The well grows in while it pulls (three thin arcs turning inward) and fades
 # out after the pulse.
 func _draw_gravity_well(t: Dictionary) -> void:
-	var def: Dictionary = Turrets.TURRETS.gravity
+	var def: Dictionary = t.def
 	var c := _gravity_centre(t)
 	var pulling: float = smoothstep(0.0, 1.0, float(t.get("well_a", 0.0)))
 	var after: float = float(t.fire_t) / FIRE_TIME.gravity
