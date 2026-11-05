@@ -279,6 +279,9 @@ func _ready() -> void:
 	for n in ["blaster", "beam", "missile"]:
 		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
+	for n in ["swarm_body_nolid", "swarm_lid"]:   # Luna's Swarm Hive parts (dev162)
+		if ResourceLoader.exists("res://turrets/%s.png" % n):
+			_tex[n] = load("res://turrets/%s.png" % n)
 	for n in ["sentry", "lance", "storm", "gravity", "prism", "swarm"]:   # the turrets' own glow (dev154)
 		if ResourceLoader.exists("res://turrets/%s_light.png" % n):
 			_fx_tex["light_" + n] = load("res://turrets/%s_light.png" % n)
@@ -1608,14 +1611,18 @@ func _update_gravity(t: Dictionary, delta: float) -> void:
 # Swarm Hive: lets out a handful of micro-drones; they live in `drones`.
 func _update_swarm(t: Dictionary, delta: float) -> void:
 	var def: Dictionary = t.def
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
 	var any := false
 	for e in enemies:
 		if e.pos.y > 100.0:
 			any = true
 			break
+	# the hatch lid (dev162): opens over the half second before a launch, stays open while the
+	# drones leave, closes after (drawn in _draw_turret)
+	var want: float = 1.0 if ((any and t.cd < 0.55) or float(t.fire_t) > 0.0) else 0.0
+	t.lid = move_toward(float(t.get("lid", 0.0)), want, delta * (9.0 if want > 0.5 else 3.5))
+	t.cd -= delta
+	if t.cd > 0.0:
+		return
 	if not any:
 		t.cd = 0.2
 		return
@@ -2940,6 +2947,11 @@ func _draw_turret(t: Dictionary) -> void:
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
+	# the Swarm Hive from Luna's parts (dev162): the hive with its hatch open, and the lid
+	# drawn over the hole, flipping up and over the back before the drones launch (t.lid)
+	var lidded: bool = t.type == "swarm" and _tex.has("swarm_body_nolid") and _tex.has("swarm_lid")
+	if lidded:
+		tex = _tex["swarm_body_nolid"]
 	var look: Dictionary = TURRET_LOOK[t.type]
 	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
 	var bob: float = sin(time_alive * 2.2 + float(t.mount)) * float(look.bob)
@@ -2947,7 +2959,19 @@ func _draw_turret(t: Dictionary) -> void:
 	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
 	kick = kick * kick
 	var ksz := Vector2(sz.x * (1.0 + 0.03 * kick), sz.y * (1.0 - 0.05 * kick))
-	draw_texture_rect(tex, Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + yo + bob), ksz), false, Color(1, 1, 1, a))
+	var rect := Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + yo + bob), ksz)
+	draw_texture_rect(tex, rect, false, Color(1, 1, 1, a))
+	if lidded:
+		# hinge on the far edge of the hatch; closed = the lid lies flat as the hive's top face
+		# (squashed for the three-quarter view), open = flipped up and back past vertical
+		var k := smoothstep(0.0, 1.0, float(t.get("lid", 0.0)))
+		var sy := lerpf(0.42, -0.85, k)
+		if absf(sy) > 0.03:
+			var hinge := rect.position + Vector2(rect.size.x * 0.5, rect.size.y * 0.035)
+			var lw := rect.size.x * 0.46
+			draw_set_transform(hinge, 0.0, Vector2(1.0 - 0.12 * k, sy))
+			draw_texture_rect(_tex["swarm_lid"], Rect2(-lw * 0.5, 0.0, lw, lw), false, Color(1, 1, 1, a))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # The field holding the Sentry's head up: a soft glow on the base, a faint column of
 # light, and thin rings rising from base to head. It brightens when the head dips.
