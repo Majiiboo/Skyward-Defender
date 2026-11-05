@@ -1091,9 +1091,13 @@ func _patrol_fill() -> void:
 				var per_h: float = float(pw[k]) * Patrol.WAVES_PER_HOUR
 				rate.add_child(_patrol_amount(k, ("%d" % roundi(per_h)) if k == "coins" else "%.1f" % per_h))
 		v.add_child(rate)
+		# it slows down the longer it waits (Patrol.speed_at), and has daily limits
+		var spd := Patrol.speed_at(float(p.stored_s))
+		v.add_child(UIKit.label("Full speed 2 h, then slower  ·  now %s" % ("full" if spd >= 1.0 else ("half" if spd >= 0.5 else "quarter")), 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		# stored so far, as a bar to the 8 hour cap
 		var hrs := float(p.stored_s) / 3600.0
-		v.add_child(UIKit.label("STORED  %dh %02dm / 8h" % [int(hrs), int(fmod(hrs, 1.0) * 60.0)], 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var day_h := float(p.day_s) / 3600.0
+		v.add_child(UIKit.label("STORED  %dh %02dm / 8h   ·   TODAY  %dh / 12h" % [int(hrs), int(fmod(hrs, 1.0) * 60.0), int(day_h)], 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 		var bar := ProgressBar.new()
 		bar.max_value = Patrol.CAP_S
 		bar.value = float(p.stored_s)
@@ -1112,9 +1116,10 @@ func _patrol_fill() -> void:
 		if got.is_empty():
 			have.add_child(UIKit.label("Nothing yet: a wave every 30 s", 12, MUTED))
 		v.add_child(have)
-		var claim := UIKit.gold_button("Collect", 15)
+		var left := Patrol.collects_left(p)
+		var claim := UIKit.gold_button("Collect  (%d left today)" % left if left > 0 else "Back tomorrow", 15)
 		claim.custom_minimum_size = Vector2(0, 44)
-		claim.disabled = got.is_empty()
+		claim.disabled = got.is_empty() or left <= 0
 		claim.pressed.connect(func():
 			var s := Progress.read()
 			var g := Patrol.claim(s)

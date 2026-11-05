@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev135 (version/code=135 and version/name="1.0-dev135" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev136 (version/code=136 and version/name="1.0-dev136" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,16 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev136: Patrol limits
+
+- Patrol is much stingier, so leaving it for a day doesn't give everything:
+  - an hour pays about 40% of one stage clear; elements drop half as often;
+  - full speed for 2 hours after collecting, half speed to 6 hours, a quarter to 8 hours;
+  - at most 12 hours of farming count per day, and you can collect 3 times a day.
+- Stage 24 example: 2 h away = 219 coins + 6 Alloy; 8 h (or a whole day) = 493 coins,
+  14 Alloy, 1 Plasma Cell.
+- The window shows the current speed, hours stored and used today, and collects left.
 
 ## dev135: Patrol farms while you are away
 

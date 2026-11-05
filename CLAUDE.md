@@ -14,7 +14,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev135 (code 135).
+  go UP every package (same signing key, install-over). Current: dev136 (code 136).
   Rudy (2026-11-03): work through the queue item by item; after EACH finished item
   commit, bump the build (+1) and push to GitHub. Ideas he sends mid-work: fold into the
   current batch if small, otherwise queue and say so.
@@ -123,7 +123,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
    AFK battle plays the chosen stage wave by wave; each cleared wave adds that wave's drops to the
    Patrol store; offline time is counted as simulated waves (waves per hour from that stage's
    length). Farm older stages for their element. DONE dev135 (patrol.gd Patrol: WAVE_S 30, CAP 8 h,
-   per_wave(stage), tick/claim/set_stage; hub _patrol_open window); gear copies still to come. (e) PILOT TALENT MAP (Rudy): a path/map of nodes you buy in order,
+   per_wave(stage), tick/claim/set_stage; hub _patrol_open window); dev136 limits: COIN_RATE 0.4, speed 1/0.5/0.25
+   (2 h/6 h/8 h), DAY_CAP 12 h, MAX_COLLECTS 3 a day; gear copies still to come. (e) PILOT TALENT MAP (Rudy): a path/map of nodes you buy in order,
    each a small permanent % (bolt damage, turret damage, crit rate e.g. +0.5%, crit damage, base
    HP...). Costs rise: coins first, then crystals and a new in-game currency that is harder to
    collect later (e.g. Star Shards from bosses). Every 10th node unlocks a NEW power card for runs
