@@ -2742,8 +2742,11 @@ func _draw_enemy(e: Dictionary) -> void:
 	var fold: float = float(e.get("fold", 0.0))
 	# the flinch (dev147): a hit bug shrinks for a tenth of a second and springs back
 	var flinch: float = float(e.get("hit_t", 0.0))
+	var bright := 1.0
 	if flinch > 0.0:
-		size *= 1.0 - 0.16 * sin(clampf(flinch / HIT_FLINCH_T, 0.0, 1.0) * PI)
+		var fk := sin(clampf(flinch / HIT_FLINCH_T, 0.0, 1.0) * PI)
+		size *= 1.0 - 0.16 * fk
+		bright = 1.0 + 1.8 * fk   # and it flashes white for the same blink (dev156)
 	if e.get("hatchling", false):
 		size *= lerpf(0.6, 1.0, smoothstep(0.2, 1.2, float(e.t)))   # grows out of the sac
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
@@ -2763,9 +2766,9 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_set_transform(e.pos, ang, Vector2.ONE)
 		draw_texture_rect(ht, Rect2(-hs * 0.5, hs), false, Color(1, 1, 1, a * fold))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle())
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle(), bright)
 	else:
-		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle())
+		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright)
 	if e.hp < e.hp_max and e.type != "hive_mother":
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
@@ -3233,6 +3236,7 @@ func _draw_heart(c: Vector2, s: float, on: bool) -> void:
 func _draw_hud() -> void:
 	var cyan := Color(0.18, 0.9, 1.0)
 	var muted := Color(0.62, 0.70, 0.84)
+	_draw_hurt_edge()
 	if _safe_top > 0.0:
 		_hc.draw_rect(Rect2(0, -_safe_top - 2.0, FIELD_W, _safe_top + 6.0), Color(0.02, 0.03, 0.08, 0.85))
 	Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
@@ -3597,3 +3601,22 @@ func _spring_ang(t: Dictionary, want: float, delta: float, k: float, d: float) -
 	v += (diff * k - v * d) * minf(delta, 0.05)
 	t.ang_v = v
 	t.ang = float(t.ang) + v * minf(delta, 0.05)
+
+# A red flash round the screen edge the moment the pilot loses a heart (dev156), fading
+# over a third of a second; drawn on the HUD layer so it sits over the whole field.
+func _draw_hurt_edge() -> void:
+	var start: float = 1.5 * _recovery
+	if inv_t <= 0.0 or start <= 0.0:
+		return
+	var k: float = smoothstep(start - 0.4, start, inv_t)
+	if k <= 0.01:
+		return
+	var red := Color(1.0, 0.22, 0.25, 0.5 * k)
+	var clear := Color(1.0, 0.22, 0.25, 0.0)
+	var top: float = -_safe_top
+	var w := 90.0
+	# four gradient bands: dark red at the edge, clear toward the middle
+	_hc.draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(FIELD_W, top), Vector2(FIELD_W, top + w), Vector2(0, top + w)]), PackedColorArray([red, red, clear, clear]))
+	_hc.draw_polygon(PackedVector2Array([Vector2(0, FIELD_H - w), Vector2(FIELD_W, FIELD_H - w), Vector2(FIELD_W, FIELD_H), Vector2(0, FIELD_H)]), PackedColorArray([clear, clear, red, red]))
+	_hc.draw_polygon(PackedVector2Array([Vector2(0, top), Vector2(w, top), Vector2(w, FIELD_H), Vector2(0, FIELD_H)]), PackedColorArray([red, clear, clear, red]))
+	_hc.draw_polygon(PackedVector2Array([Vector2(FIELD_W - w, top), Vector2(FIELD_W, top), Vector2(FIELD_W, FIELD_H), Vector2(FIELD_W - w, FIELD_H)]), PackedColorArray([clear, red, red, clear]))

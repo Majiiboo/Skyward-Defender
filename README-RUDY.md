@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev155 (version/code=155 and version/name="1.0-dev155" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
+Build 1.0-dev156 (version/code=156 and version/name="1.0-dev156" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each pushed update now raises the build by one.
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -140,6 +140,15 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
   side buttons without circles.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
+
+## dev156: hit feedback
+
+- A bug flashes white for the blink it flinches when a bolt or turret hits it, so every
+  hit lands visibly on the enemy.
+- When the pilot loses a heart, a red flash rings the screen edge and fades over a third
+  of a second (on top of his blink), so a hit is felt, not only counted.
+- The card pick already animates (cards pop in one after another); the wave number already
+  floats in at each wave. Nothing to add there.
 
 ## dev155: pilot motion pass
 
