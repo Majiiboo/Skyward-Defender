@@ -5,7 +5,16 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 8 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 9 updates (next push = dev182 + that count; see the build rule).
+  9. LUNA CARDS ROUND 2 in (17 of 18; pic_rook_twin NOT delivered): art_src/cards_r3/,
+     tools/cut_cards2.gd (pics keyed like the first set -> cards/pic_<id>.png 256; frame v2 window
+     flood-filled with the Common frame's dark -> cards/frame_uncommon.png 300x444; tw_*.png ->
+     icons/tw_*.png 96); battle _card_pic prefers cards/pic_<id>.png over the "pic" key (Rook keeps
+     the weapon art); Promotion.mod_icon / mods_row / GOOD_COL / BAD_COL; modes.gd ranks ladder +
+     etrial steps show icon rows; battle HUD banner draws the icon (preloaded into _tex: a load()
+     inside _draw gave a white square) + pause menu rows; _dbg_cards capture hook. Frames are
+     stretched to the card, so the v2 frame changes little: the Common frame's thick band is the
+     odd one (ask Luna for a tech-style Common frame if Rudy wants them to match).
   8. LUNA STAND ROUND 2 in (orbit rings): art_src/stand/stand_{pool,ring_a,ring_b,beam}-v2.webp,
      tools/cut_stand.gd _cut_v2 (brightness -> alpha with a grey floor 0.2 on the rings, pool x2.2
      under an ellipse mask, beam vertical ramp; prints the rings' ellipses) -> gear/stand_pool /

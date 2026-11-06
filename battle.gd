@@ -488,6 +488,8 @@ func _start_stage() -> void:
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
 	# the trial twists (Promotion.MODS): advantages and disadvantages of this fight
 	_mods = Promotion.mods_for(promo, etrial)
+	for m in _mods:
+		_tex["tw_" + String(m)] = Promotion.mod_icon(m)   # the twist icons for the HUD banner, loaded once
 	_bug_speed = 1.25 if _mods.has("swift_bugs") else 1.0
 	_spit_mult = 0.5 if _mods.has("double_spit") else 1.0
 	if _mods.has("rapid"):
@@ -2195,8 +2197,8 @@ func _fill_pause() -> void:
 	title.add_theme_font_override("font", title_font)
 	v.add_child(title)
 	v.add_child(UIKit.label(("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper()) if promo >= 0 else ("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()]), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-	for ml in Promotion.mods_lines(_mods):   # the trial twists
-		v.add_child(UIKit.label(String(ml), 11, UIKit.GOLD if String(ml).begins_with("ADV") else Color(1.0, 0.5, 0.55), HORIZONTAL_ALIGNMENT_CENTER))
+	for m in _mods:   # the trial twists, one per line with Luna's icon (dev189)
+		v.add_child(Promotion.mods_row([m], 11, 20.0, true, true))
 	v.add_child(UIKit.label("%s  ·  Wave %d of %d  ·  %02d:%02d" % [String(StageData.area(stage).name), mini(wave_index + 1, waves.size()), waves.size(), int(time_alive) / 60, int(time_alive) % 60], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	# objectives
 	v.add_child(UIKit.header("STARS"))
@@ -2324,7 +2326,8 @@ func _card_pic(id: String, h: float) -> Control:
 			row.add_child(p)
 		return row
 	var icon := TextureRect.new()
-	var pic_path := String(Cards.def(id).get("pic", "res://cards/pic_%s.png" % id))   # a card may name its own picture (hero cards borrow the weapon art until Luna paints them)
+	var own := "res://cards/pic_%s.png" % id
+	var pic_path := own if ResourceLoader.exists(own) else String(Cards.def(id).get("pic", own))   # Luna's picture first; a hero card without one yet borrows its weapon art (cards.gd "pic": Rook's Twin Trigger)
 	if ResourceLoader.exists(pic_path):
 		icon.texture = load(pic_path)
 		icon.custom_minimum_size = Vector2(0, h)
@@ -2531,7 +2534,17 @@ func _fuse(id: String) -> void:
 	shake = maxf(shake, 0.35)
 
 # The three cards of a pick; a ready fusion takes the middle slot.
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_cards|sparks_weld,frost_freeze,nyx_mark"): a pick of these cards
+var _dbg_offer: Array = []
+func _dbg_cards(ids: String) -> void:
+	_dbg_offer = Array(ids.split(","))
+	_open_cards()
+
 func _offer() -> Array:
+	if not _dbg_offer.is_empty():
+		var forced := _dbg_offer
+		_dbg_offer = []
+		return forced
 	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)), _hero_id)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
@@ -3751,10 +3764,18 @@ func _draw_hud() -> void:
 	if not _mods.is_empty() and time_alive > 3.5 and time_alive < 11.0:   # after the objectives box has gone
 		var ma: float = clampf(11.0 - time_alive, 0.0, 1.0) * clampf((time_alive - 3.5) * 2.0, 0.0, 1.0)
 		var my := HUD_H + 30.0
-		for ml in Promotion.mods_lines(_mods):
-			var good: bool = String(ml).begins_with("ADV")
-			_hc.draw_string(hud_font, Vector2(0, my), String(ml), HORIZONTAL_ALIGNMENT_CENTER, int(FIELD_W), 11, Color(UIKit.GOLD if good else Color(1.0, 0.5, 0.55), ma))
-			my += 16.0
+		for m in _mods:   # Luna's twist icon beside each line; green good, red bad (dev189)
+			if not Promotion.MODS.has(m):
+				continue
+			var txt := "%s: %s" % [String(Promotion.MODS[m].name).to_upper(), Promotion.MODS[m].text]
+			var ico: Texture2D = _tex.get("tw_" + String(m))
+			var tw: float = hud_font.get_string_size(txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+			var x0: float = FIELD_W * 0.5 - (tw + (22.0 if ico else 0.0)) * 0.5
+			if ico:
+				_hc.draw_texture_rect(ico, Rect2(x0, my - 14.0, 18.0, 18.0), false, Color(1, 1, 1, ma))
+				x0 += 22.0
+			_hc.draw_string(hud_font, Vector2(x0, my), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(Promotion.GOOD_COL if Promotion.MODS[m].good else Promotion.BAD_COL, ma))
+			my += 18.0
 	# run XP: a rounded track under the capsule, filled cyan to purple, level on a chip
 	var need := _xp_need()
 	var xp := clampf(run_xp / need, 0.0, 1.0)

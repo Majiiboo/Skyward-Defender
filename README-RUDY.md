@@ -412,6 +412,26 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 19 (after dev182): LUNA'S CARDS ROUND 2 is in (17 of 18 renders usable; Rook's Twin
+Trigger picture was not delivered, his card keeps the pistol until it lands).
+- Five hero cards now show their power, not the gun: Arc Weld (a forked yellow arc leaping
+  to a second point), Deep Freeze (a bug frozen in cracked ice, shards flying), Phase Bolts
+  (a violet bolt through an unbroken ring), Marked Prey (a purple crosshair, red diamond,
+  claw scratches), Afterburn (a flaming ember with a second flame catching).
+- The eleven trial twists are ICONS now, green for an advantage and red for a disadvantage:
+  on the Pilot Ranks ladder (under each rank's name), on the Element Trials steps, under the
+  battle top bar for the first seconds of a trial, and in the pause menu. The words
+  ADVANTAGE / DISADVANTAGE are gone; the colour says it.
+- Luna's Uncommon frame -v2 is in (the Common frame's height, window filled dark by the
+  cutter). HONEST NOTE: on screen it changes little, because the game stretches every frame
+  to the card anyway; the real difference is that the Common frame has a thick inner band
+  and the Uncommon, Epic and Legendary frames have thin ones. If you want the four to match,
+  the small ask is a Common frame in the same tech style as the other three (thin band,
+  grey edge).
+- Archive: art_src/cards_r3/ (pic_*.webp, frame_uncommon-v2.png, tw_*.png, twists-sheet);
+  cutter tools/cut_cards2.gd. Dev: battle _dbg_cards("a,b,c") opens a pick of those cards
+  for captures (tools/dev/capture.gd CAP_CALL).
+
 Update 18 (after dev182): LUNA'S ORBIT-RING STAND is in (4 renders, all usable). The disc and
 the grid are gone. Under the hero: her nebula pool breathing slowly, two thin rings of light
 circling him with beads travelling round each ring (bright along the front, faint behind him),

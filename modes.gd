@@ -272,9 +272,15 @@ func _ladder() -> void:
 			badge.draw_arc(Vector2(15, 15), 13.0, 0.0, TAU, 32, col, 1.5, true)
 			badge.draw_string(ThemeDB.fallback_font, Vector2(0, 20), "✓" if won else str(idx + 1), HORIZONTAL_ALIGNMENT_CENTER, 30.0, 13, Color.WHITE if won or is_next else col))
 		h.add_child(badge)
-		var name_l := UIKit.label("%s\n%s" % [rk.name, Promotion.mods_short(Promotion.RANK_MODS[i])], 14, Color.WHITE if won or is_next else Color(0.6, 0.66, 0.78))
-		name_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		h.add_child(name_l)
+		var name_box := VBoxContainer.new()   # the rank's name over its twists as Luna's icons (dev189)
+		name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		name_box.add_theme_constant_override("separation", 1)
+		name_box.add_child(UIKit.label(rk.name, 14, Color.WHITE if won or is_next else Color(0.6, 0.66, 0.78)))
+		var twists := Promotion.mods_row(Promotion.RANK_MODS[i], 10, 18.0)
+		if not (won or is_next):
+			twists.modulate = Color(1, 1, 1, 0.7)
+		name_box.add_child(twists)
+		h.add_child(name_box)
 		var status := "Won" if won else (("Next  ·  rec. Lv.%d" if is_next and Promotion.unlocked(_save, player_level) else "Rec. Lv.%d") % int(rk.level))
 		h.add_child(UIKit.label(status, 11, col, HORIZONTAL_ALIGNMENT_RIGHT))
 		v.add_child(h)
@@ -383,8 +389,10 @@ func _etrials() -> void:
 		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		info.add_theme_constant_override("separation", 0)
 		info.add_child(UIKit.label("%s  ·  %d / %d" % [Heroes.element_name(elid), steps, Promotion.ETRIAL_STEPS], 14, col))
-		var sub := why if why != "" else ("Fight with %s  ·  step %d: stage %d bugs x%.1f\n%s" % [Heroes.ROSTER[hid].name, steps + 1, int(Promotion.ETRIAL_STAGES[steps]), Promotion.etrial_hp(steps), Promotion.mods_short(Promotion.ETRIAL_MODS[steps])])
+		var sub := why if why != "" else ("Fight with %s  ·  step %d: stage %d bugs x%.1f" % [Heroes.ROSTER[hid].name, steps + 1, int(Promotion.ETRIAL_STAGES[steps]), Promotion.etrial_hp(steps)])
 		info.add_child(UIKit.label(sub, 10, UIKit.MUTED))
+		if why == "":
+			info.add_child(Promotion.mods_row(Promotion.ETRIAL_MODS[steps], 10, 16.0))   # the step's twists as icons
 		h.add_child(info)
 		var b: Button
 		if why != "":

@@ -291,3 +291,22 @@ static func mods_lines(mods: Array) -> Array:
 		if MODS.has(m):
 			out.append("%s %s: %s" % ["ADVANTAGE" if MODS[m].good else "DISADVANTAGE", String(MODS[m].name).to_upper(), MODS[m].text])
 	return out
+
+# Luna's twist icons (icons/tw_<id>.png, cards round 2): green for an advantage, red for a
+# disadvantage, so the colour says which without the words
+const GOOD_COL := Color(0.55, 1.0, 0.6)
+const BAD_COL := Color(1.0, 0.5, 0.55)
+static func mod_icon(m: String) -> Texture2D:
+	return UIKit.ic("tw_" + m)
+
+# a row of the twists as icon + name (a ladder row, a trial step); long = ": what it does" too
+static func mods_row(mods: Array, size_px: int = 11, px: float = 20.0, long: bool = false, center: bool = false) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 12)
+	if center:
+		h.alignment = BoxContainer.ALIGNMENT_CENTER
+	for m in mods:
+		if MODS.has(m):
+			var txt := String(MODS[m].name) + ((": " + String(MODS[m].text)) if long else "")
+			h.add_child(UIKit.iconed(mod_icon(m), txt, size_px, GOOD_COL if MODS[m].good else BAD_COL, px))
+	return h
