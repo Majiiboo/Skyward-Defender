@@ -29,3 +29,4 @@ direction (above and a little in front, cool rim), chibi 3D look like the pilot,
 lower case exactly as listed, sizes given per cell, "what the code does with it" so the
 constraints make sense, a checklist at the end. Luna does not remember earlier briefs:
 each brief stands alone.
+| 11 | STAR MAP (SENT 2026-11-06): the talent map as a chart: four constellation skies with ghost figures (The Rifle, The Sentry, The Hive Mother, The Dome) + star / star-system pieces | LUNA-BRIEF-talent-map.md | gear.gd StarMap picks up talents/*.png when they land |

@@ -16,6 +16,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      _mirror_through (enemy_bullets clash spawns a "mirrored" bolt), reset per run. gear.gd
      _talent_btn (TALENTS beside STATS) + _talents_screen (5-column grid, detail, Buy, dot);
      Progress.attention gear dot. smoke _check_talents. Luna: card art for the four later.
+     STAR MAP (Rudy, same evening): gear.gd class StarMap (SECTORS = four constellations with
+     name / col / lore, SHAPES = ten points per figure in charting order, node_pos(n, w),
+     _draw: sector skies + soft_glow nebulae (talents/nebula_<s>.png when painted), twinkling
+     dots, gold / dashed cyan / dotted lines, a dotted jump between constellations, _star()
+     code stars or talents/node_* / system_* pieces); _talents_screen = full page (header,
+     ScrollContainer + StarMap with tap buttons, tags and constellation labels, detail panel
+     with the Chart star button; opens scrolled to the next star). LUNA-BRIEF-talent-map.md
+     (skies with ghost figures + star pieces), art_src/ref/talent_map_ref*.png.
   2. STARS (Rudy 2026-11-06, DESIGN-stars.md; replaces the afternoon's stage gates): gates.gd Gates =
      the star standard: MAX_STAR 10 (1-5 gold, 6-10 red), power_mult (+8% gold / +12% red),
      level_cap(kind, star) (hero 10 / turret track 4 / drone 2 a star; Heroes.MAX_LEVEL 100,

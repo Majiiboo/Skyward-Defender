@@ -365,6 +365,17 @@ dim; tap any node to read it; one button buys the next.
   yours for 50 / 75 / 100% damage; overcharge: your bolt flies on). Their pictures borrow the
   stat icons until Luna paints card art.
 - A red dot on TALENTS (and on the Heroes tab) when a node is ready to buy.
+- THE STAR MAP (your note the same evening): the map is a galactic chart, not a list. Four
+  CONSTELLATIONS of ten stars, each a figure charted star by star along its lines, the tenth
+  star the figure's key point and the card: THE RIFLE (cyan), THE SENTRY (green), THE HIVE
+  MOTHER (purple), THE DOME (gold), each with a line of lore under its name. Charted stars
+  shine in their constellation's colour with gold lines between them, the next star pulses cyan
+  with dashes travelling toward it, the stars ahead wait dim on dotted lines, and a long faint
+  jump links one constellation to the next. The chart scrolls through deep space with a nebula
+  per constellation and twinkling far stars; it opens on your next star; a panel at the bottom
+  reads the star you tap and charts the next one. All drawn in code today; Luna's brief
+  (LUNA-BRIEF-talent-map.md) asks for the four skies with the figures as faint old-chart line
+  art, plus the star and star-system pieces, and the code picks them up the moment they land.
 - Check: smoke covers the costs, doors, buying, the bonuses in the hero stats and the cards'
   gating; the map and a card pick with the three talent cards were captured.
 

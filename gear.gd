@@ -2375,74 +2375,206 @@ func _on_drone_unlock(body: String) -> void:
 # WEAPONS screen (Rudy, dev186): tapping the weapon tile opens your weapon inventory, a card
 # per weapon you own (picture, name, element, level, rarity), grouped by element, tap to
 # equip. The old CHOOSE grid under the hero is gone.
-# The TALENT MAP (Talents, queue 16 e, dev197): forty nodes in five columns, bought in order;
-# bought ones gold, the next one teal, the rest dim. Tap a node to read it; the one button buys
-# the next node. Every 10th node unlocks a power card for runs.
+# The STAR MAP (Rudy, 2026-11-06: the talent map as a galactic chart, not a list). The forty
+# nodes are stars along a winding route through four sectors of space; bought stars shine in
+# their sector's colour, the next one pulses cyan, the rest wait dim; every 10th node is a star
+# SYSTEM (the card node). Tap a star to read it; the panel below buys the next one. Everything
+# is drawn in code today; Luna's pieces replace the code stars and nebulae when they land
+# (talents/node_dim|lit|next.png, system_dim|lit|next.png, nebula_0..3.png; LUNA-BRIEF-talent-map.md).
+class StarMap extends Control:
+	const SECTOR_H := 540.0
+	const TOP := 54.0
+	const STEP := 46.0
+	# four CONSTELLATIONS of ten stars (Rudy): each a figure from the game, charted star by star
+	# in the order the lines are drawn; the tenth star is the figure's key point and the card
+	const SECTORS := [
+		{"name": "THE RIFLE",       "col": Color(0.2, 0.85, 1.0),  "lore": "Every cadet of the Guard learns to shoot before learning to fly."},
+		{"name": "THE SENTRY",      "col": Color(0.45, 1.0, 0.5),  "lore": "The first gun on the deck. It never sleeps."},
+		{"name": "THE HIVE MOTHER", "col": Color(0.75, 0.5, 1.0),  "lore": "Charted the night she first came out of the dark."},
+		{"name": "THE DOME",        "col": Color(1.0, 0.8, 0.3),   "lore": "Home. Everything the Guard has ever defended."},
+	]
+	# the ten stars of each figure, as shares of the sector's box, in charting order
+	const SHAPES := [
+		[Vector2(0.10, 0.80), Vector2(0.20, 0.72), Vector2(0.25, 0.88), Vector2(0.31, 0.67), Vector2(0.42, 0.61), Vector2(0.52, 0.56), Vector2(0.63, 0.50), Vector2(0.74, 0.44), Vector2(0.84, 0.38), Vector2(0.92, 0.28)],
+		[Vector2(0.30, 0.88), Vector2(0.50, 0.93), Vector2(0.70, 0.88), Vector2(0.53, 0.76), Vector2(0.50, 0.62), Vector2(0.38, 0.52), Vector2(0.62, 0.52), Vector2(0.46, 0.38), Vector2(0.60, 0.26), Vector2(0.70, 0.12)],
+		[Vector2(0.50, 0.92), Vector2(0.50, 0.76), Vector2(0.34, 0.66), Vector2(0.12, 0.54), Vector2(0.38, 0.54), Vector2(0.62, 0.54), Vector2(0.88, 0.54), Vector2(0.66, 0.66), Vector2(0.50, 0.42), Vector2(0.50, 0.22)],
+		[Vector2(0.08, 0.84), Vector2(0.27, 0.86), Vector2(0.46, 0.86), Vector2(0.65, 0.86), Vector2(0.86, 0.84), Vector2(0.82, 0.62), Vector2(0.70, 0.42), Vector2(0.50, 0.32), Vector2(0.28, 0.42), Vector2(0.50, 0.12)],
+	]
+	var have := 0
+	var nxt := 1
+	var picked := 1
+	var map_w := 480.0
+	var t := 0.0
+	var _dots: Array = []
+	var _tex := {}
+
+	func _init(width: float) -> void:
+		map_w = width
+		var rng := RandomNumberGenerator.new()
+		rng.seed = 11
+		for i in 240:
+			_dots.append({"pos": Vector2(rng.randf() * width, rng.randf() * (TOP + SECTOR_H * 4.0 + 80.0)), "r": rng.randf_range(0.6, 1.8), "ph": rng.randf() * TAU})
+		for n in ["node_dim", "node_lit", "node_next", "system_dim", "system_lit", "system_next"]:
+			if ResourceLoader.exists("res://talents/%s.png" % n):
+				_tex[n] = load("res://talents/%s.png" % n)
+		for s in 4:
+			if ResourceLoader.exists("res://talents/nebula_%d.png" % s):
+				_tex["nebula_%d" % s] = load("res://talents/nebula_%d.png" % s)
+		custom_minimum_size = Vector2(0, TOP + SECTOR_H * 4.0 + 80.0)
+		mouse_filter = Control.MOUSE_FILTER_PASS
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	# where star n (1-based) sits: its constellation's figure, scaled into the sector's box
+	static func node_pos(n: int, width: float) -> Vector2:
+		var s: int = clampi((n - 1) / 10, 0, 3)
+		var i: int = (n - 1) % 10
+		var pt: Vector2 = SHAPES[s][i]
+		return Vector2(40.0 + pt.x * (width - 80.0), TOP + s * SECTOR_H + 58.0 + pt.y * (SECTOR_H - 96.0))
+
+	static func sector_of(n: int) -> int:
+		return clampi((n - 1) / 10, 0, 3)
+
+	func _draw() -> void:
+		var w := map_w
+		# space: a dark gradient and a nebula per sector, in the sector's colour
+		for s in 4:
+			var col: Color = SECTORS[s].col
+			var y0: float = TOP + s * SECTOR_H
+			draw_rect(Rect2(0, y0 - (TOP if s == 0 else 0.0), w, SECTOR_H + (TOP if s == 0 else 0.0) + (80.0 if s == 3 else 0.0)), Color(0.012 + 0.02 * col.r, 0.014 + 0.02 * col.g, 0.03 + 0.035 * col.b))
+			if _tex.has("nebula_%d" % s):
+				draw_texture_rect(_tex["nebula_%d" % s], Rect2(0, y0, w, SECTOR_H), false, Color(1, 1, 1, 0.9))
+			else:
+				Backdrop.soft_glow(self, Vector2(w * (0.28 + 0.44 * (s % 2)), y0 + SECTOR_H * 0.42), w * 0.6, Color(col, 0.16))
+				Backdrop.soft_glow(self, Vector2(w * (0.7 - 0.4 * (s % 2)), y0 + SECTOR_H * 0.8), w * 0.35, Color(col.lerp(Color(1, 0.6, 0.9), 0.4), 0.1))
+		for d in _dots:
+			draw_circle(d.pos, float(d.r), Color(1, 1, 1, 0.3 + 0.35 * (0.5 + 0.5 * sin(t * 1.4 + float(d.ph)))))
+		# the figure lines: charted (gold), the next leg (cyan, dashes travelling), the legs ahead
+		# (faint dots); between two constellations a long faint jump
+		for n in range(1, Talents.SIZE):
+			var a := node_pos(n, w)
+			var b := node_pos(n + 1, w)
+			if n % 10 == 0:
+				var L := a.distance_to(b)
+				var k := 0.0
+				while k < L:
+					draw_circle(a.lerp(b, k / L), 1.0, Color(UIKit.GOLD if n < have else Color(0.7, 0.78, 0.95), 0.22))
+					k += 14.0
+				continue
+			if n < have:
+				draw_line(a, b, Color(UIKit.GOLD, 0.18), 6.0, true)
+				draw_line(a, b, Color(UIKit.GOLD, 0.85), 2.0, true)
+			elif n == have:
+				var dir := (b - a).normalized()
+				var L := a.distance_to(b)
+				var off := fmod(t * 40.0, 16.0)
+				var x := off
+				while x < L:
+					draw_line(a + dir * x, a + dir * minf(x + 8.0, L), Color(UIKit.CYAN, 0.9), 2.0, true)
+					x += 16.0
+			else:
+				var L := a.distance_to(b)
+				var k := 0.0
+				while k < L:
+					draw_circle(a.lerp(b, k / L), 1.2, Color(0.7, 0.78, 0.95, 0.28))
+					k += 9.0
+		# the stars
+		for n in range(1, Talents.SIZE + 1):
+			var p := node_pos(n, w)
+			var c := Talents.node(n)
+			var system: bool = String(c.card) != ""
+			var scol: Color = SECTORS[sector_of(n)].col
+			var pulse: float = 0.5 + 0.5 * sin(t * 3.0 + float(n))
+			if n <= have:
+				_star(p, 30.0 if system else 20.0, scol, 1.0, "system_lit" if system else "node_lit", system)
+			elif n == nxt:
+				_star(p, (30.0 if system else 20.0) * (1.0 + 0.08 * pulse), UIKit.CYAN, 0.8 + 0.2 * pulse, "system_next" if system else "node_next", system)
+				draw_arc(p, (24.0 if system else 16.0) + 4.0 * pulse, 0.0, TAU, 40, Color(UIKit.CYAN, 0.5 + 0.4 * pulse), 1.5, true)
+			else:
+				_star(p, 24.0 if system else 14.0, Color(0.55, 0.6, 0.75), 0.5, "system_dim" if system else "node_dim", system)
+			if n == picked:
+				draw_arc(p, (28.0 if system else 19.0), 0.0, TAU, 40, Color(1, 1, 1, 0.85), 1.5, true)
+
+	# a star: Luna's piece when it exists, else a glow, a four-point star and a bright core;
+	# a star SYSTEM adds a planet ring
+	func _star(p: Vector2, px: float, col: Color, a: float, tex_name: String, system: bool) -> void:
+		if _tex.has(tex_name):
+			var tx: Texture2D = _tex[tex_name]
+			draw_texture_rect(tx, Rect2(p - Vector2(px, px), Vector2(px, px) * 2.0), false, Color(1, 1, 1, a))
+			return
+		var r: float = px * 0.5
+		Backdrop.soft_glow(self, p, r * 3.0, Color(col, a * 0.45))
+		if system:
+			draw_set_transform(p, -0.5, Vector2(1.0, 0.38))
+			draw_arc(Vector2.ZERO, r * 1.7, 0.0, TAU, 48, Color(col.lerp(Color.WHITE, 0.3), a * 0.8), 1.5, true)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			draw_circle(p, r * 0.75, Color(col.lerp(Color.BLACK, 0.35), a))
+			draw_circle(p, r * 0.75, Color(col.lerp(Color.WHITE, 0.4), a * 0.5))
+			draw_circle(p + Vector2(-r * 0.25, -r * 0.25), r * 0.3, Color(1, 1, 1, a * 0.6))
+			return
+		var pts := PackedVector2Array([p + Vector2(0, -r), p + Vector2(r * 0.28, -r * 0.28), p + Vector2(r, 0), p + Vector2(r * 0.28, r * 0.28),
+			p + Vector2(0, r), p + Vector2(-r * 0.28, r * 0.28), p + Vector2(-r, 0), p + Vector2(-r * 0.28, -r * 0.28)])
+		draw_colored_polygon(pts, Color(col.lerp(Color.WHITE, 0.45), a))
+		draw_circle(p, r * 0.3, Color(1, 1, 1, a))
+
 var _talent_btn: Button
 
 func _talents_screen() -> void:
 	var layer := ColorRect.new()
-	layer.color = Color(0, 0.01, 0.04, 0.78)
+	layer.color = Color(0.008, 0.01, 0.03, 1.0)
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
 	add_child(layer)
-	var p := UIKit.popup_panel()
-	var w := minf(size.x - 24.0, 420.0)
-	p.custom_minimum_size = Vector2(w, 0)
-	p.position = Vector2((size.x - w) * 0.5, 40.0)
-	p.gui_input.connect(func(ev): if ev is InputEventMouseButton or ev is InputEventScreenTouch: p.accept_event())
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
 	var data := _read()
 	var have := Talents.count(data)
 	var nxt := Talents.next(data)
-	v.add_child(UIKit.label("TALENT MAP  ·  %d / %d" % [have, Talents.SIZE], 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	var intro := UIKit.label("Permanent bonuses for every hero, bought in order. Node N opens at pilot level N. Every 10th node unlocks a new power card for your runs.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(intro)
-	var detail := UIKit.label("", 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
-	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	detail.custom_minimum_size = Vector2(0, 54)
-	var show := func(n: int):
-		var c := Talents.node(n)
-		var state := "bought" if n <= have else ("next" if n == nxt else "later")
-		detail.text = "NODE %d  ·  %s\n%s\n%s%s" % [n, state, Talents.text(n), Talents.cost_text(n), "" if n <= have else "  ·  pilot Lv.%d" % Talents.door(n)]
-		if String(c.card) != "":
-			detail.text += "\n%s: %s" % [Cards.CARDS[c.card].name, Cards.CARDS[c.card].desc]
+	var w := size.x
+	var page := VBoxContainer.new()
+	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page.add_theme_constant_override("separation", 0)
+	layer.add_child(page)
+	# header
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	var back := UIKit.ghost_button("Back", 12)
+	back.custom_minimum_size = Vector2(70, 34)
+	back.pressed.connect(layer.queue_free)
+	head.add_child(back)
+	var title := UIKit.label("STAR MAP  ·  %d / %d" % [have, Talents.SIZE], 17, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(title)
+	var spacer := Control.new()
+	spacer.custom_minimum_size = Vector2(70, 0)
+	head.add_child(spacer)
+	var hp := UIKit.panel(6)
+	hp.add_child(head)
+	page.add_child(hp)
+	# the chart
 	var sc := ScrollContainer.new()
 	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	sc.custom_minimum_size = Vector2(0, minf(size.y * 0.46, 400.0))
-	var grid := GridContainer.new()
-	grid.columns = 5
-	grid.add_theme_constant_override("h_separation", 6)
-	grid.add_theme_constant_override("v_separation", 6)
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for n in range(1, Talents.SIZE + 1):
-		var c := Talents.node(n)
-		var txt := "%s\n%s" % [c.tag, Talents.bonus_text(n)]
-		var b: Button
-		if n <= have:
-			b = UIKit.gold_button(txt, 9)
-		elif n == nxt:
-			b = UIKit.teal_button(txt, 9)
-		else:
-			b = UIKit.ghost_button(txt, 9)
-			b.modulate = Color(0.6, 0.62, 0.72, 0.85)
-		b.custom_minimum_size = Vector2(0, 50)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var nn: int = n
-		b.pressed.connect(func(): show.call(nn))
-		if String(c.card) != "":
-			UIKit.corner_icon(b, UIKit.ic("tw_overcharge"), 16.0)   # a card node
-		grid.add_child(b)
-	sc.add_child(grid)
-	v.add_child(sc)
-	v.add_child(detail)
-	show.call(mini(nxt, Talents.SIZE))
+	sc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var map := StarMap.new(w)
+	map.have = have
+	map.nxt = nxt
+	map.picked = mini(nxt, Talents.SIZE)
+	map.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sc.add_child(map)
+	page.add_child(sc)
+	# the detail panel: the star picked (the next one at first) and the one button
+	var dp := UIKit.panel(10)
+	var dv := VBoxContainer.new()
+	dv.add_theme_constant_override("separation", 4)
+	var dname := UIKit.label("", 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	var dtext := UIKit.label("", 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	dtext.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	dtext.custom_minimum_size = Vector2(0, 48)
+	dv.add_child(dname)
+	dv.add_child(dtext)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var why := Talents.why_not(data)
-	var buy := UIKit.gold_button(("Buy node %d\n%s" % [nxt, Talents.cost_text(nxt)]) if why == "" else (why if nxt <= Talents.SIZE else "Map complete"), 12)
+	var buy := UIKit.gold_button(("Chart star %d\n%s" % [nxt, Talents.cost_text(nxt)]) if why == "" else (why if nxt <= Talents.SIZE else "Map complete"), 12)
 	buy.custom_minimum_size = Vector2(0, 46)
 	buy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buy.disabled = why != ""
@@ -2457,19 +2589,55 @@ func _talents_screen() -> void:
 		Sfx.play("upgrade")
 		Progress.bump("upgrades")
 		var bought := Talents.count(d2)
-		_toast("Talent %d: %s" % [bought, Talents.text(bought)])
+		_toast("Star %d charted: %s" % [bought, Talents.text(bought)])
 		layer.queue_free()
 		_paint_hero()
 		_talents_screen())
 	row.add_child(buy)
-	var close := UIKit.ghost_button("Close", 12)
-	close.custom_minimum_size = Vector2(80, 46)
-	close.pressed.connect(layer.queue_free)
-	row.add_child(close)
-	v.add_child(row)
-	p.add_child(v)
-	layer.add_child(p)
-	UIKit.pop_in(p)
+	dv.add_child(row)
+	dp.add_child(dv)
+	page.add_child(dp)
+	var show := func(n: int):
+		map.picked = n
+		var c := Talents.node(n)
+		var state := "charted" if n <= have else ("next" if n == nxt else "ahead")
+		dname.text = "STAR %d  ·  %s  ·  %s" % [n, String(StarMap.SECTORS[StarMap.sector_of(n)].name).capitalize(), state]
+		dtext.text = "%s\n%s%s" % [Talents.text(n), Talents.cost_text(n), "" if n <= have else "  ·  pilot Lv.%d" % Talents.door(n)]
+		if String(c.card) != "":
+			dtext.text += "\n%s: %s" % [Cards.CARDS[c.card].name, Cards.CARDS[c.card].desc]
+	# a tap target and a tag under every star, and a name over every sector
+	for n in range(1, Talents.SIZE + 1):
+		var p := StarMap.node_pos(n, w)
+		var c := Talents.node(n)
+		var b := Button.new()
+		b.flat = true
+		b.position = p - Vector2(24, 24)
+		b.size = Vector2(48, 48)
+		b.focus_mode = Control.FOCUS_NONE
+		var nn: int = n
+		b.pressed.connect(func(): show.call(nn))
+		map.add_child(b)
+		var tag := UIKit.label("%s %s" % [c.tag, Talents.bonus_text(n)], 9, UIKit.GOLD if n <= have else (UIKit.CYAN if n == nxt else UIKit.MUTED), HORIZONTAL_ALIGNMENT_CENTER)
+		tag.position = p + Vector2(-44, 16.0 if String(c.card) == "" else 22.0)
+		tag.size = Vector2(88, 14)
+		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(tag)
+	for s in 4:
+		var sl := UIKit.label(String(StarMap.SECTORS[s].name), 12, StarMap.SECTORS[s].col, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.position = Vector2(0, StarMap.TOP + s * StarMap.SECTOR_H + 14.0)
+		sl.size = Vector2(w, 16)
+		sl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(sl)
+		var sub := UIKit.label(String(StarMap.SECTORS[s].lore), 9, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		sub.position = Vector2(0, StarMap.TOP + s * StarMap.SECTOR_H + 32.0)
+		sub.size = Vector2(w, 12)
+		sub.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		map.add_child(sub)
+	show.call(mini(nxt, Talents.SIZE))
+	# open on the next star
+	await get_tree().process_frame
+	if is_instance_valid(sc):
+		sc.scroll_vertical = maxi(0, int(StarMap.node_pos(mini(nxt, Talents.SIZE), w).y - size.y * 0.38))
 
 func _weapons_screen() -> void:
 	var layer := ColorRect.new()
