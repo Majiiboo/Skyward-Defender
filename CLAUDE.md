@@ -5,7 +5,18 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 1 update (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 2 updates (next push = dev195 + that count; see the build rule).
+  2. GATES (Rudy 2026-11-06): gates.gd Gates: GRADE_STAGE {1:0, 2:10, 3:20, 4:35, 5:50} gates BUYING
+     (Heroes.gate / Turrets.gate / DroneData.gate = item_stage(grade, own stage); gate_open via
+     Gates.stage_open; unlock() refuses with Gates.stage_text), TIER_STAGE {2:15, 3:30} gates
+     Heroes.can_evolve(h, id, save) (+ tier_gate_text; gear Evolve button "Stage N first"),
+     BANDS [0.34 .. 1.0] per 10 stages cleared cap every track (Gates.level_cap(save, max) ->
+     Heroes.level_cap / level_up, Turrets.track_cap + gear _on_track_upgrade, DroneData.level_cap,
+     gear weapon cap = min(rarity cap, Gates); Gates.cap_text "Stage N
+for Lv.M" on the buttons),
+     "premium": true = crystals only (premium(), cost_text "Crystals only", can_afford false,
+     unlock coins -> "Crystals only"; Ember). Dev mode = everything open. gear _stars_l autowraps.
+     smoke _check_gates + updated expectations. NOT built: premium weapons (a Store pack).
   1. LUNA TURRETS ROUND 2 in (29 renders, all usable; art_src/turrets2/, tools/cut_turrets2.gd ->
      turrets/<id>_base / _head / _light / _idle (head stacked on base for tiles), fx/shot_<id>,
      turrets/<id>_head_fire + _fire_light aligned to the resting heads, cards/pic_rook_twin):

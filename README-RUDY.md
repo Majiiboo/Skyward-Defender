@@ -345,6 +345,31 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 2 (after dev195): GATES, one standard for what progress unlocks (your two notes today:
+"higher tiers and higher stars under a locked standard, in relation to level or stages", and
+"really unique or strong heroes or weapons could be locked behind a purchase"). All in gates.gd:
+- STARS gate BUYING. A hero, turret or drone body of 2★ needs stage 10 cleared, 3★ stage 20,
+  4★ stage 35, 5★ stage 50 (an item's own stage gate still counts when it is higher: the Mine
+  Layer keeps 30). So Cpt. Frost, the Lance, the Spark Bot wait for stage 10; Hollow, Gravity,
+  Cryo Lens, Wisp for 20; Nyx, Ember, Prism, Dread Beacon, Night Bat for 35. The tiles and
+  panels say "Stage N first"; crystals do not skip the gate.
+- TIERS gate EVOLVING. A hero's tier 2 needs stage 15 cleared, tier 3 stage 30, on top of the
+  shards and essences. The Evolve button reads "Stage 15 first" until then.
+- LEVELS are capped by stages cleared, as a share of each track's own maximum: a third of it
+  from the start, then more every ten stages cleared, the whole track after stage 40. Hero
+  levels: 20 open at the start, 30 after stage 10, 40 after 20, 50 after 30, 60 after 40.
+  Weapon levels: 10 / 15 / 20 / 25 / 30 (the rarity cap still applies too). Turret tracks:
+  7 / 10 / 13 / 17 / 20 each. Drone: 3 / 5 / 7 / 8 / 10. A capped button reads "Stage 20 for
+  Lv.11" instead of the price.
+- PREMIUM: a hero, turret or body marked premium has no coin price: crystals only (a real-money
+  pack later, when Google Play billing exists). Ember carries it today (650 crystals); the panel
+  and roster say so. Weapons are not bought (they drop and merge), so a premium weapon would be
+  a Store pack: not built.
+- Dev mode opens all of it. Old saves keep what they have; only new purchases and the next
+  levels are gated.
+- Check: smoke covers the gates (stars, tiers, caps, Ember), and the Gear pages were captured
+  with a stage 11 save to see every lock text.
+
 Update 1 (after dev195): LUNA'S TURRETS ROUND 2 are in (29 renders, all usable). SIX NEW TURRETS,
 a second one per element with a different job, so picking a turret is a play style (your rule):
 - Repair Node (Energy, Support, 2★, 3,500 coins + 15 Alloy, stage 10): does not shoot; every

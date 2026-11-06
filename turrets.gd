@@ -272,11 +272,19 @@ static func role(id: String) -> String:
 static func element_mult(id: String, stage: int) -> float:
 	return Heroes.element_mult(element(id), stage)
 
+# the stage to clear before it can be bought: its stars' gate (Gates.GRADE_STAGE) or its own
 static func gate(id: String) -> int:
-	return int(TURRETS[id].get("stage", 0)) if TURRETS.has(id) else 0
+	return Gates.item_stage(grade(id), int(TURRETS[id].get("stage", 0))) if TURRETS.has(id) else 0
 
 static func gate_open(save: Dictionary, id: String) -> bool:
-	return int(save.get("stage_unlocked", 1)) > gate(id) or DevTools.on
+	return Gates.stage_open(save, gate(id))
+
+static func premium(id: String) -> bool:
+	return TURRETS.has(id) and Gates.premium(TURRETS[id])
+
+# the highest track level open with the stages cleared so far (Gates)
+static func track_cap(save: Dictionary) -> int:
+	return Gates.level_cap(save, MAX_TRACK)
 
 static func parts_needed(id: String) -> Dictionary:
 	var c: Dictionary = TURRETS[id].get("cost", {})
@@ -287,6 +295,8 @@ static func parts_needed(id: String) -> Dictionary:
 	return needs
 
 static func cost_text(id: String) -> String:
+	if premium(id):
+		return "Crystals only"
 	var c: Dictionary = TURRETS[id].get("cost", {})
 	var bits: Array = []
 	if int(c.get("coins", 0)) > 0:
@@ -300,6 +310,8 @@ static func crystal_price(id: String) -> int:
 	return int(TURRETS[id].get("crystals", 0))
 
 static func can_afford(save: Dictionary, id: String) -> bool:
+	if premium(id):
+		return false
 	var c: Dictionary = TURRETS[id].get("cost", {})
 	return int(save.get("coins", 0)) >= int(c.get("coins", 0)) and Parts.has_all(Parts.read(save), parts_needed(id))
 
@@ -311,7 +323,7 @@ static func unlock(save: Dictionary, t: Dictionary, id: String, with_crystals: b
 	if owned(t, id):
 		return "Already yours"
 	if not gate_open(save, id):
-		return "Clear stage %d first" % gate(id)
+		return Gates.stage_text(gate(id))
 	if with_crystals:
 		var price := crystal_price(id)
 		if price <= 0:
@@ -320,6 +332,8 @@ static func unlock(save: Dictionary, t: Dictionary, id: String, with_crystals: b
 			return "Not enough crystals"
 		save["crystals"] = int(save.get("crystals", 0)) - price
 	else:
+		if premium(id):
+			return "Crystals only"
 		var c: Dictionary = TURRETS[id].get("cost", {})
 		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(id), false)
 		if why != "":

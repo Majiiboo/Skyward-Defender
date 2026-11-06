@@ -69,7 +69,7 @@ const ROSTER := {
 		"blurb": "Sees the weak spot before the bug knows it has one."},
 	"ember":  {"name": "Ember", "title": "Dragon-kin, flight harness", "element": "solar", "grade": 4,
 		"weapon": "solar_weapon", "passive": "Max HP +20%", "look": "ember",
-		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6, "ess_solar": 6}, "crystals": 650, "stage": 30, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},
+		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6, "ess_solar": 6}, "crystals": 650, "stage": 30, "premium": true, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},   # premium (Gates): crystals only
 		"blurb": "Breathes fire instead of carrying a jetpack. Cheaper."},
 }
 const ORDER := ["rook", "sparks", "frost", "hollow", "nyx", "ember"]
@@ -208,15 +208,22 @@ static func grade_color(id: String) -> Color:
 static func stars_text(id: String) -> String:
 	return "★".repeat(grade(id))
 
-# a stage gate, when the hero has one: the stage that must be cleared (0 = none)
+# the stage that must be cleared before the hero can be bought: his stars' gate (Gates
+# GRADE_STAGE) or his own "stage", whichever is higher (0 = none)
 static func gate(id: String) -> int:
-	return int(ROSTER[id].get("stage", 0)) if ROSTER.has(id) else 0
+	return Gates.item_stage(grade(id), int(ROSTER[id].get("stage", 0))) if ROSTER.has(id) else 0
 
 static func gate_open(save: Dictionary, id: String) -> bool:
-	return int(save.get("stage_unlocked", 1)) > gate(id) or DevTools.on
+	return Gates.stage_open(save, gate(id))
+
+# premium (Gates): crystals only, no coin price
+static func premium(id: String) -> bool:
+	return ROSTER.has(id) and Gates.premium(ROSTER[id])
 
 # "2,500 coins + 12 Alloy" and "or 60 crystals"
 static func cost_text(id: String) -> String:
+	if premium(id):
+		return "Crystals only"
 	var c: Dictionary = ROSTER[id].get("cost", {})
 	var bits: Array = []
 	if int(c.get("coins", 0)) > 0:
@@ -239,6 +246,8 @@ static func crystal_price(id: String) -> int:
 
 # can the coins + parts price be paid right now?
 static func can_afford(save: Dictionary, id: String) -> bool:
+	if premium(id):
+		return false
 	var c: Dictionary = ROSTER[id].get("cost", {})
 	return int(save.get("coins", 0)) >= int(c.get("coins", 0)) and Parts.has_all(Parts.read(save), parts_needed(id))
 
@@ -250,7 +259,7 @@ static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: b
 	if owned(h, id):
 		return "Already yours"
 	if not gate_open(save, id):
-		return "Clear stage %d first" % gate(id)
+		return Gates.stage_text(gate(id))
 	if with_crystals:
 		var price := crystal_price(id)
 		if price <= 0:
@@ -259,6 +268,8 @@ static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: b
 			return "Not enough crystals"
 		save["crystals"] = int(save.get("crystals", 0)) - price
 	else:
+		if premium(id):
+			return "Crystals only"
 		var c: Dictionary = ROSTER[id].get("cost", {})
 		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(id), false)
 		if why != "":
@@ -266,6 +277,10 @@ static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: b
 	h.owned.append(id)
 	h.selected = id
 	return ""
+
+# the highest level a hero can reach with the stages cleared so far (Gates)
+static func level_cap(save: Dictionary) -> int:
+	return Gates.level_cap(save, MAX_LEVEL)
 
 static func milestones(lv: int) -> int:
 	return lv / MILESTONE_EVERY
@@ -292,7 +307,15 @@ static func can_evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool
 		return true
 	if shards(h, id) < next_tier_cost(h, id):
 		return false
-	return save.is_empty() or Parts.has_all(Parts.read(save), tier_need(h, id))
+	if save.is_empty():
+		return true
+	return Gates.tier_open(save, tier(h, id) + 1) and Parts.has_all(Parts.read(save), tier_need(h, id))
+
+# why the next tier is not open yet ("" when it is, or when only shards / essences are short)
+static func tier_gate_text(h: Dictionary, id: String, save: Dictionary) -> String:
+	if tier(h, id) >= MAX_TIER or Gates.tier_open(save, tier(h, id) + 1):
+		return ""
+	return Gates.stage_text(Gates.tier_stage(tier(h, id) + 1))
 
 # ------------------------------------------------------------------ actions
 
@@ -301,7 +324,7 @@ static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	var cost := level_cost(lv)
 	if DevTools.on:
 		cost = 0   # dev mode: free
-	if lv >= MAX_LEVEL or int(save.get("coins", 0)) < cost:
+	if lv >= level_cap(save) or int(save.get("coins", 0)) < cost:   # capped by the stages cleared (Gates)
 		return false
 	save["coins"] = int(save.get("coins", 0)) - cost
 	h.levels[id] = lv + 1

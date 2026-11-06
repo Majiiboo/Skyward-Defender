@@ -239,6 +239,8 @@ func _build() -> void:
 	hrow.alignment = BoxContainer.ALIGNMENT_END
 	var srow := UIKit.iconed(UIKit.ic("ic_shard"), "", 13, UIKit.GOLD, 18.0)   # Luna's shard icon in front (dev189)
 	_stars_l = srow.get_child(srow.get_child_count() - 1)
+	_stars_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # never wider than the phone (the line grew with materials)
+	_stars_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	hv.add_child(srow)   # tier + shards on its own line; the buttons fit the phone width under it
 	_unlock_btn = UIKit.gold_button("Unlock", 13)
 	_unlock_btn.custom_minimum_size = Vector2(104, 42)
@@ -396,7 +398,7 @@ func _select(slot: String) -> void:
 	# short and plain (Rudy): name, level over its rarity's cap, the main stat with its next
 	# level, the set's extra
 	var rar := GearData.rarity(gear, id)
-	var cap := GearData.level_cap(rar)
+	var cap := mini(GearData.level_cap(rar), Gates.level_cap(_read(), GearData.MAX_LEVEL))   # the rarity cap, and the stages cleared (Gates)
 	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < cap else "  (cap)"
 	_detail.text = "%s  Lv.%d / %d  ·  %s\n%s %s%s\n%s" % [info.name, lv, cap, GearData.rarity_name(rar), st.text, _stat_text(slot, lv), next_txt, set_info.minor]
 	# its milestone (every 5 levels): what it gives, and how many it has reached
@@ -412,6 +414,8 @@ func _select(slot: String) -> void:
 	_upgrade_btn.disabled = lv >= cap or coins < cost
 	if lv >= GearData.MAX_LEVEL:
 		_upgrade_btn.text = "MAX"
+	elif lv >= Gates.level_cap(_read(), GearData.MAX_LEVEL):
+		_upgrade_btn.text = Gates.cap_text(_read(), lv, GearData.MAX_LEVEL)   # the stages cleared cap it (Gates)
 	elif lv >= cap:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
@@ -445,7 +449,7 @@ func _on_upgrade_pressed() -> void:
 	var id: String = gear.equipped[selected_slot]
 	var lv := _lvl(id)
 	var cost := GearData.upgrade_cost(lv)
-	if lv >= GearData.cap_of(gear, id) or coins < cost:
+	if lv >= mini(GearData.cap_of(gear, id), Gates.level_cap(_read(), GearData.MAX_LEVEL)) or coins < cost:
 		return
 	Sfx.play("upgrade")
 	if not await _pay_upgrade(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[id].set))):
@@ -1098,13 +1102,14 @@ func _refresh_drone() -> void:
 	urow.add_theme_constant_override("separation", 10)
 	ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	urow.add_child(ip)
-	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else _upgrade_text(DroneData.upgrade_cost(lvl), lvl, Materials.drone_need(lvl)), 13)
+	var dcap := DroneData.level_cap(_read())   # capped by the stages cleared (Gates)
+	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else (Gates.cap_text(_read(), lvl, DroneData.MAX_LEVEL) if lvl >= dcap else _upgrade_text(DroneData.upgrade_cost(lvl), lvl, Materials.drone_need(lvl))), 13)
 	up.custom_minimum_size = Vector2(118, 50)
 	up.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	up.disabled = lvl >= DroneData.MAX_LEVEL or coins < DroneData.upgrade_cost(lvl)
+	up.disabled = lvl >= dcap or coins < DroneData.upgrade_cost(lvl)
 	up.pressed.connect(func():
 		var cost := DroneData.upgrade_cost(int(drone.level))
-		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL and await _pay_upgrade(cost, int(drone.level), Materials.drone_need(int(drone.level))):
+		if coins >= cost and int(drone.level) < DroneData.level_cap(_read()) and await _pay_upgrade(cost, int(drone.level), Materials.drone_need(int(drone.level))):
 			drone.level = int(drone.level) + 1
 			for m in DroneData.MILESTONES:
 				if int(drone.level) == int(m[0]):
@@ -1123,7 +1128,7 @@ func _refresh_drone() -> void:
 			var def: Dictionary = spec[1][id]
 			var open: bool = (DroneData.body_open(drone, id, pilot_level) if spec[2] == "body" else (pilot_level >= int(def.unlock) or DevTools.on))
 			var on: bool = drone[spec[2]] == id
-			var sub := "" if (on or open) else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if DroneData.is_bought(id) else "Pilot Lv.%d" % int(def.unlock))   # no "Choose" / "Equipped" words (Rudy): an E badge marks the equipped one
+			var sub := "" if (on or open) else ((("Stage %d first" % DroneData.gate(id)) if not DroneData.gate_open(_read(), id) else (DroneData.cost_text(id) if DroneData.premium(id) else "%s coins" % UIKit.num(int(def.cost.get("coins", 0))))) if DroneData.is_bought(id) else "Pilot Lv.%d" % int(def.unlock))   # no "Choose" / "Equipped" words (Rudy): an E badge marks the equipped one; stars gate the bought bodies (Gates)
 			if spec[2] == "body":
 				sub = ("%s %s" % [DroneData.stars_text(id), Heroes.element_name(DroneData.body_element(id))]) + (("  ·  " + sub) if sub != "" else "")
 			var tile := UIKit.tile(def.name, sub, (DroneData.body_element(id) if spec[2] == "body" else "ion") if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
@@ -1481,11 +1486,16 @@ func _refresh_turret_detail() -> void:
 		_t_place.disabled = not Turrets.gate_open(_read(), t_focus)
 		_t_place.text = "Unlock"
 		return
+	var tcap := Turrets.track_cap(_read())
 	for k in Turrets.TRACKS:
 		var b: Button = _t_tracks_btn[k]
 		var l: int = int(tr[k])
 		if l >= Turrets.MAX_TRACK:
 			b.text = "%s %d\nMAX" % [Turrets.TRACK_NAMES[k], l]
+			b.disabled = true
+			continue
+		if l >= tcap:   # the stages cleared cap every track (Gates)
+			b.text = "%s %d\n%s" % [Turrets.TRACK_NAMES[k], l, Gates.cap_text(_read(), l, Turrets.MAX_TRACK).replace("\n", " ")]
 			b.disabled = true
 			continue
 		var cost := Turrets.track_cost(l)
@@ -1528,7 +1538,7 @@ func _on_track_upgrade(k: String) -> void:
 	var tr: Dictionary = Turrets.one_tracks(t_tracks, t_focus).duplicate()
 	var l: int = int(tr[k])
 	var cost := Turrets.track_cost(l)
-	if coins < cost or l >= Turrets.MAX_TRACK:
+	if coins < cost or l >= Turrets.track_cap(_read()):   # capped by the stages cleared (Gates)
 		return
 	# parts for a track level follow Parts.need on a 1-10 scale (Turrets.track_parts)
 	if not await _pay_upgrade(cost, l / 2, Materials.turret_need(l, Turrets.element(t_focus))):
@@ -1856,6 +1866,8 @@ func _paint_roster() -> void:
 				sub = "Lv.%d  ·  T%d" % [Heroes.level(hero, hid), Heroes.tier(hero, hid)]
 			elif not Heroes.gate_open(data, hid):
 				sub = "Stage %d first" % Heroes.gate(hid)
+			elif Heroes.premium(hid):
+				sub = "%d crystals" % Heroes.crystal_price(hid)   # premium (Gates): crystals only
 			else:
 				sub = "%s coins" % UIKit.num(int(h.cost.get("coins", 0))) if int(h.cost.get("coins", 0)) > 0 else "Unlock"
 			var pic: Texture2D = _hero_portrait(hid) if own else UIKit.ic("ui_padlock")
@@ -1942,16 +1954,18 @@ func _paint_hero() -> void:
 		# short (Rudy, dev186): one line of numbers, one line for the next perk
 		_hero_line.text = "Lv.%d  ·  ATK +%d%%  ·  %s\n%s" % [lv, atk, hp_txt, next_ms]
 		var cost := Heroes.level_cost(lv)
-		_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
-		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
+		var hcap := Heroes.level_cap(data)   # capped by the stages cleared (Gates)
+		_level_btn.disabled = lv >= hcap or coins < cost
+		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else (Gates.cap_text(data, lv, Heroes.MAX_LEVEL) if lv >= hcap else "Level up\n%d coins" % cost)
 		var dcost := Heroes.def_cost(dl)
 		_def_btn.disabled = dl >= Heroes.MAX_DEF_LEVEL or coins < dcost
 		_def_btn.text = "DEF max" if dl >= Heroes.MAX_DEF_LEVEL else "DEF up\n%d coins" % dcost
 		var need := Heroes.next_tier_cost(hero, id)
 		var have := Heroes.shards(hero, id)
 		_stars_l.text = "%s  ·  Tier %d  ·  %s" % [("%d / %d shards + %s" % [have, need, Parts.text(Heroes.tier_need(hero, id))]) if need > 0 else "tier max", t, h.passive]   # shards first, behind their icon (dev189)
+		var tgate := Heroes.tier_gate_text(hero, id, data)   # the stages cleared gate the tiers (Gates): shown on the button
 		_evolve_btn.disabled = not Heroes.can_evolve(hero, id, data)
-		_evolve_btn.text = "Evolve" if need > 0 else "Max"
+		_evolve_btn.text = ("Stage %d\nfirst" % Gates.tier_stage(t + 1)) if (tgate != "" and need > 0) else ("Evolve" if need > 0 else "Max")
 	else:
 		var gate_txt := "" if Heroes.gate_open(data, id) else "\nClear stage %d first" % Heroes.gate(id)
 		_hero_line.text = "%s\n%s%s" % [h.passive, Heroes.cost_text(id), gate_txt]

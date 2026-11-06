@@ -113,6 +113,20 @@ static func body_open(dr: Dictionary, body: String, pilot_level: int) -> bool:
 static func grade(body: String) -> int:
 	return clampi(int(BODIES[body].get("grade", 1)), 1, 5) if BODIES.has(body) else 1
 
+# the stage to clear before a bought body can be bought: its stars' gate (Gates) or its own
+static func gate(body: String) -> int:
+	return Gates.item_stage(grade(body), int(BODIES[body].get("stage", 0))) if is_bought(body) else 0
+
+static func gate_open(save: Dictionary, body: String) -> bool:
+	return Gates.stage_open(save, gate(body))
+
+static func premium(body: String) -> bool:
+	return BODIES.has(body) and Gates.premium(BODIES[body])
+
+# the highest drone level open with the stages cleared so far (Gates)
+static func level_cap(save: Dictionary) -> int:
+	return Gates.level_cap(save, MAX_LEVEL)
+
 static func stars_text(body: String) -> String:
 	return "★".repeat(grade(body))
 
@@ -125,6 +139,8 @@ static func parts_needed(body: String) -> Dictionary:
 	return needs
 
 static func cost_text(body: String) -> String:
+	if premium(body):
+		return "Crystals only"
 	var c: Dictionary = BODIES[body].get("cost", {})
 	var bits: Array = []
 	if int(c.get("coins", 0)) > 0:
@@ -143,12 +159,16 @@ static func unlock(save: Dictionary, dr: Dictionary, body: String, with_crystals
 		return "Not for sale"
 	if Array(dr.owned).has(body):
 		return "Already yours"
+	if not gate_open(save, body):
+		return Gates.stage_text(gate(body))
 	if with_crystals:
 		var price := crystal_price(body)
 		if int(save.get("crystals", 0)) < price:
 			return "Not enough crystals"
 		save["crystals"] = int(save.get("crystals", 0)) - price
 	else:
+		if premium(body):
+			return "Crystals only"
 		var c: Dictionary = BODIES[body].get("cost", {})
 		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(body), false)
 		if why != "":

@@ -26,6 +26,7 @@ func _initialize() -> void:
 	_check_materials()
 	_check_store()
 	_check_turrets()
+	_check_gates()
 	_check_etrials()
 	_check_mods()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
@@ -262,8 +263,8 @@ func _check_heroes() -> void:
 	_expect(Heroes.unlock(s, h, "sparks", false) == "" and Heroes.owned(h, "sparks") and Heroes.selected(h) == "sparks", "buying Sparks puts him on duty")
 	_expect(int(s.coins) == 500 and int(Parts.read(s).alloy) == 0, "Sparks cost 2500 coins and 12 alloy")
 	_expect(Heroes.unlock(s, h, "sparks", false) == "Already yours", "cannot buy twice")
-	_expect(Heroes.unlock(s, h, "nyx", true) != "" and not Heroes.owned(h, "nyx"), "Nyx is gated by stage 20 even for crystals")
-	s["stage_unlocked"] = 21
+	_expect(Heroes.unlock(s, h, "nyx", true) == "Clear stage 35 first" and not Heroes.owned(h, "nyx"), "Nyx (4 stars) is gated by stage 35 even for crystals (Gates)")
+	s["stage_unlocked"] = 36
 	_expect(Heroes.unlock(s, h, "nyx", true) == "Not enough crystals", "650 crystals needed for Nyx")
 	s["crystals"] = 700
 	_expect(Heroes.unlock(s, h, "nyx", true) == "" and int(s.crystals) == 50 and Heroes.owned(h, "nyx"), "Nyx for 650 crystals")
@@ -312,9 +313,11 @@ func _check_turrets() -> void:
 	var s := {"coins": 5000, "crystals": 300, "stage_unlocked": 1, "pilot_xp": 0, "parts": {"alloy": 15}}
 	var t := Turrets.read(s)
 	_expect(Turrets.owned(t, "sentry") and not Turrets.owned(t, "lance"), "fresh save: Sentry only")
+	_expect(Turrets.unlock(s, t, "lance", false) == "Clear stage 10 first", "a 2-star turret waits for stage 10 (Gates)")
+	s["stage_unlocked"] = 11
 	_expect(Turrets.unlock(s, t, "lance", false) == "" and Turrets.owned(t, "lance") and int(s.coins) == 2000 and int(Parts.read(s).alloy) == 0, "Lance for 3000 coins + 15 alloy")
-	_expect(Turrets.unlock(s, t, "prism", true) != "" and not Turrets.owned(t, "prism"), "Prism needs stage 25 first")
-	s["stage_unlocked"] = 26
+	_expect(Turrets.unlock(s, t, "prism", true) == "Clear stage 35 first" and not Turrets.owned(t, "prism"), "Prism (4 stars) needs stage 35 first (Gates over its own 25)")
+	s["stage_unlocked"] = 36
 	s["crystals"] = 600
 	_expect(Turrets.unlock(s, t, "prism", true) == "" and int(s.crystals) == 600 - Turrets.crystal_price("prism"), "Prism for crystals once the stage is cleared")
 	s["turrets"] = {"loadout": ["sentry", "lance", "", ""], "tracks": {}, "owned": t.owned}
@@ -342,7 +345,7 @@ func _check_turrets() -> void:
 	_expect(is_equal_approx(Turrets.element_mult("prism", 25), Heroes.WEAK_MULT) and is_equal_approx(Turrets.element_mult("lance", 25), Heroes.RESIST_MULT), "Magma World: Ice Prism strong, Fire Lance weak")
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
 	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "magnet", "support pods: job and their own art")
-	var ds := {"coins": 7000, "crystals": 0, "parts": {"alloy": 20, "cell": 4}}
+	var ds := {"coins": 7000, "crystals": 0, "stage_unlocked": 11, "parts": {"alloy": 20, "cell": 4}}
 	var dr := DroneData.read(ds)
 	_expect(not DroneData.body_open(dr, "spark", 40) and DroneData.body_open(dr, "scout", 8), "Spark Bot is bought, not level-gated; Scout opens at Lv.8")
 	_expect(DroneData.unlock(ds, dr, "spark", false) == "" and DroneData.body_open(dr, "spark", 1) and int(ds.coins) == 1000, "Spark Bot for 6000 coins + 20 alloy + 4 cells")
@@ -415,6 +418,8 @@ func _check_materials() -> void:
 	_expect(Materials.weapon_need(14, "solar").is_empty() and Materials.weapon_need(25, "solar").has("ess_solar"), "weapon levels ask for the line from Lv.15 and an essence from 25")
 	var h := Heroes.read(s)
 	h.shards["rook"] = 30
+	_expect(not Heroes.can_evolve(h, "rook", s) and Heroes.tier_gate_text(h, "rook", s) == "Clear stage 15 first", "tier 2 waits for stage 15 (Gates)")
+	s["stage_unlocked"] = 16
 	_expect(Heroes.can_evolve(h, "rook") and not Heroes.can_evolve(h, "rook", s), "tier 2 needs 30 shards and 2 Energy Sparks")
 	Materials.add(s, "ess_ion", 2)
 	_expect(Heroes.evolve(h, "rook", s) and Heroes.tier(h, "rook") == 2 and int(Materials.read(s).ess_ion) == 0, "evolving pays the sparks")
@@ -452,3 +457,26 @@ func _check_store() -> void:
 	_expect(pity_seen, "the 10th Uncommon open is the pity item: a Core, an Arc Charge (stage 12 is weak to Electric) and an Epic gear copy")
 	_expect(STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "" and int(Materials.read(s).key_u) >= 1 and STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "Not ready", "the daily pack's free part claims once a day")
 	_expect(STORE.odds_text(STORE.KEY_CHESTS["u"]).begins_with("45% 600 coins"), "odds text: " + STORE.odds_text(STORE.KEY_CHESTS["u"]))
+
+# gates (Rudy, 2026-11-06): stars, tiers and upgrade levels locked by the stages cleared; premium
+func _check_gates() -> void:
+	var s := {"stage_unlocked": 1}
+	_expect(Gates.cleared(s) == 0 and Gates.cleared({"stage_unlocked": 21}) == 20, "cleared stages = stage_unlocked - 1")
+	_expect(Gates.grade_stage(1) == 0 and Gates.grade_stage(2) == 10 and Gates.grade_stage(3) == 20 and Gates.grade_stage(4) == 35 and Gates.grade_stage(5) == 50, "stars -> stage: 0 / 10 / 20 / 35 / 50")
+	_expect(Heroes.gate("sparks") == 0 and Heroes.gate("frost") == 10 and Heroes.gate("hollow") == 20 and Heroes.gate("nyx") == 35 and Heroes.gate("ember") == 35, "hero gates by stars (Nyx's own 20 and Ember's 30 are below their 4-star gate)")
+	_expect(Turrets.gate("sentry") == 0 and Turrets.gate("lance") == 10 and Turrets.gate("gravity") == 20 and Turrets.gate("prism") == 35 and Turrets.gate("mines") == 30, "turret gates: stars, or the turret's own stage when higher (Mine Layer 30)")
+	_expect(DroneData.gate("spark") == 10 and DroneData.gate("wisp") == 20 and DroneData.gate("bat") == 35 and DroneData.gate("scout") == 0, "drone body gates by stars; the pilot-level bodies have none")
+	_expect(Gates.level_cap(s, 60) == 20 and Gates.level_cap({"stage_unlocked": 11}, 60) == 30 and Gates.level_cap({"stage_unlocked": 41}, 60) == 60, "hero levels: 20 open, 30 after stage 10, all 60 after stage 40")
+	_expect(Gates.level_cap(s, 30) == 10 and Gates.level_cap({"stage_unlocked": 21}, 30) == 20 and Gates.level_cap(s, 20) == 7 and Gates.level_cap(s, 10) == 3, "weapon 10 / 20, turret track 7, drone 3 open at the start")
+	_expect(Gates.level_stage(11, 30) == 10 and Gates.level_stage(16, 30) == 20 and Gates.level_stage(21, 30) == 30 and Gates.level_stage(30, 30) == 40 and Gates.level_stage(5, 30) == 0, "the stage a weapon level needs: 11 -> 10, 16 -> 20, 21 -> 30, 26+ -> 40")
+	_expect(Gates.cap_text(s, 10, 30) == "Stage 10\nfor Lv.11" and Gates.cap_text(s, 5, 30) == "" and Gates.cap_text(s, 30, 30) == "", "cap text only at the cap")
+	var h := Heroes.read(s)
+	s["coins"] = 100000
+	for i in 25:
+		Heroes.level_up(s, h, "rook")
+	_expect(Heroes.level(h, "rook") == 20, "a fresh save levels Rook to 20 and no further (got %d)" % Heroes.level(h, "rook"))
+	_expect(Heroes.premium("ember") and not Heroes.premium("nyx") and Heroes.cost_text("ember") == "Crystals only" and not Heroes.can_afford({"coins": 999999, "parts": {"alloy": 99, "cell": 99, "core": 99}, "materials": {"ess_solar": 9}}, "ember"), "Ember is premium: crystals only")
+	var ps := {"stage_unlocked": 40, "coins": 999999, "crystals": 700, "parts": {"alloy": 99, "cell": 99, "core": 99}, "materials": {"ess_solar": 9}}
+	var ph := Heroes.read(ps)
+	_expect(Heroes.unlock(ps, ph, "ember", false) == "Crystals only" and Heroes.unlock(ps, ph, "ember", true) == "" and Heroes.owned(ph, "ember") and int(ps.crystals) == 50, "Ember: coins refused, 650 crystals accepted")
+	_expect(Gates.tier_open({"stage_unlocked": 16}, 2) and not Gates.tier_open({"stage_unlocked": 16}, 3) and Gates.tier_open({"stage_unlocked": 31}, 3), "tier 2 after stage 15, tier 3 after 30")
