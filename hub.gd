@@ -49,7 +49,7 @@ const RIGHT_RAIL := [
 	{"id": "DailyButton", "icon": "daily", "label": "Daily", "dot": false,
 		"go": ["NavQuests", "quests_tab", 0]},
 	{"id": "GiftsButton", "icon": "gifts", "label": "Gifts", "dot": false,
-		"go": ["NavStore", "store_tab", 0]},
+		"go": ["NavStore", "store_tab", 1]},
 	{"id": "RanksButton", "icon": "ranks", "label": "Ranks", "dot": false, "hidden": true,   # no dead buttons (dev168): back with the online update
 		"title": "RANKS", "body": "Rankings run in 30-day seasons with rewards by rank. They need the online update (2.0)."},
 ]
@@ -142,13 +142,14 @@ func _load_save() -> void:
 				crystals = int(data.get("crystals", 0))
 				best_score = int(data.get("best_score", 0))
 				best_kills = int(data.get("best_kills", 0))
-				stage_unlocked = int(data.get("stage_unlocked", 1))
+				DevTools.on = bool(data.get("dev_mode", false))   # before the gates below (dev mode opens every stage)
+				stage_unlocked = StageData.stage_top(data)
 				elite_stage_unlocked = StageData.elite_top(data)   # the Elite ladder, never past your Standard progress (dev168)
 				stage = clampi(int(data.get("selected_stage", 1)), 1, elite_stage_unlocked if bool(data.get("selected_elite", false)) else stage_unlocked)
 				mode = "Elite" if bool(data.get("selected_elite", false)) else "Normal"
 				pilot_xp = int(data.get("pilot_xp", 0))
 				level = Turrets.pilot_level(pilot_xp)
-				elite_unlocked = level >= 10
+				elite_unlocked = level >= 10 or DevTools.on
 
 # ---------------------------------------------------------------- styles
 
@@ -315,7 +316,7 @@ func _build_home() -> void:
 	dockL.add_child(_coin_btn)
 	_crystal_btn = _pill_button("CrystalButton", "ui_crystal", _fmt(crystals))
 	_crystal_btn.pressed.connect(func(): _side_popup("CRYSTALS", "Premium currency. Earned from missions, trophies, the daily gift and chests; crystal packs come with the Google Play release.", [["Open the Store", func():
-		get_tree().root.set_meta("store_tab", 1)
+		get_tree().root.set_meta("store_tab", 0)
 		_on_nav_tap("NavStore", NAV_PATHS["NavStore"])]]))
 	dockL.add_child(_crystal_btn)
 	# power tokens: playing a stage and collecting Patrol cost them (Energy)
@@ -1326,29 +1327,34 @@ const STORE := preload("res://store.gd")
 func _chest_popup() -> void:
 	_chest_open_fx(true)
 	var sv := Progress.read()
+	var mats := Materials.read(sv)
 	var lines: Array = []
 	var actions: Array = []
-	for c in STORE.CHESTS:
-		var lo := 1 << 30
-		var hi := 0
-		var jackpot := ""
-		for r in c.rolls:
-			if r[1].has("coins"):
-				lo = mini(lo, int(r[1].coins))
-				hi = maxi(hi, int(r[1].coins))
-			else:
-				jackpot = "%d%% chance of %d crystals" % [int(r[0]), int(r[1].crystals)]
-		lines.append("%s: %d-%d coins, %s" % [c.name, lo, hi, jackpot])
-		var chest: Dictionary = c
-		actions.append(["Open %s  ·  %d crystals" % [c.name, int(c.price)], func(): _open_home_chest(chest)])
+	# Store 2.0 (dev189): the key chests; the free open first, then a key, the Legendary for crystals
+	for tier in STORE.CHEST_ORDER:
+		var c: Dictionary = STORE.KEY_CHESTS[tier]
+		var t2 := String(tier)
+		if c.free:
+			var left_s: int = STORE.free_left_s(sv, "chest_" + t2, STORE.DAY_S)
+			lines.append("%s: free %s" % [c.name, "NOW" if left_s == 0 else "in " + STORE.left_text(left_s)])
+			if left_s == 0:
+				actions.append(["Open %s  ·  FREE" % c.name, func(): _open_home_chest(t2, "free")])
+		if String(c.key) != "" and int(mats.get(c.key, 0)) > 0:
+			actions.append(["Open %s  ·  1 key (%d)" % [c.name, int(mats.get(c.key, 0))], func(): _open_home_chest(t2, "key")])
+		elif String(c.key) == "":
+			actions.append(["Open %s  ·  %d crystals" % [c.name, int(c.crystals)], func(): _open_home_chest(t2, "crystals")])
+	actions.append(["All chests and odds", func():
+		get_tree().root.set_meta("store_tab", 0)
+		get_tree().change_scene_to_file("res://store.tscn")])
 	_side_popup("CHEST", "\n".join(lines) + "\nYou have %d crystals." % int(sv.get("crystals", 0)), actions)
 
-func _open_home_chest(c: Dictionary) -> void:
+func _open_home_chest(tier: String, how: String) -> void:
 	var sv := Progress.read()
-	var reward: Dictionary = STORE.open_chest_in(sv, c)
-	if reward.is_empty():
-		_side_popup("CHEST", "Not enough crystals for the %s (%d)." % [c.name, int(c.price)])
+	var reward: Dictionary = STORE.chest_open_in(sv, tier, how)
+	if reward.has("why"):
+		_side_popup("CHEST", String(reward.why))
 		return
+	reward.erase("pity")
 	Progress.write(sv)
 	_load_save()
 	_coin_btn.text = _fmt(coins)

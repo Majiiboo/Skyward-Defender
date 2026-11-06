@@ -27,7 +27,8 @@ var _worlds := {}
 func _ready() -> void:
 	set_anchors_preset(Control.PRESET_FULL_RECT)
 	var d := _read()
-	unlocked = int(d.get("stage_unlocked", 1))
+	DevTools.on = bool(d.get("dev_mode", false))   # before the gates (dev mode opens every stage)
+	unlocked = StageData.stage_top(d)   # dev mode: every stage
 	selected = clampi(int(d.get("selected_stage", 1)), 1, unlocked)
 	var s = d.get("stars", {})
 	stars = s if typeof(s) == TYPE_DICTIONARY else {}

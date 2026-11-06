@@ -57,7 +57,13 @@ const MAX_STAGE := 60
 # The highest Elite stage you may play (Rudy, dev168): Elite is its own ladder (save
 # "elite_unlocked" = the next Elite stage, opened by Elite wins) but it never runs ahead of
 # your Standard progress: Elite stage N needs Standard stage N cleared (stage_unlocked > N).
+# the highest Standard stage you may pick (dev mode opens every stage in every mode, Rudy dev189)
+static func stage_top(save: Dictionary) -> int:
+	return MAX_STAGE if DevTools.on else clampi(int(save.get("stage_unlocked", 1)), 1, MAX_STAGE)
+
 static func elite_top(save: Dictionary) -> int:
+	if DevTools.on:
+		return MAX_STAGE
 	var ladder := clampi(int(save.get("elite_unlocked", 1)), 1, MAX_STAGE)
 	var cleared := clampi(int(save.get("stage_unlocked", 1)) - 1, 1, MAX_STAGE)
 	return mini(ladder, cleared)

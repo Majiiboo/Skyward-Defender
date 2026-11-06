@@ -24,6 +24,7 @@ func _initialize() -> void:
 	_check_unlocks()
 	_check_heroes()
 	_check_materials()
+	_check_store()
 	_check_turrets()
 	_check_etrials()
 	_check_mods()
@@ -401,4 +402,34 @@ func _check_materials() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 3
 	_expect(int(Materials.stage_drop(30, false, rng).get("ess_frost", 0)) == 1 and int(Materials.stage_drop(30, true, rng).get("ess_frost", 0)) == 2, "stage 30 (Magma, weak to Ice) drops a Frost Core, two in Elite")
-	_expect(Materials.horde_drop(23) == {"barrel": 2, "rotor": 2} and Materials.horde_drop(7).is_empty(), "Horde: a barrel and a rotor per 10 waves")
+	_expect(Materials.horde_drop(23) == {"barrel": 2, "rotor": 2, "key_u": 2} and Materials.horde_drop(7).is_empty(), "Horde: a barrel, a rotor and a key per 10 waves")
+
+# Store 2.0 (store.gd, dev189): key chests, free opens, pity, packs
+func _check_store() -> void:
+	var STORE = load("res://store.gd")
+	var s := {"coins": 0, "crystals": 50, "selected_stage": 12, "stage_unlocked": 13}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	_expect(STORE.free_left_s(s, "chest_u", STORE.DAY_S) == 0, "a fresh save has the free Uncommon open ready")
+	var r1: Dictionary = STORE.chest_open_in(s, "u", "free", rng)
+	_expect(not r1.has("why") and STORE.free_left_s(s, "chest_u", STORE.DAY_S) > 0, "the free open works once, then waits a day")
+	_expect(STORE.chest_open_in(s, "u", "free", rng).has("why"), "no second free open today")
+	_expect(STORE.chest_open_in(s, "u", "key", rng).has("why"), "no key, no key open")
+	Materials.add(s, "key_u", 2)
+	var r2: Dictionary = STORE.chest_open_in(s, "u", "key", rng)
+	_expect(not r2.has("why") and int(Materials.read(s).key_u) == 1, "a key opens the chest and is spent")
+	_expect(STORE.chest_open_in(s, "u", "crystals", rng).has("why") == false and int(s.crystals) == 10, "40 crystals open it too")
+	_expect(STORE.chest_open_in(s, "l", "crystals", rng).has("why"), "the Legendary chest needs 300 crystals")
+	_expect(STORE.chest_open_in(s, "l", "free", rng).has("why"), "the Legendary chest has no free open")
+	# pity: the 10th Uncommon open is the Epic item
+	Materials.add(s, "key_u", 20)
+	var pity_seen := false
+	var opened: int = STORE.opens_of(s, "u")
+	while opened < 10:
+		var r: Dictionary = STORE.chest_open_in(s, "u", "key", rng)
+		opened += 1
+		if opened == 10:
+			pity_seen = bool(r.get("pity", false)) and r.has("gear") and r.gear[0].rarity == "epic" and r.has("ess_scavenger")
+	_expect(pity_seen, "the 10th Uncommon open is the pity item: a Core, an Arc Charge (stage 12 is weak to Electric) and an Epic gear copy")
+	_expect(STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "" and int(Materials.read(s).key_u) >= 1 and STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "Not ready", "the daily pack's free part claims once a day")
+	_expect(STORE.odds_text(STORE.KEY_CHESTS["u"]).begins_with("45% 600 coins"), "odds text: " + STORE.odds_text(STORE.KEY_CHESTS["u"]))

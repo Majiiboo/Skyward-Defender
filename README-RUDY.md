@@ -412,6 +412,34 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 23 (after dev182): STORE 2.0 (your queue item 18) + DEV MODE opens every stage.
+- Five tabs: CHESTS | OFFERS | SHOP | CRYSTALS | EXCHANGE.
+- CHESTS: Uncommon, Epic and Legendary. Uncommon and Epic open with KEYS (Uncommon Key, Epic
+  Key: a boss stage drops one, Elite drops the Epic one on its boss stages and an Uncommon one
+  on a third of the rest, Horde pays one per 10 waves, the daily and weekly packs give one),
+  and each has one FREE open every 24 hours. Crystals open any chest (40 / 120 / 300); the
+  Legendary opens only with crystals. PITY: every 10th Uncommon open is an Epic item (a Core,
+  an essence and an Epic gear copy), every 10th Epic open a Legendary item (3 Cores, 3
+  essences, a Legendary gear copy, 150 crystals); the card says how many opens are left. The
+  odds are written on every chest. Essences and gear copies match the planet you have
+  selected, so you farm for what you need. The Home chest overlay opens the same chests.
+  The Workshop can also turn 3 Uncommon keys into an Epic key.
+- OFFERS: the attendance calendar as before, then the Daily, Weekly and Monthly packs, each
+  with a FREE part you claim on its own timer (daily: 300 coins + an Uncommon key; weekly: 3
+  Cells + an Epic key; monthly: 30 crystals + a Core + an essence) and the paid part marked
+  coming soon. Stage Pack and Season Pass teasers.
+- SHOP: one scrolling page in sections: coins (the old pouches and the speed pack), keys,
+  parts (once the Workshop is open), SPECIALTY (the selected planet's essence, barrels,
+  rotors, a Focus Lens), all for crystals at the stand-in rate.
+- CRYSTALS: the real-money packs, "opens on Google Play". EXCHANGE: event tokens and the
+  season shop, with the online update.
+- DEV MODE (your note): the Developer switch now opens every stage on Home, the Stage Map and
+  Modes, in Standard and Elite (and Horde runs from stage 60), Elite itself, and the Pilot
+  Ranks ladder gets a Fight button on every rank so you can jump to any trial. Element
+  trial steps still go in order (the step is the ladder).
+- The old crystal crates (Supply Crate, Vault Chest) are gone from the page; the code keeps
+  them for old saves.
+
 Update 22 (after dev182): MATERIALS + the Workshop CRAFT tab (your DESIGN-materials.md, built).
 - Twelve new materials on top of Alloy / Cells / Cores: an ESSENCE per element (Energy Spark,
   Arc Charge, Frost Core, Void Fragment, Dark Ember, Solar Flare), the WEAPON line (Scrap

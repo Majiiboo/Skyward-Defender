@@ -39,7 +39,7 @@ func _load() -> void:
 				_save = d
 				DevTools.on = bool(d.get("dev_mode", false))
 				player_level = Turrets.pilot_level(int(d.get("pilot_xp", 0)))
-				stage_unlocked = int(d.get("stage_unlocked", 1))
+				stage_unlocked = StageData.stage_top(d)   # dev mode: every stage
 				selected_stage = clampi(int(d.get("selected_stage", 1)), 1, stage_unlocked)
 
 func _save_patch(patch: Dictionary) -> void:
@@ -283,6 +283,16 @@ func _ladder() -> void:
 		h.add_child(name_box)
 		var status := "Won" if won else (("Next  ·  rec. Lv.%d" if is_next and Promotion.unlocked(_save, player_level) else "Rec. Lv.%d") % int(rk.level))
 		h.add_child(UIKit.label(status, 11, col, HORIZONTAL_ALIGNMENT_RIGHT))
+		if DevTools.on and not won:   # dev mode: fight any rank straight from the ladder (Rudy)
+			var fb := UIKit.gold_button("Fight", 11)
+			fb.custom_minimum_size = Vector2(56, 30)
+			fb.pressed.connect(func():
+				if Energy.try_play(self, false):
+					var s2 := Progress.read()
+					Promotion.start(s2, idx)
+					Progress.write(s2)
+					get_tree().change_scene_to_file("res://battle.tscn"))
+			h.add_child(fb)
 		v.add_child(h)
 	var close := UIKit.ghost_button("Close", 13)
 	close.custom_minimum_size = Vector2(0, 38)

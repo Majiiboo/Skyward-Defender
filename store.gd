@@ -1,24 +1,48 @@
 extends Control
-# Store (ROADMAP 1.0). Tabs:
-#   Offers  - a free gift once a day, plus crystal offers (coins, the x2 speed pack)
-#   Chests  - chests bought with crystals, opened on the spot (random coins / crystals)
-#   Packs   - real-money packs: shown, "coming soon" until Google Play billing is set up
-#   Parts   - upgrade parts for crystals (PART_DEALS)
-#   "Have a code?" (pop-up) - redeem codes (CODES below; one use per player). In 2.0 codes come from
-#             the server so new ones can be added any time.
-# Every reward goes through Progress.grant.
+# Store 2.0 (queue item 18, Rudy; dev189). Tabs:
+#   Chests   - three chests opened with KEYS (keys drop on boss stages, Elite and Horde, or are
+#              bought): Uncommon and Epic have one FREE open every 24 h and a PITY counter (every
+#              10th Uncommon open is an Epic item, every 10th Epic open a Legendary item); the
+#              Legendary chest opens only with crystals. Odds shown on the tile.
+#   Offers   - the attendance calendar, then the daily / weekly / monthly packs with their FREE
+#              part claimable on a timer (the paid part "coming soon"), stage packs later.
+#   Shop     - one scrolling page: coins, keys, parts, a Specialty section (essences, the lines).
+#   Crystals - real-money crystal packs: shown, "coming soon" until Google Play billing.
+#   Exchange - event tokens traded for items (2.0, with events); "coming soon".
+#   "Have a code?" (pop-up) - redeem codes (CODES; one use per player).
+# Every reward goes through Progress.grant. Keys are materials (materials.gd key_u / key_e).
 
-const DAILY_GIFT := {"coins": 150, "crystals": 3}
 const OFFERS := [
 	{"id": "coins_s", "name": "Coin Pouch", "text": "+600 coins", "price": 30, "reward": {"coins": 600}, "color": "rare"},
 	{"id": "coins_l", "name": "Coin Chest", "text": "+2,000 coins", "price": 90, "reward": {"coins": 2000}, "color": "epic"},
 	{"id": "speed", "name": "Speed Pack", "text": "Unlocks x2 game speed", "price": 300, "once": true, "flag": "speed_pack", "color": "legendary"},
 ]
+# the old crystal crates, kept so an old Home chest overlay and saves keep working
 const CHESTS := [
 	{"id": "supply", "name": "Supply Crate", "price": 25, "color": "rare",
 		"rolls": [[60, {"coins": 400}], [30, {"coins": 800}], [10, {"crystals": 40}]]},
 	{"id": "vault", "name": "Vault Chest", "price": 80, "color": "epic",
 		"rolls": [[50, {"coins": 1500}], [35, {"coins": 3000}], [15, {"crystals": 150}]]},
+]
+# KEY CHESTS. A roll's "ess" = that many essences of the element the selected planet is weak to;
+# "gear" = a gear copy of the selected stage's set at that rarity (both resolved when opened).
+const DAY_S := 86400
+const KEY_CHESTS := {
+	"u": {"name": "Uncommon Chest", "color": "rare", "key": "key_u", "crystals": 40, "free": true, "icon": "ic_chest_u", "pity": 10,
+		"pity_text": "an Epic item", "pity_reward": {"core": 1, "ess": 1, "gear": "epic"},
+		"rolls": [[45, {"coins": 600}], [22, {"alloy": 6}], [15, {"cell": 2}], [12, {"barrel": 1, "rotor": 1}], [6, {"crystals": 25}]]},
+	"e": {"name": "Epic Chest", "color": "epic", "key": "key_e", "crystals": 120, "free": true, "icon": "ic_chest_e", "pity": 10,
+		"pity_text": "a Legendary item", "pity_reward": {"core": 3, "ess": 3, "gear": "legendary", "crystals": 150},
+		"rolls": [[32, {"coins": 2500}], [24, {"cell": 5}], [16, {"core": 1}], [16, {"ess": 1}], [12, {"crystals": 80}]]},
+	"l": {"name": "Legendary Chest", "color": "legendary", "key": "", "crystals": 300, "free": false, "icon": "ic_chest_l", "pity": 0,
+		"rolls": [[38, {"coins": 6000, "core": 2}], [30, {"ess": 3}], [22, {"gear": "legendary"}], [10, {"crystals": 400}]]},
+}
+const CHEST_ORDER := ["u", "e", "l"]
+# the packs: the free part is claimable every `every` seconds; the paid part waits for billing
+const PACKS_FREE := [
+	{"id": "daily", "name": "Daily Pack", "every": DAY_S, "free": {"coins": 300, "key_u": 1}, "paid": "Coins x3 + 2 keys", "color": "rare"},
+	{"id": "weekly", "name": "Weekly Pack", "every": 7 * DAY_S, "free": {"cell": 3, "key_e": 1}, "paid": "Cores + an Epic key", "color": "epic"},
+	{"id": "monthly", "name": "Monthly Pack", "every": 30 * DAY_S, "free": {"crystals": 30, "core": 1, "ess": 1}, "paid": "Crystals x300 + a Legendary chest", "color": "legendary"},
 ]
 const PACKS := [
 	["Starter Pack", "1,500 coins + 100 crystals", "$1.99"], ["Crystals x300", "premium currency", "$4.99"],
@@ -30,11 +54,15 @@ const CODES := {
 	"WELCOME": {"coins": 300},
 	"LUNA": {"crystals": 30},
 }
-
 # Upgrade parts for crystals, at the same rate crystals stand in for missing parts
 # (Parts.KINDS crystals), so buying them is a shortcut, never a better deal.
 const PART_DEALS := [{"kind": "alloy", "n": 5}, {"kind": "cell", "n": 3}, {"kind": "core", "n": 1}]
 const PART_COLOR := {"alloy": "rare", "cell": "epic", "core": "legendary"}
+# keys and the material lines for crystals (Materials.KINDS crystals x n)
+const KEY_DEALS := [{"kind": "key_u", "n": 1, "color": "rare"}, {"kind": "key_e", "n": 1, "color": "epic"}, {"kind": "key_u", "n": 5, "color": "rare"}]
+const SPECIALTY := [{"kind": "ess", "n": 1, "color": "legendary"}, {"kind": "barrel", "n": 3, "color": "rare"}, {"kind": "rotor", "n": 3, "color": "rare"}, {"kind": "lens", "n": 1, "color": "epic"}]
+
+const TAB_NAMES := ["Chests", "Offers", "Shop", "Crystals", "Exchange"]
 
 var tab := 0
 var d := {}
@@ -50,7 +78,152 @@ func _ready() -> void:
 	_build()
 	_fade_in_overlay()
 
-# One screen per tab, no long lists (Rudy): picture tiles, big numbers, few words.
+# ------------------------------------------------------------------ the rules (static: Home uses them too)
+static func now_s() -> int:
+	return int(Time.get_unix_time_from_system())
+
+static func _free_block(save: Dictionary) -> Dictionary:
+	var f = save.get("store_free", {})
+	return f if typeof(f) == TYPE_DICTIONARY else {}
+
+# seconds until the free open / claim `key` is ready again (0 = ready)
+static func free_left_s(save: Dictionary, key: String, every: int) -> int:
+	var t := int(_free_block(save).get(key, 0))
+	return maxi(0, every - (now_s() - t)) if t > 0 else 0
+
+static func _mark_free(save: Dictionary, key: String) -> void:
+	var f := _free_block(save)
+	f[key] = now_s()
+	save["store_free"] = f
+
+static func left_text(s: int) -> String:
+	if s >= DAY_S:
+		return "%dd %dh" % [s / DAY_S, (s % DAY_S) / 3600]
+	return "%dh %02dm" % [s / 3600, (s % 3600) / 60] if s >= 3600 else "%dm" % maxi(1, s / 60)
+
+static func opens_of(save: Dictionary, tier: String) -> int:
+	var o = save.get("chest_opens", {})
+	return int(o.get(tier, 0)) if typeof(o) == TYPE_DICTIONARY else 0
+
+# "ess" and "gear" entries become real rewards for the selected stage
+static func resolve(save: Dictionary, reward: Dictionary, rng: RandomNumberGenerator = null) -> Dictionary:
+	var out := {}
+	var stage := clampi(int(save.get("selected_stage", 1)), 1, StageData.MAX_STAGE)
+	for k in reward:
+		if k == "ess":
+			out[Materials.essence_of(String(Heroes.family(stage).weak))] = int(reward[k])
+		elif k == "gear":
+			var r := rng if rng != null else RandomNumberGenerator.new()
+			if rng == null:
+				r.randomize()
+			out["gear"] = [{"id": GearData.roll_drop(stage, r).id, "rarity": String(reward[k])}]
+		else:
+			out[k] = reward[k]
+	return out
+
+# the odds line of a chest: "45% 600 coins · 22% 6 Alloy ..."
+static func odds_text(c: Dictionary) -> String:
+	var bits: Array = []
+	for r in c.rolls:
+		bits.append("%d%% %s" % [int(r[0]), roll_text(r[1])])
+	return "  ·  ".join(bits)
+
+static func roll_text(reward: Dictionary) -> String:
+	var bits: Array = []
+	for k in reward:
+		if k == "ess":
+			bits.append("%d essence" % int(reward[k]))
+		elif k == "gear":
+			bits.append("a %s gear copy" % String(reward[k]))
+		elif k == "coins" or k == "crystals":
+			bits.append("%s %s" % [UIKit.num(int(reward[k])), k])
+		else:
+			bits.append("%d %s" % [int(reward[k]), Parts.kind(String(k)).name])
+	return " + ".join(bits)
+
+# Open key chest `tier` paying `how` ("free", "key" or "crystals"). Changes `save` in place.
+# Returns the reward (resolved and granted; "pity": true when the pity item came), or {"why": ...}.
+static func chest_open_in(save: Dictionary, tier: String, how: String, rng: RandomNumberGenerator = null) -> Dictionary:
+	if not KEY_CHESTS.has(tier):
+		return {"why": "No such chest"}
+	var c: Dictionary = KEY_CHESTS[tier]
+	if how == "free":
+		if not c.free or free_left_s(save, "chest_" + tier, DAY_S) > 0:
+			return {"why": "The free open is not ready"}
+		_mark_free(save, "chest_" + tier)
+	elif how == "key":
+		if String(c.key) == "" or int(Materials.read(save).get(c.key, 0)) <= 0:
+			return {"why": "No %s" % Materials.name_of(String(c.key))}
+		Materials.add(save, String(c.key), -1)
+	else:
+		if int(save.get("crystals", 0)) < int(c.crystals) and not DevTools.on:
+			return {"why": "Not enough crystals"}
+		if not DevTools.on:
+			save["crystals"] = int(save.get("crystals", 0)) - int(c.crystals)
+	var o = save.get("chest_opens", {})
+	if typeof(o) != TYPE_DICTIONARY:
+		o = {}
+	o[tier] = int(o.get(tier, 0)) + 1
+	save["chest_opens"] = o
+	var r := rng if rng != null else RandomNumberGenerator.new()
+	if rng == null:
+		r.randomize()
+	var reward: Dictionary
+	var pity := int(c.pity) > 0 and int(o[tier]) % int(c.pity) == 0
+	if pity:
+		reward = resolve(save, c.pity_reward, r)
+	else:
+		var roll := r.randi() % 100
+		var picked: Dictionary = c.rolls[0][1]
+		var acc := 0
+		for rr in c.rolls:
+			acc += int(rr[0])
+			if roll < acc:
+				picked = rr[1]
+				break
+		reward = resolve(save, picked, r)
+	Progress.grant(save, reward)
+	if pity:
+		reward["pity"] = true
+	return reward
+
+# the old crystal crates (Home's overlay on older builds)
+static func open_chest_in(save: Dictionary, c: Dictionary) -> Dictionary:
+	if int(save.get("crystals", 0)) < int(c.price):
+		return {}
+	save["crystals"] = int(save.get("crystals", 0)) - int(c.price)
+	var roll := randi() % 100
+	var reward: Dictionary = c.rolls[0][1]
+	var acc := 0
+	for r in c.rolls:
+		acc += int(r[0])
+		if roll < acc:
+			reward = r[1]
+			break
+	Progress.grant(save, reward)
+	return reward
+
+# claim a pack's free part; "" on success or why not
+static func claim_pack_in(save: Dictionary, p: Dictionary) -> String:
+	if free_left_s(save, "pack_" + String(p.id), int(p.every)) > 0:
+		return "Not ready"
+	_mark_free(save, "pack_" + String(p.id))
+	Progress.grant(save, resolve(save, p.free))
+	return ""
+
+# is any free thing waiting (the Store's red dot)
+static func free_waiting(save: Dictionary) -> bool:
+	for t in ["u", "e"]:
+		if free_left_s(save, "chest_" + t, DAY_S) == 0:
+			return true
+	for p in PACKS_FREE:
+		if free_left_s(save, "pack_" + String(p.id), int(p.every)) == 0:
+			return true
+	return false
+
+# ------------------------------------------------------------------ the page
+# One screen per tab, no long lists (Rudy): picture tiles, big numbers, few words. The Shop is
+# the one scrolling page, in sections.
 func _build() -> void:
 	var root := MarginContainer.new()
 	root.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -77,13 +250,13 @@ func _build() -> void:
 	_wallet.add_theme_constant_override("separation", 10)
 	top.add_child(_wallet)
 	col.add_child(top)
-	# Home's Gifts / Starter buttons can ask for a tab ("store_tab" meta on the tree root)
+	# Home's Gifts / Starter / Chest buttons can ask for a tab ("store_tab" meta on the tree root)
 	if get_tree().root.has_meta("store_tab"):
 		tab = int(get_tree().root.get_meta("store_tab"))
 		get_tree().root.remove_meta("store_tab")
-	var hidden: Array = [] if Unlocks.open(d, "workshop") else [2]   # Parts only once the Workshop is open (Unlocks)
-	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
-	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab, [], hidden, [UIKit.ic("ic_gift"), UIKit.ic("ic_chest_e"), UIKit.ic("ic_alloy"), UIKit.ic("ic_pack")])
+	tab = clampi(tab, 0, TAB_NAMES.size() - 1)
+	_tabs_row = UIKit.tabs(TAB_NAMES, func(i): tab = i; _fill(), tab, [], [],
+		[UIKit.ic("ic_chest_e"), UIKit.ic("ic_gift"), UIKit.ic("ic_coin"), UIKit.ic("ic_crystal"), UIKit.ic("ic_exchange", "ic_pack")])
 	col.add_child(_tabs_row)
 	_page = VBoxContainer.new()
 	_page.add_theme_constant_override("separation", 10)
@@ -101,14 +274,19 @@ func _fill() -> void:
 	for c in _wallet.get_children():
 		c.queue_free()
 	_wallet.add_child(UIKit.wallet(int(d.get("coins", 0)), int(d.get("crystals", 0))))
-	UIKit.tab_dots(_tabs_row, [Progress.attention(d).store, false, false, false])   # today's gift waiting
+	var chest_free := free_left_s(d, "chest_u", DAY_S) == 0 or free_left_s(d, "chest_e", DAY_S) == 0
+	var pack_free := false
+	for p in PACKS_FREE:
+		pack_free = pack_free or free_left_s(d, "pack_" + String(p.id), int(p.every)) == 0
+	UIKit.tab_dots(_tabs_row, [chest_free, Progress.attention(d).store or pack_free, false, false, false])
 	match tab:
-		0: _fill_offers()
-		1: _fill_chests()
-		2: _fill_parts()
-		3: _fill_packs()
+		0: _fill_chests()
+		1: _fill_offers()
+		2: _fill_shop()
+		3: _fill_crystals()
+		4: _fill_exchange()
 	UIKit.reveal(_page)
-	if tab == 0:
+	if tab == 1:
 		call_deferred("_tips")
 
 # A shop tile: a big picture, a big number, one short line, the button.
@@ -133,12 +311,12 @@ func _tile(icon: Texture2D, big: String, small: String, color: String, button: B
 	UIKit.depth(p, col, true, 0.3)
 	return p
 
-func _grid() -> GridContainer:
+func _grid(into: Control = null) -> GridContainer:
 	var g := GridContainer.new()
 	g.columns = 2
 	g.add_theme_constant_override("h_separation", 10)
 	g.add_theme_constant_override("v_separation", 10)
-	_page.add_child(g)
+	(into if into != null else _page).add_child(g)
 	return g
 
 # a crystal price: the crystal picture and the number
@@ -149,6 +327,84 @@ func _price_button(price: int, ok: bool, gold: bool = false) -> Button:
 	b.add_theme_constant_override("icon_max_width", 18)
 	b.disabled = not ok
 	return b
+
+# ------------------------------------------------------------------ chests
+# One wide card per chest: the picture, the odds, the pity counter, and the ways to open it:
+# FREE (or when it is back), a key (how many you hold), crystals.
+func _fill_chests() -> void:
+	var mats := Materials.read(d)
+	for tier in CHEST_ORDER:
+		var c: Dictionary = KEY_CHESTS[tier]
+		var col: Color = UIKit.RARITY.get(String(c.color), UIKit.CYAN)
+		var p := PanelContainer.new()
+		p.add_theme_stylebox_override("panel", UIKit.lift(UIKit.box(Color(col.r * 0.12, col.g * 0.12, col.b * 0.2, 0.82), Color(col, 0.6), 14)))
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 6)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		var tr := TextureRect.new()
+		tr.texture = UIKit.ic(String(c.icon), "chest3d_closed")
+		tr.custom_minimum_size = Vector2(64, 64)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h.add_child(tr)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.add_theme_constant_override("separation", 1)
+		tv.add_child(UIKit.label(String(c.name), 16, col))
+		var odds := UIKit.label(odds_text(c), 10, UIKit.MUTED)
+		odds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tv.add_child(odds)
+		if int(c.pity) > 0:
+			var left: int = int(c.pity) - opens_of(d, tier) % int(c.pity)
+			tv.add_child(UIKit.label("%s in %d open%s" % [String(c.pity_text).capitalize() if left > 1 else String(c.pity_text).capitalize(), left, "" if left == 1 else "s"], 10, UIKit.GOLD))
+		h.add_child(tv)
+		v.add_child(h)
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var t2: String = tier
+		if c.free:
+			var left_s := free_left_s(d, "chest_" + tier, DAY_S)
+			var fb := UIKit.gold_button("FREE" if left_s == 0 else "Free in %s" % left_text(left_s), 13)
+			fb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			fb.custom_minimum_size = Vector2(0, 38)
+			fb.disabled = left_s > 0
+			fb.pressed.connect(func(): _open_key_chest(t2, "free"))
+			row.add_child(fb)
+		if String(c.key) != "":
+			var have := int(mats.get(c.key, 0))
+			var kb := UIKit.teal_button("Key  (%d)" % have, 13)
+			kb.icon = Materials.icon(String(c.key))
+			kb.expand_icon = true
+			kb.add_theme_constant_override("icon_max_width", 18)
+			kb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			kb.custom_minimum_size = Vector2(0, 38)
+			kb.disabled = have <= 0
+			kb.pressed.connect(func(): _open_key_chest(t2, "key"))
+			row.add_child(kb)
+		var cb := _price_button(int(c.crystals), int(d.get("crystals", 0)) >= int(c.crystals) or DevTools.on, String(c.key) == "")
+		cb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cb.custom_minimum_size = Vector2(0, 38)
+		cb.pressed.connect(func(): _open_key_chest(t2, "crystals"))
+		row.add_child(cb)
+		v.add_child(row)
+		p.add_child(v)
+		UIKit.depth(p, col, true, 0.3)
+		_page.add_child(p)
+	_page.add_child(UIKit.label("Keys drop on boss stages, in Elite and every 10 Horde waves. Essence and gear match the planet you have selected.", 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	_page.get_child(_page.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+func _open_key_chest(tier: String, how: String) -> void:
+	d = Progress.read()
+	var reward := chest_open_in(d, tier, how)
+	if reward.has("why"):
+		_toast(String(reward.why))
+		return
+	Sfx.play("buy")
+	Progress.write(d)
+	Progress.bump("chests")
+	_chest_fx(reward)
+	_fill()
 
 # ------------------------------------------------------------------ offers
 func _fill_offers() -> void:
@@ -229,19 +485,49 @@ func _fill_offers() -> void:
 	gv.add_child(cells)
 	gp.add_child(gv)
 	_page.add_child(gp)
+	# the packs: each with a FREE part on its own timer; the paid part waits for billing
+	_page.add_child(UIKit.header("PACKS"))
+	for p in PACKS_FREE:
+		var col: Color = UIKit.RARITY.get(String(p.color), UIKit.CYAN)
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", UIKit.lift(UIKit.box(Color(col.r * 0.12, col.g * 0.12, col.b * 0.2, 0.82), Color(col, 0.6), 12)))
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		var ic := TextureRect.new()
+		ic.texture = UIKit.ic("ic_pack", "gifts")
+		ic.custom_minimum_size = Vector2(44, 44)
+		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		h.add_child(ic)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.add_theme_constant_override("separation", 0)
+		tv.add_child(UIKit.label(String(p.name), 14, col))
+		tv.add_child(UIKit.label("FREE: " + Progress.reward_text(resolve(d, p.free)), 10, Color(0.55, 1.0, 0.6)))
+		tv.add_child(UIKit.label("Paid: %s  ·  coming soon" % String(p.paid), 10, UIKit.MUTED))
+		h.add_child(tv)
+		var left_s := free_left_s(d, "pack_" + String(p.id), int(p.every))
+		var b := UIKit.gold_button("Claim" if left_s == 0 else left_text(left_s), 13)
+		b.custom_minimum_size = Vector2(96, 38)
+		b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		b.disabled = left_s > 0
+		var pk: Dictionary = p
+		b.pressed.connect(func():
+			d = Progress.read()
+			var why := claim_pack_in(d, pk)
+			if why != "":
+				_toast(why)
+				return
+			Progress.write(d)
+			Sfx.play("coin")
+			_toast("+ " + Progress.reward_text(resolve(d, pk.free)))
+			_fill())
+		h.add_child(b)
+		card.add_child(h)
+		_page.add_child(card)
 	var g := _grid()
-	for o in OFFERS:
-		var owned: bool = o.get("once", false) and bool(d.get(o.flag, false))
-		var b := _price_button(int(o.price), not owned and int(d.get("crystals", 0)) >= int(o.price))
-		if owned:
-			b.text = "Owned"
-			b.icon = null
-		var offer: Dictionary = o
-		b.pressed.connect(func(): _buy(offer))
-		var speed: bool = o.id == "speed"
-		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
-		g.add_child(_tile(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("ic_coin", "ui_coin"), big, o.name, o.color, b))
-	g.add_child(_teaser(load("res://icons/gifts.png"), "Weekly Pack", "Free items every week"))
+	g.add_child(_teaser(load("res://icons/starter.png"), "Stage Pack", "Beat stage 5: a pack for it"))
+	g.add_child(_teaser(load("res://icons/gifts.png"), "Season Pass", "With events (2.0)"))
 
 # A tile for what the Store will sell later (Store 2.0, dev141): the picture dimmed, a
 # SOON chip where the price would be, so the page does not look half empty.
@@ -286,82 +572,80 @@ func _buy(o: Dictionary) -> void:
 	Progress.write(d)
 	_fill()
 
-# ------------------------------------------------------------------ chests
-func _fill_chests() -> void:
-	var g := _grid()
-	for c in CHESTS:
-		var b := _price_button(int(c.price), int(d.get("crystals", 0)) >= int(c.price), true)
-		var chest: Dictionary = c
-		b.pressed.connect(func(): _open_chest(chest))
-		# what can come out: the coin range, and the crystal jackpot's chance
-		var lo := 1 << 30
-		var hi := 0
-		var jackpot := ""
-		for r in c.rolls:
-			if r[1].has("coins"):
-				lo = mini(lo, int(r[1].coins))
-				hi = maxi(hi, int(r[1].coins))
-			else:
-				jackpot = "%d%%: %d crystals" % [int(r[0]), int(r[1].crystals)]
-		g.add_child(_tile(UIKit.ic({"rare": "ic_chest_u", "epic": "ic_chest_e", "legendary": "ic_chest_l"}.get(String(c.color), "ic_chest_u"), "chest3d_closed"), "%s-%s" % [UIKit.num(lo), UIKit.num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
-	# Store 2.0 (queue 18): chests opened with keys, with a pity counter, and gear inside
-	g.add_child(_teaser(UIKit.ic("ic_key", "chest3d_closed"), "Key Chest", "Opened with keys from battle"))
-	g.add_child(_teaser(load("res://icons/gear_on.png"), "Gear Chest", "Gear copies, Epic every 10th"))
-	_page.add_child(UIKit.label("Coins, or the crystal jackpot", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-
-# Pay for chest `c` and roll it: the reward, or {} when crystals are short. Changes `save`.
-# Static so Home's chest overlay (hub.gd) opens the same chests (dev167).
-static func open_chest_in(save: Dictionary, c: Dictionary) -> Dictionary:
-	if int(save.get("crystals", 0)) < int(c.price):
-		return {}
-	save["crystals"] = int(save.get("crystals", 0)) - int(c.price)
-	var roll := randi() % 100
-	var reward: Dictionary = c.rolls[0][1]
-	var acc := 0
-	for r in c.rolls:
-		acc += int(r[0])
-		if roll < acc:
-			reward = r[1]
-			break
-	Progress.grant(save, reward)
-	return reward
-
-func _open_chest(c: Dictionary) -> void:
-	d = Progress.read()
-	var reward := open_chest_in(d, c)
-	if reward.is_empty():
-		return
-	Sfx.play("buy")
-	Progress.write(d)
-	_chest_fx(reward)
-	_fill()
-
-# ------------------------------------------------------------------ parts
-func _fill_parts() -> void:
+# ------------------------------------------------------------------ shop (one scrolling page)
+func _fill_shop() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	_page.add_child(scroll)
+	var col := VBoxContainer.new()
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	col.add_theme_constant_override("separation", 10)
+	scroll.add_child(col)
 	var have := Parts.read(d)
-	var g := _grid()
-	for deal in PART_DEALS:
-		var k: String = deal.kind
-		var price: int = int(deal.n) * int(Parts.KINDS[k].crystals)
-		var b := _price_button(price, int(d.get("crystals", 0)) >= price)
-		var dd: Dictionary = deal
-		b.pressed.connect(func(): _buy_parts(dd))
-		g.add_child(_tile(Parts.icon(k), "x%d" % int(deal.n), "%s  ·  have %d" % [Parts.KINDS[k].name, int(have[k])], PART_COLOR[k], b))
+	var crystals := int(d.get("crystals", 0))
+	# coins
+	col.add_child(UIKit.header("COINS"))
+	var g := _grid(col)
+	for o in OFFERS:
+		var owned: bool = o.get("once", false) and bool(d.get(o.flag, false))
+		var b := _price_button(int(o.price), not owned and crystals >= int(o.price))
+		if owned:
+			b.text = "Owned"
+			b.icon = null
+		var offer: Dictionary = o
+		b.pressed.connect(func(): _buy(offer))
+		var speed: bool = o.id == "speed"
+		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
+		g.add_child(_tile(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("ic_coin", "ui_coin"), big, o.name, o.color, b))
+	# keys
+	col.add_child(UIKit.header("KEYS"))
+	var gk := _grid(col)
+	for deal in KEY_DEALS:
+		gk.add_child(_deal_tile(deal, have, crystals))
+	# parts (once the Workshop is open)
+	if Unlocks.open(d, "workshop"):
+		col.add_child(UIKit.header("PARTS"))
+		var gp := _grid(col)
+		for deal in PART_DEALS:
+			gp.add_child(_deal_tile(deal, have, crystals))
+	# specialty: essences and the material lines
+	col.add_child(UIKit.header("SPECIALTY"))
+	var gs := _grid(col)
+	for deal in SPECIALTY:
+		gs.add_child(_deal_tile(deal, have, crystals))
+	col.add_child(UIKit.label("Crystals stand in for what you are short of at the same rate, so buying here is a shortcut, never a better deal.", 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	col.get_child(col.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 
-func _buy_parts(deal: Dictionary) -> void:
+# a tile selling n of a part, material or key ("ess" = the selected planet's essence)
+func _deal_tile(deal: Dictionary, have: Dictionary, crystals: int) -> PanelContainer:
+	var kind := String(deal.kind)
+	var resolved := resolve(d, {kind: int(deal.n)})
+	var real: String = resolved.keys()[0]
+	var price: int = int(deal.n) * int(Parts.kind(real).crystals)
+	var b := _price_button(price, crystals >= price)
+	var dd: Dictionary = deal
+	b.pressed.connect(func(): _buy_kind(dd))
+	var icon: Texture2D = Materials.icon(real) if Materials.is_material(real) else Parts.icon(real)
+	var color := String(deal.get("color", PART_COLOR.get(real, "rare")))
+	return _tile(icon, "x%d" % int(deal.n), "%s  ·  have %d" % [Parts.kind(real).name, int(have.get(real, 0))], color, b)
+
+func _buy_kind(deal: Dictionary) -> void:
 	d = Progress.read()
-	var price: int = int(deal.n) * int(Parts.KINDS[deal.kind].crystals)
+	var reward := resolve(d, {String(deal.kind): int(deal.n)})
+	var real: String = reward.keys()[0]
+	var price: int = int(deal.n) * int(Parts.kind(real).crystals)
 	if int(d.get("crystals", 0)) < price:
 		return
 	d["crystals"] = int(d.get("crystals", 0)) - price
-	var reward := {deal.kind: int(deal.n)}
 	Progress.grant(d, reward)
 	Progress.write(d)
+	Sfx.play("buy")
 	_toast("+ " + Progress.reward_text(reward))
 	_fill()
 
-# ------------------------------------------------------------------ packs
-func _fill_packs() -> void:
+# ------------------------------------------------------------------ crystals (real money, later)
+func _fill_crystals() -> void:
 	var g := _grid()
 	for p in PACKS:
 		var b := UIKit.ghost_button("%s  soon" % p[2], 13)
@@ -374,6 +658,13 @@ func _fill_packs() -> void:
 			icon = load("res://icons/starter.png")
 		g.add_child(_tile(icon, name, p[1], "epic", b))
 	_page.add_child(UIKit.label("Opens on Google Play", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+
+# ------------------------------------------------------------------ exchange (events, 2.0)
+func _fill_exchange() -> void:
+	var g := _grid()
+	g.add_child(_teaser(UIKit.ic("ic_token", "ui_coin"), "Event Tokens", "Trade them for chests and items"))
+	g.add_child(_teaser(UIKit.ic("ic_exchange", "ic_pack"), "Season Shop", "Rank rewards every 30 days"))
+	_page.add_child(UIKit.label("Events and seasons come with the online update (2.0)", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
 # ------------------------------------------------------------------ code (pop-up)
 func _code_popup() -> void:
@@ -433,7 +724,8 @@ func _code_popup() -> void:
 	input.text_submitted.connect(func(_t): redeem.call())
 	input.grab_focus()
 
-# the chest opens in the middle of the screen: lid up, light out, then the reward
+# the chest opens in the middle of the screen: lid up, light out, then the reward (the pity
+# item says so in gold)
 func _chest_fx(reward: Dictionary) -> void:
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0.01, 0.04, 0.7)
@@ -444,16 +736,19 @@ func _chest_fx(reward: Dictionary) -> void:
 	prop.size = Vector2(180, 180)
 	prop.position = size * 0.5 - Vector2(90, 120)
 	dim.add_child(prop)
-	var l := UIKit.label("+ " + Progress.reward_text(reward), 20, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	var shown := reward.duplicate()
+	shown.erase("pity")
+	var l := UIKit.label(("PITY ITEM!\n" if reward.get("pity", false) else "") + "+ " + Progress.reward_text(shown), 20, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
 	l.position = Vector2(0, size.y * 0.5 + 80.0)
-	l.size = Vector2(size.x, 30)
+	l.size = Vector2(size.x, 60)
+	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.modulate.a = 0.0
 	dim.add_child(l)
 	prop.call_deferred("open")
 	var tw := dim.create_tween()
 	tw.tween_interval(0.35)
 	tw.tween_property(l, "modulate:a", 1.0, 0.25)
-	tw.tween_interval(1.4)
+	tw.tween_interval(1.6)
 	tw.tween_property(dim, "modulate:a", 0.0, 0.3)
 	tw.tween_callback(dim.queue_free)
 

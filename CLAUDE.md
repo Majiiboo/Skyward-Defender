@@ -5,7 +5,19 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 12 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 13 updates (next push = dev182 + that count; see the build rule).
+  13. STORE 2.0 (queue 18) + DEV MODE STAGES: store.gd rewritten: KEY_CHESTS u / e / l (rolls, "ess" =
+     the selected planet's weakness essence, "gear" = a copy at that rarity, resolve()), chest_open_in
+     (save, tier, "free" | "key" | "crystals") with save "chest_opens" (pity every 10th) and
+     "store_free" {chest_u, chest_e, pack_daily/weekly/monthly: unix t}, free_left_s / left_text /
+     odds_text / claim_pack_in / free_waiting; tabs Chests | Offers (calendar + PACKS_FREE) | Shop
+     (ScrollContainer sections: OFFERS, KEY_DEALS, PART_DEALS, SPECIALTY via _deal_tile / _buy_kind) |
+     Crystals (PACKS) | Exchange (teasers); keys = Materials key_u / key_e (stage_drop / horde_drop,
+     recipe key_e from 3 key_u); hub _chest_popup / _open_home_chest on the key chests, Home metas
+     store_tab 1 = Offers, 0 = Chests; smoke _check_store. DEV MODE: StageData.stage_top(save) (MAX in
+     dev) + elite_top MAX in dev; hub / stage_map / modes read DevTools.on before the gates; hub
+     elite_unlocked or dev; modes ladder per-rank Fight button in dev. Luna: brief 9 art (chest
+     pieces, keys, packs, piles) drops into icons when it lands.
   12. MATERIALS + CRAFT (DESIGN-materials.md built): materials.gd Materials (KINDS 6 essences +
      barrel / lens / coil + rotor / gyro / flightcore, save "materials", icon() mat_<id> else element /
      parts icons, weapon_need / turret_need / drone_need / tier_need, RECIPES + craft(), stage_drop /
@@ -388,7 +400,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    machines+magma...). Waves built from a threat budget so mixing never spikes difficulty. The
    planet boss still announces each new family. Campaign/story mode later tells it family by
    family in one connected world.
-18. STORE 2.0 (Rudy, 2026-11-04). Tabs: Chests | Offers | Shop | Crystals | Exchange.
+18. STORE 2.0 DONE dev189 (update 13; real money still "coming soon"). Was (Rudy, 2026-11-04). Tabs: Chests | Offers | Shop | Crystals | Exchange.
    Chests: Uncommon / Epic / Legendary chests opened with KEYS (keys drop in battle or bought);
    pity: every 10th Uncommon open = an Epic item, every 10th Epic open = a Legendary item;
    one free Uncommon and one free Epic open every 24 h, Legendary only with crystals; a

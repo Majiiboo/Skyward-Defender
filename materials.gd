@@ -27,9 +27,12 @@ const KINDS := {
 	"rotor":      {"name": "Rotor",        "color": Color(0.7, 0.8, 0.9),   "crystals": 6,  "fb": "ic_alloy"},
 	"gyro":       {"name": "Gyro",         "color": Color(0.5, 0.95, 0.8),  "crystals": 20, "fb": "ic_cell"},
 	"flightcore": {"name": "Flight Core",  "color": Color(0.95, 0.8, 0.5),  "crystals": 60, "fb": "ic_core"},
+	# keys for the Store's chests (Store 2.0, dev189): drop on boss stages, in Elite and in Horde
+	"key_u":      {"name": "Uncommon Key", "color": Color(0.35, 0.95, 0.85), "crystals": 40, "fb": "ic_key"},
+	"key_e":      {"name": "Epic Key",     "color": Color(0.75, 0.55, 1.0),  "crystals": 120, "fb": "ic_key"},
 }
 const ORDER := ["ess_ion", "ess_scavenger", "ess_frost", "ess_void", "ess_nightmare", "ess_solar",
-	"barrel", "lens", "coil", "rotor", "gyro", "flightcore"]
+	"barrel", "lens", "coil", "rotor", "gyro", "flightcore", "key_u", "key_e"]
 const LINES := {"weapon": ["barrel", "lens", "coil"], "drone": ["rotor", "gyro", "flightcore"]}
 
 static func is_material(k: String) -> bool:
@@ -127,6 +130,8 @@ const RECIPES := [
 		"desc": "Drone line, step 2. From Lv.10."},
 	{"id": "flightcore", "name": "Flight Core", "makes": {"flightcore": 1}, "needs": {"gyro": 3, "core": 1}, "coins": 800,
 		"desc": "Drone line, step 3. From Lv.15."},
+	{"id": "key_e", "name": "Epic Key", "makes": {"key_e": 1}, "needs": {"key_u": 3}, "coins": 500,
+		"desc": "Three Uncommon keys become an Epic key for the Store's Epic Chest."},
 	{"id": "essence", "name": "Essence", "makes": {"ess_ion": 1}, "needs": {"cell": 10, "core": 2}, "coins": 1000, "pick": true,
 		"desc": "One essence of the element you pick. Hero tiers, 3-star heroes, high weapon and turret levels."},
 ]
@@ -168,8 +173,11 @@ static func stage_drop(stage: int, elite: bool, rng: RandomNumberGenerator) -> D
 	var ess := essence_of(String(Heroes.family(stage).weak))
 	if stage % 5 == 0:
 		out[ess] = 1 + (1 if elite else 0)
+		out["key_e" if elite else "key_u"] = 1   # a chest key (Store 2.0)
 	elif elite and rng.randf() < 0.35:
 		out[ess] = 1
+	elif elite and rng.randf() < 0.3:
+		out["key_u"] = 1
 	if stage >= 11 and rng.randf() < (0.25 if elite else 0.12):
 		out["barrel"] = 1
 	if stage >= 16 and rng.randf() < (0.25 if elite else 0.12):
@@ -178,4 +186,4 @@ static func stage_drop(stage: int, elite: bool, rng: RandomNumberGenerator) -> D
 
 # Horde: a barrel and a rotor for every 10 waves survived
 static func horde_drop(waves: int) -> Dictionary:
-	return {"barrel": waves / 10, "rotor": waves / 10} if waves >= 10 else {}
+	return {"barrel": waves / 10, "rotor": waves / 10, "key_u": waves / 10} if waves >= 10 else {}
