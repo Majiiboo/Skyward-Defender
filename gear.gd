@@ -2071,9 +2071,12 @@ class HeroStand extends Control:
 	var _disc: Texture2D
 	var _lights: Texture2D
 	var _beam: Texture2D
+	var _pool: Texture2D       # round 2 (orbit rings): the nebula pool and the two rings
+	var _ring_a: Texture2D
+	var _ring_b: Texture2D
 	var _light_layer: Control
 	func _ready() -> void:
-		for spec in [["_disc", "stand_disc"], ["_lights", "stand_glow"], ["_beam", "stand_beam"]]:
+		for spec in [["_disc", "stand_disc"], ["_lights", "stand_glow"], ["_beam", "stand_beam"], ["_pool", "stand_pool"], ["_ring_a", "stand_ring_a"], ["_ring_b", "stand_ring_b"]]:
 			var p := "res://gear/%s.png" % spec[1]
 			if ResourceLoader.exists(p):
 				set(spec[0], load(p))
@@ -2103,7 +2106,16 @@ class HeroStand extends Control:
 	func _draw() -> void:
 		var c := _centre()
 		var r := _radii()
-		if _disc:
+		if _pool:
+			# ROUND 2 (Rudy: no disc, no grid): the hero is the planet. Luna's nebula pool breathes under
+			# him on this layer; the rings, the beads and the column go on the additive layer
+			var w := _v2_w(r)
+			var h := w * 0.5
+			var br := 1.0 + 0.03 * sin(t * 0.9)
+			draw_set_transform(c, 0.0, Vector2(br, br))
+			draw_texture_rect(_pool, Rect2(-w * 0.5, -h * 0.5, w, h), false, Color(glow_col, 1.0).lerp(Color(0.9, 0.92, 1.0, 1.0), 0.55))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		elif _disc:
 			# blended in (Rudy: it did not sit in the world): a soft dark halo under it fading into
 			# the wallpaper, the disc itself a little smaller and see-through
 			draw_set_transform(c + Vector2(0, 8.0), 0.0, Vector2(1.0, 0.4))
@@ -2128,11 +2140,48 @@ class HeroStand extends Control:
 				continue
 			var from := b.position + Vector2(b.size.x * 0.5, b.size.y)
 			draw_line(from, Vector2(c.x - r.x * 0.7, c.y), Color(glow_col, 0.18), 1.0, true)
+	# ---- round 2: orbit rings (Luna's -v2 layers, dev188) ----
+	# the three flat layers (1024 x 512 as rendered) are drawn in one rectangle `w` wide centred
+	# on c, so they stack exactly as she painted them; the rings' ellipses measured by the cutter
+	const RING_A := [0.501, 0.471, 0.428, 0.245]   # centre x, y and radii, as shares of the picture
+	const RING_B := [0.499, 0.484, 0.282, 0.168]
+	const BEAM_W := 0.447                            # the cut column's width as a share of the picture
+	func _v2_w(r: Vector2) -> float:
+		return r.x * 1.1 / 0.442   # the outer ring a little wider than the old disc
+	func _draw_v2_lights(c: Vector2, r: Vector2, k: float) -> void:
+		var w := _v2_w(r)
+		var h := w * 0.5
+		var rect := Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h)
+		var L := _light_layer
+		if _beam:
+			var bw := w * BEAM_W
+			var bh := bw * _beam.get_height() / _beam.get_width()
+			L.draw_texture_rect(_beam, Rect2(c.x - bw * 0.5, c.y + h * 0.02 - bh, bw, bh), false, Color(glow_col, 0.42 * k))
+		if _ring_a:
+			L.draw_texture_rect(_ring_a, rect, false, Color(glow_col, clampf(0.7 * k + 0.12 * sin(t * 1.3), 0.0, 1.0)))
+		if _ring_b:
+			L.draw_texture_rect(_ring_b, rect, false, Color(glow_col, clampf(0.6 * k + 0.12 * sin(t * 1.3 + 2.0), 0.0, 1.0)))
+		# the beads travel round each ring, bright and larger along the front, faint behind him
+		for spec in [[RING_A, 6, 0.35], [RING_B, 4, -0.55]]:
+			var g: Array = spec[0]
+			var cen := Vector2(rect.position.x + g[0] * w, rect.position.y + g[1] * h)
+			var rad := Vector2(g[2] * w, g[3] * h)
+			var n: int = spec[1]
+			for i in n:
+				var a: float = t * spec[2] + TAU * i / n
+				var p := cen + Vector2(cos(a) * rad.x, sin(a) * rad.y)
+				var front: float = 0.5 + 0.5 * sin(a)   # 1 at the front of the ring (lower on screen)
+				var al: float = k * (0.25 + 0.7 * front)
+				L.draw_circle(p, 1.6 + 2.6 * front, Color(glow_col, al * 0.35))
+				L.draw_circle(p, 0.9 + 1.2 * front, Color(1.0, 1.0, 1.0, al))
 	func _draw_lights() -> void:
 		var c := _centre()
 		var r := _radii()
 		var k: float = 0.55 + 0.25 * glow + 0.2 * sin(t * 2.0) + _flash * 0.8
 		var col := Color(glow_col, clampf(k, 0.0, 1.0))
+		if _pool:
+			_draw_v2_lights(c, r, k)
+			return
 		if _beam:
 			var bw := r.x * 2.2
 			var bh := bw * _beam.get_height() / _beam.get_width()

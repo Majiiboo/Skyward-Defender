@@ -5,7 +5,14 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 7 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 8 updates (next push = dev182 + that count; see the build rule).
+  8. LUNA STAND ROUND 2 in (orbit rings): art_src/stand/stand_{pool,ring_a,ring_b,beam}-v2.webp,
+     tools/cut_stand.gd _cut_v2 (brightness -> alpha with a grey floor 0.2 on the rings, pool x2.2
+     under an ellipse mask, beam vertical ramp; prints the rings' ellipses) -> gear/stand_pool /
+     stand_ring_a / stand_ring_b / stand_beam.png; gear.gd HeroStand _pool / _ring_a / _ring_b,
+     RING_A / RING_B (centre + radii as picture shares), _v2_w (outer ring = r.x*1.1/0.442),
+     pool on the normal layer tinted toward the element, _draw_v2_lights (rings pulsing, beads
+     orbiting 6 / 4, beam 0.42 k). Old disc code kept as the fallback.
   7. LUNA BACK FRAMES in (20 of 21: Sparks turn_7 she cannot make): art_src/heroes/<id>/turn_6..8,
      art_src/turn/turn_<suit>_6..8; cut_ui_art _body_top / _match_back (back frames scaled to the
      front frames' body height + feet, one median scale per figure), cut_heroes + cut_turn rings

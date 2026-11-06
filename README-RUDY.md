@@ -412,6 +412,18 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 18 (after dev182): LUNA'S ORBIT-RING STAND is in (4 renders, all usable). The disc and
+the grid are gone. Under the hero: her nebula pool breathing slowly, two thin rings of light
+circling him with beads travelling round each ring (bright along the front, faint behind him),
+and a soft column of light rising from the centre. Everything is tinted in the hero's element
+colour and dissolves into the dark sky; nothing solid.
+- Her beam was lit from a point at the top like a spotlight; the cutter ramps it so it is
+  strongest at the base and gone before the top. The rings carried a faint grey box under
+  their brighter half and the pool a faint rectangle; both are cut away (grey floor, soft
+  ellipse mask).
+- Archive: art_src/stand/stand_pool-v2 / ring_a-v2 / ring_b-v2 / beam-v2.webp; cutter
+  tools/cut_stand.gd (_cut_v2 runs when the -v2 pool exists).
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.
