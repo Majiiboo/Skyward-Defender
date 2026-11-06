@@ -128,6 +128,7 @@ func _cut_hero(id: String) -> void:
 # base frames, the ring skips a missing frame) and portrait_t<k>.webp -> portrait_t<k>.png.
 func _cut_tiers(id: String) -> void:
 	var out := "res://heroes/%s/" % id
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))   # Rook has no base folder of his own
 	for k in [2, 3]:
 		var frames: Array = []
 		var any := false

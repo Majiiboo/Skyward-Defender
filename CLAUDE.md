@@ -5,7 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 3 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 4 updates (next push = dev195 + that count; see the build rule).
+  4. LUNA HERO EVOLUTIONS in (60 renders: <hero>-t3_turn_1..8, portrait_t2, portrait_t3 for all
+     six incl. Rook; archived art_src/heroes/<id>/t3_turn_n.webp + portrait_tk.webp; cut_heroes
+     _cut_tiers now makes heroes/<id>/ first; heroes/<id>/t3/turn_1..8.png + portrait_t2/t3.png;
+     PilotRig._hero_dir picks t3 from star 3 up). NO DIVIDING LINES (Rudy): gear StarMap BLEND 260
+     gradient quads between constellation skies (Luna skies drawn overlapping, brief says fade
+     edges); stage_map BLEND_H 150: every zone's texture drawn again above its top as a
+     draw_polygon with per-vertex alpha (1 -> 0) and uvs, the cyan line removed, titles drawn
+     after. Remember: run --import after cutting, or ResourceLoader.exists is false for new PNGs.
   3. TALENT MAP (queue 16 e, dev197): talents.gd Talents (SIZE 40, CYCLE of 10 stats, CARD_AT
      {10 focus_fire, 20 salvage, 30 second_wind, 40 mirror_shell}, node / text / bonus_text, cost
      (coins 300 n (1 + n/10); core from 11, essence by ELEMENTS cycle from 21, coil + 3 essences

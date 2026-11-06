@@ -8,6 +8,7 @@ extends Control
 const SAVE := "user://skybound_save.json"
 const STEP := 96.0            # vertical distance between stages
 const BAND_PAD := 70.0        # extra room at the start of each planet for its title
+const BLEND_H := 150.0   # one planet's sky fades up into the next (no dividing line, Rudy 2026-11-06)
 const CYAN := Color(0.18, 0.9, 1.0)
 const GOLD := Color(1.0, 0.8, 0.3)
 const MUTED := Color(0.62, 0.70, 0.84)
@@ -122,7 +123,29 @@ func _draw_trail() -> void:
 			var src_h: float = tex.get_width() * zh / w
 			var src := Rect2(0, tex.get_height() - src_h - 40.0, tex.get_width(), src_h)
 			_trail.draw_texture_rect_region(tex, Rect2(0, zb - zh, w, zh), src, Color(0.75, 0.75, 0.8))
-		_trail.draw_rect(Rect2(0, top, w, 2), Color(CYAN, 0.35))
+	# no dividing lines (Rudy, 2026-11-06): every zone's sky carries on up into the zone above
+	# it and fades out there, so one world blends into the next instead of being cut off
+	for a in StageData.AREAS.size():
+		for z in 2:
+			var q := a * 2 + z
+			if q + 1 >= StageData.SECTORS.size():
+				continue
+			var key: String = String(StageData.SECTORS[q].bg)
+			var tex: Texture2D = _worlds[key]
+			var zh := 5.0 * STEP + (BAND_PAD if z == 1 else 0.0)
+			var ztop := _band_bottom(a) - z * 5.0 * STEP - zh
+			var src_h: float = tex.get_width() * zh / w
+			var fade_src_h: float = tex.get_width() * BLEND_H / w
+			var src_y: float = maxf(tex.get_height() - src_h - 40.0 - fade_src_h, 0.0)
+			var uv0 := Vector2(0, src_y / tex.get_height())
+			var uv1 := Vector2(1, (src_y + fade_src_h) / tex.get_height())
+			var dim := Color(0.75, 0.75, 0.8, 1.0)
+			_trail.draw_polygon(PackedVector2Array([Vector2(0, ztop - BLEND_H), Vector2(w, ztop - BLEND_H), Vector2(w, ztop), Vector2(0, ztop)]),
+				PackedColorArray([Color(dim, 0.0), Color(dim, 0.0), dim, dim]),
+				PackedVector2Array([uv0, Vector2(uv1.x, uv0.y), uv1, Vector2(uv0.x, uv1.y)]), tex)
+	# the planet titles over the blended skies
+	for a in StageData.AREAS.size():
+		var top := _band_bottom(a) - 10.0 * STEP - BAND_PAD
 		var locked_area := StageData.area_index(unlocked) < a
 		_trail.draw_string(_font, Vector2(0, top + 26), "PLANET %d" % (a + 1), HORIZONTAL_ALIGNMENT_CENTER, w, 11, MUTED)
 		_trail.draw_string(_title_font, Vector2(0, top + 50), String(StageData.AREAS[a].name).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, w, 18,

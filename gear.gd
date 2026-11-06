@@ -2385,6 +2385,7 @@ class StarMap extends Control:
 	const SECTOR_H := 540.0
 	const TOP := 54.0
 	const STEP := 46.0
+	const BLEND := 260.0   # the gradient between two constellations' skies
 	# four CONSTELLATIONS of ten stars (Rudy): each a figure from the game, charted star by star
 	# in the order the lines are drawn; the tenth star is the figure's key point and the card
 	const SECTORS := [
@@ -2439,13 +2440,27 @@ class StarMap extends Control:
 
 	func _draw() -> void:
 		var w := map_w
-		# space: a dark gradient and a nebula per sector, in the sector's colour
+		# space: each constellation's sky in its own dark tint, and between two constellations a
+		# long gradient from one tint into the next (Rudy: no dividing lines, a seamless blend)
+		var H: float = TOP + SECTOR_H * 4.0 + 80.0
+		var skies: Array = []
+		for s in 4:
+			var col: Color = SECTORS[s].col
+			skies.append(Color(0.012 + 0.02 * col.r, 0.014 + 0.02 * col.g, 0.03 + 0.035 * col.b))
+		draw_rect(Rect2(0, 0, w, H), skies[0])
+		for s in range(1, 4):
+			var yb: float = TOP + s * SECTOR_H   # the boundary
+			var y1: float = yb - BLEND * 0.5
+			var y2: float = yb + BLEND * 0.5
+			draw_polygon(PackedVector2Array([Vector2(0, y1), Vector2(w, y1), Vector2(w, y2), Vector2(0, y2)]),
+				PackedColorArray([skies[s - 1], skies[s - 1], skies[s], skies[s]]))
+			draw_rect(Rect2(0, y2, w, H - y2), skies[s])
 		for s in 4:
 			var col: Color = SECTORS[s].col
 			var y0: float = TOP + s * SECTOR_H
-			draw_rect(Rect2(0, y0 - (TOP if s == 0 else 0.0), w, SECTOR_H + (TOP if s == 0 else 0.0) + (80.0 if s == 3 else 0.0)), Color(0.012 + 0.02 * col.r, 0.014 + 0.02 * col.g, 0.03 + 0.035 * col.b))
 			if _tex.has("nebula_%d" % s):
-				draw_texture_rect(_tex["nebula_%d" % s], Rect2(0, y0, w, SECTOR_H), false, Color(1, 1, 1, 0.9))
+				# Luna's sky fades to black at its top and bottom, so neighbours overlap into each other
+				draw_texture_rect(_tex["nebula_%d" % s], Rect2(0, y0 - BLEND * 0.5, w, SECTOR_H + BLEND), false, Color(1, 1, 1, 0.9))
 			else:
 				Backdrop.soft_glow(self, Vector2(w * (0.28 + 0.44 * (s % 2)), y0 + SECTOR_H * 0.42), w * 0.6, Color(col, 0.16))
 				Backdrop.soft_glow(self, Vector2(w * (0.7 - 0.4 * (s % 2)), y0 + SECTOR_H * 0.8), w * 0.35, Color(col.lerp(Color(1, 0.6, 0.9), 0.4), 0.1))

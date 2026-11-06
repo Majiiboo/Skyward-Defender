@@ -345,6 +345,23 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 4 (after dev195): LUNA'S HERO EVOLUTIONS are in (60 renders, all usable), and NO MORE
+DIVIDING LINES on the maps (your note).
+- Every hero has his tier 3 look as eight whole turn frames, plus a tier 2 and a tier 3
+  portrait: Rook in white-and-gold armour with a cape, Sparks in chrome with a bigger battery,
+  Cpt. Frost in ice-crystal armour, Hollow as a purple ring-haloed wraith, Nyx with a red-lit
+  cape and twin katanas, Ember in gold scale with wide wings. The game shows the tier 3 frames
+  from 3 stars on (and keeps them at 4, 5 and every red star, with the halo growing and turning
+  red), the tier 2 portrait from 2 stars and the tier 3 portrait from 3, on the Hero page, the
+  roster, Home and in battle. Cutter: tools/cut_heroes.gd (the back frames lined up to the
+  front ones, one crop per hero); archive art_src/heroes/<hero>/t3_turn_1..8, portrait_t2 / t3.
+- THE STAR MAP blends: the sky of one constellation fades into the next over a long gradient,
+  no line; Luna's painted skies will overlap the same way (her brief asks for black at their top
+  and bottom edges).
+- THE STAGE MAP blends: every zone's world carries on up into the zone above it and fades out
+  there, so a planet's lava fades into the next planet's crystal instead of a cut and a cyan
+  line. The planet titles stay where they were.
+
 Update 3 (after dev195): THE PILOT TALENT MAP (your queue item 16 e). On the Hero page, a
 TALENTS button beside STATS opens the map: forty nodes in five columns, bought IN ORDER, each
 a small permanent bonus for EVERY hero. Bought nodes are gold, the next one teal, the rest

@@ -31,6 +31,9 @@ The figure drawing should pass THROUGH those points (the stars are its joints), 
 figures on an old celestial chart. Faint: the stars and lines must still read on top of it.
 
 ## 1. Four constellation skies (1024 x 1152, black background)
+IMPORTANT: the top 15% and the bottom 15% of every sky must fade to pure black, because the
+game overlaps each sky into the next one so the constellations blend together with no line
+between them (Rudy: a gradient from one into the next, never a cut).
 `art_src/talents/nebula_0.webp` .. `nebula_3.webp`, one per constellation in the order above.
 Each: deep space, a soft nebula in that constellation's colour (drifting from one corner,
 never a hard edge), a scatter of tiny far stars, and the FIGURE as faint ghost line art in a
