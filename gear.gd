@@ -1150,7 +1150,7 @@ class PilotShowcase extends Control:
 	var view: PilotRigView
 	var plat   # HeroStand: where his feet go
 	var t := 0.0
-	var swivel := 0.0          # -1 facing right .. 0 the camera .. 1 facing left
+	var swivel := 0.0          # -1 facing right .. 0 the camera .. 1 facing left; past 1 or -1 round the back (dev188), wraps at 2
 	var _drag := false
 	var _idle := 0.0           # seconds since the finger left
 	var _hint := 1.0           # "drag to turn" fades once used
@@ -1167,7 +1167,10 @@ class PilotShowcase extends Control:
 			if not ev.pressed:
 				_idle = 0.0
 		elif (ev is InputEventScreenDrag or ev is InputEventMouseMotion) and _drag:
-			swivel = clampf(swivel - ev.relative.x * 0.011, -1.0, 1.0)
+			if PilotRig.spin_ready():
+				swivel = wrapf(swivel - ev.relative.x * 0.011, -2.0, 2.0)   # the full circle: Luna's back frames
+			else:
+				swivel = clampf(swivel - ev.relative.x * 0.011, -1.0, 1.0)
 			_hint = 0.0
 			queue_redraw()
 	func _process(delta: float) -> void:
@@ -1176,7 +1179,12 @@ class PilotShowcase extends Control:
 			_idle += delta
 			if _idle > 4.0:
 				swivel = move_toward(swivel, 0.0, delta * 0.8)   # drifts back to face you
-		view.face_override = swivel
+		if PilotRig.spin_ready():
+			view.face_override = 2.0
+			view.spin_override = fposmod((1.0 - swivel) * 0.25, 1.0)
+		else:
+			view.spin_override = -1.0
+			view.face_override = swivel
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
 		# hovering just above the platform floor
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
@@ -1188,7 +1196,7 @@ class PilotShowcase extends Control:
 			return
 		var a: float = _hint * (0.45 + 0.25 * sin(t * 3.0))
 		var y := size.y - 14.0
-		draw_string(ThemeDB.fallback_font, Vector2(0, y), "<  drag to turn  >", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.6, 0.85, 1.0, a))
+		draw_string(ThemeDB.fallback_font, Vector2(0, y), "<  drag to spin  >", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.6, 0.85, 1.0, a))
 
 # The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
 # buildings on the back rim, platform_rim.png), else her single picture (platform.png),

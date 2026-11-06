@@ -252,3 +252,72 @@ func _lights_mask(src: Image, halo: int) -> Image:
 	for i in w * h:
 		m[i * 4 + 3] = maxi(m[i * 4 + 3], mini(255, int(sd[i * 4 + 3] * 2.2)))
 	return Image.create_from_data(w, h, false, Image.FORMAT_RGBA8, m)
+
+# ---- turn rings (dev188) ----
+# Luna rendered the BACK frames (6..8) to the brief (feet at 90% down, head at 10%), while the
+# older front frames (1..5) stand lower and larger. So that the ring does not pop in size at
+# the back, each back frame is scaled about its own centre and shifted so its body height and
+# feet line match the front frames' average. frames[i] = frame i + 1 or null.
+func _body_top(img: Image, used: Rect2i) -> int:
+	# the first row that is at least 30% as wide as the widest row: the helmet, not the rifle barrel
+	var rows: Array = []
+	var widest := 0
+	var y := used.position.y
+	while y < used.end.y:
+		var x0 := -1
+		var x1 := -1
+		var x := used.position.x
+		while x < used.end.x:
+			if img.get_pixel(x, y).a > 0.5:
+				if x0 < 0:
+					x0 = x
+				x1 = x
+			x += 2
+		var w := (x1 - x0 + 2) if x0 >= 0 else 0
+		rows.append([y, w])
+		widest = maxi(widest, w)
+		y += 2
+	for r in rows:
+		if r[1] >= widest * 0.3:
+			return r[0]
+	return used.position.y
+
+func _match_back(frames: Array, label: String) -> void:
+	var feet := 0.0
+	var body := 0.0
+	var cnt := 0
+	for i in 5:
+		if i >= frames.size() or frames[i] == null:
+			continue
+		var u: Rect2i = frames[i].get_used_rect()
+		feet += u.end.y
+		body += u.end.y - _body_top(frames[i], u)
+		cnt += 1
+	if cnt == 0:
+		return
+	feet /= cnt
+	body /= cnt
+	# one scale for all three back frames (they share a brief): the middle of their own estimates
+	var ests: Array = []
+	for i in range(5, frames.size()):
+		if frames[i] != null:
+			var ue: Rect2i = frames[i].get_used_rect()
+			ests.append(body / maxf(1.0, float(ue.end.y - _body_top(frames[i], ue))))
+	if ests.is_empty():
+		return
+	ests.sort()
+	var s: float = ests[ests.size() / 2]
+	for i in range(5, frames.size()):
+		if frames[i] == null:
+			continue
+		var img: Image = frames[i]
+		var u := img.get_used_rect()
+		var sc: Image = img.duplicate()
+		sc.resize(maxi(1, roundi(img.get_width() * s)), maxi(1, roundi(img.get_height() * s)), Image.INTERPOLATE_LANCZOS)
+		var cx := float(u.position.x + u.end.x) * 0.5
+		var dx := roundi(cx - cx * s)
+		var dy := roundi(feet - u.end.y * s)
+		var out := Image.create(img.get_width(), img.get_height(), false, Image.FORMAT_RGBA8)
+		out.blit_rect(sc, Rect2i(Vector2i.ZERO, sc.get_size()), Vector2i(dx, dy))
+		frames[i] = out
+		print("%s turn_%d: scaled x%.3f, shifted %d,%d to match the front frames" % [label, i + 1, s, dx, dy])

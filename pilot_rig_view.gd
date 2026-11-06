@@ -20,6 +20,7 @@ var shield_form := 1.0     # 0 -> 1 as the band closes in around him after the c
 var shield_col := Color(0.55, 0.85, 1.0)
 var front_only := false     # always face the camera (Gear showcase): the chunky chibi front pose
 var face_override := 2.0    # Heroes page swivel (Rudy, dev172): -1..1 sets the facing by hand; 2 = off
+var spin_override := -1.0   # the full circle (dev188): 0..1 round the figure (0 left side, .25 camera, .5 right, .75 back); -1 = off
 
 func _init() -> void:
 	# rim: his whole outline in one flat cool colour, nudged a pixel each way, behind him
@@ -66,7 +67,11 @@ func update(delta: float, at: Vector2, aim: float, lean: float, hover: float, vy
 	pos = at
 	alpha = a
 	rig.update(delta, aim, lean, hover, vy)
-	if face_override >= -1.0 and face_override <= 1.0:
+	rig.spin = spin_override
+	if spin_override >= 0.0:
+		rig.face = cos(spin_override * TAU)   # the lights and muzzle follow the nearest front facing
+		rig.face_target = rig.face
+	elif face_override >= -1.0 and face_override <= 1.0:
 		rig.face = face_override
 		rig.face_target = face_override
 	elif front_only and PilotRig.front_ready():
@@ -100,6 +105,9 @@ func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> vo
 	var h := height * PilotRig.SIZE
 	if PilotRig.hero_mode():   # a hero from Luna's frames (dev172)
 		PilotRig.draw_hero(c, rig, at, h, alpha, lift)
+		return
+	if rig.spin >= 0.0 and PilotRig.turn_ready():   # spinning on the Heroes page: Luna's frames all the way round
+		PilotRig.draw_turn(c, rig, at, h, alpha, lift)
 		return
 	var sa := _side_a()
 	var fa := _front_a()

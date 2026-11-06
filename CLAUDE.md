@@ -5,7 +5,17 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 6 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 7 updates (next push = dev182 + that count; see the build rule).
+  7. LUNA BACK FRAMES in (20 of 21: Sparks turn_7 she cannot make): art_src/heroes/<id>/turn_6..8,
+     art_src/turn/turn_<suit>_6..8; cut_ui_art _body_top / _match_back (back frames scaled to the
+     front frames' body height + feet, one median scale per figure), cut_heroes + cut_turn rings
+     of 8 (a missing frame is skipped); PilotRig Rig.spin (0..1 round, -1 off), _ring / hero_ring /
+     turn_ring / spin_ready / _ring_pick (frame n at (n-1)/8), draw_turn + draw_hero pick from the
+     ring, next frame dissolves OVER the current (solid mid-turn); PilotRigView.spin_override
+     (face = cos(spin*TAU), Rook spins through draw_turn); gear PilotShowcase swivel wraps -2..2
+     when spin_ready, spin = fposmod((1-swivel)*0.25, 1). LUNA-BRIEF-hero-stand-2.md REWRITTEN
+     (Rudy: no grid): orbit rings = pool + ring_a + ring_b + beam, -v2 names; code to draw them
+     (beads orbiting, pool breathing) when they land.
   6. Hero hover (showcase feet - 162), HeroStand blended (halo + alpha 0.82, x0.98), Luna
      stand-2 brief (no rim, fading edges); gear.gd _weapons_screen (inventory by element, equip,
      details + Upgrade row) opened by the weapon tile, CHOOSE grid + up_row hidden; Rook roster
@@ -18,7 +28,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      "Equipped" / "Choose" / "Wearing" / "On mount" words on weapon, drone and turret tiles.
   4. LUNA HERO STAND in (art_src/stand/, tools/cut_stand.gd -> gear/stand_disc / stand_glow /
      stand_beam.png at half size, one crop for disc + glow); gear.gd HeroStand draws them when
-     present (glow and beam tinted by the element, pulsing). Luna queue left: hero BACK FRAMES.
+     present (glow and beam tinted by the element, pulsing). Back frames: update 7.
   3. LUNA DRONES 2 in (art_src/drones2/<body>/ whole, portrait, hull, wing_l/r or fin_l/r/mid,
      glow; pods/; tools/cut_drones2.gd -> drone/body_<b>, <b>_hull / _thruster_l / _thruster_r /
      _extra / _glow / _portrait, pod_repair / pod_magnet): DroneData BODIES spark / wisp / bat

@@ -1,7 +1,9 @@
 extends "res://tools/cut_ui_art.gd"
 # Cuts Luna's hero render sets (art_src/heroes/<id>/, LUNA-BRIEF-heroes.md) into heroes/<id>/:
-#   turn_1..5.png   the five whole-body turn frames, keyed off black, all five cropped to ONE
-#                   rectangle (the union of their used areas) so they stay aligned, 640 px tall
+#   turn_1..8.png   the whole-body turn frames (1-5 the front half, 6-8 the back, dev188), keyed
+#                   off black, all cropped to ONE
+#                   rectangle (the union of their used areas) so they stay aligned, 640 px tall;
+#                   a back frame that was not delivered is skipped (the ring fades across it)
 #   portrait.png    the roster picture, keyed, 256 px
 #   ref.png         the assembled reference, keyed (the fallback frame)
 #   weapon.png      the side-view weapon, keyed, trimmed
@@ -34,30 +36,44 @@ func _cut_hero(id: String) -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out + "parts"))
 	# the turn frames (fallbacks for the ones not delivered yet)
 	var frames: Array = []
-	for n in range(1, 6):
+	for n in range(1, 9):
 		frames.append(_keyed(_src(id, "turn_%d.webp" % n)))
 	var ref := _keyed(_src(id, "reference.webp"))
-	for n in 5:
-		if frames[n] == null:
-			var mirror_of := 4 - n   # 5 <- 1, 4 <- 2
-			if n >= 3 and frames[mirror_of] != null:
-				var m: Image = frames[mirror_of].duplicate()
-				m.flip_x()
-				frames[n] = m
-				print("%s turn_%d: mirrored from turn_%d (missing)" % [id, n + 1, mirror_of + 1])
-			elif ref != null:
-				var m2: Image = ref.duplicate()
-				if n >= 3:
-					m2.flip_x()
-				frames[n] = m2
-				print("%s turn_%d: the reference stands in (missing)" % [id, n + 1])
+	for n in 8:
+		if frames[n] != null:
+			continue
+		# a frame she could not make: its mirror if there is one (5 <- 1, 4 <- 2, 8 <-> 6), else the
+		# reference for the front half, else the ring simply skips it (the straight back, 7)
+		var mirror_of := -1
+		if n == 3 or n == 4:
+			mirror_of = 4 - n
+		elif n == 5 or n == 7:
+			mirror_of = 12 - n
+		if mirror_of >= 0 and frames[mirror_of] != null:
+			var m: Image = frames[mirror_of].duplicate()
+			m.flip_x()
+			frames[n] = m
+			print("%s turn_%d: mirrored from turn_%d (missing)" % [id, n + 1, mirror_of + 1])
+		elif n < 5 and ref != null:
+			var m2: Image = ref.duplicate()
+			if n >= 3:
+				m2.flip_x()
+			frames[n] = m2
+			print("%s turn_%d: the reference stands in (missing)" % [id, n + 1])
+		elif n >= 5:
+			print("%s turn_%d: missing, the ring fades across it" % [id, n + 1])
+	for n in 8:
+		if frames[n] != null:
+			var u0: Rect2i = frames[n].get_used_rect()
+			print("%s %d: bounds x %d-%d  y %d-%d" % [id, n + 1, u0.position.x, u0.end.x, u0.position.y, u0.end.y])
+	_match_back(frames, id)
 	var union := Rect2i()
 	for f in frames:
 		if f == null:
 			continue
 		var used: Rect2i = f.get_used_rect()
 		union = used if union.size == Vector2i.ZERO else union.merge(used)
-	for n in 5:
+	for n in 8:
 		var f: Image = frames[n]
 		if f == null:
 			continue

@@ -395,6 +395,23 @@ Update 16 (after dev182): YOUR NEXT NOTES.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 
+Update 17 (after dev182): LUNA'S BACK FRAMES are in (20 of 21, all usable). Every hero and
+both pilot suits now turn ALL THE WAY ROUND on the Heroes page: drag past the side and you
+see the jetpack, the wings, the cloak, the tail; let go and he drifts back to face you.
+- Her back frames were rendered a little smaller and higher than her front frames (she
+  followed the brief, the old frames were looser), so the cutter scales and lines them up to
+  the front frames' body height and feet before cutting, one scale per hero. No size pop.
+- Sparks' straight-back frame (7) she could not make: the ring simply fades from his left-back
+  view to his right-back view across that spot, so nothing is missing on screen. The spin
+  stays solid mid-turn now (the next frame dissolves in over the current one, no see-through
+  ghost), in battle too.
+- The hero stand brief was REWRITTEN to your taste (LUNA-BRIEF-hero-stand-2.md): no disc, no
+  grid. Orbit rings: a pool of nebula haze under his feet, two thin elliptical rings of light
+  circling him with beads the game will send round, and a soft column rising; everything
+  dissolves into the dark, white light tinted per hero. Four files with -v2 names.
+- Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
+  cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
+
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 
 Update 1: Elite and Promotion, from your notes.

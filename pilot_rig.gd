@@ -198,6 +198,7 @@ class Rig:
 	var aim := -PI / 2.0       # rifle angle (0 = right, -PI/2 = up), smoothed
 	var face := 1.0            # +1 rifle on the left of the screen, -1 mirrored; passes through 0 when turning
 	var face_target := 1.0
+	var spin := -1.0           # full-circle facing for the showcase (0 left side, .25 the camera, .5 right, .75 the back); -1 = face drives it
 	var lean := 0.0            # + = top leans right
 	var hover := 1.0           # thruster power 0.35 .. 1.9
 	var vy := 0.0              # vertical speed, px/s, + = falling
@@ -656,20 +657,64 @@ static func turn_tex(n: int) -> Texture2D:
 static func turn_u(r: Rig) -> float:
 	return clampf((1.0 - r.face) * 0.5, 0.0, 1.0)
 
+# ---- the full circle (dev188): Luna's back frames 6..8 close the ring ----
+# Every frame sits at (n - 1) / 8 of a turn: 1 facing left, 3 the camera, 5 right, 7 the back.
+# A frame she could not deliver (Sparks 7) is simply absent: the ring fades straight across it.
+# Rig.spin (0..1, -1 = off) picks the facing on the circle for the Heroes page swivel; in battle
+# the rig's face drives the front half as before (spin < 0).
+static var _ring_cache := {}
+
+static func _ring(prefix: String) -> Array:
+	if not _ring_cache.has(prefix):
+		var ring: Array = []
+		for n in range(1, 9):
+			if ResourceLoader.exists(prefix % n):
+				ring.append(n)
+		_ring_cache[prefix] = ring
+	return _ring_cache[prefix]
+
+static func hero_ring() -> Array:
+	return _ring("res://heroes/%s/turn_%%d.png" % hero)
+
+static func turn_ring() -> Array:
+	return _ring("res://pilot_turn/%s_%%d.png" % _turn_suit())
+
+# whether the current figure can show its back (at least two of the three back frames)
+static func spin_ready() -> bool:
+	var ring := hero_ring() if hero_mode() else (turn_ring() if turn_ready() else [])
+	return ring.size() >= 7
+
+# the two frames around spin s (0..1) on the ring and the weight of the second: [na, nb, w]
+static func _ring_pick(ring: Array, s: float) -> Array:
+	s = fposmod(s, 1.0)
+	var m := ring.size()
+	if m == 1:
+		return [ring[0], ring[0], 0.0]
+	for j in m:
+		var a0: float = (ring[j] - 1) / 8.0
+		var nb: int = ring[(j + 1) % m]
+		var a1: float = (nb - 1) / 8.0 + (1.0 if j + 1 >= m else 0.0)
+		if s >= a0 and s < a1:
+			return [ring[j], nb, (s - a0) / maxf(a1 - a0, 0.001)]
+	var last: int = ring[m - 1]
+	var a_last: float = (last - 1) / 8.0 - 1.0   # the wrap-around segment, seen from below
+	return [last, ring[0], (s - a_last) / maxf((ring[0] - 1) / 8.0 - a_last, 0.001)]
+
+static func _spin_of(r: Rig) -> float:
+	return r.spin if r.spin >= 0.0 else turn_u(r) * 0.5
+
 static func draw_turn(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
-	var f := turn_u(r) * 4.0
-	var i0 := int(floor(f))
-	var w := f - i0
+	var pick := _ring_pick(turn_ring(), _spin_of(r))
+	var w: float = pick[2]
 	var frac: float = float(TURN_BODY[_turn_suit()])
 	var canvas_h := height * TURN_SCALE / frac
 	var feet_y := pos.y + TURN_FEET * height
 	var bob := sin(r.t * TAU / 2.6) * height * 0.004
 	for k in 2:
-		var i := clampi(i0 + k, 0, 4)
-		var a: float = alpha * ((1.0 - w) if k == 0 else w)
-		if a <= 0.005 or (k == 1 and i == i0):
+		var a: float = alpha * (1.0 if k == 0 else w)   # the next frame dissolves in OVER the current one (he stays solid, no ghost mid-turn; dev188)
+		if a <= 0.005 or (k == 1 and pick[1] == pick[0]):
 			continue
-		var tx := turn_tex(i + 1)
+		var tx := turn_tex(pick[k])
 		var cw := canvas_h * tx.get_width() / tx.get_height()
 		var col := _lift_col(lift, a) * Color(TURN_TINT[_turn_suit()], 1.0)
 		c.draw_texture_rect(tx, Rect2(pos.x - cw * 0.5, feet_y + canvas_h * 0.01 - canvas_h + bob, cw, canvas_h), false, col)
@@ -700,9 +745,8 @@ const HERO_SCALE := 1.08    # the frames drawn a little bigger than `height` (ch
 const HERO_FEET := 0.645    # soles below pos, as a share of height (same as the rig's)
 
 static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = LIFT) -> void:
-	var f := turn_u(r) * 4.0
-	var i0 := int(floor(f))
-	var w := f - i0
+	var pick := _ring_pick(hero_ring(), _spin_of(r))
+	var w: float = pick[2]
 	var canvas_h := height * HERO_SCALE
 	var feet := Vector2(pos.x, pos.y + HERO_FEET * height)
 	var bob := sin(r.t * TAU / 2.6) * height * 0.006
@@ -711,11 +755,10 @@ static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha:
 	var sq: float = clampf(r.bounce, -0.3, 0.3)
 	var kick: float = r.recoil * height * 0.02
 	for k in 2:
-		var i := clampi(i0 + k, 0, 4)
-		var a: float = alpha * ((1.0 - w) if k == 0 else w)
-		if a <= 0.005 or (k == 1 and i == i0):
+		var a: float = alpha * (1.0 if k == 0 else w)   # the next frame dissolves in OVER the current one (he stays solid, no ghost mid-turn; dev188)
+		if a <= 0.005 or (k == 1 and pick[1] == pick[0]):
 			continue
-		var tx := hero_tex(i + 1)
+		var tx := hero_tex(pick[k])
 		var cw := canvas_h * tx.get_width() / tx.get_height()
 		c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5))
 		c.draw_texture_rect(tx, Rect2(-cw * 0.5, -canvas_h, cw, canvas_h), false, _lift_col(lift, a))
