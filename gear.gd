@@ -201,7 +201,7 @@ func _build() -> void:
 		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 			b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 		var slot: String = s
-		b.pressed.connect(func(): _select(slot))
+		b.pressed.connect(func(): _select(slot); _weapons_screen())   # the tile opens the WEAPONS screen (Rudy, dev186)
 		b.draw.connect(func(): _draw_slot(b, slot))
 		stage.add_child(b)
 		_slot_tiles[s] = b
@@ -283,13 +283,14 @@ func _build() -> void:
 	_upgrade_btn.pressed.connect(_on_upgrade_pressed)
 	up_row.add_child(_upgrade_btn)
 	col.add_child(up_row)
+	up_row.visible = false   # the weapon's details and Upgrade live on the WEAPONS screen (Rudy, dev186)
 	# the six pieces for this slot (one per set)
-	col.add_child(UIKit.header("CHOOSE"))
+	# (the CHOOSE grid left the page in dev186: the weapon tile opens the WEAPONS screen)
 	_bag_grid = GridContainer.new()
 	_bag_grid.columns = 3
 	_bag_grid.add_theme_constant_override("h_separation", 8)
 	_bag_grid.add_theme_constant_override("v_separation", 8)
-	col.add_child(_bag_grid)
+	_bag_grid.visible = false
 	# set bonuses you have, last
 	var bp := UIKit.panel(10)
 	_bonus = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
@@ -1179,7 +1180,7 @@ class PilotShowcase extends Control:
 		var aim := -PI / 2.0 - 0.3 + sin(t * 0.7) * 0.35
 		# hovering just above the platform floor
 		var feet: float = plat.feet_y() if plat else size.y - 40.0
-		view.update(delta, Vector2(size.x * 0.5, feet - 118.0 + sin(t * 1.1) * 6.0), aim, sin(t * 0.5) * 0.2 + swivel * 0.1, 1.0 + sin(t * 0.9) * 0.2, 0.0)   # floating over the stand
+		view.update(delta, Vector2(size.x * 0.5, feet - 162.0 + sin(t * 1.1) * 7.0), aim, sin(t * 0.5) * 0.2 + swivel * 0.1, 1.0 + sin(t * 0.9) * 0.2, 0.0)   # hovering a little above the disc, centred on it (Rudy)
 		if _hint > 0.0:
 			queue_redraw()
 	func _draw() -> void:
@@ -1852,6 +1853,14 @@ func _hero_portrait(id: String) -> Texture2D:
 	var p := "res://heroes/%s/portrait.png" % id
 	if ResourceLoader.exists(p):
 		return load(p)
+	# Rook: head and shoulders cut from his turn frame (no portrait render yet)
+	if id == Heroes.DEFAULT and ResourceLoader.exists("res://pilot_turn/commander_3.png"):
+		var tf: Texture2D = load("res://pilot_turn/commander_3.png")
+		var at := AtlasTexture.new()
+		at.atlas = tf
+		var s := tf.get_size()
+		at.region = Rect2(s.x * 0.18, 0.0, s.x * 0.64, s.y * 0.42)
+		return at
 	return _pic(String(Heroes.ROSTER[id].weapon))
 
 # an owned hero goes on duty; a locked one is shown with his price
@@ -2087,9 +2096,15 @@ class HeroStand extends Control:
 		var c := _centre()
 		var r := _radii()
 		if _disc:
-			var w := r.x * 2.0 * 1.1
+			# blended in (Rudy: it did not sit in the world): a soft dark halo under it fading into
+			# the wallpaper, the disc itself a little smaller and see-through
+			draw_set_transform(c + Vector2(0, 8.0), 0.0, Vector2(1.0, 0.4))
+			for k in 4:
+				draw_circle(Vector2.ZERO, r.x * (1.55 - 0.2 * k), Color(0.0, 0.01, 0.04, 0.16))
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			var w := r.x * 2.0 * 0.98
 			var h := w * _disc.get_height() / _disc.get_width()
-			draw_texture_rect(_disc, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false)
+			draw_texture_rect(_disc, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false, Color(0.85, 0.9, 1.0, 0.82))
 		else:
 			# the disc: a dark glass ellipse with a metal rim, a thin lighter edge on top
 			draw_set_transform(c, 0.0, Vector2(1.0, r.y / r.x))
@@ -2120,7 +2135,7 @@ class HeroStand extends Control:
 			_light_layer.draw_polygon(PackedVector2Array([Vector2(c.x - r.x * 0.9, c.y), Vector2(c.x + r.x * 0.9, c.y), Vector2(c.x + r.x * 0.45, top), Vector2(c.x - r.x * 0.45, top)]),
 				PackedColorArray([Color(glow_col, 0.16 * k), Color(glow_col, 0.16 * k), Color(glow_col, 0.0), Color(glow_col, 0.0)]))
 		if _lights:
-			var w := r.x * 2.0 * 1.1
+			var w := r.x * 2.0 * 0.98
 			var h := w * _lights.get_height() / _lights.get_width()
 			_light_layer.draw_texture_rect(_lights, Rect2(c.x - w * 0.5, c.y - h * 0.5, w, h), false, col)
 			return
@@ -2181,3 +2196,71 @@ func _on_drone_unlock(body: String) -> void:
 	Progress.bump("upgrades")
 	_toast("%s joins the hangar" % def.name)
 	_refresh_drone()
+
+# WEAPONS screen (Rudy, dev186): tapping the weapon tile opens your weapon inventory, a card
+# per weapon you own (picture, name, element, level, rarity), grouped by element, tap to
+# equip. The old CHOOSE grid under the hero is gone.
+func _weapons_screen() -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.78)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
+	add_child(layer)
+	var p := UIKit.popup_panel()
+	var w := minf(size.x - 24.0, 420.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, 50.0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UIKit.label("WEAPONS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var eq: String = gear.equipped["Weapon"]
+	var eq_el: String = GearData.ITEMS[eq].set
+	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for set_id in GearData.SET_ORDER:
+		var id: String = "%s_weapon" % set_id
+		var info: Dictionary = GearData.ITEMS[id]
+		var open := GearData.set_unlocked(set_id, t_unlocked) or GearData.owned(gear, id)
+		var rn := GearData.rarity_name(GearData.rarity(gear, id))
+		var sub := ("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
+		var t := UIKit.tile(info.name, sub, set_id, "", _pic(id) if open else UIKit.ic("ui_padlock"), Vector2(120, 112))
+		UIKit.corner_icon(t, UIKit.element_icon(set_id), 20.0)
+		if not open:
+			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
+		if id == eq:
+			UIKit.equipped_badge(t, UIKit.RARITY[set_id])
+		var item: String = id
+		t.pressed.connect(func():
+			if open:
+				_equip(item)
+				layer.queue_free()
+				_weapons_screen())
+		grid.add_child(t)
+	v.add_child(grid)
+	# the equipped weapon's details and its Upgrade button (the same ones the Hero page kept)
+	var urow := HBoxContainer.new()
+	urow.add_theme_constant_override("separation", 8)
+	var ul := UIKit.label(_detail.text, 11, Color(0.85, 0.92, 1.0))
+	ul.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	ul.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	urow.add_child(ul)
+	var ub := UIKit.gold_button(_upgrade_btn.text, 12)
+	ub.custom_minimum_size = Vector2(110, 46)
+	ub.disabled = _upgrade_btn.disabled
+	ub.pressed.connect(func():
+		await _on_upgrade_pressed()
+		layer.queue_free()
+		_weapons_screen())
+	urow.add_child(ub)
+	v.add_child(urow)
+	v.add_child(UIKit.label("Spare copies merge in the Workshop.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.get_child(v.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	var close := UIKit.ghost_button("Close", 13)
+	close.custom_minimum_size = Vector2(0, 38)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+	p.add_child(v)
+	layer.add_child(p)

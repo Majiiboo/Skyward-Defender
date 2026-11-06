@@ -5,7 +5,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 5 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 6 updates (next push = dev182 + that count; see the build rule).
+  6. Hero hover (showcase feet - 162), HeroStand blended (halo + alpha 0.82, x0.98), Luna
+     stand-2 brief (no rim, fading edges); gear.gd _weapons_screen (inventory by element, equip,
+     details + Upgrade row) opened by the weapon tile, CHOOSE grid + up_row hidden; Rook roster
+     portrait = AtlasTexture of pilot_turn/commander_3. NOTE for Rudy: LUNA-PROGRAM.md is OUR
+     planning list, never sent to Luna; only LUNA-BRIEF-*.md files go to her.
   5. RUDY'S SCREENSHOT NOTES: one Level up (Heroes DEF_PER 0.008 per LEVEL, old def levels count
      half; gear _def_btn hidden, _on_def_up kept), MILESTONES extended with perks twin_shot (35),
      pierce1 (50), burst2 (60) applied in battle (_perk_twin, pierce_level, burst_count); hero and

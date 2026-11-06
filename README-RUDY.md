@@ -380,6 +380,18 @@ Update 15 (after dev182): YOUR SCREENSHOT NOTES.
 - E BADGE: no more "Equipped", "Choose", "Wearing" or "On mount" words. The equipped hero
   weapon, drone body and pod carry a small E in the tile's corner in the item's colour; a
   turret on the base carries its mount number there instead. Tapping any open tile equips it.
+Update 16 (after dev182): YOUR NEXT NOTES.
+- The hero HOVERS a little above the disc, centred on it, with a slow bob.
+- The stand is BLENDED into the world for now: a soft dark halo under it fading into the
+  wallpaper and the disc a touch smaller and see-through. A redo brief for Luna asks for a
+  stand with no metal rim and edges that fade (LUNA-BRIEF-hero-stand-2.md); her -v2 files
+  will replace it by name.
+- WEAPONS SCREEN: tapping the weapon tile opens your weapon inventory: a card per weapon
+  (picture, element badge, level, rarity, an E on the equipped one), tap to equip, with the
+  equipped weapon's details and its Upgrade button in the same window. The old CHOOSE grid
+  under the hero is gone.
+- The hero tiles on the roster show the hero's portrait; Rook's is cut from his turn frame
+  until Luna paints one, so no tile shows a weapon that is not in his hand.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

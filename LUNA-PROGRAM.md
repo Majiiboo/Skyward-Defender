@@ -12,7 +12,7 @@ Priority order (Rudy picks; the code side of each is noted):
 |---|---|---|---|
 | 1 | Heroes round 2 (the missing frames) | LUNA-BRIEF-heroes-redo-1.md (sent) | finish the five rigs |
 | 1a | HERO BACK FRAMES: turn_6..8 per hero (and the pilot) so the swivel goes all the way round | LUNA-BRIEF-hero-back-frames.md | 8-frame swivel on the Heroes page |
-| 1b | HERO STAND (DELIVERED 2026-11-05): disc, glow, beam | LUNA-BRIEF-hero-stand.md | done: gear/stand_*.png under the hero, tinted by element |
+| 1b | HERO STAND (DELIVERED 2026-11-05) + round 2 asked: no rim, edges fade, hologram look | LUNA-BRIEF-hero-stand-2.md | the -v2 files replace round 1 by name |
 | 2a | UI KIT round 2 (DELIVERED 2026-11-05): panels, popup, nav dock, top bar in | LUNA-BRIEF-ui-kit-redo-1.md | done |
 | 2 | UI KIT: buttons, panels, headers, tabs, chips, nav bar, HUD frame, HP and shield bars, red dot, stars, padlock | LUNA-BRIEF-ui-kit.md | 9-slice pieces replace the code-drawn glass; UIKit keeps the layout |
 | 3 | ICONS: every menu icon, currency, parts, elements, roles, grades, stats, the six element symbols | LUNA-BRIEF-icons.md | one sheet, cut into icons/ |
