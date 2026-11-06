@@ -19,6 +19,17 @@ const BODIES := {
 		"desc": "Harder hits, longer range"},
 	"warden":  {"name": "Warden",  "unlock": 20, "rate": 0.8, "dmg": 1.0, "range": 420.0, "guard": 5.0, "element": "frost",
 		"desc": "Blocks a shot every 5 s"},
+	# round 2 (Luna, dev184): three bodies BOUGHT like heroes and turrets ("grade", "cost" or
+	# "crystals"); each its own machine and element (DESIGN-turrets-drones.md)
+	"spark":   {"name": "Spark Bot", "unlock": 8, "rate": 1.15, "dmg": 0.9, "range": 400.0, "element": "scavenger", "grade": 2,
+		"cost": {"coins": 6000, "alloy": 20, "cell": 4}, "crystals": 120, "arc": 2,
+		"desc": "Hits arc to 2 more bugs"},
+	"wisp":    {"name": "Wisp",      "unlock": 8, "rate": 1.0, "dmg": 1.0, "range": 460.0, "element": "void", "grade": 3,
+		"cost": {"coins": 14000, "cell": 10, "core": 2}, "crystals": 280, "phase": true,
+		"desc": "Its bolts pass through 1 bug"},
+	"bat":     {"name": "Night Bat", "unlock": 8, "rate": 1.2, "dmg": 1.1, "range": 520.0, "element": "nightmare", "grade": 4,
+		"cost": {"coins": 30000, "cell": 16, "core": 5}, "crystals": 520, "crit": 0.15,
+		"desc": "Crit rate +15%"},
 }
 const PODS := {
 	"blaster": {"name": "Twin Blaster", "unlock": 8,  "every": 0.7, "damage": 0.45,
@@ -26,10 +37,10 @@ const PODS := {
 	"beam":    {"name": "Beam",         "unlock": 12, "every": 1.4, "damage": 1.4,
 		"desc": "Instant beam, never misses"},
 	# support pods (dev172, DESIGN-turrets-drones.md): no guns, a job instead ("job"); they use
-	# another pod's picture until Luna paints theirs ("art")
-	"repair":  {"name": "Repair Pod",   "unlock": 10, "every": 0.0, "damage": 0.0, "job": "repair", "art": "beam", "heal": 1.5,
+	# (Luna'"'"'s pod pictures arrived with drones round 2)
+	"repair":  {"name": "Repair Pod",   "unlock": 10, "every": 0.0, "damage": 0.0, "job": "repair", "heal": 1.5,
 		"desc": "No guns: patches the base shield 1.5 a second"},
-	"magnet":  {"name": "Magnet Pod",   "unlock": 12, "every": 0.0, "damage": 0.0, "job": "magnet", "art": "blaster", "reach": 150.0,
+	"magnet":  {"name": "Magnet Pod",   "unlock": 12, "every": 0.0, "damage": 0.0, "job": "magnet", "reach": 150.0,
 		"desc": "No guns: gathers gems and coins near it for you"},
 	"missile": {"name": "Missiles",     "unlock": 16, "every": 2.2, "damage": 1.6, "splash": 55.0,
 		"desc": "Homing missile with splash"},
@@ -41,7 +52,13 @@ static func read(save: Dictionary) -> Dictionary:
 		d = {}
 	var body := String(d.get("body", "scout"))
 	var pod := String(d.get("pod", "blaster"))
-	return {"body": body if BODIES.has(body) else "scout", "pod": pod if PODS.has(pod) else "blaster",
+	var owned: Array = ["scout", "striker", "warden"]   # the first three stay level-gated; bought ones listed here
+	var ow = d.get("owned", [])
+	if typeof(ow) == TYPE_ARRAY:
+		for id in ow:
+			if BODIES.has(String(id)) and not owned.has(String(id)):
+				owned.append(String(id))
+	return {"body": body if BODIES.has(body) else "scout", "pod": pod if PODS.has(pod) else "blaster", "owned": owned,
 		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL)}
 
 static func unlocked(pilot_level: int) -> bool:
@@ -80,3 +97,61 @@ static func pod_job(pod: String) -> String:
 # the body's own element (Heroes.ELEMENTS ids); Energy when unknown
 static func body_element(body: String) -> String:
 	return String(BODIES[body].get("element", "ion")) if BODIES.has(body) else "ion"
+
+# ---- bought bodies (round 2, the heroes model) ----
+static func is_bought(body: String) -> bool:
+	return BODIES.has(body) and BODIES[body].has("cost")
+
+# can this body be used: the first three by pilot level, the bought ones when owned
+static func body_open(dr: Dictionary, body: String, pilot_level: int) -> bool:
+	if DevTools.on:
+		return true
+	if is_bought(body):
+		return Array(dr.get("owned", [])).has(body)
+	return pilot_level >= int(BODIES[body].unlock)
+
+static func grade(body: String) -> int:
+	return clampi(int(BODIES[body].get("grade", 1)), 1, 5) if BODIES.has(body) else 1
+
+static func stars_text(body: String) -> String:
+	return "★".repeat(grade(body))
+
+static func parts_needed(body: String) -> Dictionary:
+	var c: Dictionary = BODIES[body].get("cost", {})
+	var needs := {}
+	for k in Parts.ORDER:
+		if int(c.get(k, 0)) > 0:
+			needs[k] = int(c[k])
+	return needs
+
+static func cost_text(body: String) -> String:
+	var c: Dictionary = BODIES[body].get("cost", {})
+	var bits: Array = []
+	if int(c.get("coins", 0)) > 0:
+		bits.append("%s coins" % UIKit.num(int(c.coins)))
+	var needs := parts_needed(body)
+	if not needs.is_empty():
+		bits.append(Parts.text(needs))
+	return " + ".join(bits) if not bits.is_empty() else "Free"
+
+static func crystal_price(body: String) -> int:
+	return int(BODIES[body].get("crystals", 0))
+
+# Buy a body: coins + parts, or the crystal price; "" on success. The caller writes dr back.
+static func unlock(save: Dictionary, dr: Dictionary, body: String, with_crystals: bool) -> String:
+	if not is_bought(body):
+		return "Not for sale"
+	if Array(dr.owned).has(body):
+		return "Already yours"
+	if with_crystals:
+		var price := crystal_price(body)
+		if int(save.get("crystals", 0)) < price:
+			return "Not enough crystals"
+		save["crystals"] = int(save.get("crystals", 0)) - price
+	else:
+		var c: Dictionary = BODIES[body].get("cost", {})
+		var why := Parts.pay(save, int(c.get("coins", 0)), parts_needed(body), false)
+		if why != "":
+			return why
+	dr.owned.append(body)
+	return ""

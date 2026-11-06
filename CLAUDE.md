@@ -5,7 +5,14 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 2 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 3 updates (next push = dev182 + that count; see the build rule).
+  3. LUNA DRONES 2 in (art_src/drones2/<body>/ whole, portrait, hull, wing_l/r or fin_l/r/mid,
+     glow; pods/; tools/cut_drones2.gd -> drone/body_<b>, <b>_hull / _thruster_l / _thruster_r /
+     _extra / _glow / _portrait, pod_repair / pod_magnet): DroneData BODIES spark / wisp / bat
+     (grade, cost, crystals, element, arc / phase / crit flags NOT yet applied in battle), read()
+     "owned", is_bought / body_open / unlock / cost_text; battle DRONE_PARTS entries with "flap",
+     extra fin, _draw_drone_light glow; gear.gd _on_drone_unlock; body passives in _update_drone
+     (bat crit via "lucky", wisp pierce_left 1, spark "weld" arcs + beam _chain).
   2. LUNA ICONS in (art_src/icons2/<name>.webp x48 + alts; tools/cut_icons2.gd -> icons/<name>.png
      96 px): UIKit.ic(name, fallback), ELEMENT_ICON / element_icon, ROLE_ICON / role_icon, iconed(),
      corner_icon(); tabs(.., icons); wallet + hub pills + Parts.icon + store chests / gift / pack /

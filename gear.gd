@@ -1059,7 +1059,7 @@ func _refresh_drone() -> void:
 		var c := pv.size * 0.5 + Vector2(0, sin(tm[0] * 2.0) * 5.0)
 		Glass.panel(pv, Glass.box(Rect2(Vector2.ZERO, pv.size), 16.0))
 		pv.draw_set_transform(c, sin(tm[0] * 0.8) * 0.25, Vector2.ONE)
-		var bw := 130.0
+		var bw: float = minf(130.0, 150.0 * bt.get_width() / bt.get_height())   # tall bodies (the Wisp) fit the box
 		var bh: float = bw * bt.get_height() / bt.get_width()
 		var pw := 52.0
 		var ph: float = pw * pt.get_height() / pt.get_width()
@@ -1104,17 +1104,20 @@ func _refresh_drone() -> void:
 		grid.add_theme_constant_override("h_separation", 8)
 		for id in spec[1]:
 			var def: Dictionary = spec[1][id]
-			var open: bool = pilot_level >= int(def.unlock) or DevTools.on
+			var open: bool = (DroneData.body_open(drone, id, pilot_level) if spec[2] == "body" else (pilot_level >= int(def.unlock) or DevTools.on))
 			var on: bool = drone[spec[2]] == id
-			var sub := "Equipped" if on else ("Choose" if open else "Pilot Lv.%d" % int(def.unlock))
+			var sub := "Equipped" if on else ("Choose" if open else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if DroneData.is_bought(id) else "Pilot Lv.%d" % int(def.unlock)))
 			if spec[2] == "body":
-				sub = "%s  ·  %s" % [Heroes.element_name(DroneData.body_element(id)), sub]
+				sub = "%s %s  ·  %s" % [DroneData.stars_text(id), Heroes.element_name(DroneData.body_element(id)), sub]
 			var tile := UIKit.tile(def.name, sub, (DroneData.body_element(id) if spec[2] == "body" else "ion") if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
 			if not open:
 				tile.modulate = Color(0.55, 0.55, 0.65, 0.8)
 			var key: String = spec[2]
 			var pick: String = id
 			tile.pressed.connect(func():
+				if not open and key == "body" and DroneData.is_bought(pick):   # buy it (coins + parts, crystals as the fallback)
+					_on_drone_unlock(pick)
+					return
 				if open:
 					drone[key] = pick
 					_save_drone()
@@ -2139,3 +2142,33 @@ func _dbg_swivel(v: String) -> void:
 		_showcase.swivel = float(v)
 		_showcase._idle = -999.0
 		_showcase._hint = 0.0
+
+# buy a drone body (round 2, dev184): coins + parts, or the crystal price when short
+func _on_drone_unlock(body: String) -> void:
+	var def: Dictionary = DroneData.BODIES[body]
+	var data := _read()
+	var dr := DroneData.read(data)
+	var why := DroneData.unlock(data, dr, body, false)
+	if why != "":
+		var price := DroneData.crystal_price(body)
+		if price <= 0:
+			_toast(why)
+			return
+		var ok := await _confirm("UNLOCK %s?" % String(def.name).to_upper(), "%s\n\nPrice: %s\n(%s)\n\nUse %d crystals instead? You have %d." % [def.desc, DroneData.cost_text(body), why, price, int(data.get("crystals", 0))], "Use %d crystals" % price, int(data.get("crystals", 0)) >= price)
+		if not ok:
+			return
+		data = _read()
+		dr = DroneData.read(data)
+		why = DroneData.unlock(data, dr, body, true)
+		if why != "":
+			_toast(why)
+			return
+	dr.body = body
+	drone = dr
+	data["drone"] = dr
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	Sfx.play("buy")
+	Progress.bump("upgrades")
+	_toast("%s joins the hangar" % def.name)
+	_refresh_drone()

@@ -353,6 +353,17 @@ strips; stat icons on the STATS panel; the three chests, the gift, the pack and 
 the Store; the Elite, rank and trial badges on the Modes cards. Shards, roles and the
 "weak to" shield are cut and ready for the pages that will show them (materials, turret
 details).
+Update 13 (after dev182): LUNA'S DRONES ROUND 2 are in (26 renders, all usable). Three new
+bodies, each its own machine, each BOUGHT like a hero or a turret (coins + parts, or crystals)
+and rated by grade: SPARK BOT (2★ Electric: a scrap ball with a crackling Tesla coil; its hits
+arc to 2 more bugs; 6,000 coins + 20 Alloy + 4 Cells, or 120 crystals), WISP (3★ Void: a dark
+glass teardrop with a purple core and three trailing fins; bolts pass through 1 bug; 14,000 +
+10 Cells + 2 Cores, or 280), NIGHT BAT (4★ Dark: a black stealth bat with red light edges;
+crit rate +15%; 30,000 + 16 Cells + 5 Cores, or 520). In battle each flies as parts: the hull
+banks, the wings and fins beat, the Wisp's middle fin trails, and Luna's glow layer (coil,
+core, eyes) breathes over the body and flares on a shot. The Repair and Magnet pods have their
+own pictures now. Scout, Striker and Warden stay on pilot level. The Drone page shows the
+grade stars and the price on a locked body; tap it to buy.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

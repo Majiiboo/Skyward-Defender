@@ -300,13 +300,18 @@ func _ready() -> void:
 	# Luna's batch D turrets in two pieces: a base on the socket and a head on top
 	for n in ["lance_base", "lance_head", "storm_base", "storm_head", "gravity_base", "gravity_head", "prism_head"]:
 		_tex[n] = load("res://turrets/%s.png" % n)
-	for n in ["body_scout", "body_striker", "body_warden", "pod_blaster", "pod_beam", "pod_missile"]:
+	for n in ["body_scout", "body_striker", "body_warden", "pod_blaster", "pod_beam", "pod_missile", "body_spark", "body_wisp", "body_bat", "pod_repair", "pod_magnet"]:
+		if not ResourceLoader.exists("res://drone/%s.png" % n):
+			continue
 		_tex[n] = load("res://drone/%s.png" % n)
-	for b in ["scout", "striker", "warden"]:   # Luna's drone parts (dev160), when cut
+	for b in ["scout", "striker", "warden", "spark", "wisp", "bat"]:   # Luna'"'"'s drone parts (dev160, round 2 dev184), when cut
 		if ResourceLoader.exists("res://drone/%s_hull.png" % b):
 			_tex["hull_" + b] = load("res://drone/%s_hull.png" % b)
 			_tex["thruster_l_" + b] = load("res://drone/%s_thruster_l.png" % b)
 			_tex["thruster_r_" + b] = load("res://drone/%s_thruster_r.png" % b)
+			for extra in ["extra", "glow"]:
+				if ResourceLoader.exists("res://drone/%s_%s.png" % [b, extra]):
+					_tex["%s_%s" % [extra, b]] = load("res://drone/%s_%s.png" % [b, extra])
 	for n in ["blaster", "beam", "missile"]:
 		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
 	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
@@ -557,7 +562,7 @@ func _start_stage() -> void:
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	# the drone sidekick flies along once the pilot is level 8 (Gear > Drone)
 	_drone = DroneData.read(sv)
-	if plevel < int(DroneData.BODIES[_drone.body].unlock) and not DevTools.on:
+	if not DroneData.body_open(_drone, String(_drone.body), plevel):
 		_drone.body = "scout"
 	if plevel < int(DroneData.PODS[_drone.pod].unlock) and not DevTools.on:
 		_drone.pod = "blaster"
@@ -2647,23 +2652,31 @@ func _update_drone(delta: float) -> void:
 	_drone_cd = float(pod.every)
 	_drone_flash = 0.12
 	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level))   # its own element is applied on the hit (_drone_mult)
+	# round 2 body passives: the Night Bat crits, the Wisp phases through a bug, the Spark Bot arcs
+	var d_lucky: bool = rng.randf() < float(body.get("crit", 0.0))
+	if d_lucky:
+		dmg *= _crit_dmg
+	var d_pierce: int = 1 if body.get("phase", false) else 0
+	var d_arc: int = int(body.get("arc", 0))
 	var dir := Vector2.from_angle(_drone_aim)
 	match String(_drone.pod):
 		"beam":
 			# instant hit: a purple line to the target
 			dmg *= _drone_mult   # the beam hits now: the drone element
+			if d_arc > 0:
+				_chain(best, d_arc, dmg * 0.6)   # the Spark Bot's beam arcs on
 			best.hp -= dmg if _can_hurt(best) else 0.0
 			_show_dmg(best, dmg, false, _drone_mult)
 			stat_pilot_dmg += dmg
 			_drone_beam = {"a": p + dir * 14.0, "b": best.pos, "life": 0.18, "col": Color(0.8, 0.5, 1.0)}
 			_fx_add("impact", best.pos, 24.0, 0.2, 0.0, 1.6, Color(0.85, 0.6, 1.0))
 		"missile":
-			bullets.append({"pos": p + dir * 12.0, "vel": dir * 260.0, "dmg": dmg, "r": 12.0, "tid": int(best.id), "col": "missile", "drone": true,
+			bullets.append({"pos": p + dir * 12.0, "vel": dir * 260.0, "dmg": dmg, "r": 12.0, "tid": int(best.id), "col": "missile", "drone": true, "lucky": d_lucky, "pierce_left": d_pierce, "weld": d_arc,
 				"big": false, "pierce": false, "hits": [], "homing": int(best.id), "splash": float(pod.splash)})
 		_:
 			for s in [-1.0, 1.0]:
 				var off: Vector2 = dir.orthogonal() * 5.0 * float(s)
-				bullets.append({"pos": p + dir * 12.0 + off, "vel": dir * 500.0, "dmg": dmg, "r": 9.0, "tid": int(best.id), "col": "cyan", "drone": true,
+				bullets.append({"pos": p + dir * 12.0 + off, "vel": dir * 500.0, "dmg": dmg, "r": 9.0, "tid": int(best.id), "col": "cyan", "drone": true, "lucky": d_lucky, "pierce_left": d_pierce, "weld": d_arc,
 					"big": false, "pierce": false, "hits": []})
 
 func _draw_drone() -> void:
@@ -2694,11 +2707,19 @@ func _draw_drone() -> void:
 			var at := Vector2(side * (hw * 0.5 + tw * float(look.thr_out)), float(look.thr_y) * hh)
 			# lagging tilt, plus a spin for the ring props (the picture turns round its centre)
 			var spin: float = time_alive * 9.0 * side if look.spin else 0.0
+			if float(look.get("flap", 0.0)) > 0.0:   # wings and fins beat, mirrored on each side
+				spin = -side * sin(time_alive * 7.0) * float(look.flap)
 			draw_set_transform_matrix(base * Transform2D(_drone_tilt * 0.5 + spin, at))
 			draw_texture_rect(tt, Rect2(-tw * 0.5, -th * 0.5, tw, th), false)
 		draw_set_transform_matrix(base)
 		draw_texture_rect(pt, Rect2(-pw * 0.5, -hh * 0.35 - ph * 0.5, pw, ph), false)
 		draw_texture_rect(ht, Rect2(-hw * 0.5, -hh * 0.5, hw, hh), false)
+		if _tex.has("extra_" + String(_drone.body)):   # the Wisp's middle fin, trailing
+			var et: Texture2D = _tex["extra_" + String(_drone.body)]
+			var eh: float = hh * 0.9
+			var ew: float = eh * et.get_width() / et.get_height()
+			draw_set_transform_matrix(base * Transform2D(sin(time_alive * 5.0) * 0.12, Vector2(0, hh * 0.35)))
+			draw_texture_rect(et, Rect2(-ew * 0.5, 0.0, ew, eh), false)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		return
 	# the body banks into its sideways motion and squeezes a touch as it does (3D feel)
@@ -2714,11 +2735,25 @@ const DRONE_PARTS := {
 	"scout":   {"hull_w": 30.0, "thr_h": 20.0, "thr_out": 0.35, "thr_y": 0.0, "spin": true},
 	"striker": {"hull_w": 36.0, "thr_h": 34.0, "thr_out": 0.25, "thr_y": 0.0, "spin": false},
 	"warden":  {"hull_w": 32.0, "thr_h": 32.0, "thr_out": 0.3, "thr_y": 0.0, "spin": false},
+	# round 2 (Luna, dev184): wings and fins ride the hull's edge; "flap" = the pair beats slowly
+	"spark":   {"hull_w": 30.0, "thr_h": 14.0, "thr_out": 0.2, "thr_y": 0.05, "spin": false, "flap": 0.0},
+	"wisp":    {"hull_w": 24.0, "thr_h": 30.0, "thr_out": 0.1, "thr_y": 0.3, "spin": false, "flap": 0.25},
+	"bat":     {"hull_w": 18.0, "thr_h": 26.0, "thr_out": 0.05, "thr_y": -0.05, "spin": false, "flap": 0.35},
 }
 var _drone_tilt := 0.0   # the thrusters' lagging bank
 
 # on the light layer: the pod's muzzle flash and beams
 func _draw_drone_light() -> void:
+	# round 2 bodies: Luna's glow layer (eyes, core, coil) breathing over the hull
+	if _drone_on and _tex.has("glow_" + String(_drone.body)) and _tex.has("hull_" + String(_drone.body)):
+		var gt: Texture2D = _tex["glow_" + String(_drone.body)]
+		var ht2: Texture2D = _tex["hull_" + String(_drone.body)]
+		var k: float = float(DRONE_PARTS[_drone.body].hull_w) / ht2.get_width()
+		var gs := gt.get_size() * k
+		var ga: float = 0.55 + 0.25 * sin(time_alive * 3.0) + 0.6 * _drone_flash / 0.12
+		_fx.draw_set_transform(_drone_pos(), _drone_aim + PI / 2.0 + _drone_bank, Vector2(1.0 - absf(_drone_bank) * 0.25, 1.0))
+		_fx.draw_texture_rect(gt, Rect2(-gs * 0.5, gs), false, Color(1, 1, 1, clampf(ga, 0.0, 1.0)))
+		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	if float(_drone_beam.get("life", 0.0)) > 0.0:
 		var a: float = float(_drone_beam.life) / 0.18
 		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)

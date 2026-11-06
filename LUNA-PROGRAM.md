@@ -16,7 +16,7 @@ Priority order (Rudy picks; the code side of each is noted):
 | 2a | UI KIT round 2 (DELIVERED 2026-11-05): panels, popup, nav dock, top bar in | LUNA-BRIEF-ui-kit-redo-1.md | done |
 | 2 | UI KIT: buttons, panels, headers, tabs, chips, nav bar, HUD frame, HP and shield bars, red dot, stars, padlock | LUNA-BRIEF-ui-kit.md | 9-slice pieces replace the code-drawn glass; UIKit keeps the layout |
 | 3 | ICONS: every menu icon, currency, parts, elements, roles, grades, stats, the six element symbols | LUNA-BRIEF-icons.md | one sheet, cut into icons/ |
-| 4 | DRONE BODIES: Electric spark bot, Void wisp, Dark bat (+ Repair and Magnet pods) | LUNA-BRIEF-drones-2.md | DroneData bodies by grade, pods get their own pictures |
+| 4 | DRONE BODIES (DELIVERED 2026-11-05): Spark Bot, Wisp, Night Bat + Repair and Magnet pods | LUNA-BRIEF-drones-2.md | done: DroneData bought bodies, parts + glow in battle |
 | 5 | CARDS: six hero card pictures, Uncommon frame with the Common inset, trial twist icons | LUNA-BRIEF-cards-2.md | cards/pic_*.png, frame fix |
 | 6 | TURRETS 2: a second turret per element (Repair Node, Beacon, Mine Layer, Flak, Tesla Coil, Cryo Lens) as base + head + light, and resting / firing heads for the six we have | LUNA-BRIEF-turrets-2.md | Turrets table, roles, split draw |
 | 7 | HERO EVOLUTIONS: tier 2 and tier 3 looks for the six heroes (head, torso, back piece only) | LUNA-BRIEF-hero-tiers.md | Heroes.look_tier swaps those parts |

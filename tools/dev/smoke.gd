@@ -320,7 +320,16 @@ func _check_turrets() -> void:
 	_expect(Turrets.owned(ot, "lance") and Turrets.owned(ot, "storm") and not Turrets.owned(ot, "gravity"), "an old save keeps the turrets its pilot level had (Lv.11: Sentry, Lance, Storm)")
 	_expect(is_equal_approx(Turrets.element_mult("prism", 25), Heroes.WEAK_MULT) and is_equal_approx(Turrets.element_mult("lance", 25), Heroes.RESIST_MULT), "Magma World: Ice Prism strong, Fire Lance weak")
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
-	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "blaster", "support pods: job and borrowed art")
+	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "magnet", "support pods: job and their own art")
+	var ds := {"coins": 7000, "crystals": 0, "parts": {"alloy": 20, "cell": 4}}
+	var dr := DroneData.read(ds)
+	_expect(not DroneData.body_open(dr, "spark", 40) and DroneData.body_open(dr, "scout", 8), "Spark Bot is bought, not level-gated; Scout opens at Lv.8")
+	_expect(DroneData.unlock(ds, dr, "spark", false) == "" and DroneData.body_open(dr, "spark", 1) and int(ds.coins) == 1000, "Spark Bot for 6000 coins + 20 alloy + 4 cells")
+	ds["drone"] = {"body": "spark", "pod": "repair", "owned": dr.owned}
+	_expect(DroneData.read(ds).body == "spark" and DroneData.body_open(DroneData.read(ds), "spark", 1), "owned bodies round trip")
+	for b in ["spark", "wisp", "bat"]:
+		for part in ["body_%s", "%s_hull", "%s_thruster_l", "%s_thruster_r", "%s_glow", "%s_portrait"]:
+			_expect(ResourceLoader.exists("res://drone/" + (part % b) + ".png"), "drone %s: %s cut" % [b, part % b])
 	_expect(ResourceLoader.exists("res://drone/pod_%s.png" % DroneData.pod_art("repair")), "the Repair pod has a picture to borrow")
 	for hid in ["sparks", "frost", "hollow", "nyx", "ember"]:   # Luna's hero frames cut in (dev172, tools/cut_heroes.gd)
 		for n in range(1, 6):
