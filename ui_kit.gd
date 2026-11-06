@@ -44,7 +44,12 @@ static func glass(radius: float = 12.0) -> StyleBoxFlat:
 
 static func panel(radius: float = 14.0) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", glass(radius))   # panels stay code glass: Luna's gloss band smears when a tall box stretches (dev172)
+	# Luna's panel (round 2: gloss only in the corner, so it stretches to any height); big
+	# radius = a pop-up window, which uses her popup piece
+	if kit_ready("panel_glass"):
+		p.add_theme_stylebox_override("panel", nine("panel_glass", 22.0, Vector2(12, 9)))
+	else:
+		p.add_theme_stylebox_override("panel", glass(radius))
 	return p
 
 static func label(text: String, size_px: int = 14, col: Color = Color.WHITE, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
@@ -245,6 +250,17 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	var b := Button.new()
 	b.custom_minimum_size = size
 	b.clip_text = true
+	if kit_ready("panel_tile"):   # Luna's tile frame (corner brackets), tinted by the item colour
+		var kt := nine("panel_tile", 22.0, Vector2(4, 4), Color(col.lerp(Color.WHITE, 0.3), 1.0))
+		_kit_tile(b, kt, col)
+		depth(b, col, icon != null)
+		var kv := VBoxContainer.new()
+		kv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		kv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		kv.name = "Body"
+		b.add_child(kv)
+		_fill_tile(kv, title, subtitle, badge, icon, size, col)
+		return b
 	var normal := box(Color(col.r * 0.2, col.g * 0.2, col.b * 0.28, 0.78), Color(col, 0.7), 12)
 	# depth (dev149, Rudy: the cards looked flat): a soft drop shadow under the card
 	normal.shadow_color = Color(0, 0, 0, 0.42)
@@ -483,3 +499,39 @@ static func _kit_btn(b: Button, face: String, text_col: Color) -> void:
 	b.add_theme_color_override("font_pressed_color", text_col)
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.55, 0.65))
 	press_fx(b)
+
+# the kit tile's button styles (Luna's panel_tile, tinted) and the tile's body
+static func _kit_tile(b: Button, kt: StyleBoxTexture, col: Color) -> void:
+	var pressed := nine("panel_tile", 22.0, Vector2(4, 4), Color.WHITE)
+	b.add_theme_stylebox_override("normal", kt)
+	b.add_theme_stylebox_override("hover", kt)
+	b.add_theme_stylebox_override("pressed", pressed)
+	b.add_theme_stylebox_override("disabled", kt)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	b.add_theme_color_override("font_color", Color.WHITE)
+	press_fx(b)
+
+static func _fill_tile(v: VBoxContainer, title: String, subtitle: String, badge: String, icon: Texture2D, size: Vector2, col: Color) -> void:
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 1)
+	if icon != null:
+		var tr := TextureRect.new()
+		tr.texture = icon
+		tr.custom_minimum_size = Vector2(0, 34)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(tr)
+	v.add_child(label(title, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
+	if subtitle != "":
+		v.add_child(label(subtitle, 11, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if badge != "":
+		var bl := label(badge, 10, col)
+		bl.position = Vector2(14, 8)   # clear of the painted corner bracket
+		v.get_parent().add_child(bl)
+
+# a pop-up window (NEW, confirm, the ladders, stats): Luna's popup piece with its notch
+static func popup_panel() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", nine("popup", 30.0, Vector2(14, 14)) if kit_ready("popup") else glass(16.0))
+	return p

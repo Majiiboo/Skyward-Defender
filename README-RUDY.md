@@ -331,8 +331,10 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   sub-tabs, the chips and the section headers are now her rendered pieces, stretched as
   9-slice boxes (the corners stay as painted). The battle top bar, the HP bar and the XP track
   use her frame and bar pieces. The big panels stay code glass for now: her panel renders
-  carry a gloss band across the middle that smears when a tall box stretches, so they need a
-  version with the gloss only in the top corners (a small redo, in the next brief). Her nav
+  carried a gloss band across the middle; her round-2 panels (gloss only in the corner, delivered
+  the same day) are in: every info box, the reward rows, the item tiles with their corner
+  brackets, the pop-up windows with their notch, and the Home bottom bar are hers now. (Old text:
+  version with the gloss only in the top corners. Her nav
   dock, top bar, popup and nav tile pieces are cut and waiting for the same reason.
 - DEV MODE (for you): Settings has a DEV MODE switch at the top. ON = every hero, turret, drone
   body and pod, weapon, mode and trial is open, all four mounts are open, every upgrade and

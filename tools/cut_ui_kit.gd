@@ -6,7 +6,7 @@ extends "res://tools/cut_ui_art.gd"
 
 # each piece is saved at its ON-SCREEN size (a 405 px wide button becomes 160 px: a kit button is
 # about 160 x 52 on the phone), so the 9-slice corners stay the painted shape at any size
-const SCALE := {"btn": 0.36, "panel": 0.5, "header_bar": 0.42, "chip": 0.28, "popup": 0.7, "topbar": 1.0,
+const SCALE := {"btn": 0.36, "panel": 0.4, "header_bar": 0.42, "chip": 0.28, "popup": 0.6, "topbar": 1.0,
 	"bar": 0.24, "nav_dock": 1.0, "nav_tile": 1.0, "hud_frame": 1.0}
 const PIECES := ["btn_gold", "btn_gold_pressed", "btn_teal", "btn_teal_pressed", "btn_glass", "btn_glass_pressed",
 	"btn_off", "btn_tab", "panel_glass", "panel_dark", "panel_gold", "panel_tile", "header_bar", "chip", "popup", "topbar",
@@ -15,7 +15,9 @@ const PIECES := ["btn_gold", "btn_gold_pressed", "btn_teal", "btn_teal_pressed",
 func _initialize() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path("res://ui"))
 	for n in PIECES:
-		var path := ProjectSettings.globalize_path("res://art_src/ui/ui-%s.webp" % n)
+		var path := ProjectSettings.globalize_path("res://art_src/ui/ui-%s-v2.webp" % n)   # round 2 (gloss in the corner) wins
+		if not FileAccess.file_exists(path):
+			path = ProjectSettings.globalize_path("res://art_src/ui/ui-%s.webp" % n)
 		if not FileAccess.file_exists(path):
 			printerr("missing " + path)
 			continue

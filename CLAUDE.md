@@ -5,7 +5,11 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 0 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 1 update (next push = dev182 + that count; see the build rule).
+  1. UI kit round 2 in: art_src/ui/ui-*-v2.webp (cutter prefers -v2), UIKit.panel -> panel_glass,
+     popup_panel() (popup piece) on the pop-up sites, tile() -> panel_tile tinted + _kit_tile /
+     _fill_tile, settings selected row panel_gold, nav_dock.gd draws nav_dock. Not used yet: topbar
+     (Home top bar is a shade, dev107), nav_tile.
   dev182 carried the eleven updates listed below (README-RUDY dev182). Rudy
   11. LUNA UI KIT in (art_src/ui/ui-*.webp, 36; tools/cut_ui_kit.gd -> ui/*.png at on-screen SCALE):
      UIKit KIT_ON, kit_ready, nine() (StyleBoxTexture 9-slice, cached), _kit_btn (gold / teal /

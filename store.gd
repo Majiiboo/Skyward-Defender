@@ -381,7 +381,7 @@ func _code_popup() -> void:
 	layer.color = Color(0, 0.01, 0.04, 0.75)
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(layer)
-	var p := UIKit.panel(14)
+	var p := UIKit.popup_panel()
 	var w := minf(size.x - 40.0, 380.0)
 	p.custom_minimum_size = Vector2(w, 0)
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.3)

@@ -918,7 +918,7 @@ func _side_popup(title: String, body: String, actions: Array = []) -> void:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	dim.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: _hide_panels())
 	layer.add_child(dim)
-	var p := UIKit.panel(16)
+	var p := UIKit.popup_panel()
 	var w := minf(size.x - 40.0, 360.0)
 	p.custom_minimum_size = Vector2(w, 0)
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.28)

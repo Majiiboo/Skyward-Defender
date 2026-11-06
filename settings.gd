@@ -84,7 +84,7 @@ func _fill() -> void:
 		var on: bool = m == cur
 		var p := UIKit.panel(12)
 		if on:
-			p.add_theme_stylebox_override("panel", UIKit.lift(UIKit.box(Color(UIKit.CYAN, 0.16), UIKit.CYAN, 12)))
+			p.add_theme_stylebox_override("panel", UIKit.nine("panel_gold", 22.0, Vector2(12, 9)) if UIKit.kit_ready("panel_gold") else UIKit.lift(UIKit.box(Color(UIKit.CYAN, 0.16), UIKit.CYAN, 12)))
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 10)
 		var v := VBoxContainer.new()

@@ -86,7 +86,10 @@ func _draw() -> void:
 		return
 	# the bar: one glass capsule
 	var bar := Rect2(INSET, bump_h, size.x - INSET * 2.0, size.y - bump_h - INSET)
-	Glass.panel(self, Glass.box(bar, bar_corner))
+	if UIKit.kit_ready("nav_dock"):   # Luna's dock (dev182)
+		draw_style_box(UIKit.nine("nav_dock", 40.0, Vector2.ZERO), bar.grow(2.0))
+	else:
+		Glass.panel(self, Glass.box(bar, bar_corner))
 	# the active tab: a lit tile set INTO the bar (Rudy, dev107: no bar line behind it,
 	# nothing sticking out above), gold on Battle, breathing gently when it is Play
 	var tile := Rect2(notch_x, bar.position.y + 4.0, bump_w, bar.size.y - 8.0)
