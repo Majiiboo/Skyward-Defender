@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_check_store()
 	_check_turrets()
 	_check_gates()
+	_check_talents()
 	_check_etrials()
 	_check_mods()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
@@ -509,3 +510,29 @@ func _check_gates() -> void:
 	var ps := {"stage_unlocked": 1, "coins": 999999, "crystals": 700, "parts": {"alloy": 99, "cell": 99, "core": 99}, "materials": {"ess_solar": 9}}
 	var ph := Heroes.read(ps)
 	_expect(Heroes.unlock(ps, ph, "ember", false) == "Crystals only" and Heroes.unlock(ps, ph, "ember", true) == "" and Heroes.owned(ph, "ember") and int(ps.crystals) == 50 and Heroes.tier(ph, "ember") == 1, "Ember: coins refused, 650 crystals accepted, arrives at 1 star")
+
+# the pilot talent map (Talents, queue 16 e, dev197)
+func _check_talents() -> void:
+	_expect(Talents.count({}) == 0 and Talents.next({}) == 1 and Talents.SIZE == 40, "a fresh save: no nodes, node 1 next")
+	_expect(String(Talents.node(10).card) == "focus_fire" and String(Talents.node(40).card) == "mirror_shell" and String(Talents.node(5).card) == "", "cards at nodes 10 and 40")
+	_expect(int(Talents.cost(1).coins) == 330 and Talents.cost(1).mats.is_empty() and int(Talents.cost(15).mats.get("core", 0)) == 2 and Talents.cost(25).mats.has("ess_ion") and Talents.cost(29).mats.has("ess_nightmare") and int(Talents.cost(35).mats.get("coil", 0)) == 2, "costs: coins, then cores, essences, coils (node 25 asks for %s)" % Parts.text(Talents.cost(25).mats))
+	_expect(Talents.door(7) == 7 and Talents.text(1) == "Bolt damage +1.5%" and Talents.text(10).contains("Focus Fire"), "doors and texts: " + Talents.text(10))
+	var s := {"pilot_xp": 0, "coins": 0}
+	_expect(Talents.why_not(s) == "330 coins needed", "node 1: coins first (got %s)" % Talents.why_not(s))
+	s["coins"] = 330
+	_expect(Talents.buy(s) == "" and Talents.count(s) == 1 and int(s.coins) == 0, "node 1 bought")
+	_expect(Talents.why_not(s) == "Pilot Lv.2 first", "node 2 waits for pilot level 2 (got %s)" % Talents.why_not(s))
+	s["pilot_xp"] = Turrets.xp_for_level(3)
+	s["coins"] = 100000
+	_expect(Talents.buy(s) == "" and Talents.buy(s) == "" and Talents.count(s) == 3 and Talents.why_not(s) == "Pilot Lv.4 first", "nodes 2 and 3 at pilot level 3, node 4 waits")
+	var b := Talents.bonus(s)
+	_expect(is_equal_approx(float(b.damage), 1.015) and is_equal_approx(float(b.turret_dmg), 1.02) and is_equal_approx(float(b.hp_mult), 0.02), "three nodes: ATK +1.5%, turret +2%, HP +2%")
+	var st0 := Heroes.stats({"pilot_xp": 0})
+	var st3 := Heroes.stats(s)
+	_expect(is_equal_approx(float(st3.damage), float(st0.damage) * 1.015) and is_equal_approx(float(st3.turret_dmg), float(st0.turret_dmg) * 1.02), "the hero stats carry the talents")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	_expect(not Cards.draw({}, 99, rng, 99, true, [], "rook", 0).has("focus_fire") and Cards.draw({}, 99, rng, 99, true, [], "rook", 10).has("focus_fire") and not Cards.draw({}, 99, rng, 99, true, [], "rook", 10).has("salvage") and Cards.draw({}, 99, rng, 99, true, [], "rook", 40).has("mirror_shell"), "talent cards are offered only once their node is bought")
+	for id in Talents.CARD_AT.values():
+		_expect(Cards.CARDS.has(id) and Cards.OVERCHARGE.has(id) and ResourceLoader.exists(String(Cards.CARDS[id].pic)), "talent card %s: card, overcharge text, picture" % id)
+	_expect(Talents.cards(s).is_empty() and Talents.cards({"talents": 20}) == ["focus_fire", "salvage"], "cards unlocked so far")

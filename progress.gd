@@ -364,7 +364,7 @@ static func attention(d: Dictionary) -> Dictionary:
 	if not Unlocks.open(d, "repeat"):
 		q[3] = false
 	return {"quests": q[0] or q[1] or q[2] or q[3], "quests_tabs": q, "store": bool(attend(d).claimable),
-		"gear": parts_merge or gear_merge, "gear_ws": [parts_merge, gear_merge], "patrol": patrol}
+		"gear": parts_merge or gear_merge or Talents.affordable(d), "gear_ws": [parts_merge, gear_merge], "patrol": patrol}   # a talent node ready to buy (dev197)
 
 # anything waiting to be claimed (for a red dot on Home)
 static func has_claimable(d: Dictionary) -> bool:

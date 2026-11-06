@@ -227,6 +227,12 @@ func _build() -> void:
 	stats_btn.pressed.connect(_show_stats)
 	stage.add_child(stats_btn)
 	stage.resized.connect(func(): stats_btn.position = Vector2(stage.size.x - SLOT_PX - 74.0, 4.0))
+	# the pilot talent map (Talents, dev197): a path of permanent bonuses for every hero
+	_talent_btn = UIKit.ghost_button("TALENTS", 11)
+	_talent_btn.custom_minimum_size = Vector2(76, 26)
+	_talent_btn.pressed.connect(_talents_screen)
+	stage.add_child(_talent_btn)
+	stage.resized.connect(func(): _talent_btn.position = Vector2(stage.size.x - SLOT_PX - 156.0, 4.0))
 	_paint_suit()
 	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
 	_hero_panel = UIKit.panel(10)
@@ -422,6 +428,8 @@ func _select(slot: String) -> void:
 	else:
 		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[gear.equipped[selected_slot]].set)))
 	_power_label.text = "POWER %d" % Heroes.power(_read())
+	if _talent_btn:
+		UIKit.dot(_talent_btn, Talents.affordable(_read()))   # a node is ready to buy (dev197)
 	_paint_wallet()
 	# the hero's milestones so far (every 5 levels), in place of the old set bonuses
 	var hid := _hero_id()
@@ -2044,6 +2052,8 @@ func _paint_hero() -> void:
 		_crystal_btn.text = "%d crystals" % Heroes.crystal_price(id)
 		_crystal_btn.disabled = not Heroes.gate_open(data, id) or int(data.get("crystals", 0)) < Heroes.crystal_price(id)
 	_power_label.text = "POWER %d" % Heroes.power(_read())
+	if _talent_btn:
+		UIKit.dot(_talent_btn, Talents.affordable(_read()))   # a node is ready to buy (dev197)
 	_paint_wallet()
 	# the platform's buildings light up with the duty hero's tier, in his element colour
 	if _plat:
@@ -2365,6 +2375,102 @@ func _on_drone_unlock(body: String) -> void:
 # WEAPONS screen (Rudy, dev186): tapping the weapon tile opens your weapon inventory, a card
 # per weapon you own (picture, name, element, level, rarity), grouped by element, tap to
 # equip. The old CHOOSE grid under the hero is gone.
+# The TALENT MAP (Talents, queue 16 e, dev197): forty nodes in five columns, bought in order;
+# bought ones gold, the next one teal, the rest dim. Tap a node to read it; the one button buys
+# the next node. Every 10th node unlocks a power card for runs.
+var _talent_btn: Button
+
+func _talents_screen() -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0, 0.01, 0.04, 0.78)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
+	add_child(layer)
+	var p := UIKit.popup_panel()
+	var w := minf(size.x - 24.0, 420.0)
+	p.custom_minimum_size = Vector2(w, 0)
+	p.position = Vector2((size.x - w) * 0.5, 40.0)
+	p.gui_input.connect(func(ev): if ev is InputEventMouseButton or ev is InputEventScreenTouch: p.accept_event())
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	var data := _read()
+	var have := Talents.count(data)
+	var nxt := Talents.next(data)
+	v.add_child(UIKit.label("TALENT MAP  ·  %d / %d" % [have, Talents.SIZE], 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var intro := UIKit.label("Permanent bonuses for every hero, bought in order. Node N opens at pilot level N. Every 10th node unlocks a new power card for your runs.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(intro)
+	var detail := UIKit.label("", 12, Color(0.85, 0.92, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	detail.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	detail.custom_minimum_size = Vector2(0, 54)
+	var show := func(n: int):
+		var c := Talents.node(n)
+		var state := "bought" if n <= have else ("next" if n == nxt else "later")
+		detail.text = "NODE %d  ·  %s\n%s\n%s%s" % [n, state, Talents.text(n), Talents.cost_text(n), "" if n <= have else "  ·  pilot Lv.%d" % Talents.door(n)]
+		if String(c.card) != "":
+			detail.text += "\n%s: %s" % [Cards.CARDS[c.card].name, Cards.CARDS[c.card].desc]
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(0, minf(size.y * 0.46, 400.0))
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for n in range(1, Talents.SIZE + 1):
+		var c := Talents.node(n)
+		var txt := "%s\n%s" % [c.tag, Talents.bonus_text(n)]
+		var b: Button
+		if n <= have:
+			b = UIKit.gold_button(txt, 9)
+		elif n == nxt:
+			b = UIKit.teal_button(txt, 9)
+		else:
+			b = UIKit.ghost_button(txt, 9)
+			b.modulate = Color(0.6, 0.62, 0.72, 0.85)
+		b.custom_minimum_size = Vector2(0, 50)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var nn: int = n
+		b.pressed.connect(func(): show.call(nn))
+		if String(c.card) != "":
+			UIKit.corner_icon(b, UIKit.ic("tw_overcharge"), 16.0)   # a card node
+		grid.add_child(b)
+	sc.add_child(grid)
+	v.add_child(sc)
+	v.add_child(detail)
+	show.call(mini(nxt, Talents.SIZE))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var why := Talents.why_not(data)
+	var buy := UIKit.gold_button(("Buy node %d\n%s" % [nxt, Talents.cost_text(nxt)]) if why == "" else (why if nxt <= Talents.SIZE else "Map complete"), 12)
+	buy.custom_minimum_size = Vector2(0, 46)
+	buy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	buy.disabled = why != ""
+	buy.pressed.connect(func():
+		var d2 := _read()
+		var err := Talents.buy(d2)
+		if err != "":
+			_toast(err)
+			return
+		_write_data(d2)
+		coins = int(d2.get("coins", 0))
+		Sfx.play("upgrade")
+		Progress.bump("upgrades")
+		var bought := Talents.count(d2)
+		_toast("Talent %d: %s" % [bought, Talents.text(bought)])
+		layer.queue_free()
+		_paint_hero()
+		_talents_screen())
+	row.add_child(buy)
+	var close := UIKit.ghost_button("Close", 12)
+	close.custom_minimum_size = Vector2(80, 46)
+	close.pressed.connect(layer.queue_free)
+	row.add_child(close)
+	v.add_child(row)
+	p.add_child(v)
+	layer.add_child(p)
+	UIKit.pop_in(p)
+
 func _weapons_screen() -> void:
 	var layer := ColorRect.new()
 	layer.color = Color(0, 0.01, 0.04, 0.78)

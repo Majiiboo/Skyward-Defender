@@ -68,6 +68,16 @@ const CARDS := {
 		"desc": "Beacon marks last +1 s per level, hero ATK +5% more"},
 	"flak_shrapnel":   {"name": "Shrapnel",       "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "flak", "pic": "res://turrets/flak_idle.png",
 		"desc": "Flak blast +20% wider per level"},
+	# talent cards (dev197, Talents.CARD_AT): the talent map's 10th / 20th / 30th / 40th node
+	# unlocks one each ("talent" = the node); pictures borrow the stat icons until Luna paints them
+	"focus_fire":   {"name": "Focus Fire",   "family": "pilot", "rarity": "uncommon", "max": 3, "talent": 10, "pic": "res://icons/st_atk.png",
+		"desc": "Bolt damage +6% per level"},
+	"salvage":      {"name": "Salvage",      "family": "pilot", "rarity": "uncommon", "max": 3, "talent": 20, "pic": "res://icons/ic_coin.png",
+		"desc": "Bugs drop +25% coins per level"},
+	"second_wind":  {"name": "Second Wind",  "family": "pilot", "rarity": "epic", "max": 3, "talent": 30, "pic": "res://icons/st_hp.png",
+		"desc": "Once a run, a killing blow heals you to 50% (then 75%, then full)"},
+	"mirror_shell": {"name": "Mirror Shell", "family": "pilot", "rarity": "epic", "max": 3, "talent": 40, "pic": "res://icons/st_def.png",
+		"desc": "A bolt that stops a bug's shot throws it back for 50% damage (then 75%, then full)"},
 	# hero cards (Rudy, dev172): one per hero, offered only while he is on duty ("hero" key).
 	# They BUILD UP like every card: pick 1 the basic form, pick 2 more of it, pick 3 (the
 	# overcharge) his max specialty. Not a legendary handed over: earned in the run.
@@ -114,6 +124,10 @@ const OVERCHARGE := {
 	"mines_cluster":   "Shock Mines: a burst can stun",
 	"beacon_dread":    "Twin Mark: marks two bugs at once",
 	"flak_shrapnel":   "Incendiary: bugs in the blast burn",
+	"focus_fire":      "Crit rate +10%",
+	"salvage":         "Every 10th kill drops a part",
+	"second_wind":     "Heals to full",
+	"mirror_shell":    "The bolt flies on after the throw",
 	"rook_twin":       "Twins hit +15% harder",
 	"sparks_weld":     "EVERY bolt arcs",
 	"frost_freeze":    "Shatter: a slowed bug that dies blasts its neighbours",
@@ -161,13 +175,13 @@ static func fusions_ready(levels: Dictionary) -> Array:
 # run_level: cards with "from_level" only show up from that run level on.
 # mounted: the turret types on the base (turret cards need theirs). hero: the hero on duty
 # (his own card only shows up for him).
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = [], hero: String = "") -> Array:
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = [], hero: String = "", talents: int = 99) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("turret") or mounted.has(CARDS[id].turret)) and (not CARDS[id].has("hero") or String(CARDS[id].hero) == hero):
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("turret") or mounted.has(CARDS[id].turret)) and (not CARDS[id].has("hero") or String(CARDS[id].hero) == hero) and talents >= int(CARDS[id].get("talent", 0)):   # talent cards: the map's node must be bought (dev197)
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

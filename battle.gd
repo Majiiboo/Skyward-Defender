@@ -254,6 +254,12 @@ var _bastion := false
 # dev110 cards (batch B)
 var pierce_level := 0            # Piercing Rounds: bugs a bolt passes through
 var _pierce_bonus := false        # its overcharge: +25% damage per bug pierced
+var _talents := 0                 # talent map nodes bought (Talents, dev197): gates the talent cards
+var _salvage := false             # Salvage overcharged: every 10th kill drops a part
+var _salvage_n := 0
+var _second_wind := 0             # Second Wind card level: once a run, a killing blow heals instead (0 = used / none)
+var _mirror := 0                  # Mirror Shell card level: a bolt that stops a shot throws it back
+var _mirror_through := false      # its overcharge: the bolt flies on
 var frost_level := 0              # Frost Rounds: hits slow bugs
 var _frost_bonus := false         # its overcharge: slowed bugs take +20%
 var _turret_rate := 1.0           # Turret Overclock: turrets run faster
@@ -452,6 +458,11 @@ func _start_stage() -> void:
 	_weld_every = 3
 	_freeze_level = 0
 	_shatter = false
+	_salvage = false
+	_salvage_n = 0
+	_second_wind = 0
+	_mirror = 0
+	_mirror_through = false
 	_phase_bonus = false
 	_burn_level = 0
 	_burn_spread = false
@@ -586,6 +597,7 @@ func _start_stage() -> void:
 	if open_now != seen:
 		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
+	_talents = Talents.count(sv)
 	# the drone sidekick flies along once the pilot is level 8 (Gear > Drone)
 	_drone = DroneData.read(sv)
 	if not DroneData.body_open(_drone, String(_drone.body), plevel):
@@ -1175,7 +1187,15 @@ func _update_bullets(delta: float) -> void:
 		for pb in bullets:
 			if pb.pos.distance_to(b.pos) < 14.0:
 				shot_down = true
-				pb.pos = Vector2(-999, -999)
+				# Mirror Shell (talent card): the shot is thrown back up the way it came, as a bolt of
+				# ours; overcharged, our bolt flies on instead of being spent
+				if _mirror > 0 and not pb.has("src") and not pb.get("mirrored", false):
+					var back: Vector2 = -Vector2(b.vel).normalized() * 420.0
+					bullets.append({"pos": b.pos, "vel": back, "dmg": float(pb.dmg) * [0.5, 0.75, 1.0][clampi(_mirror - 1, 0, 2)], "r": 10.0, "tid": -1,
+						"col": "cyan", "big": false, "pierce": false, "hits": [], "mirrored": true})
+					_fx_add("spark", b.pos, 30.0, 0.25, 0.0, 1.6, Color(0.7, 0.95, 1.0))
+				if not _mirror_through:
+					pb.pos = Vector2(-999, -999)
 				break
 		if shot_down:
 			_burst(b.pos, 5.0, Color(1.0, 0.6, 0.9), 4)
@@ -1487,6 +1507,12 @@ func _kill(e: Dictionary) -> void:
 	# need to show them dropping)
 	for kind in _part_drops(e, def):
 		_parts_got[kind] = int(_parts_got.get(kind, 0)) + 1
+	if _salvage and e.type != "spore":   # Salvage overcharged (talent card): every 10th kill drops a part
+		_salvage_n += 1
+		if _salvage_n % 10 == 0:
+			var kind := "core" if _salvage_n % 100 == 0 else ("cell" if _salvage_n % 30 == 0 else "alloy")
+			_parts_got[kind] = int(_parts_got.get(kind, 0)) + 1
+			_float_text(e.pos + Vector2(0, -20), "+1 %s" % Parts.KINDS[kind].name, Parts.KINDS[kind].color)
 	# coins drop as pickups too (Rudy, dev108: gems = XP, coins = money); the boss showers them
 	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
 	for i in ncoins:
@@ -2246,6 +2272,16 @@ func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	inv_t = 1.0 * _recovery
 	var dmg := amount * (1.0 - _def)   # DEF takes its share off
 	pilot_hp = maxf(pilot_hp - dmg, 0.0)
+	# Second Wind (talent card): once a run, the blow that would finish him heals him instead
+	if pilot_hp <= 0.0 and _second_wind > 0:
+		pilot_hp = pilot_hp_max * [0.5, 0.75, 1.0][clampi(_second_wind - 1, 0, 2)]
+		_second_wind = 0
+		inv_t = 2.0
+		_fx_add("nova", soldier_pos, 120.0, 0.6, 0.0, 2.2, Color(0.6, 1.0, 0.7))
+		_float_text(soldier_pos + Vector2(0, -60), "SECOND WIND", Color(0.6, 1.0, 0.7), true)
+		Sfx.play("shield")
+		shake = maxf(shake, 0.4)
+		return
 	Sfx.play("hurt")
 	_hp_lost += dmg
 	_took_damage = true
@@ -2793,6 +2829,11 @@ func _pick_card(id: String) -> void:
 			t.def.mark = float(t.def.mark) + 1.0
 			t.def.atk = float(t.def.atk) + 0.05)
 		"flak_shrapnel": _turret_mod("flak", func(t): t.def.blast = float(t.def.blast) * 1.2)
+		# talent cards (Talents.CARD_AT, dev197)
+		"focus_fire": damage_mult *= 1.06
+		"salvage": _coin_mult += 0.25
+		"second_wind": _second_wind = int(card_levels[id])
+		"mirror_shell": _mirror = int(card_levels[id])
 		"shield_recharge": _shield_rate += 0.01
 		# hero cards (Cards "hero"): the build-up over the three picks
 		"rook_twin": _twin_every = [4, 3, 2][clampi(int(card_levels[id]) - 1, 0, 2)]
@@ -2843,6 +2884,9 @@ func _overcharge(id: String) -> void:
 		"mines_cluster": _turret_mod("mines", func(t): t.stun = true)
 		"beacon_dread": _turret_mod("beacon", func(t): t.double_mark = true)
 		"flak_shrapnel": _turret_mod("flak", func(t): t.embers = true)
+		"focus_fire": _crit_rate += 0.10
+		"salvage": _salvage = true
+		"mirror_shell": _mirror_through = true
 		"rapid_pulse": _overdrive = true
 		"heavy_bolts": _crit6 = true
 		"piercing_rounds": _pierce_bonus = true
@@ -2892,7 +2936,7 @@ func _offer() -> Array:
 		var forced := _dbg_offer
 		_dbg_offer = []
 		return forced
-	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)), _hero_id)
+	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)), _hero_id, _talents)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]

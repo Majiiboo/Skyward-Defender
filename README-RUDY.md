@@ -345,6 +345,29 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 3 (after dev195): THE PILOT TALENT MAP (your queue item 16 e). On the Hero page, a
+TALENTS button beside STATS opens the map: forty nodes in five columns, bought IN ORDER, each
+a small permanent bonus for EVERY hero. Bought nodes are gold, the next one teal, the rest
+dim; tap any node to read it; one button buys the next.
+- The ten-node cycle: Bolt damage +1.5%, Turret damage +2%, Hero HP +2%, Crit rate +0.5%,
+  Coins +3%, Base HP +2%, Fire rate +1%, Gem XP +3%, Crit damage +4%, Magnet +6 px. Four
+  times round = forty nodes; the whole map is about +6% bolt damage, +8% turret damage, +8%
+  HP, +2% crit, +12% coins, +8% base, +4% fire rate, +12% gem XP, +16% crit damage.
+- COSTS RISE the way you asked: coins first (330 for node 1, 6,000 for node 10, 18,000 for
+  node 20, 36,000 for node 30, 60,000 for node 40), then Cores from node 11, an essence of
+  the node's element from node 21, Prime Coils (plus 3 essences) from node 31. Node N opens
+  at pilot level N: a talent a level, so the map keeps pace with play, not with money.
+- EVERY 10TH NODE UNLOCKS A NEW POWER CARD for your runs (offered only once its node is
+  bought): node 10 FOCUS FIRE (bolt damage +6% a pick; overcharge crit rate +10%), node 20
+  SALVAGE (bugs drop +25% coins a pick; overcharge: every 10th kill drops a part), node 30
+  SECOND WIND (once a run, the blow that would finish you heals you to 50%, then 75%, then
+  full), node 40 MIRROR SHELL (a bolt that stops a bug's shot throws it back as a bolt of
+  yours for 50 / 75 / 100% damage; overcharge: your bolt flies on). Their pictures borrow the
+  stat icons until Luna paints card art.
+- A red dot on TALENTS (and on the Heroes tab) when a node is ready to buy.
+- Check: smoke covers the costs, doors, buying, the bonuses in the hero stats and the cards'
+  gating; the map and a card pick with the three talent cards were captured.
+
 Update 2 (after dev195): STARS, one standard for how heroes, turrets, drones and weapons grow
 (your calls today, DESIGN-stars.md). Nothing is locked behind a stage any more. A higher star is
 locked behind BUILDING the thing: level it to its cap, collect for it, evolve it, and the new

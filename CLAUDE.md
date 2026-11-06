@@ -5,7 +5,17 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 2 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 3 updates (next push = dev195 + that count; see the build rule).
+  3. TALENT MAP (queue 16 e, dev197): talents.gd Talents (SIZE 40, CYCLE of 10 stats, CARD_AT
+     {10 focus_fire, 20 salvage, 30 second_wind, 40 mirror_shell}, node / text / bonus_text, cost
+     (coins 300 n (1 + n/10); core from 11, essence by ELEMENTS cycle from 21, coil + 3 essences
+     from 31), door(n) = n (pilot level), why_not / affordable / buy, bonus() applied at the end of
+     Heroes.stats, cards()); save "talents" = nodes bought. cards.gd talent cards ("talent": node,
+     "pic" = stat icons) + OVERCHARGE; Cards.draw(.., talents) gates them; battle _talents,
+     _salvage / _salvage_n (10th kill part in _kill), _second_wind (_hurt_pilot), _mirror /
+     _mirror_through (enemy_bullets clash spawns a "mirrored" bolt), reset per run. gear.gd
+     _talent_btn (TALENTS beside STATS) + _talents_screen (5-column grid, detail, Buy, dot);
+     Progress.attention gear dot. smoke _check_talents. Luna: card art for the four later.
   2. STARS (Rudy 2026-11-06, DESIGN-stars.md; replaces the afternoon's stage gates): gates.gd Gates =
      the star standard: MAX_STAR 10 (1-5 gold, 6-10 red), power_mult (+8% gold / +12% red),
      level_cap(kind, star) (hero 10 / turret track 4 / drone 2 a star; Heroes.MAX_LEVEL 100,
@@ -388,7 +398,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    so far x1.5, 60% gear / 40% turrets on open mounts, even levels). hp_mult +5%/stage 11-30, +2%
    after; waves(): extra = (min(stage,30)-1)/2 + (stage-30)/4, and from stage 21 extra ramps 60%..100%
    over waves 1-5. Human bot: 22-50 win 4/4, 55 and 60 win 3/4. Turrets still ~15-25% of damage.
-16. LONG-GAME PLAN (Rudy, 2026-11-04), in this order: (a) DONE dev128 turret tracks ATK/Rate/Range
+16. LONG-GAME PLAN (Rudy, 2026-11-04), in this order ((e) talent map DONE dev197, talents.gd): (a) DONE dev128 turret tracks ATK/Rate/Range
    Lv.1-20 (Turrets.TRACKS, stats() -> battle t.def, level_of = sum, milestone every 5 = +5% dmg;
    save turrets.tracks; gear.gd _on_track_upgrade, _milestone_toast). (b) DONE dev133: 6 turret cards (Cards "turret" key, draw(mounted),
    battle _turret_mod, flags flak/twin/stun/horizon/boom/frost_light, Sentry "bounce"). Was: Turret power cards, only

@@ -443,6 +443,18 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.damage *= 1.0 + float(GearData.SLOT_STAT["Weapon"].per) * wlv
 	st.weapon = GearData.SETS[GearData.ITEMS[wid].set].weapon
 	st.crit_rate += float(GearData.MILESTONE["Weapon"].per) * GearData.milestones(wlv)
+	# the pilot talent map (Talents, dev197): small permanent bonuses for every hero
+	var tb := Talents.bonus(save)
+	st.damage *= float(tb.damage)
+	st.turret_dmg *= float(tb.turret_dmg)
+	st.fortress *= float(tb.fortress)
+	st.fire_rate *= float(tb.fire_rate)
+	st.hp_mult += float(tb.hp_mult)
+	st.crit_rate += float(tb.crit_rate)
+	st.coins += float(tb.coins)
+	st.gem_xp += float(tb.gem_xp)
+	st.crit_dmg += float(tb.crit_dmg)
+	st.magnet += float(tb.magnet)
 	# pilot rank (Promotion)
 	st.hp = roundf(float(st.hp) * float(st.hp_mult))   # milestones and Ember's passive
 	var pr := Promotion.rank(save)
