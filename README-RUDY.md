@@ -345,6 +345,14 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 12 (after dev182): LUNA'S ICONS are in (48, all usable). Coins, crystals and power
+tokens on Home and every wallet; Alloy, Cells and Cores everywhere parts show; the six element
+badges in the corner of every hero and turret tile; her tab icons on the Hero / Turrets /
+Drone / Workshop, Daily / Career / Trophies / Repeat and Offers / Chests / Parts / Packs
+strips; stat icons on the STATS panel; the three chests, the gift, the pack and the key in
+the Store; the Elite, rank and trial badges on the Modes cards. Shards, roles and the
+"weak to" shield are cut and ready for the pages that will show them (materials, turret
+details).
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

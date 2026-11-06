@@ -148,6 +148,17 @@ func _card(m: Dictionary) -> Control:
 	var chip := UIKit.chip(chip_text, UIKit.GOLD if (locked or soon) else tint)
 	chip.position = Vector2(10, 10)
 	banner.add_child(chip)
+	var mi: Texture2D = UIKit.ic({"elite": "ic_elite", "promotion": "ic_rank", "horde": "ic_trial", "boss": "ic_trial"}.get(String(m.id), ""))   # Luna's mode badges
+	if mi != null:
+		var mt := TextureRect.new()
+		mt.texture = mi
+		mt.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		mt.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		mt.custom_minimum_size = Vector2(40, 40)
+		mt.position = Vector2(banner.custom_minimum_size.x - 52.0 if banner.custom_minimum_size.x > 0.0 else 400.0, 8.0)
+		mt.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		banner.add_child(mt)
+		banner.resized.connect(func(): mt.position = Vector2(banner.size.x - 52.0, 8.0))
 	v.add_child(banner)
 	var d := UIKit.label(m.desc, 13, Color(0.82, 0.9, 1.0))
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

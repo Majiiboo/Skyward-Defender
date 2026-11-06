@@ -83,7 +83,7 @@ func _build() -> void:
 		get_tree().root.remove_meta("store_tab")
 	var hidden: Array = [] if Unlocks.open(d, "workshop") else [2]   # Parts only once the Workshop is open (Unlocks)
 	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
-	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab, [], hidden)
+	_tabs_row = UIKit.tabs(["Offers", "Chests", "Parts", "Packs"], func(i): tab = i; _fill(), tab, [], hidden, [UIKit.ic("ic_gift"), UIKit.ic("ic_chest_e"), UIKit.ic("ic_alloy"), UIKit.ic("ic_pack")])
 	col.add_child(_tabs_row)
 	_page = VBoxContainer.new()
 	_page.add_theme_constant_override("separation", 10)
@@ -240,7 +240,7 @@ func _fill_offers() -> void:
 		b.pressed.connect(func(): _buy(offer))
 		var speed: bool = o.id == "speed"
 		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
-		g.add_child(_tile(load("res://icons/ui_energy.png") if speed else load("res://icons/ui_coin.png"), big, o.name, o.color, b))
+		g.add_child(_tile(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("ic_coin", "ui_coin"), big, o.name, o.color, b))
 	g.add_child(_teaser(load("res://icons/gifts.png"), "Weekly Pack", "Free items every week"))
 
 # A tile for what the Store will sell later (Store 2.0, dev141): the picture dimmed, a
@@ -303,9 +303,9 @@ func _fill_chests() -> void:
 				hi = maxi(hi, int(r[1].coins))
 			else:
 				jackpot = "%d%%: %d crystals" % [int(r[0]), int(r[1].crystals)]
-		g.add_child(_tile(load("res://icons/chest3d_closed.png"), "%s-%s" % [UIKit.num(lo), UIKit.num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
+		g.add_child(_tile(UIKit.ic({"rare": "ic_chest_u", "epic": "ic_chest_e", "legendary": "ic_chest_l"}.get(String(c.color), "ic_chest_u"), "chest3d_closed"), "%s-%s" % [UIKit.num(lo), UIKit.num(hi)], "%s\n%s" % [c.name, jackpot], c.color, b))
 	# Store 2.0 (queue 18): chests opened with keys, with a pity counter, and gear inside
-	g.add_child(_teaser(load("res://icons/chest3d_closed.png"), "Key Chest", "Opened with keys from battle"))
+	g.add_child(_teaser(UIKit.ic("ic_key", "chest3d_closed"), "Key Chest", "Opened with keys from battle"))
 	g.add_child(_teaser(load("res://icons/gear_on.png"), "Gear Chest", "Gear copies, Epic every 10th"))
 	_page.add_child(UIKit.label("Coins, or the crystal jackpot", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 

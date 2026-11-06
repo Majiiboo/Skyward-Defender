@@ -151,7 +151,7 @@ func _build() -> void:
 	col.add_child(top)
 	# Pilot / Turrets switch
 	# pages the player has not reached yet are not built (Unlocks: turrets, drone, workshop)
-	_tabs_row = UIKit.tabs(["Hero", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages())
+	_tabs_row = UIKit.tabs(["Hero", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages(), [UIKit.ic("tab_hero"), UIKit.ic("tab_turrets"), UIKit.ic("tab_drone"), UIKit.ic("tab_workshop")])
 	col.add_child(_tabs_row)
 	_paint_dots()
 	_workshop_box = VBoxContainer.new()
@@ -548,10 +548,12 @@ func _show_stats() -> void:
 	layer.add_child(p)
 
 # label on the left, value on the right
+# Luna'"'"'s stat icons on the STATS panel (dev182)
+const STAT_ICON := {"Damage per hit": "st_atk", "Shots per second": "st_rate", "Damage per second": "st_atk", "Crit rate": "st_crit", "Crit damage": "st_crit", "Damage boost": "st_atk", "HP": "st_hp", "Defence": "st_def", "Shield": "st_def", "Hull (fortress HP)": "ic_base", "Damage taken": "st_def"}
 func _stat_rows(box: VBoxContainer, rows: Array) -> void:
 	for r in rows:
 		var h := HBoxContainer.new()
-		var l := UIKit.label(r[0], 13, Color(0.82, 0.9, 1.0))
+		var l: Control = UIKit.iconed(UIKit.ic(String(STAT_ICON.get(r[0], ""))), r[0], 13, Color(0.82, 0.9, 1.0)) if STAT_ICON.has(r[0]) else UIKit.label(r[0], 13, Color(0.82, 0.9, 1.0))
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
 		h.add_child(UIKit.label(r[1], 13, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT))
@@ -1359,6 +1361,8 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 	var def: Dictionary = Turrets.TURRETS[id]
 	var tex: Texture2D = load("res://turrets/%s_idle.png" % def.art)
 	var t := UIKit.tile(def.name, subtitle, Turrets.element(id), badge, tex, size)   # coloured by its element (dev172)
+	if size.x > 120.0:
+		UIKit.corner_icon(t, UIKit.element_icon(Turrets.element(id)), 22.0)   # the element badge
 	var pic: TextureRect = t.get_node("Body").get_child(0)   # the depth layer sits at child 0 since dev149
 	pic.custom_minimum_size = Vector2(0, size.y - 44.0)
 	if dim:
@@ -1819,8 +1823,9 @@ func _paint_roster() -> void:
 				sub = "Stage %d first" % Heroes.gate(hid)
 			else:
 				sub = "%s coins" % UIKit.num(int(h.cost.get("coins", 0))) if int(h.cost.get("coins", 0)) > 0 else "Unlock"
-			var pic: Texture2D = _hero_portrait(hid) if own else load("res://icons/ui_padlock.png")
-			var t := UIKit.tile(h.name, sub, el, Heroes.element_name(el), pic, Vector2(104, 92))
+			var pic: Texture2D = _hero_portrait(hid) if own else UIKit.ic("ui_padlock")
+			var t := UIKit.tile(h.name, sub, el, "", pic, Vector2(104, 92))
+			UIKit.corner_icon(t, UIKit.element_icon(el), 22.0)   # the element badge (Luna's icons)
 			if not own:
 				t.modulate = Color(0.6, 0.6, 0.7, 0.85)
 			elif not on:

@@ -203,8 +203,8 @@ static func num(n: int) -> String:
 static func wallet(coins: int, crystals: int) -> HBoxContainer:
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 10)
-	h.add_child(amount(load("res://icons/ui_coin.png"), coins, GOLD))
-	h.add_child(amount(load("res://icons/ui_crystal.png"), crystals, CYAN))
+	h.add_child(amount(ic("ic_coin", "ui_coin"), coins, GOLD))
+	h.add_child(amount(ic("ic_crystal", "ui_crystal"), crystals, CYAN))
 	return h
 
 static func gold_button(text: String, size_px: int = 16) -> Button:
@@ -338,7 +338,7 @@ static func tab_shown(names: Array, selected: int, hidden: Array) -> int:
 			return i
 	return 0
 
-static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array = [], hidden: Array = []) -> HBoxContainer:
+static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array = [], hidden: Array = [], icons: Array = []) -> HBoxContainer:
 	# A row of sub-tabs (Daily / Weekly / Monthly). Calls on_pick(index). dots: see tab_dots.
 	# hidden: indices not built at all (a system the player has not reached yet, Unlocks);
 	# on_pick and dots keep using the full `names` index.
@@ -354,6 +354,11 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size = Vector2(0, 34)
 		b.add_theme_font_size_override("font_size", 13)
+		if i < icons.size() and icons[i] != null:   # Luna's tab icons (dev182)
+			b.icon = icons[i]
+			b.add_theme_constant_override("icon_max_width", 18)
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			b.expand_icon = true
 		row.add_child(b)
 		buttons.append(b)
 		map.append(i)
@@ -535,3 +540,51 @@ static func popup_panel() -> PanelContainer:
 	var p := PanelContainer.new()
 	p.add_theme_stylebox_override("panel", nine("popup", 30.0, Vector2(14, 14)) if kit_ready("popup") else glass(16.0))
 	return p
+
+# ---- Luna's icons (dev182, LUNA-BRIEF-icons.md): icons/<name>.png, 48 of them ----
+# ic(name, fallback): her icon when it exists, else the old picture by name
+static func ic(name: String, fallback: String = "") -> Texture2D:
+	var p := "res://icons/%s.png" % name
+	if ResourceLoader.exists(p):
+		return load(p)
+	return load("res://icons/%s.png" % fallback) if fallback != "" and ResourceLoader.exists("res://icons/%s.png" % fallback) else null
+
+# the six element badges by element id (Heroes.ELEMENTS keys = GearData.SETS keys)
+const ELEMENT_ICON := {"ion": "el_energy", "scavenger": "el_electric", "frost": "el_ice", "void": "el_void", "nightmare": "el_dark", "solar": "el_fire"}
+static func element_icon(el: String) -> Texture2D:
+	return ic(ELEMENT_ICON.get(el, "el_any"))
+
+const ROLE_ICON := {"Striker": "role_striker", "Breaker": "role_breaker", "Chain": "role_chain", "Control": "role_control", "Swarm": "role_swarm", "Support": "role_support"}
+static func role_icon(role: String) -> Texture2D:
+	return ic(ROLE_ICON.get(role, "role_striker"))
+
+# a small icon + text row (stats, costs)
+static func iconed(icon: Texture2D, text: String, size_px: int = 13, col: Color = Color.WHITE, px: float = 18.0) -> HBoxContainer:
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 5)
+	if icon != null:
+		var tr := TextureRect.new()
+		tr.texture = icon
+		tr.custom_minimum_size = Vector2(px, px)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(tr)
+	h.add_child(label(text, size_px, col))
+	return h
+
+# a small badge stuck in a tile's top-right corner (an element, a role)
+static func corner_icon(parent: Control, icon: Texture2D, px: float = 22.0) -> void:
+	if icon == null:
+		return
+	var tr := TextureRect.new()
+	tr.texture = icon
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	tr.offset_left = -px - 5.0
+	tr.offset_right = -5.0
+	tr.offset_top = 5.0
+	tr.offset_bottom = px + 5.0
+	parent.add_child(tr)

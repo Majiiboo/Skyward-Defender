@@ -83,6 +83,9 @@ const MERGE := {"alloy": "cell", "cell": "core"}
 const MERGE_COST := 3
 
 static func icon(kind: String) -> Texture2D:
+	var lp := "res://icons/ic_%s.png" % kind   # Luna'"'"'s icon sheet (dev182) first
+	if ResourceLoader.exists(lp):
+		return load(lp)
 	var p := "res://parts/%s.png" % kind
 	return load(p) if ResourceLoader.exists(p) else null
 

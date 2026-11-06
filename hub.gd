@@ -178,7 +178,8 @@ func _icon_button(node_name: String, icon_name: String, tap: float, drawn: float
 	b.custom_minimum_size = Vector2(tap, tap)
 	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	b.icon = Icons.get_icon(icon_name)
+	var lic: Texture2D = UIKit.ic({"ui_coin": "ic_coin", "ui_crystal": "ic_crystal", "ui_energy": "ic_energy"}.get(icon_name, ""))
+	b.icon = lic if lic != null else Icons.get_icon(icon_name)
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.add_theme_constant_override("icon_max_width", icon_px)
@@ -476,7 +477,8 @@ func _pill_button(node_name: String, icon_name: String, text: String) -> Button:
 	var b := Button.new()
 	b.name = node_name
 	b.text = text
-	b.icon = Icons.get_icon(icon_name)
+	var lic: Texture2D = UIKit.ic({"ui_coin": "ic_coin", "ui_crystal": "ic_crystal", "ui_energy": "ic_energy"}.get(icon_name, ""))
+	b.icon = lic if lic != null else Icons.get_icon(icon_name)
 	b.add_theme_constant_override("icon_max_width", 20)
 	b.add_theme_font_size_override("font_size", 13)
 	b.add_theme_color_override("font_color", Color(0.87, 0.97, 1.0))
@@ -503,7 +505,8 @@ func _arrow_button(node_name: String, icon_name: String) -> Button:
 	var b := Button.new()
 	b.name = node_name
 	b.flat = true
-	b.icon = Icons.get_icon(icon_name)
+	var lic: Texture2D = UIKit.ic({"ui_coin": "ic_coin", "ui_crystal": "ic_crystal", "ui_energy": "ic_energy"}.get(icon_name, ""))
+	b.icon = lic if lic != null else Icons.get_icon(icon_name)
 	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.add_theme_constant_override("icon_max_width", 18)
