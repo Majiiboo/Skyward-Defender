@@ -733,9 +733,21 @@ static func turn_weight(r: Rig) -> float:
 static var hero := "rook"
 static var hero_tier := 1   # his evolution tier (Heroes.tier): tier frames in heroes/<id>/t<k>/ when Luna paints them (dev189)
 
-# the folder of the frames to show: the highest painted tier at or under his, else the base
+# which painted look a star count earns (Rudy, 2026-11-06): the base at 1 star, a minor change
+# at 2-4 (the tier 2 portrait, brighter lights and a rim in code), the BIG change (Luna's tier 3
+# frames) at 5 stars; red stars keep the five-star look with a red halo for now
+const LOOK_AT_STARS := {2: 2, 3: 5}   # tier k -> the star it shows from
+
+static func look_tier(stars: int) -> int:
+	var best := 1
+	for k in LOOK_AT_STARS:
+		if stars >= int(LOOK_AT_STARS[k]) and int(k) > best:
+			best = int(k)
+	return best
+
+# the folder of the frames to show: the highest painted tier his stars earn, else the base
 static func _hero_dir() -> String:
-	for k in range(hero_tier, 1, -1):
+	for k in range(look_tier(hero_tier), 1, -1):
 		if ResourceLoader.exists("res://heroes/%s/t%d/turn_1.png" % [hero, k]):
 			return "res://heroes/%s/t%d/" % [hero, k]
 	return "res://heroes/%s/" % hero
@@ -773,6 +785,12 @@ static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha:
 		var ha: float = alpha * (0.22 + 0.1 * sin(r.t * 2.2)) * (1.0 + 0.25 * (Gates.gold(hero_tier) - 2) + 0.3 * Gates.red(hero_tier))
 		c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5) * 1.06)
 		c.draw_texture_rect(hx, Rect2(-hw * 0.5, -canvas_h, hw, canvas_h), false, Color(hcol, ha))
+		# the minor change at 2-4 stars (before the big five-star look): a crisp rim of his element's
+		# light round him, brighter with each star
+		if Gates.gold(hero_tier) < 5 and not Gates.is_red(hero_tier):
+			var ra: float = alpha * (0.35 + 0.15 * (hero_tier - 2))
+			c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5) * 1.022)
+			c.draw_texture_rect(hx, Rect2(-hw * 0.5, -canvas_h, hw, canvas_h), false, Color(hcol.lerp(Color.WHITE, 0.3), ra))
 	for k in 2:
 		var a: float = alpha * (1.0 if k == 0 else w)   # the next frame dissolves in OVER the current one (he stays solid, no ghost mid-turn; dev188)
 		if a <= 0.005 or (k == 1 and pick[1] == pick[0]):

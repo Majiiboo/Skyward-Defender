@@ -104,8 +104,8 @@ const DEF_CAP := 0.5
 const MAX_DEF_LEVEL := 40
 # STARS (Rudy 2026-11-06, Gates / DESIGN-stars.md): save "tiers" holds the hero's STAR (1-5 gold,
 # 6-10 red). A star needs the hero at his level cap plus shards, essences and coins (Gates.need);
-# each star raises the cap by 10 and the power (Gates.power_mult). Stars 2 and 3 are Luna's
-# evolved looks (heroes/<id>/t<k>/). TIER_BONUS stays for the Gear page's ATK line.
+# each star raises the cap by 10 and the power (Gates.power_mult). The LOOKS (Rudy, 2026-11-06): base at 1 star, a minor change at
+# 2-4 (tier 2 portrait, rim and halo in code), Luna's tier 3 frames at 5 stars (PilotRig.LOOK_AT_STARS). TIER_BONUS stays for the Gear page's ATK line.
 const TIER_BONUS := Gates.GOLD_STEP
 const MAX_TIER := Gates.MAX_STAR
 # armour copies -> shards when an old save is converted (their merge value)

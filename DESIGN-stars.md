@@ -50,3 +50,10 @@ arrives with. It is no longer shown as stars; the stars on a tile are the ones y
 Red-star kits are 1.6x a five-star kit at the cap. Endgame content must grow with it: Elite 40-60,
 Horde laps, rank trials Comet+, and more stages after 60 (StageData.MAX_STAGE). Re-run the sim
 with a red-star kit before dev200 and retune TURRET_TUNE, StageData HP knobs and the trial hp.
+
+## The looks (Rudy, 2026-11-06)
+Star 1: the base look. Stars 2, 3 and 4: a minor change (the tier 2 portrait on the roster, a
+crisp rim of the element's light round the hero and the halo, both brighter each star; code only).
+Star 5: the BIG change, Luna's tier 3 frames and portrait (PilotRig.LOOK_AT_STARS). Red stars keep
+the five-star look with a red halo until something extra is designed for them. Rook's base look
+is the pilot rig (no base hero frames), so his 2-4 star rim is the rig's own lights for now.

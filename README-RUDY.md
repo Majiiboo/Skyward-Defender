@@ -350,10 +350,11 @@ DIVIDING LINES on the maps (your note).
 - Every hero has his tier 3 look as eight whole turn frames, plus a tier 2 and a tier 3
   portrait: Rook in white-and-gold armour with a cape, Sparks in chrome with a bigger battery,
   Cpt. Frost in ice-crystal armour, Hollow as a purple ring-haloed wraith, Nyx with a red-lit
-  cape and twin katanas, Ember in gold scale with wide wings. The game shows the tier 3 frames
-  from 3 stars on (and keeps them at 4, 5 and every red star, with the halo growing and turning
-  red), the tier 2 portrait from 2 stars and the tier 3 portrait from 3, on the Hero page, the
-  roster, Home and in battle. Cutter: tools/cut_heroes.gd (the back frames lined up to the
+  cape and twin katanas, Ember in gold scale with wide wings. YOUR LADDER FOR THE LOOKS (the same evening): the
+  base look at 1 star; at 2, 3 and 4 stars a minor change (the tier 2 portrait on the roster, a
+  crisp rim of his element's light round him and the halo, both brighter each star); at 5 stars
+  the BIG change, Luna's tier 3 frames and portrait, on the Hero page, the roster, Home and in
+  battle; red stars keep the five-star look with a red halo until you design their extra. Cutter: tools/cut_heroes.gd (the back frames lined up to the
   front ones, one crop per hero); archive art_src/heroes/<hero>/t3_turn_1..8, portrait_t2 / t3.
 - THE STAR MAP blends: the sky of one constellation fades into the next over a long gradient,
   no line; Luna's painted skies will overlap the same way (her brief asks for black at their top

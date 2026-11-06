@@ -1960,7 +1960,7 @@ func _paint_roster() -> void:
 # Luna's portrait when it exists, else his weapon picture as a stand-in
 func _hero_portrait(id: String) -> Texture2D:
 	# an evolved hero shows his tier portrait when Luna has painted it (dev189)
-	for k in range(Heroes.tier(hero, id), 1, -1):
+	for k in range(PilotRig.look_tier(Heroes.tier(hero, id)), 1, -1):   # tier 2 portrait from 2 stars, tier 3 from 5 (Rudy)
 		var tp := "res://heroes/%s/portrait_t%d.png" % [id, k]
 		if ResourceLoader.exists(tp):
 			return load(tp)

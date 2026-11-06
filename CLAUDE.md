@@ -9,7 +9,8 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   4. LUNA HERO EVOLUTIONS in (60 renders: <hero>-t3_turn_1..8, portrait_t2, portrait_t3 for all
      six incl. Rook; archived art_src/heroes/<id>/t3_turn_n.webp + portrait_tk.webp; cut_heroes
      _cut_tiers now makes heroes/<id>/ first; heroes/<id>/t3/turn_1..8.png + portrait_t2/t3.png;
-     PilotRig._hero_dir picks t3 from star 3 up). NO DIVIDING LINES (Rudy): gear StarMap BLEND 260
+     PilotRig.LOOK_AT_STARS {2: 2, 3: 5} + look_tier(): t3 frames and portrait_t3 from 5 stars,
+     portrait_t2 from 2, a rim pass at 2-4 in draw_hero; gear _hero_portrait via look_tier). NO DIVIDING LINES (Rudy): gear StarMap BLEND 260
      gradient quads between constellation skies (Luna skies drawn overlapping, brief says fade
      edges); stage_map BLEND_H 150: every zone's texture drawn again above its top as a
      draw_polygon with per-vertex alpha (1 -> 0) and uvs, the cyan line removed, titles drawn
