@@ -364,6 +364,10 @@ banks, the wings and fins beat, the Wisp's middle fin trails, and Luna's glow la
 core, eyes) breathes over the body and flares on a shot. The Repair and Magnet pods have their
 own pictures now. Scout, Striker and Warden stay on pilot level. The Drone page shows the
 grade stars and the price on a locked body; tap it to buy.
+Update 14 (after dev182): LUNA'S HERO STAND is in. The hero floats over her rendered hover
+  disc: the etched glass disc with its metal rim, the light lines and the floating ring glowing in
+  his element colour and breathing, and a soft column of light with drifting specks behind him.
+  The code shapes are gone.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

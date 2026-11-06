@@ -5,7 +5,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 3 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 4 updates (next push = dev182 + that count; see the build rule).
+  4. LUNA HERO STAND in (art_src/stand/, tools/cut_stand.gd -> gear/stand_disc / stand_glow /
+     stand_beam.png at half size, one crop for disc + glow); gear.gd HeroStand draws them when
+     present (glow and beam tinted by the element, pulsing). Luna queue left: hero BACK FRAMES.
   3. LUNA DRONES 2 in (art_src/drones2/<body>/ whole, portrait, hull, wing_l/r or fin_l/r/mid,
      glow; pods/; tools/cut_drones2.gd -> drone/body_<b>, <b>_hull / _thruster_l / _thruster_r /
      _extra / _glow / _portrait, pod_repair / pod_magnet): DroneData BODIES spark / wisp / bat
