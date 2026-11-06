@@ -55,6 +55,19 @@ const CARDS := {
 		"desc": "Swarm launches 2 more drones per level"},
 	"prism_fan":       {"name": "Wide Prism",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "prism",
 		"desc": "Prism splits into 2 more beams per level"},
+	# round 2 turrets (dev196): the card shows the turret itself until Luna paints card art
+	"repair_overdrive": {"name": "Overdrive Node", "family": "base", "rarity": "uncommon", "max": 3, "turret": "repair", "pic": "res://turrets/repair_idle.png",
+		"desc": "Repair Node mends +50% more per level"},
+	"tesla_chain":     {"name": "Chain Coil",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "tesla", "pic": "res://turrets/tesla_idle.png",
+		"desc": "Tesla zaps jump to 1 more bug per level"},
+	"cryo_deep":       {"name": "Deep Chill",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "cryo", "pic": "res://turrets/cryo_idle.png",
+		"desc": "Cryo cone +20% wider, slows +10% per level"},
+	"mines_cluster":   {"name": "Cluster Mines",  "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "mines", "pic": "res://turrets/mines_idle.png",
+		"desc": "Mine Layer keeps 1 more mine in the air per level"},
+	"beacon_dread":    {"name": "Dread Mark",     "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "beacon", "pic": "res://turrets/beacon_idle.png",
+		"desc": "Beacon marks last +1 s per level, hero ATK +5% more"},
+	"flak_shrapnel":   {"name": "Shrapnel",       "family": "base",  "rarity": "uncommon",  "max": 3, "turret": "flak", "pic": "res://turrets/flak_idle.png",
+		"desc": "Flak blast +20% wider per level"},
 	# hero cards (Rudy, dev172): one per hero, offered only while he is on duty ("hero" key).
 	# They BUILD UP like every card: pick 1 the basic form, pick 2 more of it, pick 3 (the
 	# overcharge) his max specialty. Not a legendary handed over: earned in the run.
@@ -95,6 +108,12 @@ const OVERCHARGE := {
 	"gravity_horizon": "Black Hole: swallows enemy shots in its pull",
 	"swarm_surge":     "Kamikaze: drones explode on impact",
 	"prism_fan":       "Frozen Light: beams slow bugs",
+	"repair_overdrive": "Hull Weld: mends the hull once the shield is full",
+	"tesla_chain":     "Overload: zaps can stun bugs",
+	"cryo_deep":       "Shatter: chilled bugs take x2.5 from the cone",
+	"mines_cluster":   "Shock Mines: a burst can stun",
+	"beacon_dread":    "Twin Mark: marks two bugs at once",
+	"flak_shrapnel":   "Incendiary: bugs in the blast burn",
 	"rook_twin":       "Twins hit +15% harder",
 	"sparks_weld":     "EVERY bolt arcs",
 	"frost_freeze":    "Shatter: a slowed bug that dies blasts its neighbours",

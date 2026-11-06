@@ -1969,12 +1969,16 @@ func _update_repair(t: Dictionary, delta: float) -> void:
 	t.cd -= delta
 	if t.cd > 0.0:
 		return
-	if shield >= shield_max or hull <= 0.0:
+	var weld: bool = t.get("hull_mend", false) and shield >= shield_max and hull < hull_max   # Hull Weld (card overcharge)
+	if (shield >= shield_max and not weld) or hull <= 0.0:
 		t.cd = 0.3
 		return
 	t.cd = float(def.every)
 	t.fire_t = FIRE_TIME.repair
-	shield = minf(shield_max, shield + float(def.heal))
+	if weld:
+		hull = minf(hull_max, hull + float(def.heal) * 0.4)
+	else:
+		shield = minf(shield_max, shield + float(def.heal))
 	var tip := _turret_tip(t)
 	if _fx_tex.has("shot_repair"):
 		_fx_add("shot_repair", tip, 50.0, 0.55, 0.0, 2.4, Color(0.6, 0.95, 1.0))
@@ -1996,9 +2000,30 @@ func _update_tesla(t: Dictionary, delta: float) -> void:
 		return
 	t.cd = float(def.every)
 	t.fire_t = FIRE_TIME.tesla
-	_turret_hit(t, e, _turret_dmg(t))
+	var dmg := _turret_dmg(t)
+	_turret_hit(t, e, dmg)
 	t.bolt = [_turret_tip(t), e.pos]
 	t.bolt_seed = rng.randi()
+	# Chain Coil (card): the zap jumps on to nearby bugs, weaker each jump
+	var hit: Array = [e.id]
+	var last: Dictionary = e
+	for k in int(def.get("chain", 0)):
+		dmg *= 0.7
+		var nxt := {}
+		var nd := 90.0
+		for o in enemies:
+			if hit.has(o.id) or o.pos.y < 100.0:
+				continue
+			var d: float = last.pos.distance_to(o.pos)
+			if d < nd:
+				nd = d
+				nxt = o
+		if nxt.is_empty():
+			break
+		_turret_hit(t, nxt, dmg)
+		hit.append(nxt.id)
+		t.bolt.append(nxt.pos)
+		last = nxt
 	if _fx_tex.has("shot_tesla"):
 		_fx_add("shot_tesla", e.pos, 36.0, 0.18, rng.randf() * TAU, 1.2)
 	Sfx.play("turret", rng.randf_range(1.2, 1.4))
@@ -2027,9 +2052,10 @@ func _update_cryo(t: Dictionary, delta: float) -> void:
 	for o in enemies:
 		var rel: Vector2 = o.pos - tip
 		if o.pos.y > 100.0 and rel.length() < float(def.reach) and absf(angle_difference(rel.angle(), float(t.ang))) < float(def.cone):
+			var chilled: bool = float(o.get("slow_t", 0.0)) > 0.0   # Shatter (card overcharge): a bug already chilled takes x2.5
 			o.slow_t = maxf(float(o.get("slow_t", 0.0)), float(def.every) + 0.3)
 			o.slow = maxf(float(o.get("slow", 0.0)), float(def.slow))
-			_turret_hit(t, o, dmg)
+			_turret_hit(t, o, dmg * (2.5 if chilled and t.get("shatter", false) else 1.0))
 	if _fx_tex.has("shot_cryo"):
 		_fx_add("shot_cryo", tip + dir * float(def.reach) * 0.45, float(def.reach) * 0.85, float(def.every) + 0.1, float(t.ang) + PI / 2.0, 1.15, Color(1, 1, 1, 0.55))
 
@@ -2105,6 +2131,11 @@ func _burst_at(src: Dictionary, pos: Vector2, dmg: float, radius: float, first: 
 	for o in enemies:
 		if o != first and o.pos.y > 90.0 and o.pos.distance_to(pos) < radius:
 			_turret_hit(src, o, dmg * 0.6)
+	if src.get("embers", false):   # Incendiary (Flak card overcharge): everything in the blast burns
+		for o in enemies:
+			if o.pos.y > 90.0 and o.type != "spore" and o.pos.distance_to(pos) < radius:
+				o.burn_t = maxf(float(o.get("burn_t", 0.0)), 2.0)
+				o.burn_dps = maxf(float(o.get("burn_dps", 0.0)), 0.04 * float(o.hp_max))
 	var glow: Color = Turrets.TURRETS[String(src.type)].glow if Turrets.TURRETS.has(String(src.type)) else Color.WHITE
 	var sprite: String = "shot_" + String(src.type)
 	if _fx_tex.has(sprite):
@@ -2132,10 +2163,23 @@ func _update_beacon(t: Dictionary, delta: float) -> void:
 		return
 	t.cd = float(def.every)
 	t.fire_t = FIRE_TIME.beacon
-	best.mark_t = float(def.mark)
-	t.mark_id = int(best.id)
-	if _fx_tex.has("shot_beacon"):
-		_fx_add("shot_beacon", best.pos, 40.0, 0.3, 0.0, 1.6, Color(1.0, 0.4, 0.4))
+	var marked: Array = [best]
+	if t.get("double_mark", false):   # Twin Mark (card overcharge): the next nearest too
+		var second := {}
+		var sd: float = float(def.range)
+		for e in enemies:
+			var d: float = t.pos.distance_to(e.pos)
+			if e != best and e.pos.y > 100.0 and _can_hurt(e) and d < sd and float(e.get("mark_t", 0.0)) <= 0.0:
+				sd = d
+				second = e
+		if not second.is_empty():
+			marked.append(second)
+	t.mark_ids = []
+	for e in marked:
+		e.mark_t = float(def.mark)
+		t.mark_ids.append(int(e.id))
+		if _fx_tex.has("shot_beacon"):
+			_fx_add("shot_beacon", e.pos, 40.0, 0.3, 0.0, 1.6, Color(1.0, 0.4, 0.4))
 	Sfx.play("turret", 0.6)
 
 # Flak Battery (Swarm, Fire): a shell toward the thickest knot of bugs; it bursts in the air
@@ -2174,7 +2218,7 @@ func _update_flak(t: Dictionary, delta: float) -> void:
 	var dir := Vector2.from_angle(float(t.ang))
 	var speed := 430.0
 	bullets.append({"pos": tip, "vel": dir * speed, "dmg": _turret_dmg(t), "r": 10.0, "tid": -2, "col": "shell", "src": "flak", "type": "flak",
-		"fuse": bd / speed, "splash": float(def.blast), "hits": [], "stun": t.get("stun", false)})
+		"fuse": bd / speed, "splash": float(def.blast), "hits": [], "stun": t.get("stun", false), "embers": t.get("embers", false)})
 	_fx_add("spark", tip, 30.0, 0.2, 0.0, 1.5, Color(1.0, 0.8, 0.5))
 	Sfx.play("turret", 0.8)
 
@@ -2737,6 +2781,16 @@ func _pick_card(id: String) -> void:
 		"gravity_horizon": _turret_mod("gravity", _gravity_grow)
 		"swarm_surge": _turret_mod("swarm", func(t): t.def.count = int(t.def.count) + 2)
 		"prism_fan": _turret_mod("prism", func(t): t.def.beams = int(t.def.beams) + 2)
+		"repair_overdrive": _turret_mod("repair", func(t): t.def.heal = float(t.def.heal) * 1.5)
+		"tesla_chain": _turret_mod("tesla", func(t): t.def.chain = int(t.def.get("chain", 0)) + 1)
+		"cryo_deep": _turret_mod("cryo", func(t):
+			t.def.cone = float(t.def.cone) * 1.2
+			t.def.slow = minf(float(t.def.slow) + 0.1, 0.85))
+		"mines_cluster": _turret_mod("mines", func(t): t.def.mines = int(t.def.mines) + 1)
+		"beacon_dread": _turret_mod("beacon", func(t):
+			t.def.mark = float(t.def.mark) + 1.0
+			t.def.atk = float(t.def.atk) + 0.05)
+		"flak_shrapnel": _turret_mod("flak", func(t): t.def.blast = float(t.def.blast) * 1.2)
 		"shield_recharge": _shield_rate += 0.01
 		# hero cards (Cards "hero"): the build-up over the three picks
 		"rook_twin": _twin_every = [4, 3, 2][clampi(int(card_levels[id]) - 1, 0, 2)]
@@ -2781,6 +2835,12 @@ func _overcharge(id: String) -> void:
 		"gravity_horizon": _turret_mod("gravity", func(t): t.horizon = true)
 		"swarm_surge": _turret_mod("swarm", func(t): t.boom = true)
 		"prism_fan": _turret_mod("prism", func(t): t.frost_light = true)
+		"repair_overdrive": _turret_mod("repair", func(t): t.hull_mend = true)
+		"tesla_chain": _turret_mod("tesla", func(t): t.stun = true)
+		"cryo_deep": _turret_mod("cryo", func(t): t.shatter = true)
+		"mines_cluster": _turret_mod("mines", func(t): t.stun = true)
+		"beacon_dread": _turret_mod("beacon", func(t): t.double_mark = true)
+		"flak_shrapnel": _turret_mod("flak", func(t): t.embers = true)
 		"rapid_pulse": _overdrive = true
 		"heavy_bolts": _crit6 = true
 		"piercing_rounds": _pierce_bonus = true
@@ -3985,7 +4045,7 @@ func _draw_turret_front() -> void:
 		elif t.type == "beacon" and t.drop >= 1.0:
 			# the beacon's thin red marker beam to the bug it marked, and a pulsing ring on it
 			for e in enemies:
-				if int(e.id) == int(t.get("mark_id", -1)) and float(e.get("mark_t", 0.0)) > 0.0:
+				if Array(t.get("mark_ids", [])).has(int(e.id)) and float(e.get("mark_t", 0.0)) > 0.0:
 					var a: float = clampf(float(e.mark_t) / 0.4, 0.0, 1.0)
 					var red := Color(1.0, 0.35, 0.35)
 					draw_line(_turret_tip(t), e.pos, Color(red, 0.3 * a), 1.0, true)

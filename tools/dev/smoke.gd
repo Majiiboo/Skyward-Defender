@@ -202,7 +202,9 @@ func _check_repeat() -> void:
 func _check_cards() -> void:
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("turret"):
-			_expect(ResourceLoader.exists("res://cards/pic_%s.png" % id), "turret card picture missing: " + id)
+			_expect(ResourceLoader.exists("res://cards/pic_%s.png" % id) or ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "turret card picture missing: " + id)
+			_expect(Cards.OVERCHARGE.has(id), "turret card overcharge text: " + id)
+			_expect(Turrets.TURRETS.has(String(Cards.CARDS[id].turret)), "turret card for a real turret: " + id)
 	# hero cards (dev172): one per hero, only offered while he is on duty, three picks each
 	for id in Heroes.ORDER:
 		var found := ""

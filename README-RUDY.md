@@ -374,8 +374,15 @@ a second one per element with a different job, so picking a turret is a play sty
   into five lit faces. Luna lined them up with the resting heads, so the cross-fade is clean.
 - Rook's card picture (pic_rook_twin) arrived: Twin Shot shows it now instead of the weapon.
   Luna sent two; the cyan paired bolts (as briefed) are in, the teal one is kept as an alt.
-- Not yet: power cards for the six new turrets (the first six have one each), and Luna's icons
-  for them in the turret role badges (the role icons cover them).
+- POWER CARDS for the six (offered in a run only while that turret stands, like the first six;
+  the card shows the turret until Luna paints card art): Overdrive Node (mends +50% a pick;
+  overcharge Hull Weld: mends the hull once the shield is full), Chain Coil (zaps jump to 1
+  more bug a pick; Overload: zaps can stun), Deep Chill (cone +20% wider and slows +10% a pick;
+  Shatter: a bug already chilled takes x2.5 from the cone), Cluster Mines (1 more mine in the
+  air a pick; Shock Mines: a burst can stun), Dread Mark (marks last +1 s and hero ATK +5% a
+  pick; Twin Mark: two bugs at once), Shrapnel (blast +20% a pick; Incendiary: bugs in the
+  blast burn). Checked by tools/dev/card_check.gd (forces each card three times, then fights).
+- Not yet: Luna icons for the six in the turret role badges (the role icons cover them).
 - Archive: art_src/turrets2/ (the later re-sends of storm_head_fire, flak_shot and repair_shot
   are the ones used; the first versions kept as -v1). Cutter: tools/cut_turrets2.gd.
 - Check: smoke passes (two turrets per element, every piece cut, the Beacon's material price);

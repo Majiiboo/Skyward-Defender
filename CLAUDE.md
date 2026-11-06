@@ -17,7 +17,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      _beacon (e.mark_t, t.mark_id, _beacon_mult on hero bolts, marked bugs always crit) / _flak
      (bullet "fuse" + _burst_at), shells + mines drawn in _draw_fx, tesla arcs + beacon beams in
      _draw_turret_front; afk_wallpaper WALL_SPLIT entries; balance_sim owns its loadout; smoke
-     round 2 checks. NOT built: power cards for the six, Luna icons for them.
+     round 2 checks; cards.gd repair_overdrive / tesla_chain / cryo_deep / mines_cluster /
+     beacon_dread / flak_shrapnel ("pic" = the turret idle picture) + OVERCHARGE texts, battle
+     _pick_card / _overcharge entries (hull_mend, chain, shatter, double_mark -> t.mark_ids,
+     embers in _burst_at); tools/dev/card_check.gd (forces each card x3, fights headless).
   dev195 (pushed 2026-11-06) carried the thirteen updates listed below (README-RUDY dev195). Rudy
   13. STORE 2.0 (queue 18) + DEV MODE STAGES: store.gd rewritten: KEY_CHESTS u / e / l (rolls, "ess" =
      the selected planet's weakness essence, "gear" = a copy at that rarity, resolve()), chest_open_in
