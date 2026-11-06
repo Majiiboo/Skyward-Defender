@@ -178,6 +178,7 @@ const DMG_BATCH := 0.25
 const DMG_SHOW := 10.0             # damage is tiny inside (a bolt ~1.0): shown x10 so a hit reads "10", a crit "CRIT 15"
 var _move_mult := 1.0              # the hero's build (Heroes): small heroes slide faster under the finger, bulky ones slower
 var _shards_got := {}              # hero shards won on this stage (the end screen)
+var _mats_got := {}                # materials won on this stage (materials.gd; the end screen)
 var _coins_f := 0.0
 var _shield_regen := 1.0
 var _pierce5 := false
@@ -2064,7 +2065,22 @@ func _end_run(won: bool) -> void:
 	var owned := Parts.read(d)
 	for k in _parts_got:
 		owned[k] = int(owned.get(k, 0)) + int(_parts_got[k])
-	patch["parts"] = owned
+	var parts_only := {}
+	for k in Parts.ORDER:   # Parts.read carries the materials too (dev189); only the parts go in "parts"
+		parts_only[k] = int(owned.get(k, 0))
+	patch["parts"] = parts_only
+	# materials (materials.gd, dev189): a boss stage or an Elite win pays this planet's essence,
+	# later stages trickle barrels and rotors, Horde pays a barrel and a rotor per 10 waves
+	_mats_got = {}
+	if won and not _is_trial():
+		_mats_got = Materials.horde_drop(wave_index + 1) if horde else Materials.stage_drop(stage, elite, rng)
+	elif horde and not won:
+		_mats_got = Materials.horde_drop(wave_index)
+	if not _mats_got.is_empty():
+		var md := {"materials": Materials.read(d)}
+		for k in _mats_got:
+			md.materials[k] = int(md.materials[k]) + int(_mats_got[k])
+		patch["materials"] = md.materials
 	# a gear copy for merging (dev139): always on boss stages and in Elite, else about a
 	# third of the time; the piece comes from this planet's set (GearData.roll_drop)
 	_gear_got = {}
@@ -2938,6 +2954,9 @@ func _show_end(won: bool) -> void:
 		grow.add_child(UIKit.label("GEAR:  %s %s" % [GearData.rarity_name(_gear_got.rarity), GearData.ITEMS[gid].name], 12, GearData.rarity_color(_gear_got.rarity)))
 		if not _shards_got.is_empty():
 			grow.add_child(UIKit.label("SHARDS:  %d for %s" % [int(_shards_got.n), Heroes.ROSTER[_shards_got.id].name], 12, Heroes.element_color(Heroes.element_of(_shards_got.id))))
+		for mk in _mats_got:
+			if int(_mats_got[mk]) > 0:
+				grow.add_child(UIKit.iconed(Materials.icon(String(mk)), "%d %s" % [int(_mats_got[mk]), Materials.name_of(String(mk))], 12, Materials.color_of(String(mk)), 18.0))
 		v.add_child(grow)
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))

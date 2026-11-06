@@ -48,6 +48,8 @@ static func gear_copies() -> void:
 	for hid in Heroes.ORDER:
 		Heroes.add_shards(hh, hid, 50)
 	d["hero"] = Heroes.write(hh)
+	for mk in Materials.ORDER:   # and 20 of every material (materials.gd, dev189)
+		Materials.add(d, mk, 20)
 	Progress.write(d)
 
 # a brand-new player: the save file is deleted (the tips show again too)

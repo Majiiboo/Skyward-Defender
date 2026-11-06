@@ -87,11 +87,14 @@ static func grant(d: Dictionary, reward: Dictionary) -> Dictionary:
 	d["crystals"] = int(d.get("crystals", 0)) + int(reward.get("crystals", 0))
 	d["pilot_xp"] = int(d.get("pilot_xp", 0)) + int(reward.get("pilot_xp", 0))
 	# upgrade parts (Store, chests)
-	for k in Parts.ORDER:
+	for k in Parts.all_order():   # parts and materials (materials.gd) at the top level of a reward
 		if int(reward.get(k, 0)) > 0:
-			var p: Dictionary = Parts.read(d)
-			p[k] = int(p[k]) + int(reward[k])
-			d["parts"] = p
+			Parts.add(d, k, int(reward[k]))
+	# materials as a block too: "materials": {id: n}
+	var mb = reward.get("materials", {})
+	if typeof(mb) == TYPE_DICTIONARY:
+		for k in mb:
+			Materials.add(d, String(k), int(mb[k]))
 	# hero shards (heroes, dev172): "shards": {hero id: n}
 	var sh = reward.get("shards", {})
 	if typeof(sh) == TYPE_DICTIONARY and not sh.is_empty():
@@ -117,9 +120,14 @@ static func reward_text(reward: Dictionary) -> String:
 		parts.append("%d crystals" % int(reward.crystals))
 	if int(reward.get("pilot_xp", 0)) > 0:
 		parts.append("%d XP" % int(reward.pilot_xp))
-	for k in Parts.ORDER:
+	for k in Parts.all_order():
 		if int(reward.get(k, 0)) > 0:
-			parts.append("%d %s" % [int(reward[k]), Parts.KINDS[k].name])
+			parts.append("%d %s" % [int(reward[k]), Parts.kind(k).name])
+	var mb = reward.get("materials", {})
+	if typeof(mb) == TYPE_DICTIONARY:
+		for k in mb:
+			if int(mb[k]) > 0:
+				parts.append("%d %s" % [int(mb[k]), Materials.name_of(String(k))])
 	var sh = reward.get("shards", {})
 	if typeof(sh) == TYPE_DICTIONARY:
 		for hid in sh:

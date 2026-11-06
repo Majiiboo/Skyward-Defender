@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_check_cards()
 	_check_unlocks()
 	_check_heroes()
+	_check_materials()
 	_check_turrets()
 	_check_etrials()
 	_check_mods()
@@ -375,3 +376,29 @@ func _check_mods() -> void:
 		_expect(good >= 1 and bad >= 1, "a trial has at least one advantage and one disadvantage (%s)" % str(lst))
 	_expect(Promotion.mods_for(-1, {}).is_empty() and Promotion.mods_for(0, {}) == ["rapid", "no_turrets"] and Promotion.mods_for(-1, {"el": "ion", "step": 2}) == ["sharpshooter", "swift_bugs"], "mods_for picks the right list")
 	_expect(Promotion.mods_short(["rapid", "no_turrets"]).begins_with("+ Rapid fire") and Promotion.mods_lines(["no_turrets"])[0].begins_with("DISADVANTAGE"), "short and long texts")
+
+# materials and the Craft tab (materials.gd, dev189)
+func _check_materials() -> void:
+	var s := {"coins": 5000, "parts": {"alloy": 30, "cell": 10, "core": 2}}
+	var r := Materials.recipe("barrel")
+	_expect(Materials.can_craft(s, r), "10 alloy + 200 coins crafts a barrel")
+	_expect(Materials.craft(s, r) == "" and int(Materials.read(s).barrel) == 1 and int(Parts.read(s).alloy) == 20 and int(s.coins) == 4800, "barrel crafted, alloy and coins paid")
+	Materials.craft(s, r)
+	Materials.craft(s, r)
+	_expect(Materials.craft(s, Materials.recipe("lens")) == "" and int(Materials.read(s).lens) == 1 and int(Materials.read(s).barrel) == 0, "3 barrels -> 1 lens")
+	_expect(Materials.craft(s, Materials.recipe("essence"), "solar") == "" and int(Materials.read(s).ess_solar) == 1, "an essence of the picked element")
+	_expect(Materials.craft(s, Materials.recipe("essence"), "solar") != "" and int(Materials.read(s).ess_solar) == 1, "a second essence: cores short")
+	_expect(Parts.text({"alloy": 3, "barrel": 2, "ess_void": 1}) == "3 Alloy, 1 Void Fragment, 2 Scrap Barrel", "a price text lists materials: " + Parts.text({"alloy": 3, "barrel": 2, "ess_void": 1}))
+	Progress.grant(s, {"materials": {"rotor": 2}, "gyro": 1})
+	_expect(int(Materials.read(s).rotor) == 2 and int(Materials.read(s).gyro) == 1, "rewards grant materials, as a block or at the top level")
+	_expect(int(s.parts.get("alloy", 0)) == 0 and not s.parts.has("rotor") and not s.parts.has("gyro"), "materials never land in the parts block")
+	_expect(Materials.weapon_need(14, "solar").is_empty() and Materials.weapon_need(25, "solar").has("ess_solar"), "weapon levels ask for the line from Lv.15 and an essence from 25")
+	var h := Heroes.read(s)
+	h.shards["rook"] = 30
+	_expect(Heroes.can_evolve(h, "rook") and not Heroes.can_evolve(h, "rook", s), "tier 2 needs 30 shards and 2 Energy Sparks")
+	Materials.add(s, "ess_ion", 2)
+	_expect(Heroes.evolve(h, "rook", s) and Heroes.tier(h, "rook") == 2 and int(Materials.read(s).ess_ion) == 0, "evolving pays the sparks")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	_expect(int(Materials.stage_drop(30, false, rng).get("ess_frost", 0)) == 1 and int(Materials.stage_drop(30, true, rng).get("ess_frost", 0)) == 2, "stage 30 (Magma, weak to Ice) drops a Frost Core, two in Elite")
+	_expect(Materials.horde_drop(23) == {"barrel": 2, "rotor": 2} and Materials.horde_drop(7).is_empty(), "Horde: a barrel and a rotor per 10 waves")

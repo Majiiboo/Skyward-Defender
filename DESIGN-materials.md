@@ -29,7 +29,7 @@ recipes, each a card with the picture of what it makes, the materials needed wit
 counts, and a Craft button. Recipes: essence from 3 lower essences; weapon variants; the
 unlock material for a hero or turret that asks for one.
 
-## Build order (when Rudy says go)
+## Build order (BUILT 2026-11-06, dev189: materials.gd, costs, drops, Craft tab; weapon variants and Store sales still open)
 1. materials.gd: the material lines (ids, names, icons from the icons sheet, drop tables).
 2. Costs: Heroes tiers and high-grade unlocks, weapon levels from 15, turret tracks past 10,
    drone levels take materials (Parts.need style tables).

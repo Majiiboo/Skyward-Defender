@@ -14,7 +14,9 @@ var _ws_tabs_row: HBoxContainer    # Parts / Gear
 var _ws_merge_btn: Button          # the first parts Merge button (tips)
 var _quick_btn: Button             # Quick Merge (tips)
 var _wallet_box: HBoxContainer
-var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear
+var _ws_tab := 0           # Workshop sub-tab: 0 Parts, 1 Gear, 2 Craft
+var _ws_craft_box: VBoxContainer
+var _craft_el := "ion"     # the element picked for the essence recipe (Craft tab)
 var _ws_parts_box: VBoxContainer
 var _ws_gear_box: VBoxContainer
 var _inv_filter := {"rarity": "", "slot": "", "set": "", "sort": "newest", "show": ""}   # "" = any; show "" = useful stacks only, "all" = everything
@@ -413,7 +415,7 @@ func _select(slot: String) -> void:
 	elif lv >= cap:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
-		_upgrade_btn.text = _upgrade_text(cost, lv)
+		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[gear.equipped[selected_slot]].set)))
 	_power_label.text = "POWER %d" % Heroes.power(_read())
 	_paint_wallet()
 	# the hero's milestones so far (every 5 levels), in place of the old set bonuses
@@ -446,7 +448,7 @@ func _on_upgrade_pressed() -> void:
 	if lv >= GearData.cap_of(gear, id) or coins < cost:
 		return
 	Sfx.play("upgrade")
-	if not await _pay_upgrade(cost, lv):
+	if not await _pay_upgrade(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[id].set))):
 		return
 	gear.levels[id] = lv + 1
 	if GearData.milestones(lv + 1) > GearData.milestones(lv):
@@ -575,9 +577,12 @@ func _refresh_workshop(pop: String = "") -> void:
 		_ws_tab = i
 		_ws_parts_box.visible = i == 0
 		_ws_gear_box.visible = i == 1
+		_ws_craft_box.visible = i == 2
 		if i == 1:
 			_refresh_ws_gear()
-	_ws_tabs_row = UIKit.tabs(["Parts", "Gear"], on_tab, _ws_tab)
+		elif i == 2:
+			_refresh_ws_craft()
+	_ws_tabs_row = UIKit.tabs(["Parts", "Gear", "Craft"], on_tab, _ws_tab)   # CRAFT (materials.gd, dev189)
 	_workshop_box.add_child(_ws_tabs_row)
 	_paint_dots()
 	_ws_parts_box = VBoxContainer.new()
@@ -588,9 +593,15 @@ func _refresh_workshop(pop: String = "") -> void:
 	_ws_gear_box.add_theme_constant_override("separation", 10)
 	_ws_gear_box.visible = _ws_tab == 1
 	_workshop_box.add_child(_ws_gear_box)
+	_ws_craft_box = VBoxContainer.new()
+	_ws_craft_box.add_theme_constant_override("separation", 10)
+	_ws_craft_box.visible = _ws_tab == 2
+	_workshop_box.add_child(_ws_craft_box)
 	_refresh_ws_parts(pop)
 	if _ws_tab == 1:
 		_refresh_ws_gear()
+	elif _ws_tab == 2:
+		_refresh_ws_craft()
 
 func _refresh_ws_parts(pop: String = "") -> void:
 	for c in _ws_parts_box.get_children():
@@ -655,7 +666,7 @@ func _refresh_ws_parts(pop: String = "") -> void:
 
 func _part_icon(kind: String, px: float) -> TextureRect:
 	var tr := TextureRect.new()
-	tr.texture = Parts.icon(kind)
+	tr.texture = Materials.icon(kind) if Materials.is_material(kind) else Parts.icon(kind)
 	tr.custom_minimum_size = Vector2(px, px)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -1087,13 +1098,13 @@ func _refresh_drone() -> void:
 	urow.add_theme_constant_override("separation", 10)
 	ip.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	urow.add_child(ip)
-	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else _upgrade_text(DroneData.upgrade_cost(lvl), lvl), 13)
+	var up := UIKit.gold_button("MAX" if lvl >= DroneData.MAX_LEVEL else _upgrade_text(DroneData.upgrade_cost(lvl), lvl, Materials.drone_need(lvl)), 13)
 	up.custom_minimum_size = Vector2(118, 50)
 	up.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	up.disabled = lvl >= DroneData.MAX_LEVEL or coins < DroneData.upgrade_cost(lvl)
 	up.pressed.connect(func():
 		var cost := DroneData.upgrade_cost(int(drone.level))
-		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL and await _pay_upgrade(cost, int(drone.level)):
+		if coins >= cost and int(drone.level) < DroneData.MAX_LEVEL and await _pay_upgrade(cost, int(drone.level), Materials.drone_need(int(drone.level))):
 			drone.level = int(drone.level) + 1
 			for m in DroneData.MILESTONES:
 				if int(drone.level) == int(m[0]):
@@ -1520,7 +1531,7 @@ func _on_track_upgrade(k: String) -> void:
 	if coins < cost or l >= Turrets.MAX_TRACK:
 		return
 	# parts for a track level follow Parts.need on a 1-10 scale (Turrets.track_parts)
-	if not await _pay_upgrade(cost, l / 2):
+	if not await _pay_upgrade(cost, l / 2, Materials.turret_need(l, Turrets.element(t_focus))):
 		return
 	var was := Turrets.milestones(Turrets.level_of(tr))
 	tr[k] = l + 1
@@ -1556,8 +1567,9 @@ func _toast(text: String) -> void:
 # ------------------------------------------------------------------ upgrade costs
 # Every upgrade: coins, and from Lv.5 also parts (Parts.need). The button shows both,
 # with what you have; short of parts, it offers crystals for the rest.
-func _upgrade_text(coin_cost: int, level: int) -> String:
+func _upgrade_text(coin_cost: int, level: int, extra: Dictionary = {}) -> String:
 	var needs := Parts.need(level)
+	needs.merge(extra)   # the domain's materials (materials.gd, dev189)
 	if needs.is_empty():
 		return "Upgrade
 %d coins" % coin_cost
@@ -1567,18 +1579,19 @@ func _upgrade_text(coin_cost: int, level: int) -> String:
 
 # Pays for an upgrade (coins + parts, or crystals for missing parts after asking).
 # Returns true when paid; the save already has the new coins, crystals and parts.
-func _pay_upgrade(coin_cost: int, level: int) -> bool:
+func _pay_upgrade(coin_cost: int, level: int, extra: Dictionary = {}) -> bool:
 	if DevTools.on:
 		return true   # dev mode: free
 	var data := _read()
 	var needs := Parts.need(level)
+	needs.merge(extra)
 	var have := Parts.read(data)
 	var use_crystals := false
 	if not Parts.has_all(have, needs):
 		var c := Parts.crystals_for_missing(have, needs)
 		var lines: Array = []
 		for k in needs:
-			lines.append("%s: %d / %d" % [Parts.KINDS[k].name, int(have.get(k, 0)), int(needs[k])])
+			lines.append("%s: %d / %d" % [Parts.kind(k).name, int(have.get(k, 0)), int(needs[k])])
 		use_crystals = await _confirm("NOT ENOUGH PARTS", "
 ".join(lines) + "
 
@@ -1936,8 +1949,8 @@ func _paint_hero() -> void:
 		_def_btn.text = "DEF max" if dl >= Heroes.MAX_DEF_LEVEL else "DEF up\n%d coins" % dcost
 		var need := Heroes.next_tier_cost(hero, id)
 		var have := Heroes.shards(hero, id)
-		_stars_l.text = "%s  ·  Tier %d  ·  %s" % [("%d / %d shards" % [have, need]) if need > 0 else "tier max", t, h.passive]   # shards first, behind their icon (dev189)
-		_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
+		_stars_l.text = "%s  ·  Tier %d  ·  %s" % [("%d / %d shards + %s" % [have, need, Parts.text(Heroes.tier_need(hero, id))]) if need > 0 else "tier max", t, h.passive]   # shards first, behind their icon (dev189)
+		_evolve_btn.disabled = not Heroes.can_evolve(hero, id, data)
 		_evolve_btn.text = "Evolve" if need > 0 else "Max"
 	else:
 		var gate_txt := "" if Heroes.gate_open(data, id) else "\nClear stage %d first" % Heroes.gate(id)
@@ -1992,9 +2005,11 @@ func _on_def_up() -> void:
 
 func _on_evolve() -> void:
 	var id := _view_id
-	if not Heroes.evolve(hero, id):
-		return
 	var data := _read()
+	if not Heroes.evolve(hero, id, data):   # shards + essences (materials.gd)
+		_toast("Short of shards or %s" % Parts.text(Heroes.tier_need(hero, id)))
+		return
+	coins = int(data.get("coins", 0))
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
 	Sfx.play("merge")
@@ -2328,3 +2343,100 @@ func _weapons_screen() -> void:
 	v.add_child(close)
 	p.add_child(v)
 	layer.add_child(p)
+
+# ------------------------------------------------------------------ Workshop > CRAFT (materials.gd, dev189)
+# Rudy's crafting bench: what you own, then one card per recipe (what it makes, what it needs
+# with have / need counts, a Craft button). The essence recipe lets you pick the element.
+func _refresh_ws_craft() -> void:
+	for c in _ws_craft_box.get_children():
+		c.queue_free()
+	var data := _read()
+	var have := Parts.read(data)
+	_ws_craft_box.add_child(UIKit.header("YOUR MATERIALS"))
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 10)
+	flow.add_theme_constant_override("v_separation", 6)
+	var shown := 0
+	for k in Materials.ORDER:
+		if int(have.get(k, 0)) <= 0:
+			continue
+		flow.add_child(UIKit.iconed(Materials.icon(k), "%s  x%d" % [Materials.name_of(k), int(have[k])], 11, Materials.color_of(k), 20.0))
+		shown += 1
+	if shown == 0:
+		var hint := UIKit.label("None yet. Boss stages and Elite wins drop that planet's essence, element trials their own, Horde and Patrol drop barrels and rotors. Or craft them here.", 11, UIKit.MUTED)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		_ws_craft_box.add_child(hint)
+	else:
+		_ws_craft_box.add_child(flow)
+	_ws_craft_box.add_child(UIKit.header("CRAFT"))
+	for r in Materials.RECIPES:
+		var rec: Dictionary = r
+		var mk := Materials.makes(rec, _craft_el)
+		var mk_id := String(mk.keys()[0])
+		var p := UIKit.panel(10)
+		var v := VBoxContainer.new()
+		v.add_theme_constant_override("separation", 5)
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 8)
+		top.add_child(_part_icon(mk_id, 40))
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.add_theme_constant_override("separation", 1)
+		tv.add_child(UIKit.label("%s  x%d" % [Materials.name_of(mk_id), int(mk[mk_id])], 14, Materials.color_of(mk_id)))
+		var d := UIKit.label(String(rec.desc), 10, UIKit.MUTED)
+		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tv.add_child(d)
+		top.add_child(tv)
+		v.add_child(top)
+		# what it needs, have / need, green when you have it
+		var nrow := HFlowContainer.new()
+		nrow.add_theme_constant_override("h_separation", 10)
+		for k in rec.needs:
+			var hv := int(have.get(k, 0))
+			var nd := int(rec.needs[k])
+			nrow.add_child(UIKit.iconed(_part_tex(String(k)), "%d / %d" % [hv, nd], 11, Color(0.55, 1.0, 0.6) if hv >= nd else Color(1.0, 0.5, 0.55), 18.0))
+		var cc := int(rec.get("coins", 0))
+		if cc > 0:
+			nrow.add_child(UIKit.iconed(UIKit.ic("ic_coin"), UIKit.num(cc), 11, Color.WHITE if coins >= cc else Color(1.0, 0.5, 0.55), 18.0))
+		v.add_child(nrow)
+		# the essence recipe: pick the element
+		if rec.get("pick", false):
+			var erow := HBoxContainer.new()
+			erow.add_theme_constant_override("separation", 4)
+			for el in Heroes.ELEMENTS:
+				var b := UIKit.ghost_button("", 11)
+				b.icon = UIKit.element_icon(String(el))
+				b.expand_icon = true
+				b.custom_minimum_size = Vector2(44, 36)
+				b.modulate = Color(1, 1, 1, 1.0 if String(el) == _craft_el else 0.45)
+				var elid := String(el)
+				b.pressed.connect(func():
+					_craft_el = elid
+					_refresh_ws_craft())
+				erow.add_child(b)
+			v.add_child(erow)
+		var btn := UIKit.gold_button("Craft", 13)
+		btn.custom_minimum_size = Vector2(0, 38)
+		btn.disabled = not Materials.can_craft(data, rec)
+		btn.pressed.connect(func(): _craft(rec))
+		v.add_child(btn)
+		p.add_child(v)
+		_ws_craft_box.add_child(p)
+
+func _part_tex(k: String) -> Texture2D:
+	return Materials.icon(k) if Materials.is_material(k) else Parts.icon(k)
+
+func _craft(r: Dictionary) -> void:
+	var data := _read()
+	var why := Materials.craft(data, r, _craft_el)
+	if why != "":
+		_toast(why)
+		return
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	_paint_wallet()
+	Sfx.play("merge")
+	Progress.bump("merges")
+	var mk := Materials.makes(r, _craft_el)
+	_toast("Crafted: %s" % Materials.name_of(String(mk.keys()[0])))
+	_refresh_ws_craft()

@@ -39,6 +39,12 @@ static func per_wave(stage: int) -> Dictionary:
 	# a gear copy of that stage's set now and then (dev139; about one every 3-4 hours at
 	# full speed, rarity by stage: GearData.roll_drop)
 	out["gear"] = 0.002 + 0.00004 * stage
+	# materials (materials.gd, dev189): the two lines trickle from planet 2 on, the planet's own
+	# essence very slowly (about one a day at full speed)
+	if stage >= 11:
+		out["barrel"] = 0.0012 + 0.00002 * stage
+		out["rotor"] = 0.0012 + 0.00002 * stage
+	out[Materials.essence_of(String(Heroes.family(stage).weak))] = 0.0004
 	return out
 
 # speed at this many seconds since the last collect: 1, then 0.5, then 0.25

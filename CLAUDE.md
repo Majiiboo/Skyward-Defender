@@ -5,7 +5,18 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 11 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 12 updates (next push = dev182 + that count; see the build rule).
+  12. MATERIALS + CRAFT (DESIGN-materials.md built): materials.gd Materials (KINDS 6 essences +
+     barrel / lens / coil + rotor / gyro / flightcore, save "materials", icon() mat_<id> else element /
+     parts icons, weapon_need / turret_need / drone_need / tier_need, RECIPES + craft(), stage_drop /
+     horde_drop); Parts.read merges materials, Parts.write splits, Parts.kind / all_order / add,
+     text + pay + crystals_for_missing know materials; Progress.grant "materials" block + top-level
+     ids; Heroes ROSTER essences on hollow / nyx / ember, parts_needed over all_order, tier_need,
+     can_evolve / evolve(h, id, save); gear _pay_upgrade / _upgrade_text `extra`, weapon / drone /
+     track call sites, _on_evolve pays, Workshop tab 3 _refresh_ws_craft / _craft / _craft_el;
+     battle _mats_got (end screen iconed rows; patch "parts" keeps only parts); Patrol per_wave
+     barrel / rotor / essence; etrial_reward essence; dev wallet; smoke _check_materials. Luna:
+     icons/mat_<id>.png later (add to a Luna icons brief). Not built: weapon variants, Store sales.
   11. HERO EVOLUTIONS code side: PilotRig.hero_tier (set_gear), _hero_dir() (heroes/<id>/t<k>/
      when its turn_1 exists, else the base), hero_mode / hero_ring / hero_tex through it (Rook
      joins hero_mode once heroes/rook/t3 exists), draw_hero tier halo (frame x1.06 behind, element

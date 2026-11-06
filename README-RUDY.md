@@ -412,6 +412,30 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 22 (after dev182): MATERIALS + the Workshop CRAFT tab (your DESIGN-materials.md, built).
+- Twelve new materials on top of Alloy / Cells / Cores: an ESSENCE per element (Energy Spark,
+  Arc Charge, Frost Core, Void Fragment, Dark Ember, Solar Flare), the WEAPON line (Scrap
+  Barrel -> Focus Lens -> Prime Coil) and the DRONE line (Rotor -> Gyro -> Flight Core).
+- What asks for them: hero tiers (tier 2 = 30 shards + 2 essences of his element, tier 3 =
+  90 + 5), the 3-star+ heroes' price (Hollow 3 Void Fragments, Nyx 6 Dark Embers, Ember 6
+  Solar Flares), weapon levels from Lv.15 (barrels; lenses from 20; a coil and an essence
+  from 25), turret track levels past 10 (its element's essence), drone levels from Lv.5
+  (rotors; gyros from 10; a flight core at 15). Every price shows them like parts, and
+  crystals can still cover what is missing on upgrades.
+- Where they come from: a boss stage drops the essence that planet is WEAK to (two in Elite;
+  Elite also drops one on a third of other wins), an element trial step pays its own essence
+  (two the first time), Horde pays a barrel and a rotor per 10 waves, Patrol trickles the
+  two lines from planet 2 and the planet's essence very slowly, and the dev wallet gives 20
+  of each.
+- Workshop > CRAFT (third sub-tab): what you own, then one card per recipe with what it makes,
+  what it needs with have / need counts (green when you have it) and a Craft button: 10 Alloy
+  + 200 coins = a Scrap Barrel or a Rotor; 3 of a step + coins = the next step (a Core joins
+  for the top step); 10 Cells + 2 Cores + 1,000 coins = one essence of the element you pick.
+  The end screen lists what dropped. Luna's icons come later (icons/mat_<id>.png); until then
+  the element badges and the parts icons stand in.
+- NOT built from the design yet: weapon VARIANTS crafted in the Workshop (needs their art and
+  their behaviour), Store 2.0 selling materials (with the Store rebuild).
+
 Update 21 (after dev182): HERO EVOLUTIONS, code side, and the hero-tiers brief REWRITTEN.
 - HONEST NOTE: the brief I sent you this morning asked Luna for tier looks as PARTS (head,
   torso, back piece). That only works if each hero is a parts rig like the pilot, and I

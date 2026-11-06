@@ -61,15 +61,15 @@ const ROSTER := {
 		"blurb": "Took the suit from a bigger pilot. Keeps the medals."},
 	"hollow": {"name": "Hollow", "title": "What is left of a pilot", "element": "void", "grade": 3,
 		"weapon": "void_weapon", "passive": "Every 5th bolt pierces", "look": "hollow",
-		"cost": {"coins": 18000, "cell": 12, "core": 2}, "crystals": 320, "build": {"scale": 0.95, "speed": 1.1, "tough": 0.85},
+		"cost": {"coins": 18000, "cell": 12, "core": 2, "ess_void": 3}, "crystals": 320, "build": {"scale": 0.95, "speed": 1.1, "tough": 0.85},
 		"blurb": "Nobody remembers his ship. He does not either."},
 	"nyx":    {"name": "Nyx", "title": "Night huntress", "element": "nightmare", "grade": 4,
 		"weapon": "nightmare_weapon", "passive": "Crit rate +5%", "look": "nyx",
-		"cost": {"coins": 40000, "cell": 20, "core": 6}, "crystals": 650, "stage": 20, "build": {"scale": 0.9, "speed": 1.2, "tough": 0.9},
+		"cost": {"coins": 40000, "cell": 20, "core": 6, "ess_nightmare": 6}, "crystals": 650, "stage": 20, "build": {"scale": 0.9, "speed": 1.2, "tough": 0.9},
 		"blurb": "Sees the weak spot before the bug knows it has one."},
 	"ember":  {"name": "Ember", "title": "Dragon-kin, flight harness", "element": "solar", "grade": 4,
 		"weapon": "solar_weapon", "passive": "Max HP +20%", "look": "ember",
-		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6}, "crystals": 650, "stage": 30, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},
+		"cost": {"coins": 40000, "alloy": 40, "cell": 20, "core": 6, "ess_solar": 6}, "crystals": 650, "stage": 30, "build": {"scale": 1.15, "speed": 0.85, "tough": 1.3},
 		"blurb": "Breathes fire instead of carrying a jetpack. Cheaper."},
 }
 const ORDER := ["rook", "sparks", "frost", "hollow", "nyx", "ember"]
@@ -229,7 +229,7 @@ static func cost_text(id: String) -> String:
 static func parts_needed(id: String) -> Dictionary:
 	var c: Dictionary = ROSTER[id].get("cost", {})
 	var needs := {}
-	for k in Parts.ORDER:
+	for k in Parts.all_order():   # parts and materials (3-star+ heroes ask for essences, dev189)
 		if int(c.get(k, 0)) > 0:
 			needs[k] = int(c[k])
 	return needs
@@ -280,8 +280,19 @@ static func next_tier_cost(h: Dictionary, id: String) -> int:
 	var t := tier(h, id)
 	return int(TIER_SHARDS[t - 1]) if t < MAX_TIER else 0
 
-static func can_evolve(h: Dictionary, id: String) -> bool:
-	return tier(h, id) < MAX_TIER and (shards(h, id) >= next_tier_cost(h, id) or DevTools.on)
+# the essences of his element the next tier asks for on top of the shards (materials.gd, dev189)
+static func tier_need(h: Dictionary, id: String) -> Dictionary:
+	return Materials.tier_need(element_of(id), tier(h, id) + 1) if tier(h, id) < MAX_TIER else {}
+
+# with `save`, the essences are checked too (the page passes it; old callers only ask about shards)
+static func can_evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool:
+	if tier(h, id) >= MAX_TIER:
+		return false
+	if DevTools.on:
+		return true
+	if shards(h, id) < next_tier_cost(h, id):
+		return false
+	return save.is_empty() or Parts.has_all(Parts.read(save), tier_need(h, id))
 
 # ------------------------------------------------------------------ actions
 
@@ -307,8 +318,10 @@ static func def_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	h.def[id] = lv + 1
 	return true
 
-static func evolve(h: Dictionary, id: String) -> bool:
-	if not can_evolve(h, id):
+static func evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool:
+	if not can_evolve(h, id, save):
+		return false
+	if not save.is_empty() and Parts.pay(save, 0, tier_need(h, id), false) != "":
 		return false
 	h.shards[id] = maxi(shards(h, id) - next_tier_cost(h, id), 0)
 	h.tiers[id] = tier(h, id) + 1

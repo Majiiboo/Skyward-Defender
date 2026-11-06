@@ -28,18 +28,45 @@ static func need(level: int) -> Dictionary:
 		n["core"] = level - 7
 	return n
 
+# the parts AND the materials (materials.gd, dev189) as one dict, so a price can mix them
 static func read(save: Dictionary) -> Dictionary:
 	var p = save.get("parts", {})
 	var out := {}
 	for k in ORDER:
 		out[k] = int(p.get(k, 0)) if typeof(p) == TYPE_DICTIONARY else 0
+	out.merge(Materials.read(save))
 	return out
+
+# write a read() dict back: parts to "parts", materials to "materials"
+static func write(save: Dictionary, have: Dictionary) -> void:
+	var p := {}
+	var m := {}
+	for k in have:
+		if Materials.is_material(String(k)):
+			m[k] = int(have[k])
+		elif KINDS.has(k):
+			p[k] = int(have[k])
+	save["parts"] = p
+	save["materials"] = m
+
+static func add(save: Dictionary, k: String, n: int) -> void:
+	var have := read(save)
+	if have.has(k):
+		have[k] = maxi(0, int(have[k]) + n)
+		write(save, have)
+
+# the kind record of a part or a material: name, crystals (price of one missing)
+static func kind(k: String) -> Dictionary:
+	return KINDS[k] if KINDS.has(k) else (Materials.KINDS[k] if Materials.KINDS.has(k) else {"name": k, "crystals": 0})
+
+static func all_order() -> Array:
+	return ORDER + Materials.ORDER
 
 # crystals that would cover what is missing
 static func crystals_for_missing(have: Dictionary, needs: Dictionary) -> int:
 	var c := 0
 	for k in needs:
-		c += maxi(0, int(needs[k]) - int(have.get(k, 0))) * int(KINDS[k].crystals)
+		c += maxi(0, int(needs[k]) - int(have.get(k, 0))) * int(kind(k).crystals)
 	return c
 
 static func has_all(have: Dictionary, needs: Dictionary) -> bool:
@@ -51,9 +78,9 @@ static func has_all(have: Dictionary, needs: Dictionary) -> bool:
 # "6 Alloy, 1 Cell" (empty when no parts are needed)
 static func text(needs: Dictionary) -> String:
 	var bits: Array = []
-	for k in ORDER:
+	for k in all_order():
 		if needs.has(k):
-			bits.append("%d %s" % [int(needs[k]), String(KINDS[k].name).split(" ")[1] if k != "alloy" else "Alloy"])
+			bits.append("%d %s" % [int(needs[k]), (String(KINDS[k].name).split(" ")[1] if k != "alloy" else "Alloy") if KINDS.has(k) else Materials.name_of(k)])
 	return ", ".join(bits)
 
 # Try to pay: coins + parts (crystals cover missing parts when allowed). Changes `save`
@@ -74,8 +101,8 @@ static func pay(save: Dictionary, coins: int, needs: Dictionary, allow_crystals:
 	save["coins"] = int(save.get("coins", 0)) - coins
 	save["crystals"] = int(save.get("crystals", 0)) - extra
 	for k in needs:
-		have[k] = maxi(0, int(have[k]) - int(needs[k]))
-	save["parts"] = have
+		have[k] = maxi(0, int(have.get(k, 0)) - int(needs[k]))
+	write(save, have)
 	return ""
 
 # The Workshop (Gear page): 3 of a part -> 1 of the next (Rudy: merging, starting with parts).
@@ -102,5 +129,5 @@ static func merge(save: Dictionary, kind: String, times: int = 1) -> int:
 		return 0
 	have[kind] = int(have[kind]) - n * MERGE_COST
 	have[MERGE[kind]] = int(have[MERGE[kind]]) + n
-	save["parts"] = have
+	write(save, have)
 	return n

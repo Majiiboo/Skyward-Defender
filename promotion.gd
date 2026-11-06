@@ -180,6 +180,7 @@ static func etrial_reward(step: int, first: bool, el: String) -> Dictionary:
 		r["shards"] = {etrial_hero(el): int(ETRIAL_SHARDS[k])}
 		if k == ETRIAL_STEPS - 1:
 			r["crystals"] = ETRIAL_CRYSTALS_LAST
+	r["materials"] = {Materials.essence_of(el): (2 if first else 1)}   # the trial's own essence (materials.gd)
 	return r
 
 # the waves of step `k`: that boss stage's waves with more bugs (same shape as waves())
