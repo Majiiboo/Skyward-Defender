@@ -5,7 +5,19 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 0 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 1 update (next push = dev195 + that count; see the build rule).
+  1. LUNA TURRETS ROUND 2 in (29 renders, all usable; art_src/turrets2/, tools/cut_turrets2.gd ->
+     turrets/<id>_base / _head / _light / _idle (head stacked on base for tiles), fx/shot_<id>,
+     turrets/<id>_head_fire + _fire_light aligned to the resting heads, cards/pic_rook_twin):
+     Turrets.TURRETS + ROUND2 repair / tesla / cryo / mines / beacon / flak (two per element,
+     "heal" scaled by ATK, REACH keys, parts_needed over all_order so a price can ask for a
+     material), battle SPLIT_LOOK entries (negative gap, "lean", "tip"), _fire_k + the fire head
+     drawn over the resting head (sentry / split / swarm) and fire_light_<id> on the light layer,
+     _update_repair / _tesla / _cryo / _mine_layer (+ mines array, _update_mines, _mine_target) /
+     _beacon (e.mark_t, t.mark_id, _beacon_mult on hero bolts, marked bugs always crit) / _flak
+     (bullet "fuse" + _burst_at), shells + mines drawn in _draw_fx, tesla arcs + beacon beams in
+     _draw_turret_front; afk_wallpaper WALL_SPLIT entries; balance_sim owns its loadout; smoke
+     round 2 checks. NOT built: power cards for the six, Luna icons for them.
   dev195 (pushed 2026-11-06) carried the thirteen updates listed below (README-RUDY dev195). Rudy
   13. STORE 2.0 (queue 18) + DEV MODE STAGES: store.gd rewritten: KEY_CHESTS u / e / l (rolls, "ess" =
      the selected planet's weakness essence, "gear" = a copy at that rarity, resolve()), chest_open_in

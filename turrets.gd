@@ -55,7 +55,41 @@ const TURRETS := {
 		"strong": ["wide"], "glow": Color(1.0, 0.85, 0.6),
 		"damage": 0.7, "every": 2.6, "beams": 5, "spread": 1.0, "split_h": 300.0,
 		"desc": "One shot splits into a fan of beams"},
+	# round 2 (dev196, Luna's turrets round 2): a SECOND turret per element with a different
+	# job, so the choice is a play style and never "the one Ice turret" (Rudy). "unlock" 99 =
+	# an old save never gets them free; they are bought like the others.
+	"repair":  {"name": "Repair Node",    "art": "repair",  "rarity": "rare",      "unlock": 99, "ready": true,
+		"element": "ion", "role": "Support", "role_text": "mends the shield", "grade": 2, "cost": {"coins": 3500, "alloy": 15}, "crystals": 90, "stage": 10,
+		"strong": [], "glow": Color(0.2, 0.85, 1.0),
+		"damage": 0.0, "heal": 2.5, "every": 3.0,
+		"desc": "Mends the base shield while it stands"},
+	"tesla":   {"name": "Tesla Coil",     "art": "tesla",   "rarity": "rare",      "unlock": 99, "ready": true,
+		"element": "scavenger", "role": "Striker", "role_text": "fast zaps up close", "grade": 2, "cost": {"coins": 4500, "alloy": 20}, "crystals": 110, "stage": 10,
+		"strong": ["shielded"], "glow": Color(0.6, 1.0, 0.4),
+		"damage": 0.7, "every": 0.4, "range": 260.0,
+		"desc": "Fast zaps at the nearest bug, short reach"},
+	"cryo":    {"name": "Cryo Lens",      "art": "cryo",    "rarity": "epic",      "unlock": 99, "ready": true,
+		"element": "frost", "role": "Control", "role_text": "a cone of cold slows", "grade": 3, "cost": {"coins": 10000, "cell": 8}, "crystals": 220, "stage": 20,
+		"strong": ["fast"], "glow": Color(0.6, 0.9, 1.0),
+		"damage": 0.35, "every": 0.5, "reach": 330.0, "cone": 0.55, "slow": 0.5,
+		"desc": "A cone of cold slows every bug in it"},
+	"mines":   {"name": "Mine Layer",     "art": "mines",   "rarity": "epic",      "unlock": 99, "ready": true,
+		"element": "void", "role": "Breaker", "role_text": "bosses and armour", "grade": 3, "cost": {"coins": 14000, "cell": 12, "core": 2}, "crystals": 300, "stage": 30,
+		"strong": ["armoured", "boss"], "glow": Color(0.71, 0.55, 1.0),
+		"damage": 7.0, "every": 4.0, "blast": 70.0, "mines": 3,
+		"desc": "Floating mines burst on the biggest bug"},
+	"beacon":  {"name": "Dread Beacon",   "art": "beacon",  "rarity": "epic",      "unlock": 99, "ready": true,
+		"element": "nightmare", "role": "Support", "role_text": "marks bugs, hero ATK +10%", "grade": 3, "cost": {"coins": 15000, "cell": 12, "core": 2, "ess_nightmare": 2}, "crystals": 320, "stage": 35,
+		"strong": [], "glow": Color(1.0, 0.3, 0.3),
+		"damage": 0.0, "every": 2.5, "range": 420.0, "mark": 3.0, "atk": 0.10,
+		"desc": "Marks a bug for critical hits; hero ATK +10%"},
+	"flak":    {"name": "Flak Battery",   "art": "flak",    "rarity": "rare",      "unlock": 99, "ready": true,
+		"element": "solar", "role": "Swarm", "role_text": "airbursts shred crowds", "grade": 2, "cost": {"coins": 5000, "alloy": 25}, "crystals": 120, "stage": 15,
+		"strong": ["swarm", "wide"], "glow": Color(1.0, 0.7, 0.3),
+		"damage": 1.3, "every": 1.4, "range": 520.0, "blast": 75.0,
+		"desc": "Shells burst in the air over the thickest crowd"},
 }
+const ROUND2 := ["repair", "tesla", "cryo", "mines", "beacon", "flak"]   # the two-piece turrets of round 2
 
 const TRAIT_NAMES := {"armoured": "armoured", "boss": "bosses", "swarm": "swarm", "shielded": "shielded",
 	"fast": "fast", "high": "high flyers", "wide": "wide waves"}
@@ -174,7 +208,8 @@ const TRACKS := ["atk", "rate", "range"]
 const TRACK_NAMES := {"atk": "ATK", "rate": "Rate", "range": "Range"}
 const MAX_TRACK := 20
 const REACH := {"sentry": ["range"], "lance": ["width"], "storm": ["cloud_r"], "gravity": ["radius", "crush_r"],
-	"swarm": ["life"], "prism": ["spread", "split_h"]}
+	"swarm": ["life"], "prism": ["spread", "split_h"],
+	"repair": ["heal"], "tesla": ["range"], "cryo": ["reach"], "mines": ["blast"], "beacon": ["range", "mark"], "flak": ["range", "blast"]}
 
 static func one_tracks(tracks: Dictionary, id: String) -> Dictionary:
 	return tracks.get(id, {"atk": 1, "rate": 1, "range": 1})
@@ -201,6 +236,8 @@ static func milestone_mult(level: int) -> float:
 static func stats(id: String, tr: Dictionary) -> Dictionary:
 	var d: Dictionary = TURRETS[id].duplicate(true)
 	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr)) * TURRET_TUNE
+	if d.has("heal"):   # the Repair Node: ATK is how much it mends (no TURRET_TUNE: shield points, not damage)
+		d.heal = float(d.heal) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr))
 	d.every = float(d.every) / rate_mult(int(tr.rate))
 	for k in REACH.get(id, []):
 		d[k] = float(d[k]) * reach_mult(int(tr.range))
@@ -244,7 +281,7 @@ static func gate_open(save: Dictionary, id: String) -> bool:
 static func parts_needed(id: String) -> Dictionary:
 	var c: Dictionary = TURRETS[id].get("cost", {})
 	var needs := {}
-	for k in Parts.ORDER:
+	for k in Parts.all_order():   # parts and materials (the Dread Beacon asks for Dark Embers)
 		if int(c.get(k, 0)) > 0:
 			needs[k] = int(c[k])
 	return needs

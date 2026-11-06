@@ -98,7 +98,7 @@ func _write_save(stage: int) -> void:
 	# mounts opened by stages before it are open (Turrets.mount_open); every turret type is
 	# unlocked (pilot_xp), the loadout says which ones stand on the base
 	var d := {"selected_stage": stage, "selected_elite": OS.get_environment("SIM_ELITE_MODE") == "1", "stage_unlocked": stage, "pilot_xp": 100000, "areas_briefed": [0, 1, 2, 3, 4, 5],
-		"turrets": {"loadout": loadout, "levels": levels}, "coins": 0}
+		"turrets": {"loadout": loadout, "levels": levels, "owned": loadout}, "coins": 0}
 	if kit_auto:
 		_auto_kit(d, stage)
 	if promo >= 0:

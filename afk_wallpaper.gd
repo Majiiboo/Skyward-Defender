@@ -459,6 +459,13 @@ const WALL_SPLIT := {
 	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": 10.0, "art_dir": 0.0},
 	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": 8.0, "art_dir": 0.0},
 	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0},
+	# round 2 (dev196), battle's SPLIT_LOOK x0.83; a negative gap sinks the head into its base
+	"repair":  {"base_w": 38.0, "head_h": 38.0, "gap": -13.0, "art_dir": 0.0},
+	"tesla":   {"base_w": 48.0, "head_h": 46.0, "gap": -12.0, "art_dir": 0.0},
+	"cryo":    {"base_w": 53.0, "head_h": 41.0, "gap": -8.0, "art_dir": 0.0},
+	"mines":   {"base_w": 61.0, "head_h": 33.0, "gap": -10.0, "art_dir": 0.0},
+	"beacon":  {"base_w": 51.0, "head_h": 63.0, "gap": -10.0, "art_dir": 0.0},
+	"flak":    {"base_w": 53.0, "head_h": 28.0, "gap": -8.0, "art_dir": 0.0},
 }
 var _split_tex := {}
 

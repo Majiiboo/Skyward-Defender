@@ -319,7 +319,24 @@ func _check_turrets() -> void:
 	_expect(Turrets.owned(Turrets.read(s), "prism") and Turrets.owned(Turrets.read(s), "lance"), "owned list round trip")
 	var old := {"pilot_xp": Turrets.xp_for_level(11), "turrets": {"loadout": ["sentry", "", "", ""], "levels": {"sentry": 3}}}
 	var ot := Turrets.read(old)
-	_expect(Turrets.owned(ot, "lance") and Turrets.owned(ot, "storm") and not Turrets.owned(ot, "gravity"), "an old save keeps the turrets its pilot level had (Lv.11: Sentry, Lance, Storm)")
+	_expect(Turrets.owned(ot, "lance") and Turrets.owned(ot, "storm") and not Turrets.owned(ot, "gravity") and not Turrets.owned(ot, "tesla"), "an old save keeps the turrets its pilot level had (Lv.11: Sentry, Lance, Storm), never a round 2 turret")
+	# round 2 (dev196): two turrets per element, Luna's pieces cut, firing heads for the first six
+	var per_el := {}
+	for id in Turrets.TURRETS:
+		per_el[Turrets.element(id)] = int(per_el.get(Turrets.element(id), 0)) + 1
+		for k in Turrets.REACH.get(id, []):
+			_expect(Turrets.TURRETS[id].has(k), "turret %s: Range track key %s exists" % [id, k])
+	for el in Heroes.ELEMENTS:
+		_expect(int(per_el.get(el, 0)) == 2, "two turrets for %s (got %d)" % [el, int(per_el.get(el, 0))])
+	for id in Turrets.ROUND2:
+		for n in ["base", "head", "idle", "light"]:
+			_expect(ResourceLoader.exists("res://turrets/%s_%s.png" % [id, n]), "turret %s: %s picture cut" % [id, n])
+		_expect(ResourceLoader.exists("res://fx/shot_%s.png" % id), "turret %s: shot sprite" % id)
+	for id in ["sentry", "lance", "storm", "gravity", "swarm", "prism"]:
+		_expect(ResourceLoader.exists("res://turrets/%s_head_fire.png" % id) and ResourceLoader.exists("res://turrets/%s_fire_light.png" % id), "turret %s: firing head + its light" % id)
+	var rs := Turrets.stats("repair", {"atk": 6, "rate": 1, "range": 1})
+	_expect(is_equal_approx(float(rs.heal), 2.5 * Turrets.atk_mult(6) * Turrets.milestone_mult(6)) and is_zero_approx(float(rs.damage)), "Repair Node: ATK scales the mend, no damage")
+	_expect(Turrets.parts_needed("beacon").has("ess_nightmare") and Turrets.cost_text("beacon").contains("Dark Ember"), "Dread Beacon asks for Dark Embers (materials in a turret price)")
 	_expect(is_equal_approx(Turrets.element_mult("prism", 25), Heroes.WEAK_MULT) and is_equal_approx(Turrets.element_mult("lance", 25), Heroes.RESIST_MULT), "Magma World: Ice Prism strong, Fire Lance weak")
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
 	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "magnet", "support pods: job and their own art")

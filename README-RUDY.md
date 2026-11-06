@@ -345,6 +345,42 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 1 (after dev195): LUNA'S TURRETS ROUND 2 are in (29 renders, all usable). SIX NEW TURRETS,
+a second one per element with a different job, so picking a turret is a play style (your rule):
+- Repair Node (Energy, Support, 2★, 3,500 coins + 15 Alloy, stage 10): does not shoot; every
+  3 s it mends the base shield (the shield never heals on its own) with a ring of light rising
+  from its dish. ATK is how much it mends.
+- Tesla Coil (Electric, Striker, 2★, 4,500 + 20 Alloy, stage 10): fast zaps at the nearest bug,
+  short reach, an arc from the ball to the bug. Strong against shielded bugs.
+- Cryo Lens (Ice, Control, 3★, 10,000 + 8 Cells, stage 20): the lens leans toward the nearest
+  bug and breathes a cone of cold; every bug in the cone is slowed by half and chipped.
+- Mine Layer (Void, Breaker, 3★, 14,000 + 12 Cells + 2 Cores, stage 30): floats up to three
+  mines that drift to the biggest bug in the sky (bosses and armoured shells first) and burst
+  on it, with a blast round it. Strong against bosses and armour.
+- Dread Beacon (Dark, Support, 3★, 15,000 + 12 Cells + 2 Cores + 2 Dark Embers, stage 35):
+  paints a red mark on a bug; every hero bolt on a marked bug is a critical hit; and the hero's
+  ATK is +10% while the beacon stands. The first price that asks for a material.
+- Flak Battery (Fire, Swarm, 2★, 5,000 + 25 Alloy, stage 15): the mortar cradle turns to the
+  thickest knot of bugs and lobs a shell that bursts in the air at their height, shredding
+  everything round it. Strong against swarms and wide waves.
+  The Range track grows each one's reach (Tesla, Beacon, Flak), cone (Cryo), blast (Mines, Flak)
+  or mend (Repair). They are bought on the Turrets page like the first six; the dev switch
+  gives them to you. Luna's base and head pieces are drawn the same way as the first six (base
+  in the socket, head above it; the lens and the mortar lean toward their target); her shot
+  pictures are the tesla arc, the frost fan, the mine, the marker flash and the flak burst.
+- FIRING HEADS: the six turrets you had now have a second head picture that fades in for the
+  split second they fire: Sentry barrels hot, Lance opened white-hot, Storm's coil flared,
+  Gravity's rings pulled tight, the Swarm's side vents lit as the drones leave, the Prism split
+  into five lit faces. Luna lined them up with the resting heads, so the cross-fade is clean.
+- Rook's card picture (pic_rook_twin) arrived: Twin Shot shows it now instead of the weapon.
+  Luna sent two; the cyan paired bolts (as briefed) are in, the teal one is kept as an alt.
+- Not yet: power cards for the six new turrets (the first six have one each), and Luna's icons
+  for them in the turret role badges (the role icons cover them).
+- Archive: art_src/turrets2/ (the later re-sends of storm_head_fire, flak_shot and repair_shot
+  are the ones used; the first versions kept as -v1). Cutter: tools/cut_turrets2.gd.
+- Check: smoke passes (two turrets per element, every piece cut, the Beacon's material price);
+  headless runs at stage 20 (Tesla + Flak) and 45 (Mines, Beacon, Repair, Cryo) without errors.
+
 ## dev195: Luna's UI kit round 2, icons, drones round 2, stand, your screenshot notes, back frames, orbit rings, cards round 2, Elite eased in, hero evolutions, materials and the Craft tab, Store 2.0 and dev mode stages (thirteen updates since dev182)
 
 Update 12: LUNA'S ICONS are in (48, all usable). Coins, crystals and power
