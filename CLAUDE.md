@@ -10,7 +10,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      six incl. Rook; archived art_src/heroes/<id>/t3_turn_n.webp + portrait_tk.webp; cut_heroes
      _cut_tiers now makes heroes/<id>/ first; heroes/<id>/t3/turn_1..8.png + portrait_t2/t3.png;
      PilotRig.LOOK_AT_STARS {2: 2, 3: 5} + look_tier(): t3 frames and portrait_t3 from 5 stars,
-     portrait_t2 from 2, a rim pass at 2-4 in draw_hero; gear _hero_portrait via look_tier). NO DIVIDING LINES (Rudy): gear StarMap BLEND 260
+     portrait_t2 from 2, a rim pass at 2-4 in draw_hero; gear _hero_portrait via look_tier).
+     RULE (Rudy 2026-11-06): an evolution keeps the hero's theme and colours and only ADDS pieces;
+     palette changes are SKINS. Rook's white-gold t3 moved to heroes/rook/skins/ceremonial/ (+
+     art_src same path; no code reads it yet), LUNA-BRIEF-rook-5star.md asks for the set in his
+     charcoal + purple; Rook at 5 stars = base look until it lands. NO DIVIDING LINES (Rudy): gear StarMap BLEND 260
      gradient quads between constellation skies (Luna skies drawn overlapping, brief says fade
      edges); stage_map BLEND_H 150: every zone's texture drawn again above its top as a
      draw_polygon with per-vertex alpha (1 -> 0) and uvs, the cyan line removed, titles drawn
@@ -474,7 +478,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    collected items traded for chests/items (event shops). Real money needs Google Play Billing
    (until then "coming soon"). Keep the premium currency called Crystals: "gems" are the XP
    pickups in battle.
-19. LATER (Rudy): a turret SKIN LIBRARY: alternate designs / themes per turret (looks only, no
+19. LATER (Rudy): a SKIN LIBRARY for turrets AND HEROES (2026-11-06: hero colour skins such as white and gold, neon green lights, a red or blue body, the cape as a customisation; heroes/<id>/skins/<skin>/turn_1..8 + portrait, worn at any star; Rook ceremonial is the first set): alternate designs / themes per turret (looks only, no
    stats), unlocked or bought (crystals, events, Exchange). Needs Luna art per skin.
 20. LATER (Rudy): RANKINGS with weekly rewards: leaderboards (e.g. highest stage, Horde score,
    Boss Rush time) run in 30-DAY SEASONS (Rudy) with a visible countdown ("Ends in 29 days");

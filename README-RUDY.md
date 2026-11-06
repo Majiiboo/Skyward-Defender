@@ -355,6 +355,7 @@ DIVIDING LINES on the maps (your note).
   crisp rim of his element's light round him and the halo, both brighter each star); at 5 stars
   the BIG change, Luna's tier 3 frames and portrait, on the Hero page, the roster, Home and in
   battle; red stars keep the five-star look with a red halo until you design their extra. Cutter: tools/cut_heroes.gd (the back frames lined up to the
+- ROOK (your catch): his white-and-gold set changed his colours, and an evolution should keep  the hero's own theme and only ADD to him (Frost, Hollow, Nyx and Ember already do). So the  white-and-gold Rook is parked as his first SKIN (heroes/rook/skins/ceremonial, to unlock or  buy later with the colour skins you described: white and gold, neon green lights, a red or  blue body) and Rook shows his base look at 5 stars until Luna repaints that set in charcoal  and purple with the cape (LUNA-BRIEF-rook-5star.md, a small redo). Skins as a system are on  the queue (item 19) for after the Store and the Exchange.
   front ones, one crop per hero); archive art_src/heroes/<hero>/t3_turn_1..8, portrait_t2 / t3.
 - THE STAR MAP blends: the sky of one constellation fades into the next over a long gradient,
   no line; Luna's painted skies will overlap the same way (her brief asks for black at their top
