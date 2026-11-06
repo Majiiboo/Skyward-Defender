@@ -3,9 +3,10 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-05, build dev171)
+## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev171: 11 updates (next push = dev171 + that count; see the build rule). Rudy
+- UNPUSHED since dev182: 0 updates (next push = dev182 + that count; see the build rule).
+  dev182 carried the eleven updates listed below (README-RUDY dev182). Rudy
   11. LUNA UI KIT in (art_src/ui/ui-*.webp, 36; tools/cut_ui_kit.gd -> ui/*.png at on-screen SCALE):
      UIKit KIT_ON, kit_ready, nine() (StyleBoxTexture 9-slice, cached), _kit_btn (gold / teal /
      glass / off / tab), chip, header_bar (left margin 56 keeps the tag); battle _draw_hud
@@ -108,7 +109,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   evolution looks, keep the weapon slot). Until he decides: no Gear page overhaul, no armour-parts
   Luna brief. Promotion: 10 ranks; Rudy wants each trial themed on a different enemy once the
   enemy families (item 17) exist.
-- dev138-171 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
+- dev138-182 (Fable session): stages 1-5 free, Luna turret card pictures in, gear rarity +
 - dev166 is a DEVELOPER BUILD (build_info.gd DEV = true: Settings > DEVELOPER shortcuts, dev_tools.gd). Set DEV false for a store build. Zip for Luna: git archive without art_src (see README-RUDY dev166).
   copies + Workshop merging + inventory + Quick Merge + loadouts (16 f), polish pass (item 22).
   Dev checks: tools/dev/smoke.gd (run before every build), tools/dev/capture.gd (page shots).
@@ -163,7 +164,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev171 (code 171).
+  go UP every package (same signing key, install-over). Current: dev182 (code 182).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push

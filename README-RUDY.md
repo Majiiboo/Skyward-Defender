@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev171 (version/code=171 and version/name="1.0-dev171" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev182 (version/code=182 and version/name="1.0-dev182" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -142,7 +142,7 @@ bar (and into the rounded corner on the Store and Quests edges) with no seams.
 - Known: balance is a first pass (stage 1 is quick), no sound, turrets other
   than Sentry are art only, drone and trails not started.
 
-## Next push (dev171 + the updates below)
+## dev182: heroes, HP and DEF, hero cards, turrets and drones with elements, element trials, the look pass, turrets with weight, Luna's heroes and UI kit in, Horde, enemy variants, dev mode (eleven updates since dev171)
 
 Update 1: HEROES replace the armour gear (your call, 2026-11-05; the plan is DESIGN-heroes.md,
 Luna's brief is LUNA-BRIEF-heroes.md).
