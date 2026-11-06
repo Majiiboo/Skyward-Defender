@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev182 (version/code=182 and version/name="1.0-dev182" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev195 (version/code=195 and version/name="1.0-dev195" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -345,7 +345,9 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
-Update 12 (after dev182): LUNA'S ICONS are in (48, all usable). Coins, crystals and power
+## dev195: Luna's UI kit round 2, icons, drones round 2, stand, your screenshot notes, back frames, orbit rings, cards round 2, Elite eased in, hero evolutions, materials and the Craft tab, Store 2.0 and dev mode stages (thirteen updates since dev182)
+
+Update 12: LUNA'S ICONS are in (48, all usable). Coins, crystals and power
 tokens on Home and every wallet; Alloy, Cells and Cores everywhere parts show; the six element
 badges in the corner of every hero and turret tile; her tab icons on the Hero / Turrets /
 Drone / Workshop, Daily / Career / Trophies / Repeat and Offers / Chests / Parts / Packs
@@ -353,7 +355,8 @@ strips; stat icons on the STATS panel; the three chests, the gift, the pack and 
 the Store; the Elite, rank and trial badges on the Modes cards. Shards, roles and the
 "weak to" shield are cut and ready for the pages that will show them (materials, turret
 details).
-Update 13 (after dev182): LUNA'S DRONES ROUND 2 are in (26 renders, all usable). Three new
+
+Update 13: LUNA'S DRONES ROUND 2 are in (26 renders, all usable). Three new
 bodies, each its own machine, each BOUGHT like a hero or a turret (coins + parts, or crystals)
 and rated by grade: SPARK BOT (2★ Electric: a scrap ball with a crackling Tesla coil; its hits
 arc to 2 more bugs; 6,000 coins + 20 Alloy + 4 Cells, or 120 crystals), WISP (3★ Void: a dark
@@ -364,11 +367,13 @@ banks, the wings and fins beat, the Wisp's middle fin trails, and Luna's glow la
 core, eyes) breathes over the body and flares on a shot. The Repair and Magnet pods have their
 own pictures now. Scout, Striker and Warden stay on pilot level. The Drone page shows the
 grade stars and the price on a locked body; tap it to buy.
-Update 14 (after dev182): LUNA'S HERO STAND is in. The hero floats over her rendered hover
+
+Update 14: LUNA'S HERO STAND is in. The hero floats over her rendered hover
   disc: the etched glass disc with its metal rim, the light lines and the floating ring glowing in
   his element colour and breathing, and a soft column of light with drifting specks behind him.
   The code shapes are gone.
-Update 15 (after dev182): YOUR SCREENSHOT NOTES.
+
+Update 15: YOUR SCREENSHOT NOTES.
 - ONE LEVEL UP for a hero (no separate DEF button): every level raises ATK, HP and DEF
   together. Milestones every 5 levels are PERKS as well as numbers: crit, Max HP, crit damage,
   damage boost, base damage taken, fortress HP, then at Lv.35 every 6th shot fires a TWIN, at
@@ -380,7 +385,8 @@ Update 15 (after dev182): YOUR SCREENSHOT NOTES.
 - E BADGE: no more "Equipped", "Choose", "Wearing" or "On mount" words. The equipped hero
   weapon, drone body and pod carry a small E in the tile's corner in the item's colour; a
   turret on the base carries its mount number there instead. Tapping any open tile equips it.
-Update 16 (after dev182): YOUR NEXT NOTES.
+
+Update 16: YOUR NEXT NOTES.
 - The hero HOVERS a little above the disc, centred on it, with a slow bob.
 - The stand is BLENDED into the world for now: a soft dark halo under it fading into the
   wallpaper and the disc a touch smaller and see-through. A redo brief for Luna asks for a
@@ -395,7 +401,7 @@ Update 16 (after dev182): YOUR NEXT NOTES.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 
-Update 17 (after dev182): LUNA'S BACK FRAMES are in (20 of 21, all usable). Every hero and
+Update 17: LUNA'S BACK FRAMES are in (20 of 21, all usable). Every hero and
 both pilot suits now turn ALL THE WAY ROUND on the Heroes page: drag past the side and you
 see the jetpack, the wings, the cloak, the tail; let go and he drifts back to face you.
 - Her back frames were rendered a little smaller and higher than her front frames (she
@@ -412,7 +418,93 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
-Update 23 (after dev182): STORE 2.0 (your queue item 18) + DEV MODE opens every stage.
+Update 18: LUNA'S ORBIT-RING STAND is in (4 renders, all usable). The disc and
+the grid are gone. Under the hero: her nebula pool breathing slowly, two thin rings of light
+circling him with beads travelling round each ring (bright along the front, faint behind him),
+and a soft column of light rising from the centre. Everything is tinted in the hero's element
+colour and dissolves into the dark sky; nothing solid.
+- Her beam was lit from a point at the top like a spotlight; the cutter ramps it so it is
+  strongest at the base and gone before the top. The rings carried a faint grey box under
+  their brighter half and the pool a faint rectangle; both are cut away (grey floor, soft
+  ellipse mask).
+- Archive: art_src/stand/stand_pool-v2 / ring_a-v2 / ring_b-v2 / beam-v2.webp; cutter
+  tools/cut_stand.gd (_cut_v2 runs when the -v2 pool exists).
+
+Update 19: LUNA'S CARDS ROUND 2 is in (17 of 18 renders usable; Rook's Twin
+Trigger picture was not delivered, his card keeps the pistol until it lands).
+- Five hero cards now show their power, not the gun: Arc Weld (a forked yellow arc leaping
+  to a second point), Deep Freeze (a bug frozen in cracked ice, shards flying), Phase Bolts
+  (a violet bolt through an unbroken ring), Marked Prey (a purple crosshair, red diamond,
+  claw scratches), Afterburn (a flaming ember with a second flame catching).
+- The eleven trial twists are ICONS now, green for an advantage and red for a disadvantage:
+  on the Pilot Ranks ladder (under each rank's name), on the Element Trials steps, under the
+  battle top bar for the first seconds of a trial, and in the pause menu. The words
+  ADVANTAGE / DISADVANTAGE are gone; the colour says it.
+- Luna's Uncommon frame -v2 is in (the Common frame's height, window filled dark by the
+  cutter). HONEST NOTE: on screen it changes little, because the game stretches every frame
+  to the card anyway; the real difference is that the Common frame has a thick inner band
+  and the Uncommon, Epic and Legendary frames have thin ones. If you want the four to match,
+  the small ask is a Common frame in the same tech style as the other three (thin band,
+  grey edge).
+- Archive: art_src/cards_r3/ (pic_*.webp, frame_uncommon-v2.png, tw_*.png, twists-sheet);
+  cutter tools/cut_cards2.gd. Dev: battle _dbg_cards("a,b,c") opens a pick of those cards
+  for captures (tools/dev/capture.gd CAP_CALL).
+
+Update 20: ELITE EASED IN + ICON POLISH (code side while Luna renders).
+- The "Elite stage 30 cliff" was never a cliff. The sim (typical kit, human bot, 3 runs a
+  stage) won Elite 20 3/3, 25 2/3, 28 3/3, 30 1/3, 32 3/3, 35 2/3, 40 1/3: a coin flip from
+  25 up, and every loss had the same shape: the hull gone by wave 4-7 while the run level
+  was still 7-11, before the power cards had built up; every win ended with the hull near
+  100. The Elite toughness (bugs x1.85 health) landed in full from the first bug.
+  FIX: Elite health eases in over the first five waves (60% of the factor's strength at
+  wave 1, full from wave 5; StageData.elite_mult). Re-run (4 runs a stage): Elite 25 2/4,
+  30 3/4, 35 4/4, 40 4/4; the losses left are at stage 25 waves 6-7, where the young Hive
+  Mother turns up mid-stage. Elite stays hard, it just stops killing you before you have
+  any cards.
+- Icons: the hero panel's shard line starts with Luna's shard icon ("0 / 30 shards · Tier 1
+  · Coins +20%"); turret tiles carry their ROLE icon top left (crosshair Striker, hammer
+  Breaker, chain, control, swarm, support) next to the element badge top right; Home's
+  stage tag "WEAK TO ICE" shows the element symbol after the words.
+
+Update 21: HERO EVOLUTIONS, code side, and the hero-tiers brief REWRITTEN.
+- HONEST NOTE: the brief I sent you this morning asked Luna for tier looks as PARTS (head,
+  torso, back piece). That only works if each hero is a parts rig like the pilot, and I
+  checked her parts sheets: Sparks' arms and legs are rendered from other angles than his
+  reference, and Captain Frost's sheet is a plain grey clay version. The pilot's own rig
+  took three rounds of fixes. The heroes look far better as her whole turn frames, so they
+  stay that way, and the brief now asks for WHOLE FRAMES: tier 3 = the hero repainted as his
+  "legend" self at the same eight angles + a portrait; tier 2 = one new portrait, and the
+  game adds the rest. Please send Luna the new LUNA-BRIEF-hero-tiers.md in place of the old.
+- In the game now: a tier 2+ hero carries a breathing halo in his element colour (the frame
+  drawn a touch larger behind himself; stronger at tier 3); the roster shows portrait_t2 /
+  portrait_t3 when they exist; the rig shows heroes/<id>/t3/turn_1..8 when they exist (Rook
+  too); tools/cut_heroes.gd cuts t<k>_turn_n.webp and portrait_t<k>.webp when they land.
+
+Update 22: MATERIALS + the Workshop CRAFT tab (your DESIGN-materials.md, built).
+- Twelve new materials on top of Alloy / Cells / Cores: an ESSENCE per element (Energy Spark,
+  Arc Charge, Frost Core, Void Fragment, Dark Ember, Solar Flare), the WEAPON line (Scrap
+  Barrel -> Focus Lens -> Prime Coil) and the DRONE line (Rotor -> Gyro -> Flight Core).
+- What asks for them: hero tiers (tier 2 = 30 shards + 2 essences of his element, tier 3 =
+  90 + 5), the 3-star+ heroes' price (Hollow 3 Void Fragments, Nyx 6 Dark Embers, Ember 6
+  Solar Flares), weapon levels from Lv.15 (barrels; lenses from 20; a coil and an essence
+  from 25), turret track levels past 10 (its element's essence), drone levels from Lv.5
+  (rotors; gyros from 10; a flight core at 15). Every price shows them like parts, and
+  crystals can still cover what is missing on upgrades.
+- Where they come from: a boss stage drops the essence that planet is WEAK to (two in Elite;
+  Elite also drops one on a third of other wins), an element trial step pays its own essence
+  (two the first time), Horde pays a barrel and a rotor per 10 waves, Patrol trickles the
+  two lines from planet 2 and the planet's essence very slowly, and the dev wallet gives 20
+  of each.
+- Workshop > CRAFT (third sub-tab): what you own, then one card per recipe with what it makes,
+  what it needs with have / need counts (green when you have it) and a Craft button: 10 Alloy
+  + 200 coins = a Scrap Barrel or a Rotor; 3 of a step + coins = the next step (a Core joins
+  for the top step); 10 Cells + 2 Cores + 1,000 coins = one essence of the element you pick.
+  The end screen lists what dropped. Luna's icons come later (icons/mat_<id>.png); until then
+  the element badges and the parts icons stand in.
+- NOT built from the design yet: weapon VARIANTS crafted in the Workshop (needs their art and
+  their behaviour), Store 2.0 selling materials (with the Store rebuild).
+
+Update 23: STORE 2.0 (your queue item 18) + DEV MODE opens every stage.
 - Five tabs: CHESTS | OFFERS | SHOP | CRYSTALS | EXCHANGE.
 - CHESTS: Uncommon, Epic and Legendary. Uncommon and Epic open with KEYS (Uncommon Key, Epic
   Key: a boss stage drops one, Elite drops the Epic one on its boss stages and an Uncommon one
@@ -439,92 +531,6 @@ Update 23 (after dev182): STORE 2.0 (your queue item 18) + DEV MODE opens every 
   trial steps still go in order (the step is the ladder).
 - The old crystal crates (Supply Crate, Vault Chest) are gone from the page; the code keeps
   them for old saves.
-
-Update 22 (after dev182): MATERIALS + the Workshop CRAFT tab (your DESIGN-materials.md, built).
-- Twelve new materials on top of Alloy / Cells / Cores: an ESSENCE per element (Energy Spark,
-  Arc Charge, Frost Core, Void Fragment, Dark Ember, Solar Flare), the WEAPON line (Scrap
-  Barrel -> Focus Lens -> Prime Coil) and the DRONE line (Rotor -> Gyro -> Flight Core).
-- What asks for them: hero tiers (tier 2 = 30 shards + 2 essences of his element, tier 3 =
-  90 + 5), the 3-star+ heroes' price (Hollow 3 Void Fragments, Nyx 6 Dark Embers, Ember 6
-  Solar Flares), weapon levels from Lv.15 (barrels; lenses from 20; a coil and an essence
-  from 25), turret track levels past 10 (its element's essence), drone levels from Lv.5
-  (rotors; gyros from 10; a flight core at 15). Every price shows them like parts, and
-  crystals can still cover what is missing on upgrades.
-- Where they come from: a boss stage drops the essence that planet is WEAK to (two in Elite;
-  Elite also drops one on a third of other wins), an element trial step pays its own essence
-  (two the first time), Horde pays a barrel and a rotor per 10 waves, Patrol trickles the
-  two lines from planet 2 and the planet's essence very slowly, and the dev wallet gives 20
-  of each.
-- Workshop > CRAFT (third sub-tab): what you own, then one card per recipe with what it makes,
-  what it needs with have / need counts (green when you have it) and a Craft button: 10 Alloy
-  + 200 coins = a Scrap Barrel or a Rotor; 3 of a step + coins = the next step (a Core joins
-  for the top step); 10 Cells + 2 Cores + 1,000 coins = one essence of the element you pick.
-  The end screen lists what dropped. Luna's icons come later (icons/mat_<id>.png); until then
-  the element badges and the parts icons stand in.
-- NOT built from the design yet: weapon VARIANTS crafted in the Workshop (needs their art and
-  their behaviour), Store 2.0 selling materials (with the Store rebuild).
-
-Update 21 (after dev182): HERO EVOLUTIONS, code side, and the hero-tiers brief REWRITTEN.
-- HONEST NOTE: the brief I sent you this morning asked Luna for tier looks as PARTS (head,
-  torso, back piece). That only works if each hero is a parts rig like the pilot, and I
-  checked her parts sheets: Sparks' arms and legs are rendered from other angles than his
-  reference, and Captain Frost's sheet is a plain grey clay version. The pilot's own rig
-  took three rounds of fixes. The heroes look far better as her whole turn frames, so they
-  stay that way, and the brief now asks for WHOLE FRAMES: tier 3 = the hero repainted as his
-  "legend" self at the same eight angles + a portrait; tier 2 = one new portrait, and the
-  game adds the rest. Please send Luna the new LUNA-BRIEF-hero-tiers.md in place of the old.
-- In the game now: a tier 2+ hero carries a breathing halo in his element colour (the frame
-  drawn a touch larger behind himself; stronger at tier 3); the roster shows portrait_t2 /
-  portrait_t3 when they exist; the rig shows heroes/<id>/t3/turn_1..8 when they exist (Rook
-  too); tools/cut_heroes.gd cuts t<k>_turn_n.webp and portrait_t<k>.webp when they land.
-
-Update 20 (after dev182): ELITE EASED IN + ICON POLISH (code side while Luna renders).
-- The "Elite stage 30 cliff" was never a cliff. The sim (typical kit, human bot, 3 runs a
-  stage) won Elite 20 3/3, 25 2/3, 28 3/3, 30 1/3, 32 3/3, 35 2/3, 40 1/3: a coin flip from
-  25 up, and every loss had the same shape: the hull gone by wave 4-7 while the run level
-  was still 7-11, before the power cards had built up; every win ended with the hull near
-  100. The Elite toughness (bugs x1.85 health) landed in full from the first bug.
-  FIX: Elite health eases in over the first five waves (60% of the factor's strength at
-  wave 1, full from wave 5; StageData.elite_mult). Re-run (4 runs a stage): Elite 25 2/4,
-  30 3/4, 35 4/4, 40 4/4; the losses left are at stage 25 waves 6-7, where the young Hive
-  Mother turns up mid-stage. Elite stays hard, it just stops killing you before you have
-  any cards.
-- Icons: the hero panel's shard line starts with Luna's shard icon ("0 / 30 shards · Tier 1
-  · Coins +20%"); turret tiles carry their ROLE icon top left (crosshair Striker, hammer
-  Breaker, chain, control, swarm, support) next to the element badge top right; Home's
-  stage tag "WEAK TO ICE" shows the element symbol after the words.
-
-Update 19 (after dev182): LUNA'S CARDS ROUND 2 is in (17 of 18 renders usable; Rook's Twin
-Trigger picture was not delivered, his card keeps the pistol until it lands).
-- Five hero cards now show their power, not the gun: Arc Weld (a forked yellow arc leaping
-  to a second point), Deep Freeze (a bug frozen in cracked ice, shards flying), Phase Bolts
-  (a violet bolt through an unbroken ring), Marked Prey (a purple crosshair, red diamond,
-  claw scratches), Afterburn (a flaming ember with a second flame catching).
-- The eleven trial twists are ICONS now, green for an advantage and red for a disadvantage:
-  on the Pilot Ranks ladder (under each rank's name), on the Element Trials steps, under the
-  battle top bar for the first seconds of a trial, and in the pause menu. The words
-  ADVANTAGE / DISADVANTAGE are gone; the colour says it.
-- Luna's Uncommon frame -v2 is in (the Common frame's height, window filled dark by the
-  cutter). HONEST NOTE: on screen it changes little, because the game stretches every frame
-  to the card anyway; the real difference is that the Common frame has a thick inner band
-  and the Uncommon, Epic and Legendary frames have thin ones. If you want the four to match,
-  the small ask is a Common frame in the same tech style as the other three (thin band,
-  grey edge).
-- Archive: art_src/cards_r3/ (pic_*.webp, frame_uncommon-v2.png, tw_*.png, twists-sheet);
-  cutter tools/cut_cards2.gd. Dev: battle _dbg_cards("a,b,c") opens a pick of those cards
-  for captures (tools/dev/capture.gd CAP_CALL).
-
-Update 18 (after dev182): LUNA'S ORBIT-RING STAND is in (4 renders, all usable). The disc and
-the grid are gone. Under the hero: her nebula pool breathing slowly, two thin rings of light
-circling him with beads travelling round each ring (bright along the front, faint behind him),
-and a soft column of light rising from the centre. Everything is tinted in the hero's element
-colour and dissolves into the dark sky; nothing solid.
-- Her beam was lit from a point at the top like a spotlight; the cutter ramps it so it is
-  strongest at the base and gone before the top. The rings carried a faint grey box under
-  their brighter half and the pool a faint rectangle; both are cut away (grey floor, soft
-  ellipse mask).
-- Archive: art_src/stand/stand_pool-v2 / ring_a-v2 / ring_b-v2 / beam-v2.webp; cutter
-  tools/cut_stand.gd (_cut_v2 runs when the -v2 pool exists).
 
 ## dev171: your Elite and Promotion notes, and the fun pass (four updates since dev167)
 

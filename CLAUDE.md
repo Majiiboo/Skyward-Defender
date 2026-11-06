@@ -3,9 +3,10 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-05, build dev182)
+## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 13 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev195: 0 updates (next push = dev195 + that count; see the build rule).
+  dev195 (pushed 2026-11-06) carried the thirteen updates listed below (README-RUDY dev195). Rudy
   13. STORE 2.0 (queue 18) + DEV MODE STAGES: store.gd rewritten: KEY_CHESTS u / e / l (rolls, "ess" =
      the selected planet's weakness essence, "gear" = a copy at that rarity, resolve()), chest_open_in
      (save, tier, "free" | "key" | "crystals") with save "chest_opens" (pity every 10th) and
@@ -258,7 +259,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev182 (code 182).
+  go UP every package (same signing key, install-over). Current: dev195 (code 195).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push
