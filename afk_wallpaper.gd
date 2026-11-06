@@ -88,7 +88,7 @@ func set_stage(value: int) -> void:
 	for wave in StageData.waves(stage):
 		for entry in wave:
 			var kind: String = entry[0]
-			if kind != "hive_mother" and not _roster.has(kind) and EnemyRig.PARTS.has(kind):
+			if not StageData.is_boss(kind) and not _roster.has(kind) and (EnemyRig.PARTS.has(kind) or EnemyRig.is_machine(kind)):
 				_roster.append(kind)
 	if _roster.is_empty():
 		_roster = ["scout"]
@@ -523,14 +523,21 @@ func _wall_turret_h() -> float:
 func _draw_boss() -> void:
 	if _boss == "":
 		return
-	var sz: float = float(StageData.ENEMIES["hive_mother"].size) * 1.35 * (0.4 if _boss == "mini" else 0.5)
+	var bid := StageData.boss_id(stage, _boss == "mini")   # the planet's boss (the Scrap Belt: the Queen, the Wrecker)
+	var sz: float = float(StageData.ENEMIES[bid].size) * 1.35 * (0.4 if _boss == "mini" else 0.5)
 	var p := Vector2(size.x * 0.5 + sin(_t * 0.35) * size.x * 0.18, fly_top + 40.0 + sin(_t * 0.9) * 8.0)
-	EnemyRig.draw_hive_mother(self, p, sz, _t, 0.0, false)
+	if EnemyRig.is_machine(bid):
+		EnemyRig.draw_machine(self, bid, p, sz, _t, 0.0)
+	else:
+		EnemyRig.draw_hive_mother(self, p, sz, _t, 0.0, false)
 
 func _draw_enemies() -> void:
 	for e in _enemies:
 		var a := clampf((e.pos.y - (fly_top - 100.0)) / 60.0, 0.0, 1.0)   # fades in as it enters
-		EnemyRig.draw_bug(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
+		if EnemyRig.is_machine(String(e.kind)):   # the Scrap Belt machines (dev198)
+			EnemyRig.draw_machine(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, a)
+		else:
+			EnemyRig.draw_bug(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
 
 func _muzzle(pose: String) -> Vector2:
 	if _rig_view:

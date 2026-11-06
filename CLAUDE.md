@@ -5,7 +5,21 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 4 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 5 updates (next push = dev195 + that count; see the build rule).
+  5. SCRAP BELT FAMILY in (queue 17 b; Luna 36 renders, art_src/scrap/, tools/cut_scrap.gd ->
+     enemies/scrap/<id>_whole + pieces at the whole's scale, enemies/parts/<id>_chunk_N, ui/
+     commander_calm / _urgent): StageData.ENEMIES mite / hulk / rivet / dart / bolt / wrecker /
+     queen ("family" scrap, tex "", "name" on bosses, hulk spawns_on_death bolt, rivet "shot" rivet,
+     queen spawns mite / launches dart), SCRAP, is_boss(id), boss_id(stage, mini), MACHINE_FOR +
+     machine_share (waves split each role from stage 11; rivet 13, dart 15; mid-stage young boss
+     alternates queen / hive_mother). EnemyRig.MACHINES (anchors on the whole), is_machine,
+     machine_anchor, draw_machine (rotors, panels, pod sac, flame, Wrecker arm ext + claw, Queen
+     arms + hold open). battle: _is_boss / _is_boss_id (all e.type == "hive_mother" checks),
+     _muzzle_of, "wrecker" move (seek / drop / hold / lift, t.held_by; _update_turrets skips a held
+     turret), boss brood / launches by def, hulk bolts, rivet shots drawn, dart lunges, shards +
+     variants for machines, boss bar name, commander portrait in _maybe_brief; afk_wallpaper boss
+     + machines; promotion / patrol use is_boss; smoke _check_scrap. NOT built: Queen / Wrecker
+     specific sounds, the Wrecker wrecking a mount for good (it only holds), planets 3-6 families.
   4. LUNA HERO EVOLUTIONS in (60 renders: <hero>-t3_turn_1..8, portrait_t2, portrait_t3 for all
      six incl. Rook; archived art_src/heroes/<id>/t3_turn_n.webp + portrait_tk.webp; cut_heroes
      _cut_tiers now makes heroes/<id>/ first; heroes/<id>/t3/turn_1..8.png + portrait_t2/t3.png;
@@ -455,7 +469,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    attack boost, speed boost, each its own variant with a visible aura linking them), a healer,
    a force-field projector (bubble over neighbours that stops bolts until broken), armoured shells
    (several hits to crack), plus attack variants. Kill the support first = the strategy.
-   early in each planet, tier 2 creeping in, a little tier 3 near its end. (b) A boss and a
+   early in each planet, tier 2 creeping in, a little tier 3 near its end. (b) SCRAP BELT DONE
+   dev198 (five machines, the Wrecker, the Salvage Queen, the commander; see hand-over item 5);
+   the other planets wait for their Luna sets. Was: A boss and a
    mini-boss per planet, each with its own moves (Luna parts sheets, like the Hive Mother), plus
    each planet's own enemy family (LUNA-BRIEF-areas.md), Scrap Belt first.
    FAMILIES STACK (Rudy): families never leave. Order: 1 Hive insects, 2 Scrap Belt machines,
@@ -478,7 +494,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    collected items traded for chests/items (event shops). Real money needs Google Play Billing
    (until then "coming soon"). Keep the premium currency called Crystals: "gems" are the XP
    pickups in battle.
-19. LATER (Rudy): a SKIN LIBRARY for turrets AND HEROES (2026-11-06: hero colour skins such as white and gold, neon green lights, a red or blue body, the cape as a customisation; heroes/<id>/skins/<skin>/turn_1..8 + portrait, worn at any star; Rook ceremonial is the first set): alternate designs / themes per turret (looks only, no
+19. LATER (Rudy): a SKIN LIBRARY for turrets AND HEROES (2026-11-06: hero skins are NAMED ICONIC THEMES, never colour labels: "Ceremonial" (the white-and-gold Rook), "The Prophet", a nightfall look, an ironclad look...; each a full look, maybe the cape as its own piece; heroes/<id>/skins/<skin>/turn_1..8 + portrait, worn at any star; Rook ceremonial is the first set): alternate designs / themes per turret (looks only, no
    stats), unlocked or bought (crystals, events, Exchange). Needs Luna art per skin.
 20. LATER (Rudy): RANKINGS with weekly rewards: leaderboards (e.g. highest stage, Horde score,
    Boss Rush time) run in 30-DAY SEASONS (Rudy) with a visible countdown ("Ends in 29 days");

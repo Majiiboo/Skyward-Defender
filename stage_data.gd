@@ -111,13 +111,50 @@ const ENEMIES := {
 	"diver":   {"tex": "res://enemies/diver.png",   "size": 36.0, "hp": 3.0, "speed": 55.0, "move": "dive",
 		"xp_tier": 1, "coins": 2, "traits": ["fast"], "base_dmg": 13.0, "dive_mult": 2.0,
 		"intro": "Locks on, then dives at your base. Shoot it before it lands!"},
-	"hive_mother": {"tex": "res://enemies/hive_mother.png", "size": 120.0, "hp": 60.0, "speed": 22.0, "move": "boss",
+	"hive_mother": {"tex": "res://enemies/hive_mother.png", "name": "Hive Mother", "size": 120.0, "hp": 60.0, "speed": 22.0, "move": "boss",
 		"xp_tier": 3, "coins": 40, "traits": ["boss"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 7.0,
 		"intro": "Lays eggs that hatch Scouts. Hit her while she lays: she is weak then!"},
 	# spore pod from a dying Drifter: drifts down slowly; shoot it or it chips the shield
 	"spore":   {"tex": "", "size": 16.0, "hp": 1.0, "speed": 34.0, "move": "spore",
 		"xp_tier": -1, "coins": 0, "traits": ["swarm"], "base_dmg": 4.0, "intro": ""},
+	# THE SCRAP BELT FAMILY (Luna, dev198; queue 17 b): junk machines the bugs built, planet 2 on.
+	# Each takes a Hive role so the moves carry over; "family" = drawn by EnemyRig.draw_machine
+	# (no tex: whole pictures live in enemies/scrap/). Families stack: the bugs never leave.
+	"mite":    {"tex": "", "family": "scrap", "size": 34.0, "hp": 1.8, "speed": 66.0, "move": "flit",
+		"xp_tier": 0, "coins": 1, "traits": ["swarm"], "base_dmg": 10.0,
+		"intro": "A tin-can drone on two rotors. Fast and many: keep firing!"},
+	"hulk":    {"tex": "", "family": "scrap", "size": 46.0, "hp": 5.0, "speed": 44.0, "move": "scurve",
+		"xp_tier": 0, "coins": 2, "traits": ["armoured"], "base_dmg": 14.0, "spores": 2, "spawns_on_death": "bolt",
+		"intro": "Hull plates round a reactor. Bursts into Junk Bolts when it dies: shoot those too!"},
+	"rivet":   {"tex": "", "family": "scrap", "size": 38.0, "hp": 4.2, "speed": 40.0, "move": "hover",
+		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.6, "base_dmg": 14.0, "shot": "rivet",
+		"intro": "Fires rivets at you from its nose gun. Its back pod glows before it shoots: move!"},
+	"dart":    {"tex": "", "family": "scrap", "size": 40.0, "hp": 3.2, "speed": 58.0, "move": "dive",
+		"xp_tier": 1, "coins": 2, "traits": ["fast"], "base_dmg": 14.0, "dive_mult": 2.3,
+		"intro": "A missile-drone. Locks on, then dives at your base. Shoot it before it lands!"},
+	"bolt":    {"tex": "", "family": "scrap", "size": 16.0, "hp": 1.2, "speed": 36.0, "move": "spore",
+		"xp_tier": -1, "coins": 0, "traits": ["swarm"], "base_dmg": 5.0, "intro": ""},
+	# the mini-boss: a crane-claw machine that grabs a turret's socket and must be shot off
+	"wrecker": {"tex": "", "family": "scrap", "name": "Wrecker", "size": 96.0, "hp": 58.0, "speed": 26.0, "move": "wrecker",
+		"xp_tier": 2, "coins": 24, "traits": ["boss", "armoured"], "base_dmg": 0.0, "grab_every": 7.0,
+		"intro": "Grabs one of your turrets and holds it. Shoot it off before it wrecks the mount!"},
+	# the boss: a crane queen whose hold opens to release Mites; angry, she launches Darts
+	"queen":   {"tex": "", "family": "scrap", "name": "Salvage Queen", "size": 120.0, "hp": 64.0, "speed": 22.0, "move": "boss",
+		"xp_tier": 3, "coins": 40, "traits": ["boss", "armoured"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 7.0,
+		"spawns": "mite", "launches": "dart",
+		"intro": "Her hold opens to drop Mites. Hit her while it is open: she is weak then!"},
 }
+const SCRAP := ["mite", "hulk", "rivet", "dart", "bolt", "wrecker", "queen"]
+
+static func is_boss(id: String) -> bool:
+	return ENEMIES.has(id) and Array(ENEMIES[id].traits).has("boss")
+
+# the boss of a stage's planet: the Salvage Queen on the Scrap Belt (planet 2), else the Hive
+# Mother (the later planets get their own with their families); `mini` = the zone-A mini-boss
+static func boss_id(stage: int, mini: bool) -> String:
+	if area_index(stage) == 1:
+		return "wrecker" if mini else "queen"
+	return "hive_mother"
 
 const GEM_XP := [2, 4, 7, 12]
 const GEM_COLORS := [Color(0.29, 0.66, 1.0), Color(0.71, 0.55, 1.0), Color(1.0, 0.35, 0.42), Color(1.0, 0.83, 0.3)]
@@ -191,10 +228,40 @@ static func waves(stage: int) -> Array:
 			wave.append(["spitter", 1 + (w - 1) / (4 if stage == 3 else 3) + extra / 6])
 		if stage >= 4 and w >= 4:
 			wave.append(["diver", 1 + (w - 3) / 4 + extra / 5])   # kamikazes: few, but they hit hard
+		# THE SCRAP BELT (dev198): from stage 11 the machines take a share of each role, growing
+		# over planet 2 (a third of the bugs at stage 11, 60% by stage 20) and staying near half
+		# from planet 3 on (families stack); the Rivet Gun from stage 13, the Dart from stage 15
+		var share := machine_share(stage)
+		if share > 0.0:
+			var mixed: Array = []
+			for spec in wave:
+				var id: String = spec[0]
+				var total: int = int(spec[1])
+				var m: String = MACHINE_FOR.get(id, "")
+				if m == "" or (m == "rivet" and stage < 13) or (m == "dart" and stage < 15):
+					mixed.append(spec)
+					continue
+				var k: int = roundi(total * share)
+				if total - k > 0:
+					mixed.append([id, total - k])
+				if k > 0:
+					mixed.append([m, k])
+			wave = mixed
 		if stage % 5 == 0 and w == n:
-			wave.append(["hive_mother", 1])
-		# from planet 3 (stage 22): a young Hive Mother turns up halfway through, every other stage
+			wave.append([boss_id(stage, stage % 10 == 5), 1])
+		# from planet 3 (stage 22): a young boss turns up halfway through, every other stage; the
+		# Queen and the Hive Mother take turns
 		if stage >= 22 and stage % 2 == 0 and stage % 5 != 0 and w == n / 2:
-			wave.append(["hive_mother", 1])
+			wave.append(["queen" if stage % 4 == 0 else "hive_mother", 1])
 		out.append(wave)
 	return out
+
+const MACHINE_FOR := {"scout": "mite", "drifter": "hulk", "spitter": "rivet", "diver": "dart"}
+
+# the share of each wave that is Scrap machines (0 before planet 2)
+static func machine_share(stage: int) -> float:
+	if stage <= 10:
+		return 0.0
+	if stage <= 20:
+		return lerpf(0.34, 0.6, float(stage - 11) / 9.0)
+	return 0.45

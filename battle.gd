@@ -647,19 +647,21 @@ func _start_wave() -> void:
 			wave_queue.append(entry[0])
 	wave_queue.shuffle()
 	# the boss always comes last
-	if wave_queue.has("hive_mother"):
-		wave_queue.erase("hive_mother")
+	for bid in ["hive_mother", "queen", "wrecker"]:
+		if not wave_queue.has(bid):
+			continue
+		wave_queue.erase(bid)
 		# from planet 3 (stage 21) the boss comes in a third of the way through, with bugs still arriving
 		if stage >= 21:
-			wave_queue.insert(wave_queue.size() / 3, "hive_mother")
+			wave_queue.insert(wave_queue.size() / 3, bid)
 		else:
-			wave_queue.append("hive_mother")
+			wave_queue.append(bid)
 	wave_spawn_t = 0.6
 	_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 
 func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
-	if id == "hive_mother":
+	if _is_boss_id(id):
 		e.pos = Vector2(FIELD_W * 0.5, 40.0)
 		# a younger, smaller Hive Mother: the zone-A mini-boss, or one arriving mid-stage
 		if StageData.boss_kind(stage) == "mini" or wave_index < waves.size() - 1:
@@ -871,7 +873,7 @@ func _spawn_step(delta: float) -> void:
 		for i in n:
 			var id: String = wave_queue.pop_front()
 			_spawn(id)
-			if id == "hive_mother":
+			if _is_boss_id(id):
 				break
 
 func _pilot_motion(delta: float) -> void:
@@ -1101,7 +1103,7 @@ func _update_bullets(delta: float) -> void:
 				continue   # a boss still arriving: bolts pass through her
 			if b.pos.distance_to(e.pos) < float(b.r) + float(e.r) * 0.5:
 				var dmg: float = float(b.dmg)
-				if e.type == "hive_mother" and e.laying > 1.2:
+				if _is_boss(e) and e.laying > 1.2:
 					dmg *= 2.0   # weak spot open while she lays
 				if b.has("fuse"):   # a flak shell that meets a bug on the way up bursts there
 					_burst_at(b, b.pos, float(b.dmg), float(b.splash), e)
@@ -1148,7 +1150,7 @@ func _update_bullets(delta: float) -> void:
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
-				Sfx.play("boss_hit" if e.type == "hive_mother" else "hit", rng.randf_range(0.92, 1.08))
+				Sfx.play("boss_hit" if _is_boss(e) else "hit", rng.randf_range(0.92, 1.08))
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
@@ -1274,14 +1276,16 @@ func _update_enemies(delta: float) -> void:
 					e.shots = int(e.get("shots", 0)) + 1
 					# every other shot goes for the base instead of the pilot
 					var aim_at: Vector2 = soldier_pos if e.shots % 3 != 0 else Vector2(e.pos.x + rng.randf_range(-60, 60), BASE_Y - 40.0)
-					# a goo glob leaves the mouth of the sac on the art
-					var mouth := EnemyRig.anchor("spitter", "muzzle", e.pos, float(def.size) * 1.35, float(e.get("tilt_s", 0.0)))
+					# a goo glob leaves the mouth of the sac on the art; a Rivet Gun fires a faster rivet
+					var mouth := _muzzle_of(e, float(def.size) * 1.35, float(e.get("tilt_s", 0.0)))
+					var shot: String = String(def.get("shot", "goo"))
+					var shot_v: float = 200.0 if shot == "rivet" else 135.0
 					var dir: Vector2 = (aim_at - mouth).normalized()
-					enemy_bullets.append({"pos": mouth + dir * 4.0, "vel": dir * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
+					enemy_bullets.append({"pos": mouth + dir * 4.0, "vel": dir * shot_v, "kind": shot, "ph": rng.randf() * TAU})
 					# from stage 25 a Spitter sometimes spits two globs in a small V
 					if stage >= 25 and rng.randf() < 0.3:
 						var d2 := dir.rotated(0.22 if rng.randf() < 0.5 else -0.22)
-						enemy_bullets.append({"pos": mouth + d2 * 4.0, "vel": d2 * 135.0, "kind": "goo", "ph": rng.randf() * TAU})
+						enemy_bullets.append({"pos": mouth + d2 * 4.0, "vel": d2 * shot_v, "kind": shot, "ph": rng.randf() * TAU})
 					for k in 4:
 						sparks.append({"pos": mouth, "vel": dir.rotated(rng.randf_range(-0.8, 0.8)) * rng.randf_range(30, 80), "life": 0.3, "col": Color(0.75, 0.4, 1.0)})
 			"dive":
@@ -1304,6 +1308,67 @@ func _update_enemies(delta: float) -> void:
 						e.dive_v = (Vector2(e.target) - e.pos).normalized() * e.speed * float(def.dive_mult)
 				else:
 					e.pos += Vector2(e.dive_v) * delta
+			"wrecker":
+				# the Wrecker (Scrap Belt mini-boss): drops to hover height, slides over a turret
+				# and lowers its claw arm onto it: the turret is HELD (it cannot fire) until the
+				# Wrecker has taken a quarter of its health since the grab, then it lets go, lifts
+				# and goes for another one a few seconds later. With no turret it hangs over the base.
+				var hover_y := 150.0
+				if not e.get("arrived", false):
+					e.pos.y += e.speed * delta
+					if e.pos.y >= hover_y:
+						e.arrived = true
+						Sfx.play("boss")
+						e.state = "seek"
+						e.grab_cd = 1.5
+				else:
+					var held: Dictionary = {}
+					for t in turrets:
+						if int(t.get("held_by", -1)) == int(e.id):
+							held = t
+					match String(e.state):
+						"seek":
+							e.grab_cd = float(e.get("grab_cd", 0.0)) - delta
+							var target: Dictionary = {}
+							var bd := 1e9
+							for t in turrets:
+								if t.drop >= 1.0 and not t.get("held_by", -1) >= 0 and absf(t.pos.x - e.pos.x) < bd:
+									bd = absf(t.pos.x - e.pos.x)
+									target = t
+							var want_x: float = float(target.pos.x) if not target.is_empty() else FIELD_W * 0.5 + sin(e.t * 0.5) * FIELD_W * 0.25
+							e.pos.x = lerpf(e.pos.x, want_x, delta * 1.2)
+							e.pos.y = lerpf(e.pos.y, hover_y, delta * 2.0)
+							e.ext = move_toward(float(e.get("ext", 0.0)), 0.0, delta * 2.0)
+							if not target.is_empty() and e.grab_cd <= 0.0 and absf(e.pos.x - float(target.pos.x)) < 12.0:
+								e.state = "drop"
+								e.target_mount = int(target.mount)
+						"drop":
+							var ty: float = BASE_Y - 178.0
+							e.pos.y = move_toward(e.pos.y, ty, delta * 130.0)
+							e.ext = move_toward(float(e.get("ext", 0.0)), 1.0, delta * 1.6)
+							if e.pos.y >= ty - 1.0 and float(e.ext) >= 1.0:
+								for t in turrets:
+									if int(t.mount) == int(e.target_mount):
+										t.held_by = int(e.id)
+								e.state = "hold"
+								e.grab_hp = e.hp
+								shake = maxf(shake, 0.4)
+								Sfx.play("hull")
+								_float_text(e.pos + Vector2(0, -70), "TURRET GRABBED!", Color(1.0, 0.5, 0.4), true)
+						"hold":
+							e.pos.x += sin(e.t * 2.0) * 6.0 * delta
+							if e.hp < float(e.get("grab_hp", e.hp)) - e.hp_max * 0.25:
+								if not held.is_empty():
+									held.held_by = -1
+								e.state = "lift"
+								e.grab_cd = float(def.grab_every)
+								_burst(e.pos + Vector2(0, 60), 24.0, Color(0.3, 0.9, 1.0), 14)
+								_float_text(e.pos + Vector2(0, -70), "LET GO!", Color(0.4, 1.0, 0.6), true)
+						"lift":
+							e.ext = move_toward(float(e.get("ext", 0.0)), 0.0, delta * 2.5)
+							e.pos.y = move_toward(e.pos.y, hover_y, delta * 110.0)
+							if e.pos.y <= hover_y + 1.0:
+								e.state = "seek"
 			"spore":
 				# a Drifter's spore pod: pops out, then sinks slowly toward the base, swaying
 				e.vel.y = move_toward(float(e.vel.y), e.speed, 120.0 * delta)
@@ -1326,7 +1391,7 @@ func _update_enemies(delta: float) -> void:
 					e.launch_t = float(e.get("launch_t", 2.0)) - delta
 					if e.launch_t <= 0.0:
 						e.launch_t = float(def.launch_every)
-						var d := _make_enemy("diver", e.pos + Vector2(rng.randf_range(-30.0, 30.0), -10.0))
+						var d := _make_enemy(String(def.get("launches", "diver")), e.pos + Vector2(rng.randf_range(-30.0, 30.0), -10.0))   # the Queen launches Darts
 						d.lock_y = (e.pos.y + 60.0) / FIELD_H
 						live.append(d)
 						_burst(e.pos, 16.0, Color(1.0, 0.75, 0.3), 6)
@@ -1339,19 +1404,28 @@ func _update_enemies(delta: float) -> void:
 						e.laying = 3.0
 						e.hatched = false
 				if e.laying > 0.0 and e.laying < 2.2 and not e.get("hatched", false):
-					# the sac bursts: scouts crawl out of it, unfold, then fly
+					# the sac bursts: scouts crawl out of it, unfold, then fly; the Salvage Queen's
+					# hold opens and Mites fly out of it instead
 					e.hatched = true
+					var brood: String = String(def.get("spawns", "scout"))
 					for k in (4 if e.hp < e.hp_max * 0.5 else 3):
-						var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 36.0, -54.0),
-							"hp": 2.0 * _hp_mult(), "hp_max": 2.0 * _hp_mult(),
-							"speed": 62.0 * StageData.speed_mult(stage), "r": 13.6, "ph": rng.randf() * TAU,
-							"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 45.0, -70.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
-							"hatchling": true, "fold": 1.0}
-						next_enemy_id += 1
-						live.append(s)
-					_burst(e.pos + Vector2(0, -58), 40.0, Color(0.71, 0.55, 1.0), 22)   # the sacs on her back burst
-					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(0.8, 0.5, 1.0))
-					_float_text(e.pos + Vector2(0, -110), "HATCHING!", Color(0.85, 0.6, 1.0), true)
+						if brood == "scout":
+							var s := {"id": next_enemy_id, "type": "scout", "pos": e.pos + Vector2(float(k - 1) * 36.0, -54.0),
+								"hp": 2.0 * _hp_mult(), "hp_max": 2.0 * _hp_mult(),
+								"speed": 62.0 * StageData.speed_mult(stage), "r": 13.6, "ph": rng.randf() * TAU,
+								"state": "hatch", "t": 0.0, "vel": Vector2(float(k - 1) * 45.0, -70.0), "fire_t": 9.0, "lay_t": 0.0, "laying": 0.0,
+								"hatchling": true, "fold": 1.0}
+							next_enemy_id += 1
+							live.append(s)
+						else:
+							var m := _make_enemy(brood, e.pos + Vector2(float(k - 1) * 30.0, -54.0))
+							m.state = "hatch"
+							m.vel = Vector2(float(k - 1) * 50.0, -60.0)
+							live.append(m)
+					var bcol := Color(0.3, 0.9, 1.0) if brood != "scout" else Color(0.71, 0.55, 1.0)
+					_burst(e.pos + Vector2(0, -58), 40.0, bcol, 22)   # the sacs on her back burst / the hold doors fly open
+					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(bcol, 0.9))
+					_float_text(e.pos + Vector2(0, -110), "RELEASING!" if brood != "scout" else "HATCHING!", bcol.lightened(0.3), true)
 					shake = maxf(shake, 0.35)
 		# Frost Rounds: a slowed bug covers only part of its move
 		if float(e.get("slow_t", 0.0)) > 0.0:
@@ -1363,7 +1437,7 @@ func _update_enemies(delta: float) -> void:
 		if float(e.get("boost_t", 0.0)) > 0.0 and e.state != "aim" and e.state != "hatch" and e.type != "spore":   # a spore keeps its motion in e.vel: stretching it would compound
 			e.boost_t = float(e.boost_t) - delta
 			e.pos = prev.lerp(e.pos, 1.3)
-			if e.type == "spitter":
+			if def.has("fire_every"):
 				e.fire_t = float(e.fire_t) - delta * 0.5   # spits sooner
 		# Afterburn (Ember card): a burning bug loses HP every frame and sheds embers
 		if float(e.get("burn_t", 0.0)) > 0.0:
@@ -1375,7 +1449,7 @@ func _update_enemies(delta: float) -> void:
 				_show_dmg(e, bd, false, _elem_mult)
 			if rng.randf() < delta * 10.0:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
-		if e.type != "hive_mother":
+		if not _is_boss(e):
 			e.pos.x = clampf(e.pos.x, 16.0, FIELD_W - 16.0)   # never drifts off the sides (a wave must stay killable)
 			if e.pos.y < -120.0:
 				e.pos.y = -120.0
@@ -1387,7 +1461,7 @@ func _update_enemies(delta: float) -> void:
 		e.tilt_s = lerp_angle(float(e.get("tilt_s", _enemy_tilt(e))), _enemy_tilt(e), minf(1.0, delta * 10.0))
 		var want_fold: float = 1.0 if _lunging(e) or (e.state == "hatch" and e.t < 0.45) else 0.0
 		e.fold = move_toward(float(e.get("fold", want_fold)), want_fold, delta * 5.0)
-		if e.type == "hive_mother":
+		if _is_boss(e):
 			# the white chunk trails the real health, then catches up
 			if _boss_bar_hp < e.hp or _boss_bar_hp > e.hp_max:
 				_boss_bar_hp = e.hp
@@ -1403,9 +1477,9 @@ func _update_enemies(delta: float) -> void:
 		if e.hp <= 0.0:
 			_kill(e)
 			continue
-		if e.type != "hive_mother" and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
+		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
 			_hurt_base(float(def.get("base_dmg", 10.0)))
-			if e.type == "diver":
+			if e.type == "diver" or e.type == "dart":
 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
 				shake = maxf(shake, 0.55)
 			else:
@@ -1443,25 +1517,39 @@ func _spitter_dodge(e: Dictionary, delta: float) -> void:
 			stat_dodges += 1
 		return
 
+# a boss (the Hive Mother, the Salvage Queen, the Wrecker mini-boss): the boss bar, the arrival
+# veil, the big worth, no side clamp, no base contact (StageData.ENEMIES traits "boss")
+func _is_boss(e: Dictionary) -> bool:
+	return StageData.is_boss(String(e.type))
+
+func _is_boss_id(id: String) -> bool:
+	return StageData.is_boss(id)
+
+# where an enemy's shots leave it (the Spitter's mouth, a machine's nose gun)
+func _muzzle_of(e: Dictionary, size: float, tilt: float) -> Vector2:
+	if EnemyRig.is_machine(String(e.type)):
+		return EnemyRig.machine_anchor(String(e.type), "muzzle", e.pos, size, tilt)
+	return EnemyRig.anchor("spitter", "muzzle", e.pos, size, tilt)
+
 func _lunging(e: Dictionary) -> bool:
-	return e.type == "diver" and (e.state == "dive" or e.state == "aim")
+	return (e.type == "diver" or e.type == "dart") and (e.state == "dive" or e.state == "aim")
 
 # The tilt an enemy wants this frame; drawing uses e.tilt_s, which eases toward it.
 func _enemy_tilt(e: Dictionary) -> float:
 	if _lunging(e):
 		return (Vector2(e.target) - e.pos).angle() + PI / 2.0 if e.has("target") else e.vel.angle() + PI / 2.0
-	if e.type == "hive_mother":
+	if _is_boss(e):
 		return 0.0
 	return clampf(e.vel.x * 0.004, -0.35, 0.35) + sin(e.t * 6.0 + e.ph) * 0.05
 
 func _kill(e: Dictionary) -> void:
 	var def: Dictionary = StageData.ENEMIES[e.type]
-	var worth: int = 1500 if e.type == "hive_mother" else (25 if e.type == "spore" else (150 if e.has("variant") else 100))
+	var worth: int = 1500 if _is_boss(e) else (25 if e.type == "spore" else (150 if e.has("variant") else 100))
 	score += worth
 	_spawn_shards(e, def)
 	_flush_dmg(int(e.id))   # the last number before it goes
 	# Shatter (Deep Freeze overcharged): a slowed bug blasts its neighbours
-	if _shatter and float(e.get("slow_t", 0.0)) > 0.0 and e.type != "hive_mother":
+	if _shatter and float(e.get("slow_t", 0.0)) > 0.0 and not _is_boss(e):
 		for o in enemies:
 			if o != e and o.hp > 0.0 and o.pos.distance_to(e.pos) < 90.0 and _can_hurt(o):
 				o.hp -= 0.35 * float(e.hp_max)
@@ -1479,11 +1567,11 @@ func _kill(e: Dictionary) -> void:
 			nxt.burn_t = 2.5
 			nxt.burn_dps = 0.05 * float(nxt.hp_max)
 			zaps.append({"a": e.pos, "b": nxt.pos, "life": 0.2, "seed": rng.randf() * 100.0})
-	Sfx.play("boss_kill" if e.type == "hive_mother" else "kill", rng.randf_range(0.9, 1.1))
+	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
-	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if e.type == "hive_mother" else 7)
-	if e.type == "hive_mother":
+	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if _is_boss(e) else 7)
+	if _is_boss(e):
 		hitstop = 0.18
 		shake = maxf(shake, 0.8)
 	elif int(def.xp_tier) >= 1:
@@ -1491,12 +1579,12 @@ func _kill(e: Dictionary) -> void:
 	_float_text(e.pos, "+%d" % worth, Color(1.0, 0.85, 0.4))
 	# a Drifter bursts into spore pods that drift down at the base
 	for k in int(def.get("spores", 0)):
-		var pod := _make_enemy("spore", e.pos)
+		var pod := _make_enemy(String(def.get("spawns_on_death", "spore")), e.pos)   # a Hulk bursts into Junk Bolts
 		pod.vel = Vector2(rng.randf_range(-70.0, 70.0), rng.randf_range(-70.0, -30.0))
 		spawned.append(pod)
 	var tier: int = int(def.xp_tier)
 	var count: int = 1
-	if e.type == "hive_mother":
+	if _is_boss(e):
 		count = 6
 	if tier < 0:
 		count = 0
@@ -1632,6 +1720,17 @@ func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 func _update_turrets(delta: float) -> void:
 	for t in turrets:
 		t.pos = _socket(t.mount)   # follows the screen height
+		if int(t.get("held_by", -1)) >= 0:   # in the Wrecker's claw (dev198): it cannot fire until shot free
+			var holder_alive := false
+			for e in enemies:
+				if int(e.id) == int(t.held_by) and e.hp > 0.0:
+					holder_alive = true
+			if not holder_alive:
+				t.held_by = -1
+			else:
+				t.fire_t = maxf(float(t.fire_t) - delta, 0.0)
+				t.alert = 0.0
+				continue
 		if t.drop < 1.0:
 			t.drop_wait -= delta
 			if t.drop_wait <= 0.0:
@@ -1857,7 +1956,7 @@ func _update_gravity(t: Dictionary, delta: float) -> void:
 		enemy_bullets = enemy_bullets.filter(func(b): return c.distance_to(b.pos) > float(def.radius))
 	if t.cd <= float(def.pull):
 		for e in enemies:
-			if e.pos.y < 100.0 or e.type == "hive_mother":
+			if e.pos.y < 100.0 or _is_boss(e):
 				continue
 			var d: float = c.distance_to(e.pos)
 			if d < float(def.radius):
@@ -2844,10 +2943,10 @@ func _pick_card(id: String) -> void:
 		"ember_burn": _burn_level += 1
 		"nova_burst":
 			for e in enemies.duplicate():
-				if e.type != "hive_mother":
+				if not _is_boss(e):
 					e.hp = 0.0
 					_kill(e)
-			enemies = enemies.filter(func(e): return e.type == "hive_mother")
+			enemies = enemies.filter(func(e): return _is_boss(e))
 			_burst(soldier_pos, 60.0, Color(1.0, 0.9, 0.6), 24)
 			_fx_add("nova", soldier_pos, 150.0, 0.7, 0.0, 4.5)   # Luna's white-gold ring sweeps the screen
 			shake = maxf(shake, 0.6)
@@ -2978,7 +3077,7 @@ func _bastion_blast() -> void:
 	for e in enemies:
 		if e.pos.distance_to(c) < 330.0:
 			e.hp -= (6.0 * damage_mult) if _can_hurt(e) else 0.0
-			if e.type != "hive_mother":
+			if not _is_boss(e):
 				e.pos += (e.pos - c).normalized() * 70.0
 	_fx_add("nova", c + Vector2(0, -60), 220.0, 0.6, 0.0, 1.8, Color(0.55, 0.85, 1.0))
 	_float_text(c + Vector2(0, -150), "BASTION!", Cards.COLOR.fusion, true)
@@ -3473,6 +3572,13 @@ func _draw() -> void:
 		var heat: float = clampf((fire_rate_mult - 1.0) / 0.5, 0.0, 1.0)
 		draw_circle(_muzzle_world(), 3.0 + 4.0 * heat, Color(1.0, 0.75, 0.5, 0.25 + 0.35 * heat))
 	for eb in enemy_bullets:
+		if eb.get("kind", "") == "rivet":
+			# a Rivet Gun's rivet (dev198): a short steel dart with a cyan tail, flying straight
+			var rd: Vector2 = eb.vel.normalized()
+			draw_line(eb.pos - rd * 14.0, eb.pos + rd * 4.0, Color(0.3, 0.9, 1.0, 0.35), 5.0, true)
+			draw_line(eb.pos - rd * 10.0, eb.pos + rd * 5.0, Color(0.8, 0.85, 0.9), 2.5, true)
+			draw_circle(eb.pos + rd * 5.0, 2.2, Color(0.6, 1.0, 1.0))
+			continue
 		if eb.get("kind", "") == "goo":
 			# Luna's goo glob (it travels toward the top of its picture), wobbling as it flies
 			var gd: Vector2 = eb.vel.normalized()
@@ -3512,7 +3618,7 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_circle(e.pos, pr, Color(0.42, 0.16, 0.62))
 		draw_circle(e.pos + Vector2(-pr * 0.3, -pr * 0.3), pr * 0.45, Color(0.85, 0.6, 1.0, 0.8))
 		return
-	if e.type == "diver" and (e.state == "aim" or e.state == "dive") and e.has("target"):
+	if (e.type == "diver" or e.type == "dart") and (e.state == "aim" or e.state == "dive") and e.has("target"):
 		# the lock-on: a red dashed line to where it will hit, brightening until it dives
 		var la: float = clampf(float(e.get("t_state", 0.0)) / 0.6, 0.0, 1.0) if e.state == "aim" else 0.35
 		var tgt: Vector2 = e.target
@@ -3539,24 +3645,30 @@ func _draw_enemy(e: Dictionary) -> void:
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
 	if float(e.get("burn_t", 0.0)) > 0.0:   # Afterburn: an orange glow round a burning bug
 		draw_circle(e.pos, size * 0.55, Color(1.0, 0.45, 0.15, 0.14 + 0.08 * sin(time_alive * 20.0)))
-	var sac_k := -1.0   # the Spitter's sac: fills over its cycle, empties on the spit (Luna's sac parts, dev161)
-	if e.type == "spitter":
+	var sac_k := -1.0   # the Spitter's sac / the Rivet Gun's pod: fills over the cycle, empties on the shot
+	if e.type == "spitter" or e.type == "rivet":
 		# the sac swells before it spits and settles right after, on smooth ramps
 		var every: float = float(def.fire_every)
+		var scol := Color(0.3, 0.9, 1.0) if e.type == "rivet" else Color(0.8, 0.4, 1.0)
 		sac_k = 1.0 - smoothstep(0.15, every * 0.8, float(e.fire_t))
 		var swell: float = maxf(smoothstep(0.8, 0.2, e.fire_t), smoothstep(every - 0.3, every, e.fire_t))
 		if swell > 0.01:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
-			draw_circle(EnemyRig.anchor("spitter", "sac", e.pos, size, ang), size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(0.8, 0.4, 1.0, 0.25 * swell))
+			var sac_at: Vector2 = EnemyRig.machine_anchor("rivet", "pod", e.pos, size, ang) if e.type == "rivet" else EnemyRig.anchor("spitter", "sac", e.pos, size, ang)
+			draw_circle(sac_at, size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(scol, 0.25 * swell))
 		# the spit telegraph (dev168, Archero-style fairness): a third of a second before a
 		# glob, the sac flashes and a ring closes on the mouth, so you can see it coming and move
 		if float(e.fire_t) < SPIT_WARN and e.pos.y > 40.0:
 			var wk: float = 1.0 - float(e.fire_t) / SPIT_WARN
 			bright = maxf(bright, 1.0 + 0.7 * (0.5 + 0.5 * sin(e.t * 40.0)))
-			var mouth := EnemyRig.anchor("spitter", "muzzle", e.pos, size * 1.35, ang)
-			draw_arc(mouth, size * (0.6 - 0.4 * wk), 0.0, TAU, 24, Color(1.0, 0.45, 0.6, 0.3 + 0.5 * wk), 2.0)
+			var mouth := _muzzle_of(e, size * 1.35, ang)
+			draw_arc(mouth, size * (0.6 - 0.4 * wk), 0.0, TAU, 24, Color(scol.lerp(Color(1.0, 0.45, 0.6), 0.5), 0.3 + 0.5 * wk), 2.0)
 	if e.type == "hive_mother":
 		EnemyRig.draw_hive_mother(self, e.pos, size * (0.68 if e.get("mini", false) else 0.9), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
+	elif EnemyRig.is_machine(String(e.type)):
+		# the Scrap Belt machines from Luna's pieces (dev198); the bosses a little bigger
+		var msz: float = size * ((0.68 if e.get("mini", false) else 0.9) if _is_boss(e) else 1.0)
+		EnemyRig.draw_machine(self, e.type, e.pos, msz, time_alive, float(e.ph), ang, a, bright, sac_k, float(e.get("ext", 0.0)), float(e.get("laying", 0.0)), float(e.get("stretch_s", 0.0)), e.vel.angle())
 	elif e.get("hatchling", false) and fold > 0.01:
 		# Luna's crumpled hatchling cross-fades into the flying Scout as its wings open
 		var ht: Texture2D = _tex["hive_hatchling"]
@@ -3568,7 +3680,7 @@ func _draw_enemy(e: Dictionary) -> void:
 	else:
 		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
 	_draw_variant(e, size)
-	if e.hp < e.hp_max and e.type != "hive_mother":
+	if e.hp < e.hp_max and not _is_boss(e):
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w * clampf(e.hp / e.hp_max, 0.0, 1.0), 3), Color(1.0, 0.5, 0.4))
@@ -3829,7 +3941,7 @@ var _shards: Array = []
 var _shard_atlas := {}   # enemy type -> [Texture2D]: Luna's chunk pieces (enemies/parts/<bug>_chunk_N.png, dev160), else six cuts of the body
 
 func _spawn_shards(e: Dictionary, def: Dictionary) -> void:
-	if not ["scout", "drifter", "spitter", "diver"].has(String(e.type)) or _shards.size() > 90:
+	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart", "queen"].has(String(e.type)) or _shards.size() > 90:
 		return
 	if not _shard_atlas.has(e.type):
 		var list: Array = []
@@ -3981,7 +4093,7 @@ func _draw_fx() -> void:
 	_draw_turret_lights()
 	# a boss still arriving is untouchable (_can_hurt): a pulsing veil of light says so (dev164)
 	for e in enemies:
-		if e.type == "hive_mother" and not e.get("arrived", false):
+		if _is_boss(e) and not e.get("arrived", false):
 			var pulse := 0.5 + 0.5 * sin(time_alive * 6.0)
 			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			Backdrop.soft_glow(_fx, e.pos, float(e.r) * 1.7, Color(0.8, 0.55, 1.0, 0.2 + 0.12 * pulse))
@@ -4244,7 +4356,7 @@ func _draw_hud() -> void:
 	Glass.panel(_hc, Glass.box(chip, 8.0), 1.0, Color(Glass.PURPLE, 0.8), Color(0.08, 0.05, 0.16, 0.9))
 	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
 	for e in enemies:
-		if e.type == "hive_mother":
+		if _is_boss(e):
 			_draw_boss_bar(e)
 	_draw_objectives_banner()
 	_draw_intro()
@@ -4287,7 +4399,9 @@ func _draw_boss_bar(e: Dictionary) -> void:
 		_hc.draw_line(Vector2(tx, r.position.y), Vector2(tx, r.end.y), Color(0.03, 0.045, 0.10, 0.6 * a), 1.0)
 	var edge := Color(1, 1, 1, a).lerp(Color(col, a), 1.0 - _boss_flash)
 	_hc.draw_polyline(frame, Color(edge, (0.6 + 0.4 * _boss_flash) * a), 1.0 + _boss_flash, true)
-	var bname := "YOUNG HIVE MOTHER" if e.get("mini", false) else "HIVE MOTHER"
+	var bname: String = String(StageData.ENEMIES[e.type].get("name", String(e.type).replace("_", " "))).to_upper()
+	if e.get("mini", false) and e.type != "wrecker":
+		bname = "YOUNG " + bname   # a mid-stage or zone-A young boss (the Wrecker is its own thing)
 	_hc.draw_string(title_font, Vector2(r.position.x, by - 7), bname, HORIZONTAL_ALIGNMENT_LEFT, bw - 40, 11, Color(1, 0.85, 0.9, a))
 	_hc.draw_string(title_font, Vector2(r.end.x - 40, by - 7), "x%d" % cur, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12 + int(4.0 * _boss_flash), Color(col.lightened(0.3), a))
 
@@ -4309,6 +4423,8 @@ func _draw_intro() -> void:
 	var icon := r.position + Vector2(38.0, 37.0)
 	if id == "hive_mother":
 		EnemyRig.draw_hive_mother(_hc, icon, 26.0, time_alive, 0.0, false)
+	elif EnemyRig.is_machine(id):
+		EnemyRig.draw_machine(_hc, id, icon, 26.0 if _is_boss_id(id) else 46.0, time_alive, 0.0, 0.0, a)
 	else:
 		EnemyRig.draw_bug(_hc, id, icon, 46.0, time_alive, 0.0, 0.0, 0.0, 1.0, a)
 	_hc.draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
@@ -4455,6 +4571,16 @@ func _maybe_brief() -> void:
 	box.custom_minimum_size = Vector2(FIELD_W - 60, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
+	# the commander on the line (Luna's portrait, dev198): urgent on the first planet and the
+	# Scrap Belt, calm after
+	var who := "res://ui/commander_%s.png" % ("urgent" if ai <= 1 else "calm")
+	if ResourceLoader.exists(who):
+		var face := TextureRect.new()
+		face.texture = load(who)
+		face.custom_minimum_size = Vector2(0, 110)
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		v.add_child(face)
 	var tag := UIKit.label("INCOMING TRANSMISSION", 11, Color(1.0, 0.6, 0.4), HORIZONTAL_ALIGNMENT_CENTER)
 	tag.add_theme_font_override("font", title_font)
 	v.add_child(tag)
@@ -4510,7 +4636,7 @@ func _draw_part_pickup(p: Vector2, kind: String, a: float) -> void:
 func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 	var out: Array = []
 	var later: float = clampf(float(stage) / 60.0, 0.0, 1.0)
-	if e.type == "hive_mother":
+	if _is_boss(e):
 		if e.get("mini", false):
 			out = ["alloy", "alloy", "alloy", "cell"]
 		else:
@@ -4541,7 +4667,7 @@ func _horde_wave(k: int) -> Array:
 	for w in src:
 		var has_boss := false
 		for spec in w:
-			if spec[0] == "hive_mother":
+			if StageData.is_boss(String(spec[0])):
 				has_boss = true
 		if not has_boss:
 			body.append(w)
@@ -4553,7 +4679,7 @@ func _horde_wave(k: int) -> Array:
 	for spec in base:
 		out.append([spec[0], int(ceil(int(spec[1]) * (1.0 + 0.15 * lap)))])
 	if k > 0 and (k + 1) % 10 == 0:
-		out.append(["hive_mother", 1])
+		out.append([StageData.boss_id(stage, false) if (k + 1) % 20 == 0 else "hive_mother", 1])   # the planet's boss every other time
 	return out
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
@@ -4591,7 +4717,7 @@ func _draw_hurt_edge() -> void:
 # A boss cannot be hurt until she has fully arrived and can act (Rudy, dev163): the Hive
 # Mother (and the young one mid-stage) is untouchable while she descends to her hover height.
 func _can_hurt(e: Dictionary) -> bool:
-	return e.type != "hive_mother" or bool(e.get("arrived", false))
+	return not _is_boss(e) or bool(e.get("arrived", false))
 
 # ---- ENEMY VARIANTS (queue item 17 a, dev172): the same bugs with a twist, mixed in by stage ----
 # armoured: a plated shell, nearly double health, slower (trait "armoured": the Lance eats it)
@@ -4609,7 +4735,7 @@ const AURA_R := 120.0
 var _variants_seen := {}   # variant -> true once its card showed this run
 
 func _roll_variant(e: Dictionary) -> void:
-	if not ["scout", "drifter", "spitter", "diver"].has(String(e.type)) or e.has("hatchling"):
+	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart"].has(String(e.type)) or e.has("hatchling"):
 		return
 	var pool: Array = []
 	for v in VARIANTS:
@@ -4672,7 +4798,7 @@ func _update_auras(delta: float) -> void:
 				continue
 			if v == "booster":
 				o.boost_t = 0.25
-			elif o.hp < o.hp_max and o.type != "hive_mother":
+			elif o.hp < o.hp_max and not _is_boss(o):
 				o.hp = minf(float(o.hp) + 0.04 * float(o.hp_max) * delta, float(o.hp_max))
 				if rng.randf() < delta * 1.5:
 					zaps.append({"a": e.pos, "b": o.pos, "life": 0.18, "seed": rng.randf() * 100.0, "col": Color(0.4, 1.0, 0.5)})

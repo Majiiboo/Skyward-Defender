@@ -345,6 +345,36 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 5 (after dev195): THE SCRAP BELT FAMILY is in (Luna's 36 renders, all usable; queue item
+17 b). Planet 2 gets its own enemies: junk machines the bugs built, and from here on families
+STACK: the Hive bugs never leave, the machines join them.
+- Five machines, each taking a Hive role so the fights stay fair: SCRAP MITE (a tin-can drone
+  on two spinning rotors; the swarm), HULK DRONE (a reactor between two thruster panels; tough,
+  bursts into two JUNK BOLTS when it dies), RIVET GUN (a nose gun and a back pod that glows
+  before each rivet; the one that shoots you, rivets fly faster than goo), SPIKE DART (a missile-
+  drone that locks on and dives at the base), JUNK BOLT (the tumbling cluster a Hulk leaves).
+  All drawn from Luna's pieces: rotors spin with motion blur, panels sway, the pod fills and
+  empties, the Dart's flame flickers, and every one breaks into its own six chunks when it dies.
+- How they arrive: at stage 11 a third of each wave is machines, growing to 60% by stage 20,
+  and from planet 3 on about half of every wave stays machines beside the bugs. Rivet Guns from
+  stage 13, Darts from stage 15. Every machine gets its NEW ENEMY card the first time you meet it.
+- THE WRECKER, planet 2's mini-boss (stage 15): a crane machine on two wheel rotors that drops
+  to hover height, slides over one of your turrets and lowers its claw onto it: that turret is
+  HELD and cannot fire ("TURRET GRABBED!") until you shoot a quarter of the Wrecker's health off
+  it, then it lets go, lifts, and goes for another one a few seconds later. Shoot it dead and
+  the turret is free.
+- THE SALVAGE QUEEN, planet 2's boss (stage 20): a crane queen whose cargo hold opens on her
+  back to drop Mites ("RELEASING!"); she is weak while it is open. Angry, she launches Darts
+  instead of Divers. Her arms swing as she drifts. From planet 3 the mid-stage young boss
+  alternates between her and the Hive Mother, and Horde brings the planet's boss every other
+  time. The boss bar now names who you are fighting (Hive Mother, Wrecker, Salvage Queen).
+- THE COMMANDER: Luna's portrait heads the radio briefing when you reach a new planet
+  (urgent on the first two planets, calm after). Home shows the Queen or the Wrecker looming on
+  the Scrap Belt's boss stages, and the machines fly in the Home battle there.
+- Check: smoke covers the table, the waves, the bosses and the art; the sim won stages 11 to
+  22 with the auto kit, no errors; the briefing, the Wrecker holding a turret, the Queen and Home
+  on planet 2 were captured. Archive: art_src/scrap/; cutter tools/cut_scrap.gd.
+
 Update 4 (after dev195): LUNA'S HERO EVOLUTIONS are in (60 renders, all usable), and NO MORE
 DIVIDING LINES on the maps (your note).
 - Every hero has his tier 3 look as eight whole turn frames, plus a tier 2 and a tier 3

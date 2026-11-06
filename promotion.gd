@@ -100,7 +100,7 @@ static func waves(i: int) -> Array:
 		var wave: Array = []
 		for spec in src[idx]:
 			var count := int(spec[1])
-			if spec[0] != "hive_mother":
+			if not StageData.is_boss(String(spec[0])):
 				count = int(ceil(count * count_mult(i)))
 			elif k != WAVES - 1 and idx == n - 1:
 				continue   # the boss only on the last wave, even if an earlier slot maps to the boss wave
@@ -191,7 +191,7 @@ static func etrial_waves(k: int) -> Array:
 		var w: Array = []
 		for spec in wave:
 			var count := int(spec[1])
-			if spec[0] != "hive_mother":
+			if not StageData.is_boss(String(spec[0])):
 				count = int(ceil(count * ETRIAL_COUNT))
 			w.append([spec[0], count])
 		out.append(w)

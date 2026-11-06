@@ -28,6 +28,7 @@ func _initialize() -> void:
 	_check_turrets()
 	_check_gates()
 	_check_talents()
+	_check_scrap()
 	_check_etrials()
 	_check_mods()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
@@ -169,7 +170,7 @@ func _check_promotion() -> void:
 		var boss_count := 0
 		for k in w.size():
 			for spec in w[k]:
-				if spec[0] == "hive_mother":
+				if StageData.is_boss(String(spec[0])):
 					boss_count += 1
 					if k == w.size() - 1:
 						boss_last = true
@@ -536,3 +537,31 @@ func _check_talents() -> void:
 	for id in Talents.CARD_AT.values():
 		_expect(Cards.CARDS.has(id) and Cards.OVERCHARGE.has(id) and ResourceLoader.exists(String(Cards.CARDS[id].pic)), "talent card %s: card, overcharge text, picture" % id)
 	_expect(Talents.cards(s).is_empty() and Talents.cards({"talents": 20}) == ["focus_fire", "salvage"], "cards unlocked so far")
+
+# the Scrap Belt family (Luna, dev198; queue 17 b): machines join from stage 11, the Wrecker and
+# the Salvage Queen are planet 2's bosses, every piece is cut
+func _check_scrap() -> void:
+	for id in StageData.SCRAP:
+		_expect(StageData.ENEMIES.has(id) and String(StageData.ENEMIES[id].get("family", "")) == "scrap", "machine %s in the enemy table" % id)
+		_expect(ResourceLoader.exists("res://enemies/scrap/%s_whole.png" % id) and EnemyRig.is_machine(id), "machine %s: whole picture + rig entry" % id)
+	for id in ["mite", "hulk", "rivet", "dart", "queen"]:
+		_expect(ResourceLoader.exists("res://enemies/parts/%s_chunk_0.png" % id), "machine %s: death chunks" % id)
+	_expect(StageData.is_boss("queen") and StageData.is_boss("wrecker") and StageData.is_boss("hive_mother") and not StageData.is_boss("mite"), "bosses by trait")
+	_expect(StageData.boss_id(15, true) == "wrecker" and StageData.boss_id(20, false) == "queen" and StageData.boss_id(10, false) == "hive_mother" and StageData.boss_id(25, true) == "hive_mother", "planet 2: the Wrecker at 15, the Queen at 20; the Hive Mother elsewhere")
+	_expect(is_zero_approx(StageData.machine_share(10)) and StageData.machine_share(11) > 0.3 and StageData.machine_share(20) > 0.55 and is_equal_approx(StageData.machine_share(40), 0.45), "machine share: none before planet 2, growing over it, near half after")
+	var kinds := func(stage: int) -> Array:
+		var out: Array = []
+		for w in StageData.waves(stage):
+			for spec in w:
+				if not out.has(spec[0]):
+					out.append(spec[0])
+		return out
+	var k5: Array = kinds.call(5)
+	var k11: Array = kinds.call(11)
+	var k15: Array = kinds.call(15)
+	var k20: Array = kinds.call(20)
+	_expect(not k5.has("mite") and k5.has("hive_mother"), "stage 5: bugs only, the Hive Mother")
+	_expect(k11.has("mite") and k11.has("scout") and k11.has("hulk") and not k11.has("rivet") and not k11.has("dart"), "stage 11: Mites and Hulks beside the bugs, no Rivet Gun or Dart yet (got %s)" % str(k11))
+	_expect(k15.has("rivet") and k15.has("wrecker") and not k15.has("hive_mother") and k15.has("dart") and not kinds.call(14).has("dart"), "stage 15: Rivet Guns, the first Darts, the Wrecker as the mini-boss (got %s)" % str(k15))
+	_expect(k20.has("dart") and k20.has("queen") and k20.has("scout"), "stage 20: Darts, the Queen, the bugs still there (got %s)" % str(k20))
+	_expect(ResourceLoader.exists("res://ui/commander_urgent.png") and ResourceLoader.exists("res://ui/commander_calm.png"), "the commander portraits")

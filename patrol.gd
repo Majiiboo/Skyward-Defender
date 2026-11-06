@@ -29,7 +29,7 @@ static func per_wave(stage: int) -> Dictionary:
 	var coins := 0.0
 	for wave in StageData.waves(stage):
 		for spec in wave:
-			if spec[0] != "hive_mother":
+			if not StageData.is_boss(String(spec[0])):
 				coins += float(StageData.ENEMIES[spec[0]].get("coins", 0)) * float(spec[1])
 	var out := {"coins": coins * COIN_RATE / WAVES_PER_HOUR, "alloy": 0.02 + 0.0003 * stage}
 	if stage >= 11:
