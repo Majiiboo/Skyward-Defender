@@ -85,6 +85,7 @@ var _current_view_name := "NavBattle"
 var _stage_block: Control
 var _action_row: Control
 var _mode_tag: Label
+var _weak_icon: TextureRect   # the element the stage is weak to, beside the tag
 var _stage_btn: Button
 var _std_btn: Button
 var _elite_btn: Button
@@ -350,8 +351,19 @@ func _build_home() -> void:
 	sb.offset_top = 60.0
 	home.add_child(sb)
 	_stage_block = sb
+	var tag_row := HBoxContainer.new()   # the mode tag with the weakness element icon after it (dev189)
+	tag_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	tag_row.add_theme_constant_override("separation", 4)
+	tag_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_mode_tag = _small_label("STANDARD 1", 13, CYAN)
-	sb.add_child(_mode_tag)
+	tag_row.add_child(_mode_tag)
+	_weak_icon = TextureRect.new()
+	_weak_icon.custom_minimum_size = Vector2(16, 16)
+	_weak_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_weak_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_weak_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag_row.add_child(_weak_icon)
+	sb.add_child(tag_row)
 	var name_row := HBoxContainer.new()
 	name_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	name_row.add_theme_constant_override("separation", 4)
@@ -662,6 +674,7 @@ func _update_stage_label() -> void:
 	var is_elite := mode == "Elite"
 	var sec := StageData.sector(stage)
 	_mode_tag.text = "%s %d  ·  %s  ·  WEAK TO %s" % ["ELITE" if is_elite else "STANDARD", stage, String(StageData.area(stage).name).to_upper(), Heroes.element_name(Heroes.family(stage).weak).to_upper()]   # the element to bring (heroes)
+	_weak_icon.texture = UIKit.element_icon(String(Heroes.family(stage).weak))
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5

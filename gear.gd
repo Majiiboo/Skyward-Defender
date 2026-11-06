@@ -235,8 +235,9 @@ func _build() -> void:
 	var hrow := HBoxContainer.new()
 	hrow.add_theme_constant_override("separation", 6)
 	hrow.alignment = BoxContainer.ALIGNMENT_END
-	_stars_l = UIKit.label("", 13, UIKit.GOLD)
-	hv.add_child(_stars_l)   # tier + shards on its own line; the buttons fit the phone width under it
+	var srow := UIKit.iconed(UIKit.ic("ic_shard"), "", 13, UIKit.GOLD, 18.0)   # Luna's shard icon in front (dev189)
+	_stars_l = srow.get_child(srow.get_child_count() - 1)
+	hv.add_child(srow)   # tier + shards on its own line; the buttons fit the phone width under it
 	_unlock_btn = UIKit.gold_button("Unlock", 13)
 	_unlock_btn.custom_minimum_size = Vector2(104, 42)
 	_unlock_btn.pressed.connect(func(): _on_unlock(false))
@@ -1381,6 +1382,7 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 	var t := UIKit.tile(def.name, subtitle, Turrets.element(id), badge, tex, size)   # coloured by its element (dev172)
 	if size.x > 120.0:
 		UIKit.corner_icon(t, UIKit.element_icon(Turrets.element(id)), 22.0)   # the element badge
+		UIKit.corner_icon(t, UIKit.role_icon(Turrets.role(id)), 20.0, true)   # its role, top left (dev189)
 	var pic: TextureRect = t.get_node("Body").get_child(0)   # the depth layer sits at child 0 since dev149
 	pic.custom_minimum_size = Vector2(0, size.y - 44.0)
 	if dim:
@@ -1929,7 +1931,7 @@ func _paint_hero() -> void:
 		_def_btn.text = "DEF max" if dl >= Heroes.MAX_DEF_LEVEL else "DEF up\n%d coins" % dcost
 		var need := Heroes.next_tier_cost(hero, id)
 		var have := Heroes.shards(hero, id)
-		_stars_l.text = "%s  ·  Tier %d   %s" % [h.passive, t, ("shards %d / %d" % [have, need]) if need > 0 else "max"]
+		_stars_l.text = "%s  ·  Tier %d  ·  %s" % [("%d / %d shards" % [have, need]) if need > 0 else "tier max", t, h.passive]   # shards first, behind their icon (dev189)
 		_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
 		_evolve_btn.text = "Evolve" if need > 0 else "Max"
 	else:

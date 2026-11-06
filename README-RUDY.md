@@ -412,6 +412,22 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 20 (after dev182): ELITE EASED IN + ICON POLISH (code side while Luna renders).
+- The "Elite stage 30 cliff" was never a cliff. The sim (typical kit, human bot, 3 runs a
+  stage) won Elite 20 3/3, 25 2/3, 28 3/3, 30 1/3, 32 3/3, 35 2/3, 40 1/3: a coin flip from
+  25 up, and every loss had the same shape: the hull gone by wave 4-7 while the run level
+  was still 7-11, before the power cards had built up; every win ended with the hull near
+  100. The Elite toughness (bugs x1.85 health) landed in full from the first bug.
+  FIX: Elite health eases in over the first five waves (60% of the factor's strength at
+  wave 1, full from wave 5; StageData.elite_mult). Re-run (4 runs a stage): Elite 25 2/4,
+  30 3/4, 35 4/4, 40 4/4; the losses left are at stage 25 waves 6-7, where the young Hive
+  Mother turns up mid-stage. Elite stays hard, it just stops killing you before you have
+  any cards.
+- Icons: the hero panel's shard line starts with Luna's shard icon ("0 / 30 shards · Tier 1
+  · Coins +20%"); turret tiles carry their ROLE icon top left (crosshair Striker, hammer
+  Breaker, chain, control, swarm, support) next to the element badge top right; Home's
+  stage tag "WEAK TO ICE" shows the element symbol after the words.
+
 Update 19 (after dev182): LUNA'S CARDS ROUND 2 is in (17 of 18 renders usable; Rook's Twin
 Trigger picture was not delivered, his card keeps the pistol until it lands).
 - Five hero cards now show their power, not the gun: Arc Weld (a forked yellow arc leaping

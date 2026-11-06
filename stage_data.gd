@@ -117,6 +117,12 @@ const GEM_XP := [2, 4, 7, 12]
 const GEM_COLORS := [Color(0.29, 0.66, 1.0), Color(0.71, 0.55, 1.0), Color(1.0, 0.35, 0.42), Color(1.0, 0.83, 0.3)]
 
 # ---- difficulty scaling per stage ----
+# Elite health eased in (dev189): the x1.85 lands in full from wave 5; the first waves carry
+# 60%, 70%... of it in the exponent, so a run has time to build its cards before the bugs
+# are at full Elite toughness (the sweep lost Elite 25-40 only by a hull collapse in waves 4-7)
+static func elite_mult(wave_index: int) -> float:
+	return pow(ELITE_HP, clampf(0.6 + 0.1 * wave_index, 0.0, 1.0))
+
 static func hp_mult(stage: int, elite: bool) -> float:
 	# gentle through the first planet (+7% a stage), a little steeper after it (+8%), when
 	# the player has turrets and upgrades to answer with

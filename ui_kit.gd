@@ -574,7 +574,7 @@ static func iconed(icon: Texture2D, text: String, size_px: int = 13, col: Color 
 	return h
 
 # a small badge stuck in a tile's top-right corner (an element, a role)
-static func corner_icon(parent: Control, icon: Texture2D, px: float = 22.0) -> void:
+static func corner_icon(parent: Control, icon: Texture2D, px: float = 22.0, left: bool = false) -> void:
 	if icon == null:
 		return
 	var tr := TextureRect.new()
@@ -582,9 +582,9 @@ static func corner_icon(parent: Control, icon: Texture2D, px: float = 22.0) -> v
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tr.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	tr.offset_left = -px - 5.0
-	tr.offset_right = -5.0
+	tr.set_anchors_preset(Control.PRESET_TOP_LEFT if left else Control.PRESET_TOP_RIGHT)
+	tr.offset_left = 5.0 if left else -px - 5.0
+	tr.offset_right = px + 5.0 if left else -5.0
 	tr.offset_top = 5.0
 	tr.offset_bottom = px + 5.0
 	parent.add_child(tr)

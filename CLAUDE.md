@@ -5,7 +5,13 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 9 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 10 updates (next push = dev182 + that count; see the build rule).
+  10. ELITE EASED IN (16g): StageData.elite_mult(wave_index) = ELITE_HP ^ clamp(0.6 + 0.1 w) used by
+     battle._hp_mult (hp_mult(stage, false) * elite_mult); sweep before: Elite 25-40 ~half won, every
+     loss a hull collapse in waves 4-7 at run level 7-11; after: 25 2/4, 30 3/4, 35 4/4, 40 4/4.
+     ICON POLISH: hero panel shard line = UIKit.iconed(ic_shard) (shards first), turret tiles
+     corner_icon(role_icon, left=true) (UIKit.corner_icon `left` param), hub _weak_icon after the
+     mode tag (tag_row HBox). Unused icons left: ic_mount, st_magnet / st_aim / st_xp, el_any.
   9. LUNA CARDS ROUND 2 in (17 of 18; pic_rook_twin NOT delivered): art_src/cards_r3/,
      tools/cut_cards2.gd (pics keyed like the first set -> cards/pic_<id>.png 256; frame v2 window
      flood-filled with the Common frame's dark -> cards/frame_uncommon.png 300x444; tw_*.png ->
@@ -159,6 +165,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
      in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
      leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless.
+- 16g note (dev189): Elite eased in over waves 1-5; the stage 30 "cliff" was early-wave hull collapse, not a wall.
 - OPEN DECISION (Rudy, 2026-11-05): replace the six-slot gear with unlockable pre-built CHARACTERS
   (each its own stats)? Recommendation given in the chat (heroes as the visible collection with
   evolution looks, keep the weapon slot). Until he decides: no Gear page overhaul, no armour-parts

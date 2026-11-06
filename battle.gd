@@ -4080,7 +4080,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, elite) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
