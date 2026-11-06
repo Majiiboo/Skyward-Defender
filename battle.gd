@@ -71,6 +71,7 @@ var fire_rate_mult := 1.0
 var damage_mult := 1.0
 var extra_projectiles := 0
 var burst_count := 1
+var _perk_twin := false            # hero perk: every 6th shot brings a twin
 var burst_left := 0
 var burst_timer := 0.0
 var burst_dir := Vector2.UP
@@ -537,6 +538,12 @@ func _start_stage() -> void:
 	_base_dr = clampf(gs.base_dr, 0.0, 0.6)
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
+	# hero level perks (Heroes.MILESTONES, dev186): a twin every 6th shot, one bug pierced, bursts of 2
+	_perk_twin = float(gs.get("twin_shot", 0.0)) > 0.0
+	if float(gs.get("pierce1", 0.0)) > 0.0:
+		pierce_level += 1
+	if float(gs.get("burst2", 0.0)) > 0.0:
+		burst_count = maxi(burst_count, 2)
 	_turret_dmg_mult = gs.turret_dmg
 	_turret_rate = gs.turret_rate
 	_pilot_xp_mult = gs.pilot_xp
@@ -992,7 +999,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
-		if _twin_every > 0 and _shot_n % _twin_every == 0:
+		if (_twin_every > 0 and _shot_n % _twin_every == 0) or (_perk_twin and _shot_n % 6 == 0):
 			var tw: Dictionary = bullets[-1].duplicate(true)
 			tw.vel = Vector2(tw.vel).rotated(0.09)
 			tw.pos = Vector2(tw.pos) + Vector2(10.0, 0.0)

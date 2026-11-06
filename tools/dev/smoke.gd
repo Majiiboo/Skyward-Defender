@@ -286,9 +286,9 @@ func _check_heroes() -> void:
 	var rst := Heroes.stats(s)
 	_expect(float(st.damage) > float(rst.damage) * 1.05, "a Legendary out-hits a Common")
 	s["coins"] = 500
-	_expect(Heroes.def_up(s, h, "rook") and Heroes.def_level(h, "rook") == 2 and int(s.coins) == 500 - Heroes.def_cost(1), "DEF up costs 50 + 25 x level")
+	_expect(float(Heroes.stats(s).def) > 0.0, "DEF rises with the level (one track since dev186)")
 	s["hero"] = Heroes.write(h)
-	_expect(is_equal_approx(float(Heroes.stats(s).def), Heroes.DEF_PER) and float(Heroes.stats(s).hp) >= Heroes.BASE_HP, "DEF and HP in the stats")
+	_expect(float(Heroes.stats(s).hp) >= Heroes.BASE_HP and Heroes.milestone_at(35).stat == "twin_shot" and Heroes.milestone_at(50).stat == "pierce1" and Heroes.milestone_at(60).stat == "burst2", "HP in the stats; perk milestones at 35, 50, 60")
 	# old save: five armour pieces at Lv.6 each (5 x 1800 coins) and some spare copies -> Rook level + shards
 	var old := {"stage_unlocked": 12, "gear": {"equipped": GearData.DEFAULT.duplicate(),
 		"levels": {"ion_helmet": 6, "ion_chest": 6, "ion_gauntlets": 6, "ion_boots": 6, "ion_jetpack": 6, "ion_weapon": 4},

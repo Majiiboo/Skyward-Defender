@@ -588,3 +588,26 @@ static func corner_icon(parent: Control, icon: Texture2D, px: float = 22.0) -> v
 	tr.offset_top = 5.0
 	tr.offset_bottom = px + 5.0
 	parent.add_child(tr)
+
+# The E badge (Rudy, dev186): a small "E" in a tile's corner marks what is equipped, instead of
+# "Equipped" / "Wearing" / "On mount" words. It sits in the item's colour, low-key, bottom right.
+static func equipped_badge(parent: Control, col: Color = CYAN, text: String = "E") -> void:
+	var b := Panel.new()
+	b.name = "EBadge"
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(col, 0.85)
+	s.set_corner_radius_all(4)
+	s.border_color = Color(1, 1, 1, 0.35)
+	s.set_border_width_all(1)
+	b.add_theme_stylebox_override("panel", s)
+	b.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	b.offset_left = -22.0
+	b.offset_right = -4.0
+	b.offset_top = -22.0
+	b.offset_bottom = -4.0
+	var l := label(text, 10, Color(0.05, 0.08, 0.14), HORIZONTAL_ALIGNMENT_CENTER)
+	l.set_anchors_preset(Control.PRESET_FULL_RECT)
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_child(l)
+	parent.add_child(b)

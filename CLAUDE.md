@@ -5,7 +5,12 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 4 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 5 updates (next push = dev182 + that count; see the build rule).
+  5. RUDY'S SCREENSHOT NOTES: one Level up (Heroes DEF_PER 0.008 per LEVEL, old def levels count
+     half; gear _def_btn hidden, _on_def_up kept), MILESTONES extended with perks twin_shot (35),
+     pierce1 (50), burst2 (60) applied in battle (_perk_twin, pierce_level, burst_count); hero and
+     drone panels shortened; UIKit.equipped_badge (E, or the mount number on turrets) replaces
+     "Equipped" / "Choose" / "Wearing" / "On mount" words on weapon, drone and turret tiles.
   4. LUNA HERO STAND in (art_src/stand/, tools/cut_stand.gd -> gear/stand_disc / stand_glow /
      stand_beam.png at half size, one crop for disc + glow); gear.gd HeroStand draws them when
      present (glow and beam tinted by the element, pulsing). Luna queue left: hero BACK FRAMES.

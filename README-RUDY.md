@@ -368,6 +368,18 @@ Update 14 (after dev182): LUNA'S HERO STAND is in. The hero floats over her rend
   disc: the etched glass disc with its metal rim, the light lines and the floating ring glowing in
   his element colour and breathing, and a soft column of light with drifting specks behind him.
   The code shapes are gone.
+Update 15 (after dev182): YOUR SCREENSHOT NOTES.
+- ONE LEVEL UP for a hero (no separate DEF button): every level raises ATK, HP and DEF
+  together. Milestones every 5 levels are PERKS as well as numbers: crit, Max HP, crit damage,
+  damage boost, base damage taken, fortress HP, then at Lv.35 every 6th shot fires a TWIN, at
+  Lv.50 bolts PASS THROUGH a bug, at Lv.60 he fires in BURSTS of 2. The next perk shows under
+  the level line. Any DEF levels bought before this still count.
+- SHORT PANELS: the hero panel is two lines (level and numbers, the next perk) plus the
+  passive by the tier; the drone panel is two lines (what it is, its numbers). The descriptions
+  live on the tiles.
+- E BADGE: no more "Equipped", "Choose", "Wearing" or "On mount" words. The equipped hero
+  weapon, drone body and pod carry a small E in the tile's corner in the item's colour; a
+  turret on the base carries its mount number there instead. Tapping any open tile equips it.
 - Dev: the balance simulator's typical-player kit now spends on hero ATK and DEF levels and the
   weapon (the armour pieces are gone), so its numbers mean something again.
 

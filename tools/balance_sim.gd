@@ -134,17 +134,17 @@ static func _level_for(budget: float, per: float) -> int:
 func _auto_kit(d: Dictionary, stage: int) -> void:
 	stage += int(OS.get_environment("SIM_KIT_PLUS")) if OS.get_environment("SIM_KIT_PLUS") != "" else 0
 	var spend := _coins_before(stage) * 1.5
-	# heroes (dev172): 60% of the kit goes to the hero: ATK levels and DEF levels (half each), and
+	# heroes (dev172): 60% of the kit goes to the hero: levels (ATK + HP + DEF in one since dev186) and
 	# the one weapon piece; the old armour pieces are gone
 	var hero_budget := spend * 0.6
 	var wlv := _level_for(hero_budget * 0.2, 120.0)
 	var hl := 1
-	var hb := hero_budget * 0.5
+	var hb := hero_budget * 0.8
 	while hl < Heroes.MAX_LEVEL and hb >= Heroes.level_cost(hl):
 		hb -= Heroes.level_cost(hl)
 		hl += 1
 	var dl := 1
-	var db := hero_budget * 0.3
+	var db := 0.0
 	while dl < Heroes.MAX_DEF_LEVEL and db >= Heroes.def_cost(dl):
 		db -= Heroes.def_cost(dl)
 		dl += 1

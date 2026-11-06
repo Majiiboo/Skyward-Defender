@@ -250,7 +250,8 @@ func _build() -> void:
 	_level_btn = UIKit.gold_button("Level up", 13)
 	_level_btn.custom_minimum_size = Vector2(104, 42)
 	_level_btn.pressed.connect(_on_level_up)
-	_def_btn = UIKit.teal_button("DEF up", 13)
+	_def_btn = UIKit.teal_button("", 13)
+	_def_btn.visible = false   # (one Level up track since dev186: ATK, HP and DEF rise together)
 	_def_btn.custom_minimum_size = Vector2(92, 42)
 	_def_btn.pressed.connect(_on_def_up)
 	hrow.add_child(_def_btn)
@@ -361,7 +362,7 @@ func _fill_bag() -> void:
 		var open := GearData.set_unlocked(set_id, t_unlocked) or GearData.owned(gear, id)
 		var is_on: bool = gear.equipped[selected_slot] == id
 		var rn := GearData.rarity_name(GearData.rarity(gear, id))
-		var sub := ("Wearing · %s" % rn) if is_on else (("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1))
+		var sub := ("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
 		var t := UIKit.tile(info.name, sub, set_id, GearData.SETS[set_id].name, _pic(id) if open else load("res://icons/ui_padlock.png"), Vector2(108, 88))
 		if not open:
 			t.tooltip_text = "Clear stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
@@ -371,6 +372,8 @@ func _fill_bag() -> void:
 		t.pressed.connect(func():
 			if open:
 				_equip(item))
+		if is_on:
+			UIKit.equipped_badge(t, UIKit.RARITY[set_id])   # the E badge (Rudy)
 		_bag_grid.add_child(t)
 	UIKit.reveal(_bag_grid, 0.03, 10.0)
 
@@ -1072,8 +1075,9 @@ func _refresh_drone() -> void:
 	var lvl: int = int(drone.level)
 	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl)
 	var hero_el := Heroes.element_name(DroneData.body_element(drone.body))   # the body has its own element (Rudy)
-	var info := UIKit.label("%s + %s  Lv.%d  ·  %s\nATK %.1f  ·  every %.2f s\n%s  ·  %s\n%s" % [body.name, pod.name, lvl, hero_el, dmg * DroneData.dmg_bonus(lvl),
-		float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl), body.desc, pod.desc, DroneData.milestone_text(lvl)], 12, Color(0.85, 0.92, 1.0))
+	# short (Rudy, dev186): what it is and its numbers; the body and pod lines are on their tiles
+	var info := UIKit.label("%s + %s  ·  Lv.%d  ·  %s\nATK %.1f every %.2f s" % [body.name, pod.name, lvl, hero_el, dmg * DroneData.dmg_bonus(lvl),
+		float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl)], 12, Color(0.85, 0.92, 1.0))
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var ip := UIKit.panel(10)
 	ip.add_child(info)
@@ -1106,9 +1110,9 @@ func _refresh_drone() -> void:
 			var def: Dictionary = spec[1][id]
 			var open: bool = (DroneData.body_open(drone, id, pilot_level) if spec[2] == "body" else (pilot_level >= int(def.unlock) or DevTools.on))
 			var on: bool = drone[spec[2]] == id
-			var sub := "Equipped" if on else ("Choose" if open else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if DroneData.is_bought(id) else "Pilot Lv.%d" % int(def.unlock)))
+			var sub := "" if (on or open) else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if DroneData.is_bought(id) else "Pilot Lv.%d" % int(def.unlock))   # no "Choose" / "Equipped" words (Rudy): an E badge marks the equipped one
 			if spec[2] == "body":
-				sub = "%s %s  ·  %s" % [DroneData.stars_text(id), Heroes.element_name(DroneData.body_element(id)), sub]
+				sub = ("%s %s" % [DroneData.stars_text(id), Heroes.element_name(DroneData.body_element(id))]) + (("  ·  " + sub) if sub != "" else "")
 			var tile := UIKit.tile(def.name, sub, (DroneData.body_element(id) if spec[2] == "body" else "ion") if on else "common", "", load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if spec[2] == "pod" else id]), Vector2(108, 92))
 			if not open:
 				tile.modulate = Color(0.55, 0.55, 0.65, 0.8)
@@ -1122,6 +1126,8 @@ func _refresh_drone() -> void:
 					drone[key] = pick
 					_save_drone()
 					_refresh_drone())
+			if on:
+				UIKit.equipped_badge(tile, UIKit.RARITY.get(DroneData.body_element(id) if spec[2] == "body" else "ion", UIKit.CYAN))
 			grid.add_child(tile)
 		_drone_box.add_child(grid)
 	_power_label.text = "DRONE Lv.%d" % lvl
@@ -1403,8 +1409,10 @@ func _refresh_turrets() -> void:
 		var def: Dictionary = Turrets.TURRETS[id]
 		var locked: bool = not Turrets.owned({"owned": t_owned}, id)
 		var price_sub: String = ("Stage %d first" % Turrets.gate(id)) if not Turrets.gate_open(_read(), id) else ("%s coins" % UIKit.num(int(def.cost.get("coins", 0))) if int(def.cost.get("coins", 0)) > 0 else "Unlock")
-		var sub := price_sub if locked else ("In development" if not def.ready else ("On mount %d" % (t_loadout.find(id) + 1) if t_loadout.has(id) else "%s  ·  %s" % [Turrets.role(id), Heroes.element_name(Turrets.element(id))]))
+		var sub := price_sub if locked else ("In development" if not def.ready else "%s  ·  %s" % [Turrets.role(id), Heroes.element_name(Turrets.element(id))])
 		var t := _turret_tile(id, sub, "%s Lv.%d" % [Turrets.stars_text(id), _t_lvl(id)], Vector2(144, 116), locked or not def.ready)
+		if t_loadout.has(id):
+			UIKit.equipped_badge(t, UIKit.RARITY[Turrets.element(id)], str(t_loadout.find(id) + 1))   # the mount it stands on
 		if id == t_focus:
 			t.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.RARITY[Turrets.element(id)], 0.25), Color.WHITE, 10, 2))
 		var tid: String = id
@@ -1878,7 +1886,7 @@ func _paint_hero() -> void:
 	_hero_name.text = "%s  %s  ·  %s %s" % [h.name, Heroes.stars_text(id), Heroes.grade_name(id), Heroes.element_name(el)]
 	_hero_name.add_theme_color_override("font_color", col)
 	_level_btn.visible = own
-	_def_btn.visible = own
+	_def_btn.visible = false
 	_evolve_btn.visible = own
 	_stars_l.visible = own
 	_unlock_btn.visible = not own
@@ -1894,21 +1902,22 @@ func _paint_hero() -> void:
 		var atk := roundi(((gm * (1.0 + float(Heroes.PER_LEVEL.atk) * (lv - 1)) * (1.0 + Heroes.TIER_BONUS * (t - 1))) - 1.0) * 100.0)
 		var st := Heroes.stats(data) if id == _hero_id() else {}
 		var hp_txt := ("HP %d  ·  DEF %d%%" % [roundi(float(st.get("hp", 0.0))), roundi(float(st.get("def", 0.0)) * 100.0)]) if not st.is_empty() else ""
-		_hero_line.text = "%s\nLv.%d  ·  ATK +%d%%  ·  %s\n%s" % [h.passive, lv, atk, hp_txt, next_ms]
+		# short (Rudy, dev186): one line of numbers, one line for the next perk
+		_hero_line.text = "Lv.%d  ·  ATK +%d%%  ·  %s\n%s" % [lv, atk, hp_txt, next_ms]
 		var cost := Heroes.level_cost(lv)
 		_level_btn.disabled = lv >= Heroes.MAX_LEVEL or coins < cost
-		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "ATK up\n%d coins" % cost
+		_level_btn.text = "MAX" if lv >= Heroes.MAX_LEVEL else "Level up\n%d coins" % cost
 		var dcost := Heroes.def_cost(dl)
 		_def_btn.disabled = dl >= Heroes.MAX_DEF_LEVEL or coins < dcost
 		_def_btn.text = "DEF max" if dl >= Heroes.MAX_DEF_LEVEL else "DEF up\n%d coins" % dcost
 		var need := Heroes.next_tier_cost(hero, id)
 		var have := Heroes.shards(hero, id)
-		_stars_l.text = "Tier %d / %d   %s" % [t, Heroes.MAX_TIER, ("shards %d / %d" % [have, need]) if need > 0 else "final look"]
+		_stars_l.text = "%s  ·  Tier %d   %s" % [h.passive, t, ("shards %d / %d" % [have, need]) if need > 0 else "max"]
 		_evolve_btn.disabled = not Heroes.can_evolve(hero, id)
 		_evolve_btn.text = "Evolve" if need > 0 else "Max"
 	else:
 		var gate_txt := "" if Heroes.gate_open(data, id) else "\nClear stage %d first" % Heroes.gate(id)
-		_hero_line.text = "%s\n%s\n%s%s" % [h.blurb, h.passive, Heroes.cost_text(id), gate_txt]
+		_hero_line.text = "%s\n%s%s" % [h.passive, Heroes.cost_text(id), gate_txt]
 		_unlock_btn.text = "Unlock"
 		_unlock_btn.disabled = not (Heroes.gate_open(data, id) and Heroes.can_afford(data, id))
 		_crystal_btn.text = "%d crystals" % Heroes.crystal_price(id)

@@ -80,18 +80,26 @@ const MAX_LEVEL := 60
 const PER_LEVEL := {"atk": 0.03, "rate": 0.01, "aim": 0.015, "recovery": 0.02, "magnet": 2.0, "auto_fire": 0.01}
 # milestones every 5 levels, rotating (the old gear milestones, now on the hero)
 const MILESTONES := [
+	# (Rudy, dev186): milestones are PERKS, not only numbers: a new way of shooting on the way up
 	{"stat": "crit_rate", "per": 0.03, "text": "Crit rate +3%"},
 	{"stat": "hp_mult",   "per": 0.15, "text": "Max HP +15%"},
 	{"stat": "crit_dmg",  "per": 0.15, "text": "Crit damage +15%"},
 	{"stat": "dmg_boost", "per": 0.04, "text": "Damage boost +4%"},
 	{"stat": "base_dr",   "per": 0.04, "text": "Base damage taken -4%"},
 	{"stat": "fortress",  "per": 0.06, "text": "Fortress HP +6%"},
+	{"stat": "twin_shot", "per": 1.0,  "text": "Every 6th shot fires a twin"},
+	{"stat": "crit_rate", "per": 0.03, "text": "Crit rate +3%"},
+	{"stat": "hp_mult",   "per": 0.15, "text": "Max HP +15%"},
+	{"stat": "pierce1",   "per": 1.0,  "text": "Bolts pass through 1 bug"},
+	{"stat": "dmg_boost", "per": 0.05, "text": "Damage boost +5%"},
+	{"stat": "burst2",    "per": 1.0,  "text": "Fires in bursts of 2"},
 ]
 const MILESTONE_EVERY := 5
-# pilot HP (instead of three hearts, dev172) and the DEF track: DEF_PER per DEF level, capped
+# pilot HP (instead of three hearts, dev172). DEF (Rudy, dev186): ONE level track: every level
+# adds ATK, HP and DEF together (DEF_PER a level, capped); no separate DEF button
 const BASE_HP := 100.0
 const HP_PER_LEVEL := 0.02
-const DEF_PER := 0.012
+const DEF_PER := 0.008
 const DEF_CAP := 0.5
 const MAX_DEF_LEVEL := 40
 # TIERS (evolutions, Luna's three looks): tier 2 and 3 cost shards; each tier ATK and base +8%
@@ -358,7 +366,7 @@ static func stats(save: Dictionary) -> Dictionary:
 		"turret_dmg": 1.0, "turret_rate": 1.0, "pilot_xp": 1.0, "shield": 1.0, "chill": false,
 		"crit_rate": GearData.BASE_CRIT_RATE, "crit_dmg": GearData.BASE_CRIT_DMG, "dmg_boost": 0.0, "base_dr": 0.0, "fortress": 1.0,
 		"weapon": "laser_pistol", "thruster": String(GearData.SETS[hero.element].thruster),
-		"hero": id, "element": String(hero.element), "hp": BASE_HP, "hp_mult": 1.0, "def": 0.0,
+		"hero": id, "element": String(hero.element), "hp": BASE_HP, "hp_mult": 1.0, "def": 0.0, "twin_shot": 0.0, "pierce1": 0.0, "burst2": 0.0,
 		"scale": float(hero.build.scale), "speed": float(hero.build.speed), "tough": float(hero.build.tough)}
 	# the grade: a higher-rated hero starts stronger
 	var gm: float = float(GRADES[grade(id) - 1].mult)
@@ -379,7 +387,7 @@ static func stats(save: Dictionary) -> Dictionary:
 	# HP and DEF (Rudy: HP instead of three hearts, so defence can be a stat): HP grows with the
 	# level and the tier, DEF with its own upgrade track; bulky builds start with more HP
 	st.hp = BASE_HP * float(hero.build.tough) * (1.0 + HP_PER_LEVEL * steps)
-	st.def = minf(DEF_PER * (def_level(h, id) - 1), DEF_CAP)
+	st.def = minf(DEF_PER * steps + DEF_PER * 0.5 * (def_level(h, id) - 1), DEF_CAP)   # the level (and any old DEF levels bought before dev186)
 	# the tier (evolutions)
 	var t := tier(h, id) - 1
 	st.damage *= 1.0 + TIER_BONUS * t
