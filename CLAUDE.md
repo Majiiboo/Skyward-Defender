@@ -6,17 +6,24 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
 - UNPUSHED since dev195: 2 updates (next push = dev195 + that count; see the build rule).
-  2. GATES (Rudy 2026-11-06): gates.gd Gates: GRADE_STAGE {1:0, 2:10, 3:20, 4:35, 5:50} gates BUYING
-     (Heroes.gate / Turrets.gate / DroneData.gate = item_stage(grade, own stage); gate_open via
-     Gates.stage_open; unlock() refuses with Gates.stage_text), TIER_STAGE {2:15, 3:30} gates
-     Heroes.can_evolve(h, id, save) (+ tier_gate_text; gear Evolve button "Stage N first"),
-     BANDS [0.34 .. 1.0] per 10 stages cleared cap every track (Gates.level_cap(save, max) ->
-     Heroes.level_cap / level_up, Turrets.track_cap + gear _on_track_upgrade, DroneData.level_cap,
-     gear weapon cap = min(rarity cap, Gates); Gates.cap_text "Stage N
-for Lv.M" on the buttons),
-     "premium": true = crystals only (premium(), cost_text "Crystals only", can_afford false,
-     unlock coins -> "Crystals only"; Ember). Dev mode = everything open. gear _stars_l autowraps.
-     smoke _check_gates + updated expectations. NOT built: premium weapons (a Store pack).
+  2. STARS (Rudy 2026-11-06, DESIGN-stars.md; replaces the afternoon's stage gates): gates.gd Gates =
+     the star standard: MAX_STAR 10 (1-5 gold, 6-10 red), power_mult (+8% gold / +12% red),
+     level_cap(kind, star) (hero 10 / turret track 4 / drone 2 a star; Heroes.MAX_LEVEL 100,
+     Turrets.MAX_TRACK 40, DroneData.MAX_LEVEL 20), DOOR pilot levels [5,12,20,28,35,40,45,50,55],
+     NEED tables (coins / shards / essence / coil / rotor / gyro / flightcore), need(kind, star, el),
+     need_text, why_not (door, level cap, shards, mats, coins in that order), pay, text / badge
+     ("R★★") / long_text / color, premium. Heroes: save "tiers" = the star; star_need / next_tier_cost /
+     tier_need / why_not_evolve / can_evolve(h, id, save) / evolve pay via Gates; level_cap(h, id);
+     stats use power_mult; gate() 0 / gate_open true; migrate tier 1. Turrets: read "stars",
+     stats(id, tr, star), star / track_cap(star) / lowest_track / star_need / why_not_star / star_up.
+     DroneData: read "stars" per body, star / level_cap(dr) / star_mult / star_need / why_not_star /
+     star_up. battle: turret_stars -> Turrets.stats, DroneData.star_mult on drone damage. gear.gd:
+     hero name = earned stars (grade a word), roster rows without stars, tiles "Lv.n ★★" / "Lv.n R★",
+     Level up "Lv.N cap next star", Evolve button = why_not; Turrets page _t_star Star up button +
+     _on_turret_star, next-star line, tracks "Lv.N cap: next star"; Drone page Star up + _on_drone_star
+     + next-star line; weapons keep the rarity cap. pilot_rig halo grows per star, red for red stars;
+     HeroStand glow per star; balance_sim kit stops at Lv.50. smoke _check_gates rewritten. OPEN: a
+     balance pass against red-star kits (sim with a maxed kit) before dev200; premium weapons.
   1. LUNA TURRETS ROUND 2 in (29 renders, all usable; art_src/turrets2/, tools/cut_turrets2.gd ->
      turrets/<id>_base / _head / _light / _idle (head stacked on base for tiles), fx/shot_<id>,
      turrets/<id>_head_fire + _fire_light aligned to the resting heads, cards/pic_rook_twin):

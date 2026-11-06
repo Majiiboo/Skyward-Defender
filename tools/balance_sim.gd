@@ -140,7 +140,7 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 	var wlv := _level_for(hero_budget * 0.2, 120.0)
 	var hl := 1
 	var hb := hero_budget * 0.8
-	while hl < Heroes.MAX_LEVEL and hb >= Heroes.level_cost(hl):
+	while hl < Gates.level_cap("hero", Gates.GOLD) and hb >= Heroes.level_cost(hl):   # the sim kit stops at five gold stars (Lv.50)
 		hb -= Heroes.level_cost(hl)
 		hl += 1
 	var dl := 1

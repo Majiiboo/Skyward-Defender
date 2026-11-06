@@ -196,7 +196,14 @@ static func read(save: Dictionary) -> Dictionary:
 		for id in TURRETS:
 			if plevel >= int(TURRETS[id].unlock) and not owned.has(id):
 				owned.append(id)
-	return {"loadout": loadout, "levels": levels, "tracks": tracks, "owned": owned}
+	# stars (Gates, DESIGN-stars.md): {id: 1-10}
+	var stars := {}
+	var sv = t.get("stars", {})
+	if typeof(sv) == TYPE_DICTIONARY:
+		for id in sv:
+			if TURRETS.has(id):
+				stars[id] = Gates.clamp_star(int(sv[id]))
+	return {"loadout": loadout, "levels": levels, "tracks": tracks, "owned": owned, "stars": stars}
 
 # ---- upgrade tracks and milestones (Rudy, dev128) ----
 # Every turret has three tracks, each Lv.1-20, bought separately: ATK (damage per hit),
@@ -206,7 +213,7 @@ static func read(save: Dictionary) -> Dictionary:
 # every 5 levels is a milestone: +5% damage each and a star on its tile.
 const TRACKS := ["atk", "rate", "range"]
 const TRACK_NAMES := {"atk": "ATK", "rate": "Rate", "range": "Range"}
-const MAX_TRACK := 20
+const MAX_TRACK := 40   # 4 a star (Gates): 20 at five gold stars, 40 at red 5
 const REACH := {"sentry": ["range"], "lance": ["width"], "storm": ["cloud_r"], "gravity": ["radius", "crush_r"],
 	"swarm": ["life"], "prism": ["spread", "split_h"],
 	"repair": ["heal"], "tesla": ["range"], "cryo": ["reach"], "mines": ["blast"], "beacon": ["range", "mark"], "flak": ["range", "blast"]}
@@ -233,11 +240,12 @@ static func milestone_mult(level: int) -> float:
 	return 1.0 + 0.05 * milestones(level)
 
 # The turret's numbers with its upgrades in (battle uses this copy, t.def).
-static func stats(id: String, tr: Dictionary) -> Dictionary:
+static func stats(id: String, tr: Dictionary, star: int = 1) -> Dictionary:
 	var d: Dictionary = TURRETS[id].duplicate(true)
-	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr)) * TURRET_TUNE
+	var sm := Gates.power_mult(star)   # its star (Gates)
+	d.damage = float(d.damage) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr)) * TURRET_TUNE * sm
 	if d.has("heal"):   # the Repair Node: ATK is how much it mends (no TURRET_TUNE: shield points, not damage)
-		d.heal = float(d.heal) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr))
+		d.heal = float(d.heal) * atk_mult(int(tr.atk)) * milestone_mult(level_of(tr)) * sm
 	d.every = float(d.every) / rate_mult(int(tr.rate))
 	for k in REACH.get(id, []):
 		d[k] = float(d[k]) * reach_mult(int(tr.range))
@@ -272,19 +280,47 @@ static func role(id: String) -> String:
 static func element_mult(id: String, stage: int) -> float:
 	return Heroes.element_mult(element(id), stage)
 
-# the stage to clear before it can be bought: its stars' gate (Gates.GRADE_STAGE) or its own
-static func gate(id: String) -> int:
-	return Gates.item_stage(grade(id), int(TURRETS[id].get("stage", 0))) if TURRETS.has(id) else 0
+# no stage gates (Rudy, 2026-11-06); the "stage" keys are kept but unused
+static func gate(_id: String) -> int:
+	return 0
 
-static func gate_open(save: Dictionary, id: String) -> bool:
-	return Gates.stage_open(save, gate(id))
+static func gate_open(_save: Dictionary, _id: String) -> bool:
+	return true
 
 static func premium(id: String) -> bool:
 	return TURRETS.has(id) and Gates.premium(TURRETS[id])
 
-# the highest track level open with the stages cleared so far (Gates)
-static func track_cap(save: Dictionary) -> int:
-	return Gates.level_cap(save, MAX_TRACK)
+# ---- stars (Gates, DESIGN-stars.md): a turret's star caps each of its tracks (4 levels a
+# star) and multiplies its damage; the next star needs every track at the cap plus essences
+# of its element, coins, and coils from five stars
+static func star(t: Dictionary, id: String) -> int:
+	return Gates.clamp_star(int(Dictionary(t.get("stars", {})).get(id, 1)))
+
+static func track_cap(star: int) -> int:
+	return Gates.level_cap("turret", star)
+
+# the lowest of its three tracks: all three must reach the cap before the next star
+static func lowest_track(tr: Dictionary) -> int:
+	return mini(mini(int(tr.get("atk", 1)), int(tr.get("rate", 1))), int(tr.get("range", 1)))
+
+static func star_need(t: Dictionary, id: String) -> Dictionary:
+	return Gates.need("turret", star(t, id) + 1, element(id))
+
+static func why_not_star(save: Dictionary, t: Dictionary, id: String) -> String:
+	return Gates.why_not(save, "turret", star(t, id), lowest_track(one_tracks(t.get("tracks", {}), id)), 0, element(id))
+
+# take the next star: pays (Gates.pay), raises t.stars[id]; "" on success
+static func star_up(save: Dictionary, t: Dictionary, id: String) -> String:
+	var why := why_not_star(save, t, id)
+	if why != "":
+		return why
+	why = Gates.pay(save, "turret", star(t, id), element(id))
+	if why != "":
+		return why
+	if not t.has("stars"):
+		t["stars"] = {}
+	t.stars[id] = star(t, id) + 1
+	return ""
 
 static func parts_needed(id: String) -> Dictionary:
 	var c: Dictionary = TURRETS[id].get("cost", {})
@@ -322,8 +358,6 @@ static func unlock(save: Dictionary, t: Dictionary, id: String, with_crystals: b
 		return "No such turret"
 	if owned(t, id):
 		return "Already yours"
-	if not gate_open(save, id):
-		return Gates.stage_text(gate(id))
 	if with_crystals:
 		var price := crystal_price(id)
 		if price <= 0:

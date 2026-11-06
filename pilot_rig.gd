@@ -768,8 +768,9 @@ static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha:
 	if hero_tier >= 2 and alpha > 0.05:
 		var hx := hero_tex(pick[0])
 		var hw := canvas_h * hx.get_width() / hx.get_height()
-		var hcol: Color = UIKit.RARITY.get(String(Heroes.ROSTER.get(hero, {}).get("element", "ion")), UIKit.CYAN)
-		var ha: float = alpha * (0.22 + 0.1 * sin(r.t * 2.2)) * (1.0 if hero_tier == 2 else 1.5)
+		# gold stars: his element colour, stronger with each star; red stars: a red halo (Gates)
+		var hcol: Color = Gates.RED_COL if Gates.is_red(hero_tier) else UIKit.RARITY.get(String(Heroes.ROSTER.get(hero, {}).get("element", "ion")), UIKit.CYAN)
+		var ha: float = alpha * (0.22 + 0.1 * sin(r.t * 2.2)) * (1.0 + 0.25 * (Gates.gold(hero_tier) - 2) + 0.3 * Gates.red(hero_tier))
 		c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5) * 1.06)
 		c.draw_texture_rect(hx, Rect2(-hw * 0.5, -canvas_h, hw, canvas_h), false, Color(hcol, ha))
 	for k in 2:

@@ -345,30 +345,40 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
-Update 2 (after dev195): GATES, one standard for what progress unlocks (your two notes today:
-"higher tiers and higher stars under a locked standard, in relation to level or stages", and
-"really unique or strong heroes or weapons could be locked behind a purchase"). All in gates.gd:
-- STARS gate BUYING. A hero, turret or drone body of 2★ needs stage 10 cleared, 3★ stage 20,
-  4★ stage 35, 5★ stage 50 (an item's own stage gate still counts when it is higher: the Mine
-  Layer keeps 30). So Cpt. Frost, the Lance, the Spark Bot wait for stage 10; Hollow, Gravity,
-  Cryo Lens, Wisp for 20; Nyx, Ember, Prism, Dread Beacon, Night Bat for 35. The tiles and
-  panels say "Stage N first"; crystals do not skip the gate.
-- TIERS gate EVOLVING. A hero's tier 2 needs stage 15 cleared, tier 3 stage 30, on top of the
-  shards and essences. The Evolve button reads "Stage 15 first" until then.
-- LEVELS are capped by stages cleared, as a share of each track's own maximum: a third of it
-  from the start, then more every ten stages cleared, the whole track after stage 40. Hero
-  levels: 20 open at the start, 30 after stage 10, 40 after 20, 50 after 30, 60 after 40.
-  Weapon levels: 10 / 15 / 20 / 25 / 30 (the rarity cap still applies too). Turret tracks:
-  7 / 10 / 13 / 17 / 20 each. Drone: 3 / 5 / 7 / 8 / 10. A capped button reads "Stage 20 for
-  Lv.11" instead of the price.
-- PREMIUM: a hero, turret or body marked premium has no coin price: crystals only (a real-money
-  pack later, when Google Play billing exists). Ember carries it today (650 crystals); the panel
-  and roster say so. Weapons are not bought (they drop and merge), so a premium weapon would be
-  a Store pack: not built.
-- Dev mode opens all of it. Old saves keep what they have; only new purchases and the next
-  levels are gated.
-- Check: smoke covers the gates (stars, tiers, caps, Ember), and the Gear pages were captured
-  with a stage 11 save to see every lock text.
+Update 2 (after dev195): STARS, one standard for how heroes, turrets, drones and weapons grow
+(your calls today, DESIGN-stars.md). Nothing is locked behind a stage any more. A higher star is
+locked behind BUILDING the thing: level it to its cap, collect for it, evolve it, and the new
+star raises the cap and the power. Five gold stars, then five RED stars for the endgame.
+- EVERYTHING ARRIVES AT 1 STAR. A hero's grade (Common .. Mythic) is still his price class
+  and the strength he starts with, but it is a word now, not stars; the stars on a tile are
+  the ones you earned. Red stars show as R★ on tiles and as red stars on the panels, and a
+  red-star hero carries a red halo in battle.
+- LEVEL CAPS BY STAR. Hero levels: 10 a star (Lv.50 at five gold, Lv.100 at red 5). Turret
+  tracks: 4 a star on each of ATK / Rate / Range (20 at five gold, 40 at red 5). Drone: 2 a
+  star (10, then 20). A capped button says "Lv.20 cap, next star". Weapons keep their own
+  ladder: rarity, raised by merging copies in the Workshop.
+- WHAT A STAR ASKS FOR (the thing at its cap, plus): a hero needs his own shards, essences of
+  his element and coins (2 stars: 5 shards + 2 essences + 2,000; 3 stars: 15 + 5 + 6,000;
+  4 stars: 40 + 10 + 15,000; 5 stars: 100 + 20 + a Prime Coil + 40,000; red: 150 to 500
+  shards, 30 to 80 essences, 2 to 6 coils, 60k to 220k). A turret needs essences of its element
+  and coins (2 / 5 / 10 / 20 essences, then coils), every one of its three tracks at the cap.
+  A drone body needs essences, the drone line (Rotors, then Gyros, then Flight Cores) and
+  coins, the drone at its cap. The panels list it; the Evolve / Star up button names the one
+  thing in the way: "Pilot Lv.5 first", "Lv.10 first", or it is greyed while the shards,
+  materials or coins are short (the line above says how many).
+- PILOT LEVEL ONLY OPENS THE DOOR to each star: 2 stars at pilot level 5, then 12, 20, 28;
+  red 1 at 35, then 40, 45, 50, 55. That is the brake on money: a paid hero still arrives at
+  1 star, crystals can buy coins and essences and so SPEED, but the pilot level comes only
+  from playing stages and quests, so the ceiling is play time. Dev mode opens all of it.
+- STARS GIVE POWER: +8% a gold star, +12% a red star, on hero ATK, HP and fortress, turret
+  damage (and the Repair Node's mend) and drone damage. A red-5 kit is about 1.9x a one-star
+  kit at the same level: the endgame content (Elite 40+, Horde, Comet+ trials, more stages
+  after 60) must be tuned against it before anyone gets there (DESIGN-stars.md, balance).
+- PREMIUM stays: Ember is crystals only; she arrives at 1 star like everyone.
+- Old saves: a hero's tier 2 / 3 is his 2 / 3 stars; shards stay; turrets and drones start at
+  1 star. The afternoon's stage gates (the earlier update 2) are gone.
+- Check: smoke covers the ladder (texts, power, caps, doors, needs, a hero, a turret and a drone
+  stepping up, the round trips, Ember); the Gear pages were captured with a stars save.
 
 Update 1 (after dev195): LUNA'S TURRETS ROUND 2 are in (29 renders, all usable). SIX NEW TURRETS,
 a second one per element with a different job, so picking a turret is a play style (your rule):

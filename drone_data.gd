@@ -10,7 +10,7 @@ extends RefCounted
 # Pods stay jobs (what it does with the element). Support pods deal no damage.
 
 const UNLOCK_LEVEL := 8        # pilot level that unlocks the drone
-const MAX_LEVEL := 10
+const MAX_LEVEL := 20   # 2 a star (Gates): 10 at five gold stars, 20 at red 5
 
 const BODIES := {
 	"scout":   {"name": "Scout",   "unlock": 8,  "rate": 1.3, "dmg": 0.8, "range": 380.0, "element": "ion",
@@ -58,8 +58,15 @@ static func read(save: Dictionary) -> Dictionary:
 		for id in ow:
 			if BODIES.has(String(id)) and not owned.has(String(id)):
 				owned.append(String(id))
+	# stars per body (Gates, DESIGN-stars.md)
+	var stars := {}
+	var sv = d.get("stars", {})
+	if typeof(sv) == TYPE_DICTIONARY:
+		for id in sv:
+			if BODIES.has(String(id)):
+				stars[String(id)] = Gates.clamp_star(int(sv[id]))
 	return {"body": body if BODIES.has(body) else "scout", "pod": pod if PODS.has(pod) else "blaster", "owned": owned,
-		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL)}
+		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL), "stars": stars}
 
 static func unlocked(pilot_level: int) -> bool:
 	return pilot_level >= UNLOCK_LEVEL or DevTools.on
@@ -113,19 +120,47 @@ static func body_open(dr: Dictionary, body: String, pilot_level: int) -> bool:
 static func grade(body: String) -> int:
 	return clampi(int(BODIES[body].get("grade", 1)), 1, 5) if BODIES.has(body) else 1
 
-# the stage to clear before a bought body can be bought: its stars' gate (Gates) or its own
-static func gate(body: String) -> int:
-	return Gates.item_stage(grade(body), int(BODIES[body].get("stage", 0))) if is_bought(body) else 0
+# no stage gates (Rudy, 2026-11-06)
+static func gate(_body: String) -> int:
+	return 0
 
-static func gate_open(save: Dictionary, body: String) -> bool:
-	return Gates.stage_open(save, gate(body))
+static func gate_open(_save: Dictionary, _body: String) -> bool:
+	return true
 
 static func premium(body: String) -> bool:
 	return BODIES.has(body) and Gates.premium(BODIES[body])
 
-# the highest drone level open with the stages cleared so far (Gates)
-static func level_cap(save: Dictionary) -> int:
-	return Gates.level_cap(save, MAX_LEVEL)
+# ---- stars (Gates, DESIGN-stars.md): the drone's level cap and damage follow the star of the
+# BODY on duty (2 levels a star); the next star needs the level at the cap plus essences of the
+# body's element, the drone line (rotors, gyros, flight cores) and coins
+static func star(dr: Dictionary, body: String = "") -> int:
+	var b := body if body != "" else String(dr.get("body", "scout"))
+	return Gates.clamp_star(int(Dictionary(dr.get("stars", {})).get(b, 1)))
+
+static func level_cap(dr: Dictionary) -> int:
+	return Gates.level_cap("drone", star(dr))
+
+static func star_mult(dr: Dictionary) -> float:
+	return Gates.power_mult(star(dr))
+
+static func star_need(dr: Dictionary) -> Dictionary:
+	return Gates.need("drone", star(dr) + 1, body_element(String(dr.body)))
+
+static func why_not_star(save: Dictionary, dr: Dictionary) -> String:
+	return Gates.why_not(save, "drone", star(dr), int(dr.level), 0, body_element(String(dr.body)))
+
+# take the body's next star: pays (Gates.pay), raises dr.stars[body]; "" on success
+static func star_up(save: Dictionary, dr: Dictionary) -> String:
+	var why := why_not_star(save, dr)
+	if why != "":
+		return why
+	why = Gates.pay(save, "drone", star(dr), body_element(String(dr.body)))
+	if why != "":
+		return why
+	if not dr.has("stars"):
+		dr["stars"] = {}
+	dr.stars[String(dr.body)] = star(dr) + 1
+	return ""
 
 static func stars_text(body: String) -> String:
 	return "★".repeat(grade(body))
@@ -159,8 +194,6 @@ static func unlock(save: Dictionary, dr: Dictionary, body: String, with_crystals
 		return "Not for sale"
 	if Array(dr.owned).has(body):
 		return "Already yours"
-	if not gate_open(save, body):
-		return Gates.stage_text(gate(body))
 	if with_crystals:
 		var price := crystal_price(body)
 		if int(save.get("crystals", 0)) < price:

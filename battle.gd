@@ -141,6 +141,7 @@ var turrets: Array = []           # {type, lvl, pos, cd, fire_t, ang, flip, char
 var turret_loadout: Array = []    # from the save: turret id (or "") per mount
 var turret_levels := {}
 var turret_tracks := {}           # id -> {atk, rate, range} (Turrets upgrade tracks)
+var turret_stars := {}            # id -> star 1-10 (Gates, DESIGN-stars.md)
 var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
 var _new_mount := -1              # a mount this win just opened (shown on the end screen)
 var _lid_anim := {}               # mount -> seconds into its hatch opening (first run after it opened)
@@ -395,6 +396,7 @@ func _load() -> void:
 	turret_loadout = t.loadout
 	turret_levels = t.levels
 	turret_tracks = t.tracks
+	turret_stars = t.get("stars", {})   # the turrets' stars (Gates)
 
 func _read_save() -> Dictionary:
 	if FileAccess.file_exists(SAVE):
@@ -1574,7 +1576,7 @@ func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true)
 	# every turret drops onto its socket, one after another at the start of a run
 	# (fx = true drops it straight away, used by tests)
 	# t.def = this turret's numbers with its upgrade tracks and milestones in (Turrets.stats)
-	turrets.append({"type": type, "lvl": lvl, "def": Turrets.stats(type, Turrets.one_tracks(turret_tracks, type)), "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
+	turrets.append({"type": type, "lvl": lvl, "def": Turrets.stats(type, Turrets.one_tracks(turret_tracks, type), Turrets.star({"stars": turret_stars}, type)), "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
 		"fire_t": 0.0, "ang": -PI / 2.0, "face": 1.0, "charge": 0.0, "build": 0.0, "bolt": [],
 		"drop": 0.0, "drop_wait": 0.0 if fx else 0.3 + 0.18 * mount})
 	return true
@@ -3016,7 +3018,7 @@ func _update_drone(delta: float) -> void:
 		return
 	_drone_cd = float(pod.every)
 	_drone_flash = 0.12
-	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level))   # its own element is applied on the hit (_drone_mult)
+	var dmg: float = float(WEAPONS.laser_pistol.damage) * float(pod.damage) * float(body.dmg) * DroneData.level_mult(int(_drone.level)) * DroneData.dmg_bonus(int(_drone.level)) * DroneData.star_mult(_drone)   # its own element is applied on the hit (_drone_mult)
 	# round 2 body passives: the Night Bat crits, the Wisp phases through a bug, the Spark Bot arcs
 	var d_lucky: bool = rng.randf() < float(body.get("crit", 0.0))
 	if d_lucky:

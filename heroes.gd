@@ -75,7 +75,7 @@ const ROSTER := {
 const ORDER := ["rook", "sparks", "frost", "hollow", "nyx", "ember"]
 const DEFAULT := "rook"
 
-const MAX_LEVEL := 60
+const MAX_LEVEL := 100   # 10 a star: 50 at five gold stars, 100 at red 5 (Gates, DESIGN-stars.md)
 # per hero level (level 1 = nothing yet)
 const PER_LEVEL := {"atk": 0.03, "rate": 0.01, "aim": 0.015, "recovery": 0.02, "magnet": 2.0, "auto_fire": 0.01}
 # milestones every 5 levels, rotating (the old gear milestones, now on the hero)
@@ -102,10 +102,12 @@ const HP_PER_LEVEL := 0.02
 const DEF_PER := 0.008
 const DEF_CAP := 0.5
 const MAX_DEF_LEVEL := 40
-# TIERS (evolutions, Luna's three looks): tier 2 and 3 cost shards; each tier ATK and base +8%
-const TIER_SHARDS := [30, 90]
-const TIER_BONUS := 0.08
-const MAX_TIER := 3
+# STARS (Rudy 2026-11-06, Gates / DESIGN-stars.md): save "tiers" holds the hero's STAR (1-5 gold,
+# 6-10 red). A star needs the hero at his level cap plus shards, essences and coins (Gates.need);
+# each star raises the cap by 10 and the power (Gates.power_mult). Stars 2 and 3 are Luna's
+# evolved looks (heroes/<id>/t<k>/). TIER_BONUS stays for the Gear page's ATK line.
+const TIER_BONUS := Gates.GOLD_STEP
+const MAX_TIER := Gates.MAX_STAR
 # armour copies -> shards when an old save is converted (their merge value)
 const SHARD_VALUE := {"common": 1, "uncommon": 3, "rare": 9, "epic": 27, "legendary": 81}
 
@@ -164,11 +166,7 @@ static func migrate(save: Dictionary) -> Dictionary:
 		spent -= level_cost(lv)
 		lv += 1
 	out.levels[DEFAULT] = lv
-	var tier := 1
-	while tier < MAX_TIER and shards >= TIER_SHARDS[tier - 1]:
-		shards -= TIER_SHARDS[tier - 1]
-		tier += 1
-	out.tiers[DEFAULT] = tier
+	out.tiers[DEFAULT] = 1   # stars are earned from here on (Gates): the shards stay his
 	out.shards[DEFAULT] = shards
 	return out
 
@@ -180,8 +178,16 @@ static func level(h: Dictionary, id: String) -> int:
 static func def_level(h: Dictionary, id: String) -> int:
 	return clampi(int(h.def.get(id, 1)), 1, MAX_DEF_LEVEL)
 
+# the hero's STAR (the save key is still "tiers"; 1-5 gold, 6-10 red)
 static func tier(h: Dictionary, id: String) -> int:
 	return clampi(int(h.tiers.get(id, 1)), 1, MAX_TIER)
+
+static func star(h: Dictionary, id: String) -> int:
+	return tier(h, id)
+
+# the highest level his star allows (Gates: 10 a star)
+static func level_cap(h: Dictionary, id: String) -> int:
+	return Gates.level_cap("hero", tier(h, id))
 
 static func shards(h: Dictionary, id: String) -> int:
 	return maxi(int(h.shards.get(id, 0)), 0)
@@ -208,13 +214,13 @@ static func grade_color(id: String) -> Color:
 static func stars_text(id: String) -> String:
 	return "★".repeat(grade(id))
 
-# the stage that must be cleared before the hero can be bought: his stars' gate (Gates
-# GRADE_STAGE) or his own "stage", whichever is higher (0 = none)
-static func gate(id: String) -> int:
-	return Gates.item_stage(grade(id), int(ROSTER[id].get("stage", 0))) if ROSTER.has(id) else 0
+# no stage gates (Rudy, 2026-11-06: stars are earned by building the hero, never by reaching a
+# stage); the ROSTER "stage" keys are kept but unused
+static func gate(_id: String) -> int:
+	return 0
 
-static func gate_open(save: Dictionary, id: String) -> bool:
-	return Gates.stage_open(save, gate(id))
+static func gate_open(_save: Dictionary, _id: String) -> bool:
+	return true
 
 # premium (Gates): crystals only, no coin price
 static func premium(id: String) -> bool:
@@ -258,8 +264,6 @@ static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: b
 		return "No such hero"
 	if owned(h, id):
 		return "Already yours"
-	if not gate_open(save, id):
-		return Gates.stage_text(gate(id))
 	if with_crystals:
 		var price := crystal_price(id)
 		if price <= 0:
@@ -278,10 +282,6 @@ static func unlock(save: Dictionary, h: Dictionary, id: String, with_crystals: b
 	h.selected = id
 	return ""
 
-# the highest level a hero can reach with the stages cleared so far (Gates)
-static func level_cap(save: Dictionary) -> int:
-	return Gates.level_cap(save, MAX_LEVEL)
-
 static func milestones(lv: int) -> int:
 	return lv / MILESTONE_EVERY
 
@@ -291,31 +291,31 @@ static func milestone_at(lv: int) -> Dictionary:
 		return {}
 	return MILESTONES[(lv / MILESTONE_EVERY - 1) % MILESTONES.size()]
 
+# what the next star asks for (Gates.need): {"coins", "shards", "mats"}
+static func star_need(h: Dictionary, id: String) -> Dictionary:
+	return Gates.need("hero", tier(h, id) + 1, element_of(id))
+
+# the shards the next star asks for (0 at max)
 static func next_tier_cost(h: Dictionary, id: String) -> int:
-	var t := tier(h, id)
-	return int(TIER_SHARDS[t - 1]) if t < MAX_TIER else 0
+	return int(star_need(h, id).shards) if tier(h, id) < MAX_TIER else 0
 
-# the essences of his element the next tier asks for on top of the shards (materials.gd, dev189)
+# the materials the next star asks for on top of the shards (essences, coils)
 static func tier_need(h: Dictionary, id: String) -> Dictionary:
-	return Materials.tier_need(element_of(id), tier(h, id) + 1) if tier(h, id) < MAX_TIER else {}
+	return Dictionary(star_need(h, id).mats) if tier(h, id) < MAX_TIER else {}
 
-# with `save`, the essences are checked too (the page passes it; old callers only ask about shards)
+# why the next star cannot be taken now ("" = it can): the pilot-level door, the level cap, the
+# shards, the materials, the coins, in that order (Gates.why_not)
+static func why_not_evolve(h: Dictionary, id: String, save: Dictionary) -> String:
+	return Gates.why_not(save, "hero", tier(h, id), level(h, id), shards(h, id), element_of(id))
+
+# with `save`, the door, the level cap, the materials and the coins are checked too (the page
+# passes it; without it only the shards count, as the old tests do)
 static func can_evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool:
 	if tier(h, id) >= MAX_TIER:
 		return false
-	if DevTools.on:
-		return true
-	if shards(h, id) < next_tier_cost(h, id):
-		return false
 	if save.is_empty():
-		return true
-	return Gates.tier_open(save, tier(h, id) + 1) and Parts.has_all(Parts.read(save), tier_need(h, id))
-
-# why the next tier is not open yet ("" when it is, or when only shards / essences are short)
-static func tier_gate_text(h: Dictionary, id: String, save: Dictionary) -> String:
-	if tier(h, id) >= MAX_TIER or Gates.tier_open(save, tier(h, id) + 1):
-		return ""
-	return Gates.stage_text(Gates.tier_stage(tier(h, id) + 1))
+		return DevTools.on or shards(h, id) >= next_tier_cost(h, id)
+	return why_not_evolve(h, id, save) == ""
 
 # ------------------------------------------------------------------ actions
 
@@ -324,7 +324,7 @@ static func level_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 	var cost := level_cost(lv)
 	if DevTools.on:
 		cost = 0   # dev mode: free
-	if lv >= level_cap(save) or int(save.get("coins", 0)) < cost:   # capped by the stages cleared (Gates)
+	if lv >= level_cap(h, id) or int(save.get("coins", 0)) < cost:   # capped by his star (Gates)
 		return false
 	save["coins"] = int(save.get("coins", 0)) - cost
 	h.levels[id] = lv + 1
@@ -344,7 +344,7 @@ static func def_up(save: Dictionary, h: Dictionary, id: String) -> bool:
 static func evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool:
 	if not can_evolve(h, id, save):
 		return false
-	if not save.is_empty() and Parts.pay(save, 0, tier_need(h, id), false) != "":
+	if not save.is_empty() and Gates.pay(save, "hero", tier(h, id), element_of(id)) != "":
 		return false
 	h.shards[id] = maxi(shards(h, id) - next_tier_cost(h, id), 0)
 	h.tiers[id] = tier(h, id) + 1
@@ -424,11 +424,11 @@ static func stats(save: Dictionary) -> Dictionary:
 	# level and the tier, DEF with its own upgrade track; bulky builds start with more HP
 	st.hp = BASE_HP * float(hero.build.tough) * (1.0 + HP_PER_LEVEL * steps)
 	st.def = minf(DEF_PER * steps + DEF_PER * 0.5 * (def_level(h, id) - 1), DEF_CAP)   # the level (and any old DEF levels bought before dev186)
-	# the tier (evolutions)
-	var t := tier(h, id) - 1
-	st.damage *= 1.0 + TIER_BONUS * t
-	st.fortress *= 1.0 + TIER_BONUS * t
-	st.hp *= 1.0 + TIER_BONUS * t
+	# his star (Gates: +8% a gold star, +12% a red one)
+	var sm := Gates.power_mult(tier(h, id))
+	st.damage *= sm
+	st.fortress *= sm
+	st.hp *= sm
 	# the passive
 	match id:
 		"rook": st.gem_xp += 0.15
