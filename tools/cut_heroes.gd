@@ -19,6 +19,8 @@ const PORTRAIT := 256
 func _initialize() -> void:
 	for id in HEROES:
 		_cut_hero(id)
+	for id in HEROES + ["rook"]:   # evolution tiers, when their renders exist
+		_cut_tiers(id)
 	quit()
 
 func _src(id: String, name: String) -> String:
@@ -120,3 +122,44 @@ func _cut_hero(id: String) -> void:
 			if used.size.x < 4 or used.size.y < 4:
 				continue
 			_save(c.get_region(used.grow(3).intersection(Rect2i(Vector2i.ZERO, c.get_size()))), out + "parts/p%02d.png" % (i + 1))
+
+# HERO EVOLUTIONS (LUNA-BRIEF-hero-tiers.md, dev189): a tier's whole-hero frames
+# art_src/heroes/<id>/t<k>_turn_1..8.webp -> heroes/<id>/t<k>/turn_n.png (same height as the
+# base frames, the ring skips a missing frame) and portrait_t<k>.webp -> portrait_t<k>.png.
+func _cut_tiers(id: String) -> void:
+	var out := "res://heroes/%s/" % id
+	for k in [2, 3]:
+		var frames: Array = []
+		var any := false
+		for n in range(1, 9):
+			var f := _keyed(_src(id, "t%d_turn_%d.webp" % [k, n]))
+			frames.append(f)
+			any = any or f != null
+		if any:
+			DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out + "t%d" % k))
+			_match_back(frames, "%s t%d" % [id, k])
+			var union := Rect2i()
+			for f in frames:
+				if f == null:
+					continue
+				var used: Rect2i = f.get_used_rect()
+				union = used if union.size == Vector2i.ZERO else union.merge(used)
+			for n in 8:
+				var f: Image = frames[n]
+				if f == null:
+					print("%s t%d turn_%d: missing, the ring fades across it" % [id, k, n + 1])
+					continue
+				var crop := union.grow(6).intersection(Rect2i(Vector2i.ZERO, f.get_size()))
+				var o: Image = f.get_region(crop)
+				var s := float(TARGET_H) / o.get_height()
+				o.resize(maxi(1, roundi(o.get_width() * s)), TARGET_H, Image.INTERPOLATE_LANCZOS)
+				_save(o, out + "t%d/turn_%d.png" % [k, n + 1])
+		var por := _keyed(_src(id, "portrait_t%d.webp" % k))
+		if por != null:
+			var pr := por.get_used_rect().grow(4).intersection(Rect2i(Vector2i.ZERO, por.get_size()))
+			var p2 := por.get_region(pr)
+			var side := maxi(p2.get_width(), p2.get_height())
+			var sq := Image.create(side, side, false, Image.FORMAT_RGBA8)
+			sq.blit_rect(p2, Rect2i(Vector2i.ZERO, p2.get_size()), Vector2i((side - p2.get_width()) / 2, (side - p2.get_height()) / 2))
+			sq.resize(PORTRAIT, PORTRAIT, Image.INTERPOLATE_LANCZOS)
+			_save(sq, out + "portrait_t%d.png" % k)

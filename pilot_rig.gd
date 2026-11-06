@@ -99,6 +99,7 @@ static func gun() -> String:
 # Dress him from the save: weapon in hand, visor and chest orb in their sets' colours.
 static func set_gear(save: Dictionary) -> void:
 	hero = Heroes.selected(Heroes.read(save))   # heroes (dev172): Luna's frames for everyone but Rook
+	hero_tier = Heroes.tier(Heroes.read(save), hero)
 	var want := suit_for(save)
 	if want != suit:
 		suit = want
@@ -674,7 +675,7 @@ static func _ring(prefix: String) -> Array:
 	return _ring_cache[prefix]
 
 static func hero_ring() -> Array:
-	return _ring("res://heroes/%s/turn_%%d.png" % hero)
+	return _ring(_hero_dir() + "turn_%d.png")
 
 static func turn_ring() -> Array:
 	return _ring("res://pilot_turn/%s_%%d.png" % _turn_suit())
@@ -730,15 +731,23 @@ static func turn_weight(r: Rig) -> float:
 # weapon is painted into the frames, so no held weapon is drawn. The per-part rig (parts/)
 # comes later; this makes every hero playable now.
 static var hero := "rook"
+static var hero_tier := 1   # his evolution tier (Heroes.tier): tier frames in heroes/<id>/t<k>/ when Luna paints them (dev189)
+
+# the folder of the frames to show: the highest painted tier at or under his, else the base
+static func _hero_dir() -> String:
+	for k in range(hero_tier, 1, -1):
+		if ResourceLoader.exists("res://heroes/%s/t%d/turn_1.png" % [hero, k]):
+			return "res://heroes/%s/t%d/" % [hero, k]
+	return "res://heroes/%s/" % hero
 static var _hero_tex := {}
 
 static func hero_mode() -> bool:
-	return hero != Heroes.DEFAULT and ResourceLoader.exists("res://heroes/%s/turn_1.png" % hero)
+	return ResourceLoader.exists(_hero_dir() + "turn_1.png")   # Rook too, once his tier 3 frames exist
 
 static func hero_tex(n: int) -> Texture2D:
-	var key := "%s_%d" % [hero, n]
+	var key := "%s%d" % [_hero_dir(), n]
 	if not _hero_tex.has(key):
-		_hero_tex[key] = load("res://heroes/%s/turn_%d.png" % [hero, n])
+		_hero_tex[key] = load(_hero_dir() + "turn_%d.png" % n)
 	return _hero_tex[key]
 
 const HERO_SCALE := 1.08    # the frames drawn a little bigger than `height` (chibi heads)
@@ -754,6 +763,15 @@ static func draw_hero(c: CanvasItem, r: Rig, pos: Vector2, height: float, alpha:
 	var tilt: float = clampf(r.lean * 0.14, -0.2, 0.2)
 	var sq: float = clampf(r.bounce, -0.3, 0.3)
 	var kick: float = r.recoil * height * 0.02
+	# an evolved hero (tier 2+) carries a halo in his element colour: the frame drawn a touch
+	# larger behind himself, breathing (dev189; his tier 3 frames replace the whole look)
+	if hero_tier >= 2 and alpha > 0.05:
+		var hx := hero_tex(pick[0])
+		var hw := canvas_h * hx.get_width() / hx.get_height()
+		var hcol: Color = UIKit.RARITY.get(String(Heroes.ROSTER.get(hero, {}).get("element", "ion")), UIKit.CYAN)
+		var ha: float = alpha * (0.22 + 0.1 * sin(r.t * 2.2)) * (1.0 if hero_tier == 2 else 1.5)
+		c.draw_set_transform(feet + Vector2(0, bob + kick), tilt, Vector2(1.0 + sq * 0.5, 1.0 - sq * 0.5) * 1.06)
+		c.draw_texture_rect(hx, Rect2(-hw * 0.5, -canvas_h, hw, canvas_h), false, Color(hcol, ha))
 	for k in 2:
 		var a: float = alpha * (1.0 if k == 0 else w)   # the next frame dissolves in OVER the current one (he stays solid, no ghost mid-turn; dev188)
 		if a <= 0.005 or (k == 1 and pick[1] == pick[0]):

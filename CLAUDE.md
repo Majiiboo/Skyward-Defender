@@ -5,7 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev182)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev182: 10 updates (next push = dev182 + that count; see the build rule).
+- UNPUSHED since dev182: 11 updates (next push = dev182 + that count; see the build rule).
+  11. HERO EVOLUTIONS code side: PilotRig.hero_tier (set_gear), _hero_dir() (heroes/<id>/t<k>/
+     when its turn_1 exists, else the base), hero_mode / hero_ring / hero_tex through it (Rook
+     joins hero_mode once heroes/rook/t3 exists), draw_hero tier halo (frame x1.06 behind, element
+     colour, breathing); gear _hero_portrait prefers portrait_t<k>; cut_heroes _cut_tiers.
+     DECISION (2026-11-06): NO per-hero parts rigs: Luna's parts sheets do not match her
+     references (Sparks' limbs other angles, Frost a grey clay pass); heroes stay frame-based.
+     LUNA-BRIEF-hero-tiers.md REWRITTEN for whole frames (t3_turn_1..8 + portrait_t3, portrait_t2
+     only for tier 2); Rudy must send the new one in place of the morning's.
   10. ELITE EASED IN (16g): StageData.elite_mult(wave_index) = ELITE_HP ^ clamp(0.6 + 0.1 w) used by
      battle._hp_mult (hp_mult(stage, false) * elite_mult); sweep before: Elite 25-40 ~half won, every
      loss a hull collapse in waves 4-7 at run level 7-11; after: 25 2/4, 30 3/4, 35 4/4, 40 4/4.
@@ -165,6 +173,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   4. Spitter telegraph (battle SPIT_WARN 0.35: Sfx "spit", sac flash, closing ring at the mouth
      in _draw_enemy); capture.gd CAP_AUTOPICK. Headless sims now print "6-8 ObjectDB instances
      leaked" at exit: AudioStreamWAV playbacks the dummy audio driver never finishes; harmless.
+- NO per-hero parts rigs (2026-11-06, see update 11); the "NEXT: per-hero PARTS rigs" line below is void.
 - 16g note (dev189): Elite eased in over waves 1-5; the stage 30 "cliff" was early-wave hull collapse, not a wall.
 - OPEN DECISION (Rudy, 2026-11-05): replace the six-slot gear with unlockable pre-built CHARACTERS
   (each its own stats)? Recommendation given in the chat (heroes as the visible collection with

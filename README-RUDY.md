@@ -412,6 +412,20 @@ see the jetpack, the wings, the cloak, the tail; let go and he drifts back to fa
 - Archive: art_src/heroes/<hero>/turn_6..8.webp and art_src/turn/turn_<suit>_6..8.webp; the
   cutters are tools/cut_heroes.gd and tools/cut_turn.gd (both now cut rings of eight).
 
+Update 21 (after dev182): HERO EVOLUTIONS, code side, and the hero-tiers brief REWRITTEN.
+- HONEST NOTE: the brief I sent you this morning asked Luna for tier looks as PARTS (head,
+  torso, back piece). That only works if each hero is a parts rig like the pilot, and I
+  checked her parts sheets: Sparks' arms and legs are rendered from other angles than his
+  reference, and Captain Frost's sheet is a plain grey clay version. The pilot's own rig
+  took three rounds of fixes. The heroes look far better as her whole turn frames, so they
+  stay that way, and the brief now asks for WHOLE FRAMES: tier 3 = the hero repainted as his
+  "legend" self at the same eight angles + a portrait; tier 2 = one new portrait, and the
+  game adds the rest. Please send Luna the new LUNA-BRIEF-hero-tiers.md in place of the old.
+- In the game now: a tier 2+ hero carries a breathing halo in his element colour (the frame
+  drawn a touch larger behind himself; stronger at tier 3); the roster shows portrait_t2 /
+  portrait_t3 when they exist; the rig shows heroes/<id>/t3/turn_1..8 when they exist (Rook
+  too); tools/cut_heroes.gd cuts t<k>_turn_n.webp and portrait_t<k>.webp when they land.
+
 Update 20 (after dev182): ELITE EASED IN + ICON POLISH (code side while Luna renders).
 - The "Elite stage 30 cliff" was never a cliff. The sim (typical kit, human bot, 3 runs a
   stage) won Elite 20 3/3, 25 2/3, 28 3/3, 30 1/3, 32 3/3, 35 2/3, 40 1/3: a coin flip from
