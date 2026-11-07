@@ -3,9 +3,17 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-05, build dev195)
+## Where we are (hand-over, 2026-11-05, build dev206)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 11 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev206: 0 updates (next push = dev206 + that count; see the build rule).
+  dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
+  dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, four still open (LUNA-PROGRAM.md
+  rows 9 part, 11 star map, 12 Rook redo, 13 icons 3); Rudy's rules of the day: stars not stage
+  gates (DESIGN-stars.md), evolutions keep the theme / skins are named themes, no dividing lines
+  on maps, Luna art never redrawn in code; nothing has been played on a phone since dev166, so the
+  balance moves after the re-tune (more boss layers, boss earlier on planet 1, chip damage early)
+  wait for his playtest. Next in line: IDEAS-tap-titans-afk.md 1 (the next goal named on Home) and
+  2 (the gain on every Level up button); then the super weapons (queue 10) now that the domes exist.
   11. LUNA HOME 2 in (41 renders; art_src/skies/<p>/ stars / clouds / planet / glow / floaters +
      art_src/home2/ strip_nodome, dome_standard, dome_<beam|shield|emp>_<1..3>; tools/cut_home2.gd
      -> skies/<p>_stars.webp 640x1280, _clouds.webp (alpha from light), _planet.webp 800x500 (keyed),
@@ -374,7 +382,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev195 (code 195).
+  go UP every package (same signing key, install-over). Current: dev206 (code 206).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push

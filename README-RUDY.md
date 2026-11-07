@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev195 (version/code=195 and version/name="1.0-dev195" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev206 (version/code=206 and version/name="1.0-dev206" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -345,206 +345,9 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
-Update 11 (after dev195): LUNA'S HOME ROUND 2 IS IN (41 renders, all usable): every planet's sky
-as five layers, and the command dome as its own piece with its three super-weapon forms.
-- THE SKIES MOVE. Home, the menus and the battle stand in front of a layered sky now: a deep
-  star field that slides slowly and loops, a nebula layer in the planet's colours sliding a
-  little faster, up to eight floaters per planet (rocks, wrecks, a far hulk, a small ship,
-  debris) drifting and spinning across, the planet's curved horizon along the bottom that
-  breathes, and its atmosphere rim pulsing. Everything leans opposite the pilot for depth.
-  All six planets: Hive, Scrap Belt, Magma, Crystal, Plasma, Sentinel. The old flat paintings
-  stay as the fallback and on the Stage Map bands.
-- THE DOME IS A PIECE. Luna's standard dome sits on the strip in the exact place of the
-  painted one; her Orbital Beam, Shield Overcharge and EMP Pulse domes (idle, charging,
-  firing each) are cut to the same canvas and swap in place. The super weapons themselves
-  (queue item 10) are not built yet; the dome kind and frame are two values to set when they
-  are.
-- Luna's two open questions, for you: (1) the Crystal sky follows the brief (cyan, white,
-  pale blue) and does not match the older pink-and-purple crystal painting; my call: keep
-  cyan, it is the Ice world (Cpt. Frost, the Cryo Lens), and the old painting now only shows
-  on the Stage Map band, which can switch to the new planet layer. (2) Sparks' missing
-  straight-back frame: my call: paint it from his parts sheet; today the ring fades across the
-  gap, which reads as a hiccup in his spin.
-- Cutter: tools/cut_home2.gd (sky layers scaled for phones, light layers keyed to alpha, the
-  eight floaters cut from their sheet, the domes cut on one shared canvas). Archive:
-  art_src/skies/<planet>/, art_src/home2/.
+## dev206: Luna's turrets round 2 and their cards, the star ladder, the talent map as a star chart, hero evolutions and blended maps, the Scrap Belt family, Luna's Store art and the re-tune, stats and chain cards, the HUD card row, briefs and the efficiency pass, Luna's moving skies and the dome (eleven updates since dev195)
 
-Update 10 (after dev195): A LUNA BRIEF FOR THE STAND-INS, and the first efficiency pass.
-- LUNA-BRIEF-icons-3.md asks for the fourteen material icons (the six essences, the weapon
-  and drone lines, a hero shard, an event token) as one sheet and the ten card pictures the
-  new turret cards and the four talent cards borrow today. The code picks them up by name the
-  moment they land.
-- Efficiency (your item 27, lighter never uglier): the top bar builds its stage title and
-  its clock only when they change instead of every frame, and the light-effect layer keeps a
-  ceiling on live effects (180, half in Battery saver) dropping the oldest on a crowded
-  screen. Nothing looks different.
-
-Update 9 (after dev195): YOUR BUILD ON THE TOP BAR, and the overcharge as a moment (two more
-from the recordings). The cards you have taken this run sit as a row of small pictures beside
-the LV chip, each with a pip per level, an overcharged one framed gold, so the build reads at
-a glance without opening the cards panel (which stays for the details). And the third pick of
-a card, the overcharge, now fires a gold ring off the hero, a shout, a beat of slow motion and
-a shake, so it feels like the event it is instead of a third copy of the same card.
-
-Update 8 (after dev195): THREE SMALL THINGS FROM YOUR RECORDINGS (IDEAS-rogue-defense.md).
-- DAMAGE BY SOURCE: the pause menu and the Stage Cleared screen now show who did the damage
-  this run: your hero, the drone and each turret by name, biggest first, with a share bar,
-  the total and the damage per second. You can see at a glance whether the Lance earns its
-  mount.
-- CHAIN: a card that is half of a fusion (Rapid Pulse, Heavy Bolts, Burst Fire, Magnet,
-  Reinforced Hull, Aegis, Chain Spark, Piercing Rounds) now carries a small CHAIN tag naming
-  the fusion it leads to, so the fusion system is visible on the pick instead of a surprise.
-- COIN REFRESH: once the free refresh is used, the card pick offers another refresh for the
-  coins picked up in this run: 150 coins, then 300, then 450. Spending them lowers the coins
-  the stage pays out, so it is a real choice.
-
-Update 7 (after dev195): THE LONG-GAME RE-TUNE, first pass (your item 16 g), after a full sweep.
-- The sweep before: with the star ladder, the talent map and the twelve turrets, the auto
-  kit won every Normal stage 1 to 60 with the base never touched, and Elite 15 lost both runs
-  with the base down by wave 6 (an Elite Wrecker held a turret too long).
-- Changes: bug health after stage 30 climbs 3.5% a stage instead of 2%; the planet boss (stage
-  10, 20, ... 60) is half again as tough and arrives with its wave still coming, halfway on
-  planet 2 and a third of the way in from planet 3, so each boss is a soft wall with company;
-  the Wrecker lets a turret go after six seconds whatever happens.
-- The sweep after: Elite 15 won 2 of 2; Elite 25 and 40 won 1 of 2 with the base down to 25
-  and 50 (Elite is the hard ladder, as meant); a kit six stages behind lost half at stage 20
-  and still won 40 and 60. Normal 10 to 60 still won every run with the base untouched.
-- Honest note: the simulator's pilot dodges every shot and never takes damage, so Normal
-  looks softer in the sim than it will on a phone. Bigger moves (more boss layers, the boss
-  earlier on planet 1, chip damage in the first waves: IDEAS-rogue-defense.md) wait for your
-  playtest of this build. Sim knobs: SIM_STAR (force a star), SIM_KIT_PLUS (kit stages ahead
-  or behind).
-
-Update 6 (after dev195): LUNA'S STORE ART (21 of 30 renders so far: three keys, the three tier
-chests closed and open, five crates, four coin piles, two crystal piles, four badges; the chest
-pieces body / lid / burst and crystal piles 2-4 are still to come). The crates stand on the
-Offers packs (daily, weekly, monthly) and the Starter pack, the coin piles grow with the deal
-in the Shop, the crystal piles on the Crystals tab, the Exchange tab and its token teaser wear
-their icons, the chest cards carry the pity badge and a FREE tag. The Uncommon and Epic keys show everywhere keys do (prices, drops, the
-Workshop recipe, the chest cards), the gold Legendary key is kept for later. The Chests tab
-shows each chest closed in its tier's colour, and opening one pops the closed chest and swaps
-to its open picture with the burst, then the reward rises. Cutter: tools/cut_store2.gd (it also picks up the rest of the brief when it
-lands); archive art_src/store2/.
-
-Update 5 (after dev195): THE SCRAP BELT FAMILY is in (Luna's 36 renders, all usable; queue item
-17 b). Planet 2 gets its own enemies: junk machines the bugs built, and from here on families
-STACK: the Hive bugs never leave, the machines join them.
-- Five machines, each taking a Hive role so the fights stay fair: SCRAP MITE (a tin-can drone
-  on two spinning rotors; the swarm), HULK DRONE (a reactor between two thruster panels; tough,
-  bursts into two JUNK BOLTS when it dies), RIVET GUN (a nose gun and a back pod that glows
-  before each rivet; the one that shoots you, rivets fly faster than goo), SPIKE DART (a missile-
-  drone that locks on and dives at the base), JUNK BOLT (the tumbling cluster a Hulk leaves).
-  All drawn from Luna's pieces: rotors spin with motion blur, panels sway, the pod fills and
-  empties, the Dart's flame flickers, and every one breaks into its own six chunks when it dies.
-- How they arrive: at stage 11 a third of each wave is machines, growing to 60% by stage 20,
-  and from planet 3 on about half of every wave stays machines beside the bugs. Rivet Guns from
-  stage 13, Darts from stage 15. Every machine gets its NEW ENEMY card the first time you meet it.
-- THE WRECKER, planet 2's mini-boss (stage 15): a crane machine on two wheel rotors that drops
-  to hover height, slides over one of your turrets and lowers its claw onto it: that turret is
-  HELD and cannot fire ("TURRET GRABBED!") until you shoot a quarter of the Wrecker's health off
-  it, then it lets go, lifts, and goes for another one a few seconds later. Shoot it dead and
-  the turret is free.
-- THE SALVAGE QUEEN, planet 2's boss (stage 20): a crane queen whose cargo hold opens on her
-  back to drop Mites ("RELEASING!"); she is weak while it is open. Angry, she launches Darts
-  instead of Divers. Her arms swing as she drifts. From planet 3 the mid-stage young boss
-  alternates between her and the Hive Mother, and Horde brings the planet's boss every other
-  time. The boss bar now names who you are fighting (Hive Mother, Wrecker, Salvage Queen).
-- THE COMMANDER: Luna's portrait heads the radio briefing when you reach a new planet
-  (urgent on the first two planets, calm after). Home shows the Queen or the Wrecker looming on
-  the Scrap Belt's boss stages, and the machines fly in the Home battle there.
-- Check: smoke covers the table, the waves, the bosses and the art; the sim won stages 11 to
-  22 with the auto kit, no errors; the briefing, the Wrecker holding a turret, the Queen and Home
-  on planet 2 were captured. Archive: art_src/scrap/; cutter tools/cut_scrap.gd.
-
-Update 4 (after dev195): LUNA'S HERO EVOLUTIONS are in (60 renders, all usable), and NO MORE
-DIVIDING LINES on the maps (your note).
-- Every hero has his tier 3 look as eight whole turn frames, plus a tier 2 and a tier 3
-  portrait: Rook in white-and-gold armour with a cape, Sparks in chrome with a bigger battery,
-  Cpt. Frost in ice-crystal armour, Hollow as a purple ring-haloed wraith, Nyx with a red-lit
-  cape and twin katanas, Ember in gold scale with wide wings. YOUR LADDER FOR THE LOOKS (the same evening): the
-  base look at 1 star; at 2, 3 and 4 stars a minor change (the tier 2 portrait on the roster, a
-  crisp rim of his element's light round him and the halo, both brighter each star); at 5 stars
-  the BIG change, Luna's tier 3 frames and portrait, on the Hero page, the roster, Home and in
-  battle; red stars keep the five-star look with a red halo until you design their extra. Cutter: tools/cut_heroes.gd (the back frames lined up to the
-- ROOK (your catch): his white-and-gold set changed his colours, and an evolution should keep  the hero's own theme and only ADD to him (Frost, Hollow, Nyx and Ember already do). So the  white-and-gold Rook is parked as his first SKIN (heroes/rook/skins/ceremonial, to unlock or  buy later with the colour skins you described: white and gold, neon green lights, a red or  blue body) and Rook shows his base look at 5 stars until Luna repaints that set in charcoal  and purple with the cape (LUNA-BRIEF-rook-5star.md, a small redo). Skins as a system are on  the queue (item 19) for after the Store and the Exchange.
-  front ones, one crop per hero); archive art_src/heroes/<hero>/t3_turn_1..8, portrait_t2 / t3.
-- THE STAR MAP blends: the sky of one constellation fades into the next over a long gradient,
-  no line; Luna's painted skies will overlap the same way (her brief asks for black at their top
-  and bottom edges).
-- THE STAGE MAP blends: every zone's world carries on up into the zone above it and fades out
-  there, so a planet's lava fades into the next planet's crystal instead of a cut and a cyan
-  line. The planet titles stay where they were.
-
-Update 3 (after dev195): THE PILOT TALENT MAP (your queue item 16 e). On the Hero page, a
-TALENTS button beside STATS opens the map: forty nodes in five columns, bought IN ORDER, each
-a small permanent bonus for EVERY hero. Bought nodes are gold, the next one teal, the rest
-dim; tap any node to read it; one button buys the next.
-- The ten-node cycle: Bolt damage +1.5%, Turret damage +2%, Hero HP +2%, Crit rate +0.5%,
-  Coins +3%, Base HP +2%, Fire rate +1%, Gem XP +3%, Crit damage +4%, Magnet +6 px. Four
-  times round = forty nodes; the whole map is about +6% bolt damage, +8% turret damage, +8%
-  HP, +2% crit, +12% coins, +8% base, +4% fire rate, +12% gem XP, +16% crit damage.
-- COSTS RISE the way you asked: coins first (330 for node 1, 6,000 for node 10, 18,000 for
-  node 20, 36,000 for node 30, 60,000 for node 40), then Cores from node 11, an essence of
-  the node's element from node 21, Prime Coils (plus 3 essences) from node 31. Node N opens
-  at pilot level N: a talent a level, so the map keeps pace with play, not with money.
-- EVERY 10TH NODE UNLOCKS A NEW POWER CARD for your runs (offered only once its node is
-  bought): node 10 FOCUS FIRE (bolt damage +6% a pick; overcharge crit rate +10%), node 20
-  SALVAGE (bugs drop +25% coins a pick; overcharge: every 10th kill drops a part), node 30
-  SECOND WIND (once a run, the blow that would finish you heals you to 50%, then 75%, then
-  full), node 40 MIRROR SHELL (a bolt that stops a bug's shot throws it back as a bolt of
-  yours for 50 / 75 / 100% damage; overcharge: your bolt flies on). Their pictures borrow the
-  stat icons until Luna paints card art.
-- A red dot on TALENTS (and on the Heroes tab) when a node is ready to buy.
-- THE STAR MAP (your note the same evening): the map is a galactic chart, not a list. Four
-  CONSTELLATIONS of ten stars, each a figure charted star by star along its lines, the tenth
-  star the figure's key point and the card: THE RIFLE (cyan), THE SENTRY (green), THE HIVE
-  MOTHER (purple), THE DOME (gold), each with a line of lore under its name. Charted stars
-  shine in their constellation's colour with gold lines between them, the next star pulses cyan
-  with dashes travelling toward it, the stars ahead wait dim on dotted lines, and a long faint
-  jump links one constellation to the next. The chart scrolls through deep space with a nebula
-  per constellation and twinkling far stars; it opens on your next star; a panel at the bottom
-  reads the star you tap and charts the next one. All drawn in code today; Luna's brief
-  (LUNA-BRIEF-talent-map.md) asks for the four skies with the figures as faint old-chart line
-  art, plus the star and star-system pieces, and the code picks them up the moment they land.
-- Check: smoke covers the costs, doors, buying, the bonuses in the hero stats and the cards'
-  gating; the map and a card pick with the three talent cards were captured.
-
-Update 2 (after dev195): STARS, one standard for how heroes, turrets, drones and weapons grow
-(your calls today, DESIGN-stars.md). Nothing is locked behind a stage any more. A higher star is
-locked behind BUILDING the thing: level it to its cap, collect for it, evolve it, and the new
-star raises the cap and the power. Five gold stars, then five RED stars for the endgame.
-- EVERYTHING ARRIVES AT 1 STAR. A hero's grade (Common .. Mythic) is still his price class
-  and the strength he starts with, but it is a word now, not stars; the stars on a tile are
-  the ones you earned. Red stars show as R★ on tiles and as red stars on the panels, and a
-  red-star hero carries a red halo in battle.
-- LEVEL CAPS BY STAR. Hero levels: 10 a star (Lv.50 at five gold, Lv.100 at red 5). Turret
-  tracks: 4 a star on each of ATK / Rate / Range (20 at five gold, 40 at red 5). Drone: 2 a
-  star (10, then 20). A capped button says "Lv.20 cap, next star". Weapons keep their own
-  ladder: rarity, raised by merging copies in the Workshop.
-- WHAT A STAR ASKS FOR (the thing at its cap, plus): a hero needs his own shards, essences of
-  his element and coins (2 stars: 5 shards + 2 essences + 2,000; 3 stars: 15 + 5 + 6,000;
-  4 stars: 40 + 10 + 15,000; 5 stars: 100 + 20 + a Prime Coil + 40,000; red: 150 to 500
-  shards, 30 to 80 essences, 2 to 6 coils, 60k to 220k). A turret needs essences of its element
-  and coins (2 / 5 / 10 / 20 essences, then coils), every one of its three tracks at the cap.
-  A drone body needs essences, the drone line (Rotors, then Gyros, then Flight Cores) and
-  coins, the drone at its cap. The panels list it; the Evolve / Star up button names the one
-  thing in the way: "Pilot Lv.5 first", "Lv.10 first", or it is greyed while the shards,
-  materials or coins are short (the line above says how many).
-- PILOT LEVEL ONLY OPENS THE DOOR to each star: 2 stars at pilot level 5, then 12, 20, 28;
-  red 1 at 35, then 40, 45, 50, 55. That is the brake on money: a paid hero still arrives at
-  1 star, crystals can buy coins and essences and so SPEED, but the pilot level comes only
-  from playing stages and quests, so the ceiling is play time. Dev mode opens all of it.
-- STARS GIVE POWER: +8% a gold star, +12% a red star, on hero ATK, HP and fortress, turret
-  damage (and the Repair Node's mend) and drone damage. A red-5 kit is about 1.9x a one-star
-  kit at the same level: the endgame content (Elite 40+, Horde, Comet+ trials, more stages
-  after 60) must be tuned against it before anyone gets there (DESIGN-stars.md, balance).
-- PREMIUM stays: Ember is crystals only; she arrives at 1 star like everyone.
-- Old saves: a hero's tier 2 / 3 is his 2 / 3 stars; shards stay; turrets and drones start at
-  1 star. The afternoon's stage gates (the earlier update 2) are gone.
-- Check: smoke covers the ladder (texts, power, caps, doors, needs, a hero, a turret and a drone
-  stepping up, the round trips, Ember); the Gear pages were captured with a stars save.
-
-Update 1 (after dev195): LUNA'S TURRETS ROUND 2 are in (29 renders, all usable). SIX NEW TURRETS,
+Update 1: LUNA'S TURRETS ROUND 2 are in (29 renders, all usable). SIX NEW TURRETS,
 a second one per element with a different job, so picking a turret is a play style (your rule):
 - Repair Node (Energy, Support, 2★, 3,500 coins + 15 Alloy, stage 10): does not shoot; every
   3 s it mends the base shield (the shield never heals on its own) with a ring of light rising
@@ -586,6 +389,205 @@ a second one per element with a different job, so picking a turret is a play sty
   are the ones used; the first versions kept as -v1). Cutter: tools/cut_turrets2.gd.
 - Check: smoke passes (two turrets per element, every piece cut, the Beacon's material price);
   headless runs at stage 20 (Tesla + Flak) and 45 (Mines, Beacon, Repair, Cryo) without errors.
+
+Update 2: STARS, one standard for how heroes, turrets, drones and weapons grow
+(your calls today, DESIGN-stars.md). Nothing is locked behind a stage any more. A higher star is
+locked behind BUILDING the thing: level it to its cap, collect for it, evolve it, and the new
+star raises the cap and the power. Five gold stars, then five RED stars for the endgame.
+- EVERYTHING ARRIVES AT 1 STAR. A hero's grade (Common .. Mythic) is still his price class
+  and the strength he starts with, but it is a word now, not stars; the stars on a tile are
+  the ones you earned. Red stars show as R★ on tiles and as red stars on the panels, and a
+  red-star hero carries a red halo in battle.
+- LEVEL CAPS BY STAR. Hero levels: 10 a star (Lv.50 at five gold, Lv.100 at red 5). Turret
+  tracks: 4 a star on each of ATK / Rate / Range (20 at five gold, 40 at red 5). Drone: 2 a
+  star (10, then 20). A capped button says "Lv.20 cap, next star". Weapons keep their own
+  ladder: rarity, raised by merging copies in the Workshop.
+- WHAT A STAR ASKS FOR (the thing at its cap, plus): a hero needs his own shards, essences of
+  his element and coins (2 stars: 5 shards + 2 essences + 2,000; 3 stars: 15 + 5 + 6,000;
+  4 stars: 40 + 10 + 15,000; 5 stars: 100 + 20 + a Prime Coil + 40,000; red: 150 to 500
+  shards, 30 to 80 essences, 2 to 6 coils, 60k to 220k). A turret needs essences of its element
+  and coins (2 / 5 / 10 / 20 essences, then coils), every one of its three tracks at the cap.
+  A drone body needs essences, the drone line (Rotors, then Gyros, then Flight Cores) and
+  coins, the drone at its cap. The panels list it; the Evolve / Star up button names the one
+  thing in the way: "Pilot Lv.5 first", "Lv.10 first", or it is greyed while the shards,
+  materials or coins are short (the line above says how many).
+- PILOT LEVEL ONLY OPENS THE DOOR to each star: 2 stars at pilot level 5, then 12, 20, 28;
+  red 1 at 35, then 40, 45, 50, 55. That is the brake on money: a paid hero still arrives at
+  1 star, crystals can buy coins and essences and so SPEED, but the pilot level comes only
+  from playing stages and quests, so the ceiling is play time. Dev mode opens all of it.
+- STARS GIVE POWER: +8% a gold star, +12% a red star, on hero ATK, HP and fortress, turret
+  damage (and the Repair Node's mend) and drone damage. A red-5 kit is about 1.9x a one-star
+  kit at the same level: the endgame content (Elite 40+, Horde, Comet+ trials, more stages
+  after 60) must be tuned against it before anyone gets there (DESIGN-stars.md, balance).
+- PREMIUM stays: Ember is crystals only; she arrives at 1 star like everyone.
+- Old saves: a hero's tier 2 / 3 is his 2 / 3 stars; shards stay; turrets and drones start at
+  1 star. The afternoon's stage gates (the earlier update 2) are gone.
+- Check: smoke covers the ladder (texts, power, caps, doors, needs, a hero, a turret and a drone
+  stepping up, the round trips, Ember); the Gear pages were captured with a stars save.
+
+Update 3: THE PILOT TALENT MAP (your queue item 16 e). On the Hero page, a
+TALENTS button beside STATS opens the map: forty nodes in five columns, bought IN ORDER, each
+a small permanent bonus for EVERY hero. Bought nodes are gold, the next one teal, the rest
+dim; tap any node to read it; one button buys the next.
+- The ten-node cycle: Bolt damage +1.5%, Turret damage +2%, Hero HP +2%, Crit rate +0.5%,
+  Coins +3%, Base HP +2%, Fire rate +1%, Gem XP +3%, Crit damage +4%, Magnet +6 px. Four
+  times round = forty nodes; the whole map is about +6% bolt damage, +8% turret damage, +8%
+  HP, +2% crit, +12% coins, +8% base, +4% fire rate, +12% gem XP, +16% crit damage.
+- COSTS RISE the way you asked: coins first (330 for node 1, 6,000 for node 10, 18,000 for
+  node 20, 36,000 for node 30, 60,000 for node 40), then Cores from node 11, an essence of
+  the node's element from node 21, Prime Coils (plus 3 essences) from node 31. Node N opens
+  at pilot level N: a talent a level, so the map keeps pace with play, not with money.
+- EVERY 10TH NODE UNLOCKS A NEW POWER CARD for your runs (offered only once its node is
+  bought): node 10 FOCUS FIRE (bolt damage +6% a pick; overcharge crit rate +10%), node 20
+  SALVAGE (bugs drop +25% coins a pick; overcharge: every 10th kill drops a part), node 30
+  SECOND WIND (once a run, the blow that would finish you heals you to 50%, then 75%, then
+  full), node 40 MIRROR SHELL (a bolt that stops a bug's shot throws it back as a bolt of
+  yours for 50 / 75 / 100% damage; overcharge: your bolt flies on). Their pictures borrow the
+  stat icons until Luna paints card art.
+- A red dot on TALENTS (and on the Heroes tab) when a node is ready to buy.
+- THE STAR MAP (your note the same evening): the map is a galactic chart, not a list. Four
+  CONSTELLATIONS of ten stars, each a figure charted star by star along its lines, the tenth
+  star the figure's key point and the card: THE RIFLE (cyan), THE SENTRY (green), THE HIVE
+  MOTHER (purple), THE DOME (gold), each with a line of lore under its name. Charted stars
+  shine in their constellation's colour with gold lines between them, the next star pulses cyan
+  with dashes travelling toward it, the stars ahead wait dim on dotted lines, and a long faint
+  jump links one constellation to the next. The chart scrolls through deep space with a nebula
+  per constellation and twinkling far stars; it opens on your next star; a panel at the bottom
+  reads the star you tap and charts the next one. All drawn in code today; Luna's brief
+  (LUNA-BRIEF-talent-map.md) asks for the four skies with the figures as faint old-chart line
+  art, plus the star and star-system pieces, and the code picks them up the moment they land.
+- Check: smoke covers the costs, doors, buying, the bonuses in the hero stats and the cards'
+  gating; the map and a card pick with the three talent cards were captured.
+
+Update 4: LUNA'S HERO EVOLUTIONS are in (60 renders, all usable), and NO MORE
+DIVIDING LINES on the maps (your note).
+- Every hero has his tier 3 look as eight whole turn frames, plus a tier 2 and a tier 3
+  portrait: Rook in white-and-gold armour with a cape, Sparks in chrome with a bigger battery,
+  Cpt. Frost in ice-crystal armour, Hollow as a purple ring-haloed wraith, Nyx with a red-lit
+  cape and twin katanas, Ember in gold scale with wide wings. YOUR LADDER FOR THE LOOKS (the same evening): the
+  base look at 1 star; at 2, 3 and 4 stars a minor change (the tier 2 portrait on the roster, a
+  crisp rim of his element's light round him and the halo, both brighter each star); at 5 stars
+  the BIG change, Luna's tier 3 frames and portrait, on the Hero page, the roster, Home and in
+  battle; red stars keep the five-star look with a red halo until you design their extra. Cutter: tools/cut_heroes.gd (the back frames lined up to the
+- ROOK (your catch): his white-and-gold set changed his colours, and an evolution should keep  the hero's own theme and only ADD to him (Frost, Hollow, Nyx and Ember already do). So the  white-and-gold Rook is parked as his first SKIN (heroes/rook/skins/ceremonial, to unlock or  buy later with the colour skins you described: white and gold, neon green lights, a red or  blue body) and Rook shows his base look at 5 stars until Luna repaints that set in charcoal  and purple with the cape (LUNA-BRIEF-rook-5star.md, a small redo). Skins as a system are on  the queue (item 19) for after the Store and the Exchange.
+  front ones, one crop per hero); archive art_src/heroes/<hero>/t3_turn_1..8, portrait_t2 / t3.
+- THE STAR MAP blends: the sky of one constellation fades into the next over a long gradient,
+  no line; Luna's painted skies will overlap the same way (her brief asks for black at their top
+  and bottom edges).
+- THE STAGE MAP blends: every zone's world carries on up into the zone above it and fades out
+  there, so a planet's lava fades into the next planet's crystal instead of a cut and a cyan
+  line. The planet titles stay where they were.
+
+Update 5: THE SCRAP BELT FAMILY is in (Luna's 36 renders, all usable; queue item
+17 b). Planet 2 gets its own enemies: junk machines the bugs built, and from here on families
+STACK: the Hive bugs never leave, the machines join them.
+- Five machines, each taking a Hive role so the fights stay fair: SCRAP MITE (a tin-can drone
+  on two spinning rotors; the swarm), HULK DRONE (a reactor between two thruster panels; tough,
+  bursts into two JUNK BOLTS when it dies), RIVET GUN (a nose gun and a back pod that glows
+  before each rivet; the one that shoots you, rivets fly faster than goo), SPIKE DART (a missile-
+  drone that locks on and dives at the base), JUNK BOLT (the tumbling cluster a Hulk leaves).
+  All drawn from Luna's pieces: rotors spin with motion blur, panels sway, the pod fills and
+  empties, the Dart's flame flickers, and every one breaks into its own six chunks when it dies.
+- How they arrive: at stage 11 a third of each wave is machines, growing to 60% by stage 20,
+  and from planet 3 on about half of every wave stays machines beside the bugs. Rivet Guns from
+  stage 13, Darts from stage 15. Every machine gets its NEW ENEMY card the first time you meet it.
+- THE WRECKER, planet 2's mini-boss (stage 15): a crane machine on two wheel rotors that drops
+  to hover height, slides over one of your turrets and lowers its claw onto it: that turret is
+  HELD and cannot fire ("TURRET GRABBED!") until you shoot a quarter of the Wrecker's health off
+  it, then it lets go, lifts, and goes for another one a few seconds later. Shoot it dead and
+  the turret is free.
+- THE SALVAGE QUEEN, planet 2's boss (stage 20): a crane queen whose cargo hold opens on her
+  back to drop Mites ("RELEASING!"); she is weak while it is open. Angry, she launches Darts
+  instead of Divers. Her arms swing as she drifts. From planet 3 the mid-stage young boss
+  alternates between her and the Hive Mother, and Horde brings the planet's boss every other
+  time. The boss bar now names who you are fighting (Hive Mother, Wrecker, Salvage Queen).
+- THE COMMANDER: Luna's portrait heads the radio briefing when you reach a new planet
+  (urgent on the first two planets, calm after). Home shows the Queen or the Wrecker looming on
+  the Scrap Belt's boss stages, and the machines fly in the Home battle there.
+- Check: smoke covers the table, the waves, the bosses and the art; the sim won stages 11 to
+  22 with the auto kit, no errors; the briefing, the Wrecker holding a turret, the Queen and Home
+  on planet 2 were captured. Archive: art_src/scrap/; cutter tools/cut_scrap.gd.
+
+Update 6: LUNA'S STORE ART (21 of 30 renders so far: three keys, the three tier
+chests closed and open, five crates, four coin piles, two crystal piles, four badges; the chest
+pieces body / lid / burst and crystal piles 2-4 are still to come). The crates stand on the
+Offers packs (daily, weekly, monthly) and the Starter pack, the coin piles grow with the deal
+in the Shop, the crystal piles on the Crystals tab, the Exchange tab and its token teaser wear
+their icons, the chest cards carry the pity badge and a FREE tag. The Uncommon and Epic keys show everywhere keys do (prices, drops, the
+Workshop recipe, the chest cards), the gold Legendary key is kept for later. The Chests tab
+shows each chest closed in its tier's colour, and opening one pops the closed chest and swaps
+to its open picture with the burst, then the reward rises. Cutter: tools/cut_store2.gd (it also picks up the rest of the brief when it
+lands); archive art_src/store2/.
+
+Update 7: THE LONG-GAME RE-TUNE, first pass (your item 16 g), after a full sweep.
+- The sweep before: with the star ladder, the talent map and the twelve turrets, the auto
+  kit won every Normal stage 1 to 60 with the base never touched, and Elite 15 lost both runs
+  with the base down by wave 6 (an Elite Wrecker held a turret too long).
+- Changes: bug health after stage 30 climbs 3.5% a stage instead of 2%; the planet boss (stage
+  10, 20, ... 60) is half again as tough and arrives with its wave still coming, halfway on
+  planet 2 and a third of the way in from planet 3, so each boss is a soft wall with company;
+  the Wrecker lets a turret go after six seconds whatever happens.
+- The sweep after: Elite 15 won 2 of 2; Elite 25 and 40 won 1 of 2 with the base down to 25
+  and 50 (Elite is the hard ladder, as meant); a kit six stages behind lost half at stage 20
+  and still won 40 and 60. Normal 10 to 60 still won every run with the base untouched.
+- Honest note: the simulator's pilot dodges every shot and never takes damage, so Normal
+  looks softer in the sim than it will on a phone. Bigger moves (more boss layers, the boss
+  earlier on planet 1, chip damage in the first waves: IDEAS-rogue-defense.md) wait for your
+  playtest of this build. Sim knobs: SIM_STAR (force a star), SIM_KIT_PLUS (kit stages ahead
+  or behind).
+
+Update 8: THREE SMALL THINGS FROM YOUR RECORDINGS (IDEAS-rogue-defense.md).
+- DAMAGE BY SOURCE: the pause menu and the Stage Cleared screen now show who did the damage
+  this run: your hero, the drone and each turret by name, biggest first, with a share bar,
+  the total and the damage per second. You can see at a glance whether the Lance earns its
+  mount.
+- CHAIN: a card that is half of a fusion (Rapid Pulse, Heavy Bolts, Burst Fire, Magnet,
+  Reinforced Hull, Aegis, Chain Spark, Piercing Rounds) now carries a small CHAIN tag naming
+  the fusion it leads to, so the fusion system is visible on the pick instead of a surprise.
+- COIN REFRESH: once the free refresh is used, the card pick offers another refresh for the
+  coins picked up in this run: 150 coins, then 300, then 450. Spending them lowers the coins
+  the stage pays out, so it is a real choice.
+
+Update 9: YOUR BUILD ON THE TOP BAR, and the overcharge as a moment (two more
+from the recordings). The cards you have taken this run sit as a row of small pictures beside
+the LV chip, each with a pip per level, an overcharged one framed gold, so the build reads at
+a glance without opening the cards panel (which stays for the details). And the third pick of
+a card, the overcharge, now fires a gold ring off the hero, a shout, a beat of slow motion and
+a shake, so it feels like the event it is instead of a third copy of the same card.
+
+Update 10: A LUNA BRIEF FOR THE STAND-INS, and the first efficiency pass.
+- LUNA-BRIEF-icons-3.md asks for the fourteen material icons (the six essences, the weapon
+  and drone lines, a hero shard, an event token) as one sheet and the ten card pictures the
+  new turret cards and the four talent cards borrow today. The code picks them up by name the
+  moment they land.
+- Efficiency (your item 27, lighter never uglier): the top bar builds its stage title and
+  its clock only when they change instead of every frame, and the light-effect layer keeps a
+  ceiling on live effects (180, half in Battery saver) dropping the oldest on a crowded
+  screen. Nothing looks different.
+
+Update 11: LUNA'S HOME ROUND 2 IS IN (41 renders, all usable): every planet's sky
+as five layers, and the command dome as its own piece with its three super-weapon forms.
+- THE SKIES MOVE. Home, the menus and the battle stand in front of a layered sky now: a deep
+  star field that slides slowly and loops, a nebula layer in the planet's colours sliding a
+  little faster, up to eight floaters per planet (rocks, wrecks, a far hulk, a small ship,
+  debris) drifting and spinning across, the planet's curved horizon along the bottom that
+  breathes, and its atmosphere rim pulsing. Everything leans opposite the pilot for depth.
+  All six planets: Hive, Scrap Belt, Magma, Crystal, Plasma, Sentinel. The old flat paintings
+  stay as the fallback and on the Stage Map bands.
+- THE DOME IS A PIECE. Luna's standard dome sits on the strip in the exact place of the
+  painted one; her Orbital Beam, Shield Overcharge and EMP Pulse domes (idle, charging,
+  firing each) are cut to the same canvas and swap in place. The super weapons themselves
+  (queue item 10) are not built yet; the dome kind and frame are two values to set when they
+  are.
+- Luna's two open questions, for you: (1) the Crystal sky follows the brief (cyan, white,
+  pale blue) and does not match the older pink-and-purple crystal painting; my call: keep
+  cyan, it is the Ice world (Cpt. Frost, the Cryo Lens), and the old painting now only shows
+  on the Stage Map band, which can switch to the new planet layer. (2) Sparks' missing
+  straight-back frame: my call: paint it from his parts sheet; today the ring fades across the
+  gap, which reads as a hiccup in his spin.
+- Cutter: tools/cut_home2.gd (sky layers scaled for phones, light layers keyed to alpha, the
+  eight floaters cut from their sheet, the domes cut on one shared canvas). Archive:
+  art_src/skies/<planet>/, art_src/home2/.
 
 ## dev195: Luna's UI kit round 2, icons, drones round 2, stand, your screenshot notes, back frames, orbit rings, cards round 2, Elite eased in, hero evolutions, materials and the Craft tab, Store 2.0 and dev mode stages (thirteen updates since dev182)
 
