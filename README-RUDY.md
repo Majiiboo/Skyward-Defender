@@ -345,6 +345,16 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 10 (after dev195): A LUNA BRIEF FOR THE STAND-INS, and the first efficiency pass.
+- LUNA-BRIEF-icons-3.md asks for the fourteen material icons (the six essences, the weapon
+  and drone lines, a hero shard, an event token) as one sheet and the ten card pictures the
+  new turret cards and the four talent cards borrow today. The code picks them up by name the
+  moment they land.
+- Efficiency (your item 27, lighter never uglier): the top bar builds its stage title and
+  its clock only when they change instead of every frame, and the light-effect layer keeps a
+  ceiling on live effects (180, half in Battery saver) dropping the oldest on a crowded
+  screen. Nothing looks different.
+
 Update 9 (after dev195): YOUR BUILD ON THE TOP BAR, and the overcharge as a moment (two more
 from the recordings). The cards you have taken this run sit as a row of small pictures beside
 the LV chip, each with a pip per level, an overcharged one framed gold, so the build reads at

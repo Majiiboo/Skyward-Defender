@@ -5,7 +5,10 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 9 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 10 updates (next push = dev195 + that count; see the build rule).
+  10. LUNA-BRIEF-icons-3.md (materials sheet mat_<id> x14 incl. mat_shard / mat_token, ten pic_<card>)
+     + program row 13; EFFICIENCY pass 1 (27): battle _hud_title / _hud_num / _hud_nx / _hud_clock
+     cached (rebuilt on wave change in horde, per second for the clock), _fx_add cap 180 / 90 lite.
   9. HUD CARD ROW + OVERCHARGE MOMENT (IDEAS-rogue-defense.md, Undead 2 / 3): battle _card_tex
      (cached card pictures), _draw_card_row(at) beside the LV chip (18 px pictures, rarity frame,
      gold when Cards.overcharged, pips per level, "+n" overflow); _pick_card overcharge: nova,

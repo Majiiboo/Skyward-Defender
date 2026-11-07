@@ -291,6 +291,12 @@ var _rig_view: PilotRigView        # the new cut-out pilot (PilotRig.ENABLED); n
 # ---- UI ----
 var hud_font: Font = preload("res://fonts/exo2_semibold.tres")   # Exo 2 at weight 600 (Rudy: bolder text everywhere)
 var title_font: Font = preload("res://fonts/Orbitron-Variable.ttf")
+var _hud_title := ""               # the top bar strings, rebuilt only when they change (efficiency pass, 27)
+var _hud_title_key := -2
+var _hud_num := ""
+var _hud_nx := 18.0
+var _hud_clock := "00:00"
+var _hud_clock_s := -1
 var _pause_btn: Button
 var _pause_panel: Control
 var _card_panel: Control
@@ -4138,6 +4144,11 @@ func _draw_shards() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
+	# a ceiling on live effects (efficiency pass, 27): the oldest goes first on a crowded screen,
+	# and battery saver keeps half as many
+	var cap: int = 90 if Perf.lite() else 180
+	if fxs.size() >= cap:
+		fxs.pop_front()
 	fxs.append({"tex": name, "pos": pos, "size": size, "rot": rot, "life": life, "max": life, "grow": grow, "col": col})
 
 # The additive light layer: Luna's shot and hit sprites (painted on black, so they
@@ -4388,13 +4399,20 @@ func _draw_hud() -> void:
 	else:
 		Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
 	# row 1: stage number (white) and name (cyan), then the run time
-	var num := "%d " % stage
-	_hc.draw_string(title_font, Vector2(18, 30), num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-	var nx: float = 18.0 + title_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
-	_hc.draw_string(title_font, Vector2(nx, 30), (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else StageData.stage_name(stage)))).to_upper(), HORIZONTAL_ALIGNMENT_LEFT, 240.0 - nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
-	var mins := int(time_alive) / 60
-	var secs := int(time_alive) % 60
-	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), "%02d:%02d" % [mins, secs], HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	# the stage title and the clock are built once per change, not per frame (efficiency pass, 27)
+	var hud_key: int = wave_index if horde else -1
+	if _hud_title == "" or _hud_title_key != hud_key:
+		_hud_title_key = hud_key
+		_hud_num = "%d " % stage
+		_hud_nx = 18.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else StageData.stage_name(stage)))).to_upper()
+	_hc.draw_string(title_font, Vector2(18, 30), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	_hc.draw_string(title_font, Vector2(_hud_nx, 30), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, 240.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
+	var whole_s := int(time_alive)
+	if whole_s != _hud_clock_s:
+		_hud_clock_s = whole_s
+		_hud_clock = "%02d:%02d" % [whole_s / 60, whole_s % 60]
+	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), _hud_clock, HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
 	if Perf.show_fps:   # Settings > frame counter
 		_hc.draw_string(hud_font, Vector2(18, HUD_H + 14), "%d fps" % Engine.get_frames_per_second(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(muted, 0.8))
 	# cards button: three small fanned cards
