@@ -646,6 +646,16 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
    threatened" is partly the bot. OLDER
    (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
+31. STYLE PASS research (Rudy, 2026-11-07): Desktop/menu ideas (10 images) + an article on modern mobile
+   menus. TAKE: one dominant action per screen (gold), secondary smaller; bold rounded readable font
+   with hierarchy; FLAT panels (no gloss / no dark lip) with a solid header strip; square item tiles
+   with the price under (purple flat kit); active nav tab that RISES out of the bar (Kingdom map hub);
+   dark navy + one accent (cyan) + gold, cut-corner sci-fi shapes (Commander phones); hero big on a
+   podium with a slim stat panel at the side (shooter collage); rounded cards, pill badges, generous
+   spacing (purple social app); micro-interactions (press bounce, count-ups, pop-ins); frosted glass
+   kept but flat. SKIP: kids/fantasy ornate wood/gold frames, AI-generated glossy phones. NEXT: an HTML
+   mock-up (Artifact, Google Fonts) of one page in 2-3 style/font options for Rudy to pick; then
+   fonts into fonts/ (OFL) and the page-by-page pass.
 30. 3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
    Lance rotates a side-view picture). DECIDED: option 3 first = Luna makes 3D models from her
    renders with an image-to-3D tool (Meshy / Tripo), Claude PHOTOGRAPHS them in Godot at many
