@@ -20,6 +20,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      mat_shard on the hero panel via UIKit.ic("mat_shard", "ic_shard"); mat_token unused until the Exchange),
      cards/pic_<id>.png 256 (battle _card_pic prefers them); pic_cryo_deep redone the same night (v1 kept). LUNA-PROGRAM row 13 DELIVERED; Luna's only open
      work: Store leftovers (row 9).
+     STORE PIECE 1 (same update): art_src/store2/chest_l_body.webp -> icons/chest3d_l_body.png (cut_store2 already
+     handled it); HomeProp.tier + has_tier(k) (all three chest3d_<k>_body/_lid/_burst exist) + _stacked lid draw
+     (Luna's pieces share one frame: lid over the body rect, hinge at the back); store _chest_fx opens a
+     HomeProp with the tier when has_tier, else the chest2 closed/open pop. Tested with stand-in lid/burst
+     (removed); tune the lid hinge when her lid lands. Still owed: chest_u/e/l lid + burst, chest_u/e body, crystals_2..4.
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
   dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, one still open (LUNA-PROGRAM.md
   row 9 part: the Store leftovers; 11 star map, 12 Rook redo, 13 icons 3 all landed, unpushed updates 1-2); Rudy's rules of the day: stars not stage

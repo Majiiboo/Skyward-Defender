@@ -738,11 +738,20 @@ func _chest_fx(reward: Dictionary, tier: String = "") -> void:
 	dim.color = Color(0, 0.01, 0.04, 0.7)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
-	# Luna's tier chest (store2): the closed chest pops, then its open picture with the burst
-	# takes over; without it, the old three-piece chest prop opens
+	# Luna's tier chest in three pieces (store2 chest_<t>_body / _lid / _burst): the lid lifts and the
+	# light bursts out (HomeProp with a tier); until all three are cut, the closed chest pops and its
+	# open picture takes over; without those, the old three-piece Home chest opens
 	var closed := "res://icons/chest2_%s_closed.png" % tier
 	var opened := "res://icons/chest2_%s_open.png" % tier
-	if tier != "" and ResourceLoader.exists(closed) and ResourceLoader.exists(opened):
+	if tier != "" and HomeProp.has_tier(tier):
+		var hp3 := HomeProp.new()
+		hp3.kind = "chest"
+		hp3.tier = tier
+		hp3.size = Vector2(220, 220)
+		hp3.position = size * 0.5 - Vector2(110, 140)
+		dim.add_child(hp3)
+		hp3.call_deferred("open")
+	elif tier != "" and ResourceLoader.exists(closed) and ResourceLoader.exists(opened):
 		var pic := TextureRect.new()
 		pic.texture = load(closed)
 		pic.size = Vector2(200, 200)

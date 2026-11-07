@@ -7,6 +7,8 @@ extends Control
 # Sits over a Button (mouse ignored); hub.gd clears the button's own icon.
 
 var kind := "drone"
+var tier := ""           # "u" / "e" / "l": Luna's Store chest in three pieces (icons/chest3d_<tier>_body / _lid / _burst), set before add_child
+var _stacked := false    # the tier pieces share one frame (LUNA-BRIEF-store-2.md), so the lid draws over the body's own rect
 var t := 0.0
 var _open := 0.0         # 0 closed .. 1 lid fully up (chest)
 var _open_t := -1.0
@@ -21,6 +23,10 @@ func _ready() -> void:
 	load_drone()
 	for n in ["drone_body", "drone_prop", "drone_thrust", "chest3d_body", "chest3d_lid", "chest3d_burst"]:
 		_tex[n] = load("res://icons/%s.png" % n)
+	if tier != "" and has_tier(tier):
+		for p in ["body", "lid", "burst"]:
+			_tex["chest3d_" + p] = load("res://icons/chest3d_%s_%s.png" % [tier, p])
+		_stacked = true
 	_light = Node2D.new()
 	var add := CanvasItemMaterial.new()
 	add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
@@ -28,6 +34,13 @@ func _ready() -> void:
 	_light.show_behind_parent = true
 	_light.draw.connect(_draw_light)
 	add_child(_light)
+
+# true once Luna's three pieces of that tier's chest are all cut (a body alone cannot open)
+static func has_tier(k: String) -> bool:
+	for p in ["body", "lid", "burst"]:
+		if not ResourceLoader.exists("res://icons/chest3d_%s_%s.png" % [k, p]):
+			return false
+	return true
 
 var hold := false   # stay open until close() (dev167: the Home chest while its overlay shows)
 
@@ -119,8 +132,14 @@ func _draw_chest() -> void:
 	var lw := w
 	var lh := lw * lid.get_height() / lid.get_width()
 	var lp := Vector2(c.x, r.position.y + h * 0.16 - _open * h * 0.45)
-	draw_set_transform(lp, -0.35 * _open, Vector2.ONE)
-	draw_texture_rect(lid, Rect2(-lw * 0.5, -lh * 0.5, lw, lh), false)
+	if _stacked:
+		# Luna's lid is painted in the body's frame: same rect, lifted off and tipped back from its hinge at the back
+		lp = Vector2(c.x, c.y - _open * h * 0.4)
+		draw_set_transform(Vector2(lp.x, lp.y - lh * 0.25), -0.5 * _open, Vector2.ONE)
+		draw_texture_rect(lid, Rect2(-lw * 0.5, -lh * 0.25, lw, lh), false)
+	else:
+		draw_set_transform(lp, -0.35 * _open, Vector2.ONE)
+		draw_texture_rect(lid, Rect2(-lw * 0.5, -lh * 0.5, lw, lh), false)
 	draw_set_transform_matrix(Transform2D.IDENTITY)
 	# a faint breathing rim glow so the chest says "tap me"
 	var g := 0.5 + 0.5 * sin(t * 2.2)
