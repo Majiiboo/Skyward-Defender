@@ -5,7 +5,11 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 8 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 9 updates (next push = dev195 + that count; see the build rule).
+  9. HUD CARD ROW + OVERCHARGE MOMENT (IDEAS-rogue-defense.md, Undead 2 / 3): battle _card_tex
+     (cached card pictures), _draw_card_row(at) beside the LV chip (18 px pictures, rarity frame,
+     gold when Cards.overcharged, pips per level, "+n" overflow); _pick_card overcharge: nova,
+     burst, "OVERCHARGE!" text, hitstop 0.12, shake, Sfx level.
   8. FROM THE RECORDINGS (IDEAS-rogue-defense.md 1, 3, Undead 1): battle _dmg_by + _count_dmg at
      every hit (b.src / t.type / "hero" / "drone"), _dmg_rows(compact) on the pause menu and the
      end screen (share bar, total, per second); Cards.chain_of(id) + CHAIN tag in _make_card;

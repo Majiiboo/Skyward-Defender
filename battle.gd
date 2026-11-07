@@ -2858,6 +2858,46 @@ func _open_cards() -> void:
 
 # A card's picture: Luna's cards/pic_<id>.png, else a menu icon. A fusion without its
 # own picture shows its two parts side by side, overlapping.
+# the cards taken this run, as a row of small pictures beside the LV chip with a pip per level
+# (dev199, Rudy's Undead Slayer note): the build at a glance; overcharged ones framed gold
+var _card_tex_cache := {}
+func _card_tex(id: String) -> Texture2D:
+	if _card_tex_cache.has(id):
+		return _card_tex_cache[id]
+	var own := "res://cards/pic_%s.png" % id
+	var path: String = own if ResourceLoader.exists(own) else String(Cards.def(id).get("pic", ""))
+	if path == "" and Cards.FUSIONS.has(id):
+		path = "res://cards/pic_%s.png" % String(Cards.FUSIONS[id].parts[0])
+	var tex: Texture2D = load(path) if path != "" and ResourceLoader.exists(path) else null
+	_card_tex_cache[id] = tex
+	return tex
+
+func _draw_card_row(at: Vector2) -> void:
+	if card_levels.is_empty():
+		return
+	var ids: Array = card_levels.keys()
+	var px := 18.0
+	var step := px + 5.0
+	var room: int = int((FIELD_W - 150.0 - at.x) / step)   # up to the HUD buttons on the right
+	var shown: int = mini(ids.size(), room)
+	for i in shown:
+		var id: String = ids[i]
+		var lvl: int = int(card_levels[id])
+		var def: Dictionary = Cards.def(id)
+		var over: bool = Cards.overcharged(card_levels, id)
+		var col: Color = Glass.GOLD if over else Cards.COLOR.get(String(def.get("rarity", "common")), Color.WHITE)
+		var r := Rect2(at + Vector2(i * step, 0), Vector2(px, px))
+		_hc.draw_rect(r.grow(1.0), Color(0.03, 0.05, 0.12, 0.85))
+		var tex := _card_tex(id)
+		if tex != null:
+			_hc.draw_texture_rect(tex, r, false)
+		_hc.draw_rect(r.grow(1.0), Color(col, 0.9), false, 1.0)
+		# level pips under it
+		for k in mini(lvl, 3):
+			_hc.draw_circle(r.position + Vector2(3.0 + k * 6.0, px + 4.0), 1.6, Color(col, 0.95))
+	if ids.size() > shown:
+		_hc.draw_string(hud_font, at + Vector2(shown * step, 13.0), "+%d" % (ids.size() - shown), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIKit.MUTED)
+
 func _card_pic(id: String, h: float) -> Control:
 	if Cards.FUSIONS.has(id) and not ResourceLoader.exists("res://cards/pic_%s.png" % id):
 		var row := HBoxContainer.new()
@@ -2971,6 +3011,14 @@ func _pick_card(id: String) -> void:
 	card_levels[id] = int(card_levels.get(id, 0)) + 1
 	if over:
 		_overcharge(id)
+		# its own moment (dev199, Rudy's Undead Slayer note): a gold ring off the hero, a shout,
+		# a beat of hit-stop and a shake, so the third pick feels like the event it is
+		_fx_add("nova", soldier_pos, 130.0, 0.6, 0.0, 2.4, Color(1.0, 0.85, 0.4))
+		_burst(soldier_pos, 40.0, Color(1.0, 0.85, 0.4), 18)
+		_float_text(soldier_pos + Vector2(0, -84), "OVERCHARGE!", Color(1.0, 0.85, 0.4), true)
+		hitstop = maxf(hitstop, 0.12)
+		shake = maxf(shake, 0.35)
+		Sfx.play("level", 1.3)
 	match id:
 		"rapid_pulse": fire_rate_mult *= 1.10
 		"heavy_bolts": damage_mult *= 1.15
@@ -4439,6 +4487,7 @@ func _draw_hud() -> void:
 	var chip := Rect2(12, HUD_H - 8, 48, 18)
 	Glass.panel(_hc, Glass.box(chip, 8.0), 1.0, Color(Glass.PURPLE, 0.8), Color(0.08, 0.05, 0.16, 0.9))
 	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
+	_draw_card_row(Vector2(chip.end.x + 8.0, chip.position.y))
 	for e in enemies:
 		if _is_boss(e):
 			_draw_boss_bar(e)

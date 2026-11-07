@@ -345,6 +345,13 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 9 (after dev195): YOUR BUILD ON THE TOP BAR, and the overcharge as a moment (two more
+from the recordings). The cards you have taken this run sit as a row of small pictures beside
+the LV chip, each with a pip per level, an overcharged one framed gold, so the build reads at
+a glance without opening the cards panel (which stays for the details). And the third pick of
+a card, the overcharge, now fires a gold ring off the hero, a shout, a beat of slow motion and
+a shake, so it feels like the event it is instead of a third copy of the same card.
+
 Update 8 (after dev195): THREE SMALL THINGS FROM YOUR RECORDINGS (IDEAS-rogue-defense.md).
 - DAMAGE BY SOURCE: the pause menu and the Stage Cleared screen now show who did the damage
   this run: your hero, the drone and each turret by name, biggest first, with a share bar,
