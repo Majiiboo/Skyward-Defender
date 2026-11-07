@@ -2189,6 +2189,22 @@ Other useful files:
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
 
+## Next build (unpushed since dev206: 1 update)
+
+Update 1: LUNA'S STAR MAP ART and ROOK'S FIVE-STAR REDO are in.
+- The star map (Gear > TALENTS) now shows Luna's four constellation skies, each with its figure
+  drawn as faint ghost lines (The Rifle, The Sentry, The Hive Mother, The Dome), and her star
+  pieces: a dim star for one you have not charted, a bright one once charted (it takes the
+  constellation's tint), a ringed one for the next star you can chart, and a planet-with-rings
+  for the tenth star of each figure (the special one that gives a card). The code places the
+  stars on the same frame she painted the lines in, so her figures pass through them. Her
+  redone first sky (sent later the same night) is the one in use. Cutter: tools/cut_talents.gd.
+- Rook at five stars: the new set in his own charcoal and purple (cape, crest, extra plating),
+  eight turn frames and the portrait, shown on the Gear page, the roster tile and in battle.
+  The second turn_4 she sent is kept as an alt. The white-and-gold set stays parked as his
+  Ceremonial skin for the skin library later.
+- Nothing else changed; smoke passes.
+
 ## How sending work back works
 
 Yes, exactly like you said: you just send the files back here.

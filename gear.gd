@@ -2433,7 +2433,9 @@ class StarMap extends Control:
 		var s: int = clampi((n - 1) / 10, 0, 3)
 		var i: int = (n - 1) % 10
 		var pt: Vector2 = SHAPES[s][i]
-		return Vector2(40.0 + pt.x * (width - 80.0), TOP + s * SECTOR_H + 58.0 + pt.y * (SECTOR_H - 96.0))
+		# shares of the WHOLE sector box, the same frame Luna painted the figure lines in
+		# (LUNA-BRIEF-talent-map.md), so her ghost figures pass through the stars
+		return Vector2(pt.x * width, TOP + s * SECTOR_H + pt.y * SECTOR_H)
 
 	static func sector_of(n: int) -> int:
 		return clampi((n - 1) / 10, 0, 3)
@@ -2459,8 +2461,9 @@ class StarMap extends Control:
 			var col: Color = SECTORS[s].col
 			var y0: float = TOP + s * SECTOR_H
 			if _tex.has("nebula_%d" % s):
-				# Luna's sky fades to black at its top and bottom, so neighbours overlap into each other
-				draw_texture_rect(_tex["nebula_%d" % s], Rect2(0, y0 - BLEND * 0.5, w, SECTOR_H + BLEND), false, Color(1, 1, 1, 0.9))
+				# Luna's sky exactly over the sector box (her figure lines meet the stars there); it
+				# fades to black at its edges, and the gradient underneath carries the blend
+				draw_texture_rect(_tex["nebula_%d" % s], Rect2(0, y0, w, SECTOR_H), false, Color(1, 1, 1, 0.95))
 			else:
 				Backdrop.soft_glow(self, Vector2(w * (0.28 + 0.44 * (s % 2)), y0 + SECTOR_H * 0.42), w * 0.6, Color(col, 0.16))
 				Backdrop.soft_glow(self, Vector2(w * (0.7 - 0.4 * (s % 2)), y0 + SECTOR_H * 0.8), w * 0.35, Color(col.lerp(Color(1, 0.6, 0.9), 0.4), 0.1))
@@ -2517,7 +2520,9 @@ class StarMap extends Control:
 	func _star(p: Vector2, px: float, col: Color, a: float, tex_name: String, system: bool) -> void:
 		if _tex.has(tex_name):
 			var tx: Texture2D = _tex[tex_name]
-			draw_texture_rect(tx, Rect2(p - Vector2(px, px), Vector2(px, px) * 2.0), false, Color(1, 1, 1, a))
+			# Luna's white star takes the constellation's tint once charted (lit), stays white while next
+			var tint: Color = col.lerp(Color.WHITE, 0.35) if tex_name.ends_with("_lit") else Color.WHITE
+			draw_texture_rect(tx, Rect2(p - Vector2(px, px), Vector2(px, px) * 2.0), false, Color(tint, a))
 			return
 		var r: float = px * 0.5
 		Backdrop.soft_glow(self, p, r * 3.0, Color(col, a * 0.45))
