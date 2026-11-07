@@ -643,6 +643,16 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
    threatened" is partly the bot. OLDER
    (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
+30. 3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
+   Lance rotates a side-view picture). DECIDED: option 3 first = Luna makes 3D models from her
+   renders with an image-to-3D tool (Meshy / Tripo), Claude PHOTOGRAPHS them in Godot at many
+   angles (one lighting, frames that line up, turret heads one frame per aim angle), game stays
+   2D. Test with ONE hero (Rook) and ONE turret (Lance, base + head as two models); if Rudy likes
+   it, all turrets then heroes; if not, option 2 = live 3D models. Brief: LUNA-BRIEF-3d-test.md
+   (zip on the Desktop with 1_rook_front / 2_rook_back / 3_lance_base / 4_lance_head PNGs).
+   ALSO DECIDED: hero ladder ASCEND: rarity = the step (Common .. Legendary, Mythic = red),
+   every hero can reach the top, a rarer hero starts higher, each step unlocks a hero power-up
+   (build after batch 1 with the Hero page cleanup + Level Up screen).
 29. RUDY PLAYTEST dev209 (2026-11-07, phone; screenshots to come; "step by step"). His notes:
    GAMEPLAY: status effects must SHOW on bugs (ice: bluish, frost building up, slow -> freeze
    at high levels; fire: burning, spreads bug to bug on touch later, burning ground patches);
