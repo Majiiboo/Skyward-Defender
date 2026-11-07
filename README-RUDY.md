@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev209 (version/code=209 and version/name="1.0-dev209" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev210 (version/code=210 and version/name="1.0-dev210" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,55 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev210: your dev209 playtest, batch 1 (gameplay and the broken bits)
+
+Everything from your phone notes and screenshots that needed no style choice.
+
+FIGHTING
+- Ice and fire show ON the bugs. Slowed bugs turn icy blue with frost crystals on them; at full
+  Deep Freeze a hit can freeze a bug solid for a moment (an ice block that can't move or shoot).
+  Burning bugs glow red-orange with flames licking off them; from Afterburn level 2 the fire
+  jumps to bugs they touch; at its overcharge a burning bug that dies leaves a burning patch that
+  sets passing bugs alight.
+- Bosses last much longer: big planet bosses 2.5x the health, shown as 8 layers on the bar;
+  mini-bosses twice the health, 5 layers.
+- Power cards come slower so each one matters: stage 5 now ends near level 5 (was 11), stage 20
+  near 13 (was about 20). The autopilot still wins stages 5, 10, 20, 30 and 50.
+- Card text: one short line for what THIS pick does ("3-bolt bursts", "Hits slow bugs 30%"), the
+  level shown as NEW or Lv.2 in the rarity colour, the CHAIN line replaced by a small link badge
+  in the corner, and nothing can spill outside the card any more.
+- XP gems: no grey ring; a thin dark edge (still visible on blue worlds) and a little glitter.
+- End of a stage: no more vacuum show. Coins still on screen are added at once, leftover gems
+  vanish (cards reset anyway) and he flies off straight away. Between waves the pull stays.
+- Bolts: the twisted "DNA" bolt (Burst Fire) and the pill bolts (Heavy Bolts) are gone. Burst
+  Fire fires two thin bolts side by side; Heavy Bolts is Luna's bolt, bigger with a hot core.
+- Variants show on the bug: Armoured = steel bands across its back that break off as it weakens;
+  Shielded = an energy shell with a hex pattern; Booster = orange speed chevrons; Healer = a green
+  cross. The first time you meet each one, the small NEW VARIANT card says what it does (no
+  "kill it first").
+- Turrets: the Lance is a mounted gun now (it pivots in its base, the beam leaves its muzzle, the
+  base no longer vanishes as it turns), and every turret sits ON its base: no hovering heads, no
+  bobbing, no Sentry energy field, in battle and on Home.
+
+SCREENS
+- Boxes wider than the phone fixed: Stage Cleared (drops are now picture tiles that wrap onto a
+  second row), the Promotion card on Modes (buttons under the rank text), the Store tabs and the
+  pack texts.
+- Two-line buttons ("Level up / 90 coins", "Chart star 1 / 330 coins") no longer cut off; button
+  text is centred on the coloured face, above the dark lip.
+- The battle title now changes when you press Next stage (it used to keep stage 1's name).
+- Pause menu: the damage list and the "leaving ends this run" line are gone; Back to Hub asks
+  "Leave the stage? You will restart it from wave 1." The damage ranking (who did the most) is on
+  the Stage Cleared screen.
+
+FOR LUNA (sent separately)
+- LUNA-BRIEF-3d-test.md + "Luna 3D test.zip": turn Rook and the Lance into 3D models with an
+  image-to-3D tool, so Claude can photograph them from every angle for smooth turning and aiming.
+
+STILL TO COME (batch 2, after you pick a style): fonts, buttons without the dark lip, big square
+cards, the seamless tab strip, chest opening that shows the item, Patrol window, Hero page
+(Loadout button, Level Up screen, Ascend ladder), star map, element wheel, nav highlight, top bar.
 
 ## dev209: Luna's star map art and Rook's five-star set, icons 3, and the Store art complete with chests that open as body, lid and burst (three updates since dev206)
 

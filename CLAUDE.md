@@ -3,9 +3,12 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-07, build dev209)
+## Where we are (hand-over, 2026-11-07, build dev210)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev209: 0 updates (next push = dev209 + that count; see the build rule).
+- UNPUSHED since dev210: 0 updates. dev210 = Rudy's dev209 playtest BATCH 1 (queue item 29: gameplay + broken
+  bits, README-RUDY dev210). NEXT: batch 2 = the style pass (Rudy shared a "menu ideas" folder on his
+  Desktop + an article: big square cards, one dominant action, icons over text, micro-animations,
+  glass); then the Hero page + Ascend ladder (item 30); Luna is on the 3D test (item 30).
   dev209 (pushed 2026-11-07, Fable 5.1 session) carried the three updates listed next (README-RUDY dev209):
   Luna's star map art + Rook 5-star, icons 3, Store 2.0 art complete. Luna has NO open brief.
   1. LUNA STAR MAP + ROOK 5-STAR in (unpushed update 1): art_src/talents/ (nebula_0..3, the redone
@@ -413,7 +416,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev209 (code 209).
+  go UP every package (same signing key, install-over). Current: dev210 (code 210).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push
