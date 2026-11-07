@@ -24,9 +24,15 @@ Files go in `art_src/store2/`. Black backgrounds. Light from above and a little 
 | Epic | purple light, dark charcoal body with purple seams | a heavier chest with angled armour plates, a purple core window in the front | `chest_e_body`, `chest_e_lid`, `chest_e_burst` |
 | Legendary | gold light, black-and-gold body | an ornate chest with gold edges, a glowing gold sun emblem on the lid, small floating gold specks | `chest_l_body`, `chest_l_lid`, `chest_l_burst` |
 
-`_body` = the chest without its lid (dark inside). `_lid` = the lid alone, in the place it
-sits when closed. `_burst` = only the light that comes out when it opens (rays and glow, the
-tier's colour, on black). All three at the same size and place as the pieces in `icons/`.
+`_body` = the chest without its lid (dark inside). `_lid` = ONLY THE LID, like a tray lying on
+black: a flat slab with the top design on it and its thin gold edge, seen from the same camera
+as the body, floating in the place it would sit on the open body. There is NO box under it: if
+you can see the front of the chest, the latch, or the dark inside, it is a closed chest, not a
+lid. The easiest way to get it: render the open body first, then ask for "the lid of that
+chest alone, lifted straight off and shown by itself at the same angle" (the Uncommon and
+Legendary lids you made are exactly right: a slab, no box). `_burst` = only the light that
+comes out when it opens (rays and glow, the tier's colour, on black). All three at the same
+size and place as the pieces in `icons/`: the code stacks the lid over the body's rim.
 
 ## 2. Three keys (256 x 256 each)
 `key_u.webp`, `key_e.webp`, `key_l.webp`: a chunky stylised key, the same shape in all three,

@@ -2225,6 +2225,10 @@ Update 3: LUNA'S STORE 2.0 ART IS COMPLETE (the last twelve pieces, all usable).
   light pours out of the open chest, then it settles shut. Uncommon is the riveted steel box with
   a teal latch, Epic the armoured charcoal chest with a purple core window, Legendary the black-
   and-gold chest with the sun on its lid and gold specks floating round it.
+- The Legendary lid first came as the whole closed chest (a box lifting off a box, as you saw);
+  Luna then painted the lid on its own and that is the one in the game. The brief now says in
+  plain words what a lid render is (a slab lying on black, no box under it) so the next chest
+  comes right first time.
 - Crystal piles: all five sizes are in (one crystal, a handful, a small pile, a big pile, the
   heap), and the Crystals tab now shows five crystal packs (x80, x300, x650, x1400, x3200) with
   the pile that matches each size. The prices there are placeholders until Google Play Billing;

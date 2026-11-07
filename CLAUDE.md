@@ -31,6 +31,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      tipping from its back hinge; store _chest_fx uses it for all three tiers (captured, good). store.gd PACKS
      = five crystal packs (x80..x3200, placeholder prices) + Starter + Speed, crystal_pile(n) picks crystals_1..5.
      LUNA-PROGRAM: every row delivered; no open brief. Next brief when needed: super weapons (queue 10).
+     LID LESSON (Rudy): chest_l_lid came as the whole closed chest; Luna redid it as a slab the same night
+     (closed render kept as art_src/store2/chest_l_lid_closed.webp). cut_store2 LID_FROM_CLOSED + _lid_from_closed
+     (warp a closed render's seam onto the body rim, cut below) exist but are unused; a first try with rough
+     corners looked wrong, so prefer a real lid render. LUNA-BRIEF-store-2.md reworded: a lid = a slab on black.
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
   dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, none still open (LUNA-PROGRAM.md
   rows 9, 11, 12, 13 all landed in unpushed updates 1-3; Luna is free for the next brief); Rudy's rules of the day: stars not stage
