@@ -5,7 +5,18 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 10 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 11 updates (next push = dev195 + that count; see the build rule).
+  11. LUNA HOME 2 in (41 renders; art_src/skies/<p>/ stars / clouds / planet / glow / floaters +
+     art_src/home2/ strip_nodome, dome_standard, dome_<beam|shield|emp>_<1..3>; tools/cut_home2.gd
+     -> skies/<p>_stars.webp 640x1280, _clouds.webp (alpha from light), _planet.webp 800x500 (keyed),
+     _glow.webp, _float_0..7.png; base/strip_nodome.png (unused: the painted strip stays), base/
+     dome_<kind>.png on ONE union canvas 406x480): Backdrop.PLANET_OF / planet_of / has_sky_layers /
+     draw_sky_layers (stars loop t*3, clouds t*5.5, FLOAT_LANES x8, planet zoom, glow pulse) called
+     from draw_world when the layers exist (all three callers: afk_wallpaper, battle, menu_backdrop);
+     draw_strip -> draw_dome (STRIP_DOME Rect2(0.427, 0, 0.146, 0.85), DOME_IN_CANVAS, dome_kind /
+     dome_frame statics for queue item 10). Stage map bands still use backdrops/<bg>.webp.
+     IDEAS-tap-titans-afk.md: Rudy's two recordings (next goal chip, gain on the button, hold to
+     level, unlock splash, prestige later, auto-advance, progress bundles).
   10. LUNA-BRIEF-icons-3.md (materials sheet mat_<id> x14 incl. mat_shard / mat_token, ten pic_<card>)
      + program row 13; EFFICIENCY pass 1 (27): battle _hud_title / _hud_num / _hud_nx / _hud_clock
      cached (rebuilt on wave change in horde, per second for the clock), _fx_add cap 180 / 90 lite.
@@ -520,7 +531,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    collected items traded for chests/items (event shops). Real money needs Google Play Billing
    (until then "coming soon"). Keep the premium currency called Crystals: "gems" are the XP
    pickups in battle.
-19. LATER (Rudy): a SKIN LIBRARY for turrets AND HEROES (2026-11-06: hero skins are NAMED ICONIC THEMES, never colour labels: "Ceremonial" (the white-and-gold Rook), "The Prophet", a nightfall look, an ironclad look...; each a full look, maybe the cape as its own piece; heroes/<id>/skins/<skin>/turn_1..8 + portrait, worn at any star; Rook ceremonial is the first set): alternate designs / themes per turret (looks only, no
+19. LATER (Rudy): a SKIN LIBRARY for turrets, HEROES and the BASE PLATFORM (2026-11-06; platform skins = Luna strips with the four sockets and the dome spot in the SAME places, STRIP_SOCKETS / STRIP_DOME fractions, e.g. a junk deck, an ice deck, a gold ceremonial deck; unlocked per planet or bought; hero skins are NAMED ICONIC THEMES, never colour labels: "Ceremonial" (the white-and-gold Rook), "The Prophet", a nightfall look, an ironclad look...; each a full look, maybe the cape as its own piece; heroes/<id>/skins/<skin>/turn_1..8 + portrait, worn at any star; Rook ceremonial is the first set): alternate designs / themes per turret (looks only, no
    stats), unlocked or bought (crystals, events, Exchange). Needs Luna art per skin.
 20. LATER (Rudy): RANKINGS with weekly rewards: leaderboards (e.g. highest stage, Horde score,
    Boss Rush time) run in 30-DAY SEASONS (Rudy) with a visible countdown ("Ends in 29 days");
@@ -540,6 +551,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    tiles (store.gd _teaser). dev157: UIKit.enter / leave / pop_in (page transitions, pause menu). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
    (none exists), Orbitron on Modes/Stage Map vs the Exo 2 rule, Luna trophy art, quest task icons, hide "x1 Common"
    base stacks in Workshop > Gear (DONE dev152, _inv_filter.show), a Settings page after sound, battle HUD/end-screen visual pass.
+23c. IDEAS FROM TAP TITANS 2 + AFK ARENA (2026-11-06): IDEAS-tap-titans-afk.md, ranked: the next
+   goal always named on Home, the gain shown on every Level up button, hold to level, a full
+   unlock splash with art, prestige as a 2.0 loop, auto-advance after a win, progress bundles.
 23b. IDEAS FROM ROGUE DEFENSE + UNDEAD SLAYER (Rudy's recordings, 2026-11-06): IDEAS-rogue-defense.md,
    ranked: stats per source on pause / clear, the boss as half the stage, Chain tags on fusion
    cards, base HP as a number with slow leaks, coin-cost rerolls, the taken-cards row on the HUD.

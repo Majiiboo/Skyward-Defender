@@ -33,6 +33,37 @@ static func socket_pos(i: int, width: float, bottom_y: float) -> Vector2:
 static func draw_strip(c: CanvasItem, width: float, bottom_y: float) -> void:
 	var r := strip_rect(width, bottom_y)   # loads _strip on first use, so before it is read
 	c.draw_texture_rect(_strip, r, false)
+	draw_dome(c, r)
+
+# ---- the command dome as its own piece (Home round 2, dev199; base/dome_<kind>_<n>.png from
+# tools/cut_home2.gd): drawn over the painted dome in the same place. kind = "standard", or a
+# super weapon ("beam", "shield", "emp") with frame 1 idle / 2 charging / 3 firing (queue item
+# 10, the super weapons, sets these). Every dome picture shares one canvas (the union of them),
+# and the standard dome sits at DOME_IN_CANVAS inside it; on the strip the standard dome fills
+# STRIP_DOME (fractions of the strip rect; y may rise above it).
+const STRIP_DOME := Rect2(0.427, 0.0, 0.146, 0.85)
+const DOME_IN_CANVAS := Rect2(0.0106, 0.1801, 0.9815, 0.8121)
+static var dome_kind := "standard"
+static var dome_frame := 1
+static var _domes := {}
+
+static func dome_tex(kind: String, frame: int) -> Texture2D:
+	var name := "standard" if kind == "standard" else "%s_%d" % [kind, clampi(frame, 1, 3)]
+	if not _domes.has(name):
+		var p := "res://base/dome_%s.png" % name
+		_domes[name] = load(p) if ResourceLoader.exists(p) else null
+	return _domes[name]
+
+static func draw_dome(c: CanvasItem, strip: Rect2, alpha: float = 1.0) -> void:
+	var tex := dome_tex(dome_kind, dome_frame)
+	if tex == null:
+		return
+	# the canvas rect on screen: the standard dome's rect scaled out by its share of the canvas
+	var sw: float = STRIP_DOME.size.x * strip.size.x / DOME_IN_CANVAS.size.x
+	var sh: float = STRIP_DOME.size.y * strip.size.y / DOME_IN_CANVAS.size.y
+	var sx: float = strip.position.x + STRIP_DOME.position.x * strip.size.x - DOME_IN_CANVAS.position.x * sw
+	var sy: float = strip.position.y + STRIP_DOME.position.y * strip.size.y - DOME_IN_CANVAS.position.y * sh
+	c.draw_texture_rect(tex, Rect2(sx, sy, sw, sh), false, Color(1, 1, 1, alpha))
 
 # The socket's front lip (dev149, Rudy: turrets looked like a layer on a layer). The lower
 # half of the socket ring, cut from Luna's strip, drawn again OVER a mounted turret's foot,
@@ -215,7 +246,96 @@ static func draw_sky_extras(c: CanvasItem, size: Vector2, stars: Array, t: float
 # the screen and slides slightly opposite the pilot (shift -0.5..0.5) for depth, and
 # breathes very slowly so the sky never looks frozen.
 static var _worlds := {}
+
+# ---- Luna's LAYERED skies (Home round 2, dev199; tools/cut_home2.gd): skies/<planet>_stars
+# (loops), _clouds (alpha from light), _planet, _glow (pulsing) and up to eight _float_N
+# pieces that drift past. Parallax: the stars slide slowest, the clouds a little more, the
+# floaters most; everything leans opposite the pilot (shift). draw_world uses them when they
+# exist for the world's planet, else the flat painting.
+const PLANET_OF := {"hive_a": "hive", "hive_b": "hive", "scrap": "scrap", "magma": "magma", "crystal": "crystal", "plasma": "plasma", "sentinel": "sentinel"}
+static var _sky_tex := {}
+static var _sky_has := {}
+
+static func planet_of(key: String) -> String:
+	return String(PLANET_OF.get(key, key))
+
+static func has_sky_layers(key: String) -> bool:
+	var p := planet_of(key)
+	if not _sky_has.has(p):
+		_sky_has[p] = ResourceLoader.exists("res://skies/%s_stars.webp" % p) and ResourceLoader.exists("res://skies/%s_planet.webp" % p)
+	return _sky_has[p]
+
+static func _sky(name: String) -> Texture2D:
+	if not _sky_tex.has(name):
+		var path := "res://skies/%s" % name
+		_sky_tex[name] = load(path) if ResourceLoader.exists(path) else null
+	return _sky_tex[name]
+
+# the floaters' lanes: eight pieces, each on its own slow path across the sky (a sine on x,
+# a crawl on y), the big one (cell 3) far and slow, the ship (cell 4) fast and small
+const FLOAT_LANES := [
+	{"y": 0.14, "spd": 0.012, "px": 44.0, "spin": 0.10, "phase": 0.0},
+	{"y": 0.30, "spd": 0.016, "px": 36.0, "spin": -0.14, "phase": 2.1},
+	{"y": 0.08, "spd": 0.010, "px": 40.0, "spin": 0.08, "phase": 4.0},
+	{"y": 0.22, "spd": 0.005, "px": 96.0, "spin": 0.02, "phase": 1.2},
+	{"y": 0.18, "spd": 0.040, "px": 30.0, "spin": 0.0, "phase": 3.3},
+	{"y": 0.36, "spd": 0.020, "px": 20.0, "spin": 0.3, "phase": 0.7},
+	{"y": 0.12, "spd": 0.024, "px": 18.0, "spin": -0.25, "phase": 5.0},
+	{"y": 0.42, "spd": 0.018, "px": 22.0, "spin": 0.2, "phase": 2.8},
+]
+
+static func draw_sky_layers(c: CanvasItem, size: Vector2, bottom_y: float, key: String, t: float, shift: float = 0.0, alpha: float = 1.0) -> void:
+	var p := planet_of(key)
+	var stars: Texture2D = _sky(p + "_stars.webp")
+	var clouds: Texture2D = _sky(p + "_clouds.webp")
+	var planet: Texture2D = _sky(p + "_planet.webp")
+	var glow: Texture2D = _sky(p + "_glow.webp")
+	if alpha >= 1.0:
+		c.draw_rect(Rect2(Vector2.ZERO, size), Color(0.01, 0.012, 0.03))
+	var col := Color(1, 1, 1, alpha)
+	# the far stars: a little wider than the screen, looping downward very slowly
+	var w: float = size.x * 1.12
+	var h: float = w * stars.get_height() / stars.get_width()
+	var x0: float = (size.x - w) * 0.5 - shift * size.x * 0.02
+	var y0: float = fmod(t * 3.0, h)
+	c.draw_texture_rect(stars, Rect2(x0, y0 - h, w, h), false, col)
+	c.draw_texture_rect(stars, Rect2(x0, y0, w, h), false, col)
+	if clouds != null:
+		# the nebula: wider still, a touch faster, leaning more with the pilot
+		var cw: float = size.x * 1.22
+		var chh: float = cw * clouds.get_height() / clouds.get_width()
+		var cx: float = (size.x - cw) * 0.5 - shift * size.x * 0.05
+		var cy: float = fmod(t * 5.5, chh)
+		var ccol := Color(1, 1, 1, 0.92 * alpha)
+		c.draw_texture_rect(clouds, Rect2(cx, cy - chh, cw, chh), false, ccol)
+		c.draw_texture_rect(clouds, Rect2(cx, cy, cw, chh), false, ccol)
+	# the floaters, behind the planet (they pass behind the horizon)
+	for i in FLOAT_LANES.size():
+		var ft: Texture2D = _sky("%s_float_%d.png" % [p, i])
+		if ft == null:
+			continue
+		var lane: Dictionary = FLOAT_LANES[i]
+		var k: float = fposmod(t * float(lane.spd) + float(lane.phase) * 0.17, 1.0)   # 0..1 across
+		var fx: float = lerpf(-0.12, 1.12, k) * size.x - shift * size.x * (0.08 if float(lane.px) < 60.0 else 0.03)
+		var fy: float = (float(lane.y) + 0.03 * sin(t * 0.23 + float(lane.phase))) * size.y
+		var px: float = float(lane.px) * size.x / 480.0
+		var fs: Vector2 = ft.get_size() * (px / maxf(ft.get_width(), ft.get_height()))
+		c.draw_set_transform(Vector2(fx, fy), t * float(lane.spin) + float(lane.phase), Vector2.ONE)
+		c.draw_texture_rect(ft, Rect2(-fs * 0.5, fs), false, Color(1, 1, 1, alpha * (0.85 if float(lane.px) < 60.0 else 0.7)))
+		c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	# the planet along the bottom, breathing very slowly, and its atmosphere rim pulsing
+	var zoom := 1.0 + 0.012 * sin(t * 0.07)
+	var pw: float = size.x * 1.1 * zoom
+	var ph: float = pw * planet.get_height() / planet.get_width()
+	var prect := Rect2((size.x - pw) * 0.5 - shift * size.x * 0.04, bottom_y + 10.0 - ph, pw, ph)
+	c.draw_texture_rect(planet, prect, false, col)
+	if glow != null:
+		c.draw_texture_rect(glow, prect, false, Color(1, 1, 1, alpha * (0.55 + 0.35 * (0.5 + 0.5 * sin(t * 0.8)))))
 static func draw_world(c: CanvasItem, size: Vector2, bottom_y: float, key: String, stars: Array, t: float, shift: float = 0.0, alpha: float = 1.0) -> void:
+	if has_sky_layers(key):   # Luna's layered sky when it exists (Home round 2)
+		draw_sky_layers(c, size, bottom_y, key, t, shift, alpha)
+		draw_sky_extras(c, size, stars, t, shift, 0.35 * alpha)
+		return
 	if not _worlds.has(key):
 		_worlds[key] = load("res://backdrops/%s.webp" % key)
 	var tex: Texture2D = _worlds[key]

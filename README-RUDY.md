@@ -345,6 +345,30 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 11 (after dev195): LUNA'S HOME ROUND 2 IS IN (41 renders, all usable): every planet's sky
+as five layers, and the command dome as its own piece with its three super-weapon forms.
+- THE SKIES MOVE. Home, the menus and the battle stand in front of a layered sky now: a deep
+  star field that slides slowly and loops, a nebula layer in the planet's colours sliding a
+  little faster, up to eight floaters per planet (rocks, wrecks, a far hulk, a small ship,
+  debris) drifting and spinning across, the planet's curved horizon along the bottom that
+  breathes, and its atmosphere rim pulsing. Everything leans opposite the pilot for depth.
+  All six planets: Hive, Scrap Belt, Magma, Crystal, Plasma, Sentinel. The old flat paintings
+  stay as the fallback and on the Stage Map bands.
+- THE DOME IS A PIECE. Luna's standard dome sits on the strip in the exact place of the
+  painted one; her Orbital Beam, Shield Overcharge and EMP Pulse domes (idle, charging,
+  firing each) are cut to the same canvas and swap in place. The super weapons themselves
+  (queue item 10) are not built yet; the dome kind and frame are two values to set when they
+  are.
+- Luna's two open questions, for you: (1) the Crystal sky follows the brief (cyan, white,
+  pale blue) and does not match the older pink-and-purple crystal painting; my call: keep
+  cyan, it is the Ice world (Cpt. Frost, the Cryo Lens), and the old painting now only shows
+  on the Stage Map band, which can switch to the new planet layer. (2) Sparks' missing
+  straight-back frame: my call: paint it from his parts sheet; today the ring fades across the
+  gap, which reads as a hiccup in his spin.
+- Cutter: tools/cut_home2.gd (sky layers scaled for phones, light layers keyed to alpha, the
+  eight floaters cut from their sheet, the domes cut on one shared canvas). Archive:
+  art_src/skies/<planet>/, art_src/home2/.
+
 Update 10 (after dev195): A LUNA BRIEF FOR THE STAND-INS, and the first efficiency pass.
 - LUNA-BRIEF-icons-3.md asks for the fourteen material icons (the six essences, the weapon
   and drone lines, a hero shard, an event token) as one sheet and the ten card pictures the
