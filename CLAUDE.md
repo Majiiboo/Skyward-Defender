@@ -646,6 +646,16 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
    threatened" is partly the bot. OLDER
    (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
+32. AUTO + SPEED BUTTONS (Rudy idea, 2026-11-07, not scheduled; my view given in the chat): two small
+   battle buttons at the bottom right, AUTO above, SPEED (x1 / x1.5 / x2) below. MANUAL (Auto off): drag =
+   move + shoot; finger lifted = he keeps shooting STRAIGHT UP (my advice, not "no shooting"), no auto-aim:
+   this finally gives a reason to move (fun-pass item "reasons to move"). AUTO on: a full autopilot that
+   flies around, dodges and aims (brain = balance_sim "human" bot: 0.25 s reaction, misses ~1 dodge in 3,
+   so a good player beats it); dragging takes over, letting go hands back to Auto; the choice is saved.
+   Today battle.gd idle_fire_ratio 1.0 + idle aim = lifted finger auto-aims as strong as dragging.
+   SPEED = time scale for the fight only (card picks / pause at x1); unlocks by stage (e.g. x1.5 from 5,
+   x2 from 15) or later a pass. Mock-up the two buttons with the style pass; mind the 4th socket and
+   left-handed players (mirror option). Rebalance after (manual aim drops in strength).
 31. STYLE PASS research (Rudy, 2026-11-07): Desktop/menu ideas (10 images) + an article on modern mobile
    menus. TAKE: one dominant action per screen (gold), secondary smaller; bold rounded readable font
    with hierarchy; FLAT panels (no gloss / no dark lip) with a solid header strip; square item tiles
