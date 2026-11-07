@@ -22,7 +22,7 @@ const TURRET_LOOK := {
 	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0, "cx": 0.481},
 	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0, "cx": 0.479},
 	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0, "cx": 0.435},
-	"swarm":   {"h": 88.0, "w": 88.0, "tip": 0.60, "bob": 2.0, "cx": 0.501},   # bigger, with weight (Rudy, dev172)
+	"swarm":   {"h": 88.0, "w": 88.0, "tip": 0.60, "bob": 0.0, "cx": 0.501},   # bigger, with weight (Rudy, dev172)
 	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0, "cx": 0.441},
 }
 const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above the screen's bottom edge
@@ -33,6 +33,9 @@ const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a
 # few px clear, bobs and drifts, leans into its swings, and dips toward the base on
 # each shot before springing back up. On landing it powers up and lifts off the base.
 const SENTRY_GAP := 9.0
+# Every turret sits ON its base (Rudy, dev209: the hovering heads looked off): no gap, no float,
+# no Sentry energy field; the shot dip and the turn stay. false = the old hovering look.
+const TURRETS_SEATED := true
 const SENTRY_HEAD_CX := 0.498              # centre of the head's lower body (the part over the base), not the leaning barrels
 # charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
 const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0), "mines": Color(0.71, 0.55, 1.0), "flak": Color(1.0, 0.7, 0.3), "repair": Color(0.2, 0.85, 1.0)}
@@ -3949,8 +3952,8 @@ const SPLIT_LOOK := {
 	# end, and it fires from "muzzle" (the claw end), both measured on Luna's picture
 	"lance":   {"base_w": 72.0, "head_h": 46.0, "gap": 2.0, "art_dir": 2.68, "turns": true,
 		"pivot": Vector2(0.56, 0.45), "muzzle": Vector2(0.01, 0.86)},
-	"storm":   {"base_w": 70.0, "head_h": 60.0, "gap": 12.0, "art_dir": 0.0, "turns": false},
-	"gravity": {"base_w": 72.0, "head_h": 44.0, "gap": 10.0, "art_dir": 0.0, "turns": false},
+	"storm":   {"base_w": 70.0, "head_h": 60.0, "gap": -22.0, "art_dir": 0.0, "turns": false},
+	"gravity": {"base_w": 72.0, "head_h": 44.0, "gap": -14.0, "art_dir": 0.0, "turns": false},
 	"prism":   {"base_w": 0.0, "head_h": 94.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
 	# round 2 (dev196): a negative gap sinks the head into its base; "lean" tilts the head toward
 	# its target (the lens, the mortar cradle); "tip" = where it fires from, as a share of the
@@ -3977,6 +3980,8 @@ func _split_geo(t: Dictionary) -> Dictionary:
 	var ph: float = float(t.mount) * 1.3
 	var alert: float = smoothstep(0.0, 1.0, float(t.get("alert", 1.0)))
 	var bob: float = sin(time_alive * 1.6 + ph) * (2.0 if not look.turns else 0.6) * (0.4 + 0.6 * alert) + 5.0 * (1.0 - alert)   # heavier, and it settles lower at rest
+	if TURRETS_SEATED:
+		bob = 0.0
 	var ht: Texture2D = _tex[t.type + "_head"]
 	var hh: float = float(look.head_h)
 	var hw: float = ht.get_width() * hh / ht.get_height()
@@ -4160,6 +4165,8 @@ func _draw_turret(t: Dictionary) -> void:
 # The field holding the Sentry's head up: a soft glow on the base, a faint column of
 # light, and thin rings rising from base to head. It brightens when the head dips.
 func _draw_sentry_field(t: Dictionary) -> void:
+	if TURRETS_SEATED:
+		return
 	var g := _sentry_geo(t)
 	var lift: float = g.lift
 	if lift <= 0.01:
@@ -4189,9 +4196,9 @@ func _draw_sentry_field(t: Dictionary) -> void:
 func _sentry_geo(t: Dictionary) -> Dictionary:
 	var bt: Texture2D = _tex["sentry_base"]
 	var base_h: float = bt.get_height() * (SENTRY_BASE_W / bt.get_width())
-	var lift: float = smoothstep(0.0, 1.0, float(t.get("lift", 0.0)))
+	var lift: float = smoothstep(0.0, 1.0, float(t.get("lift", 0.0))) if not TURRETS_SEATED else 0.0
 	var ph: float = float(t.mount) * 1.7
-	var hover := Vector2(sin(time_alive * 0.9 + ph) * 1.5, -SENTRY_GAP * lift + (sin(time_alive * 2.3 + ph) * 1.6 + sin(time_alive * 3.7 + ph) * 0.5) * lift + float(t.get("hov_y", 0.0)))
+	var hover := Vector2(sin(time_alive * 0.9 + ph) * 1.5 * lift, -SENTRY_GAP * lift + (sin(time_alive * 2.3 + ph) * 1.6 + sin(time_alive * 3.7 + ph) * 0.5) * lift + float(t.get("hov_y", 0.0)))
 	var pivot: Vector2 = t.pos + Vector2(0, -base_h * 0.42) + hover
 	var face: float = signf(t.face) * maxf(absf(t.face), 0.15) if t.face != 0.0 else 0.15
 	var art_dir: float = SENTRY_ART_DIR if t.face >= 0.0 else PI - SENTRY_ART_DIR
@@ -4365,10 +4372,8 @@ func _draw_fx() -> void:
 			look = "bolt_rail"
 		elif int(bl.get("spark", 0)) > 0:
 			look = "bolt_spark"
-		elif int(card_levels.get("heavy_bolts", 0)) > 0:
-			look = "bolt_heavy"
-		elif burst_count > 1:
-			look = "bolt_twin"
+		# (Rudy, dev209: the twisted "DNA" twin and the pill-shaped heavy looked wrong: Heavy Bolts
+		# and Burst Fire now draw Luna's own bolt, bigger and hotter, or as two thin parallel bolts)
 		var tint := Color(0.78, 0.95, 1.0) if bl.get("frost", false) else Color.WHITE
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		if look != "":
@@ -4379,7 +4384,20 @@ func _draw_fx() -> void:
 			continue
 		var BL := 26.0 * (0.85 + 0.15 * bw) * big
 		var bth: float = BL * bt0.get_height() / bt0.get_width() * bw * (1.2 if big > 1.3 else 1.0)
-		_fx.draw_texture_rect(PilotRig.tinted(bt0, _bolt_set), Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
+		var btx: Texture2D = PilotRig.tinted(bt0, _bolt_set)
+		var heavy: bool = int(card_levels.get("heavy_bolts", 0)) > 0
+		if heavy:
+			# Heavy Bolts: the same bolt, longer and fatter, with a hot white core on top
+			BL *= 1.25
+			bth *= 1.35
+		if burst_count > 1 and not heavy:
+			# Burst Fire: two thin bolts side by side
+			for sgn in [-1.0, 1.0]:
+				_fx.draw_texture_rect(btx, Rect2(-BL * 0.85, -bth * 0.32 + sgn * bth * 0.3, BL * 0.9, bth * 0.64), false, tint)
+			continue
+		_fx.draw_texture_rect(btx, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
+		if heavy:
+			_fx.draw_texture_rect(btx, Rect2(-BL * 0.6, -bth * 0.22, BL * 0.6, bth * 0.44), false, Color(1, 1, 1, 0.8))
 	# Swarm drones
 	var dt: Texture2D = _fx_tex["drone"]
 	for dr in drones:

@@ -432,7 +432,7 @@ func _sentry_pivot(i: int, bottom: float) -> Vector2:
 	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
 	var bt: Texture2D = _sentry_tex.base
 	var base_h: float = bt.get_height() * (SENTRY_BASE_W * k / bt.get_width())
-	return p + Vector2(sin(_t * 0.9 + i) * 1.5 * k, -base_h * 0.42 - 9.0 * k + sin(_t * 2.3 + i * 1.7) * 1.6 * k)
+	return p + Vector2(0, -base_h * 0.42)   # seated on its base, no hover (Rudy, dev209)
 
 func _draw_wall_sentry(i: int, bottom: float) -> void:
 	var k := size.x / 480.0
@@ -456,8 +456,8 @@ func _draw_wall_sentry(i: int, bottom: float) -> void:
 # the head floating above it; the Lance cannon turns to its target.
 const WALL_SPLIT := {
 	"lance":   {"base_w": 60.0, "head_h": 34.0, "gap": 2.0, "art_dir": 2.68},
-	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": 10.0, "art_dir": 0.0},
-	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": 8.0, "art_dir": 0.0},
+	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": -18.0, "art_dir": 0.0},
+	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": -12.0, "art_dir": 0.0},
 	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0},
 	# round 2 (dev196), battle's SPLIT_LOOK x0.83; a negative gap sinks the head into its base
 	"repair":  {"base_w": 38.0, "head_h": 38.0, "gap": -13.0, "art_dir": 0.0},
@@ -478,7 +478,7 @@ func _split_head_centre(i: int, bottom: float) -> Vector2:
 		return p + Vector2(0, (6.0 - float(look.head_h) * 0.5) * k)
 	var bt: Texture2D = _split_tex[id + "_base"]
 	var base_h: float = bt.get_height() * float(look.base_w) * k / bt.get_width()
-	return p + Vector2(0, -base_h * 0.55 - (float(look.gap) + float(look.head_h) * 0.5) * k + sin(_t * 2.0 + i * 1.3) * 2.0 * k)
+	return p + Vector2(0, -base_h * 0.55 - (float(look.gap) + float(look.head_h) * 0.5) * k)   # no bob: seated (dev209)
 
 func _draw_wall_split(i: int, bottom: float) -> void:
 	var id: String = _wall_turrets[i].id
