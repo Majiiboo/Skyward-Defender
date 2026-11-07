@@ -676,11 +676,15 @@ func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
 	if _is_boss_id(id):
 		e.pos = Vector2(FIELD_W * 0.5, 40.0)
+		# bosses last much longer (Rudy, dev209: a strong kit went straight through the Hive Mother):
+		# BOSS_HP on every boss, more layers on the bar (_boss_layers)
+		e.hp *= BOSS_HP
+		e.hp_max *= BOSS_HP
 		# a younger, smaller Hive Mother: the zone-A mini-boss, or one arriving mid-stage
 		if StageData.boss_kind(stage) == "mini" or wave_index < waves.size() - 1:
 			e.mini = true
-			e.hp *= 0.6
-			e.hp_max *= 0.6
+			e.hp *= MINI_HP
+			e.hp_max *= MINI_HP
 		elif stage >= 10 and not horde:
 			# the planet boss is a soft wall (Rudy, 16 g): half again as tough from stage 10, and she
 			# fights with the last wave still arriving (dev198 sweep: nothing threatened the base)
@@ -3902,7 +3906,12 @@ func _draw_enemy(e: Dictionary) -> void:
 # height; gap: how far the head floats above the base's top; art_dir: where the painted
 # head points (radians) for the ones that turn (Lance), 0 for round heads that hover.
 const SPLIT_LOOK := {
-	"lance":   {"base_w": 72.0, "head_h": 42.0, "gap": 2.0, "art_dir": 2.68, "turns": true},
+	# the Lance is a mounted gun (Rudy, dev209: the beam came from the middle of the barrel and the
+	# base vanished as it turned): it pivots on "pivot" (a point on the barrel's axis, as shares of
+	# the head picture) set into the top of its base, the base drawn in front of the barrel's back
+	# end, and it fires from "muzzle" (the claw end), both measured on Luna's picture
+	"lance":   {"base_w": 72.0, "head_h": 46.0, "gap": 2.0, "art_dir": 2.68, "turns": true,
+		"pivot": Vector2(0.56, 0.45), "muzzle": Vector2(0.01, 0.86)},
 	"storm":   {"base_w": 70.0, "head_h": 60.0, "gap": 12.0, "art_dir": 0.0, "turns": false},
 	"gravity": {"base_w": 72.0, "head_h": 44.0, "gap": 10.0, "art_dir": 0.0, "turns": false},
 	"prism":   {"base_w": 0.0, "head_h": 94.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
@@ -3937,25 +3946,49 @@ func _split_geo(t: Dictionary) -> Dictionary:
 	var centre: Vector2 = t.pos + Vector2(0, -base_h * 0.55 - float(look.gap) - hh * 0.5 + bob)
 	if t.type == "prism":
 		centre = t.pos + Vector2(0, 6.0 - hh * 0.5)
-	return {"base_h": base_h, "centre": centre, "hw": hw, "hh": hh}
+	var pivot: Vector2 = centre
+	if look.has("pivot"):
+		pivot = t.pos + Vector2(0, -base_h * 0.23 + bob)   # set into the collar on top of the base
+	return {"base_h": base_h, "centre": centre, "hw": hw, "hh": hh, "pivot": pivot}
+
+# Where and how a split turret's head is drawn: origin, turn, scale, and the picture's rect
+# around the origin (its centre, or the measured pivot for a mounted gun like the Lance).
+# The head, its firing head, its light and its muzzle all use this one transform.
+func _head_xf(t: Dictionary, g: Dictionary, pose: Dictionary) -> Dictionary:
+	var look: Dictionary = SPLIT_LOOK[t.type]
+	var rect := Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh)
+	var o: Vector2 = g.centre
+	if look.has("pivot"):
+		var pv: Vector2 = look.pivot
+		rect = Rect2(-pv.x * g.hw, -pv.y * g.hh, g.hw, g.hh)
+		o = g.pivot
+	return {"o": o, "rot": pose.rot, "s": Vector2(pose.sx, 1.0) * pose.pulse, "r": rect}
 
 func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
 	var look: Dictionary = SPLIT_LOOK[t.type]
-	if float(look.base_w) > 0.0:
-		var bt: Texture2D = _tex[t.type + "_base"]
-		var bs := bt.get_size() * (float(look.base_w) / bt.get_width())
-		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.55 + yo), bs), false, Color(1, 1, 1, a))
-		Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # seated in the socket
+	var mounted_gun: bool = look.has("pivot")   # the head goes behind the base (its back end hides in it)
+	if not mounted_gun:
+		_draw_split_base(t, look, yo, a)
 	var g := _split_geo(t)
 	var ht: Texture2D = _tex[t.type + "_head"]
-	var pose := _split_pose(t)
+	var xf := _head_xf(t, g, _split_pose(t))
 	var sq: float = sin(clampf(float(t.get("squash", 0.0)), 0.0, 1.0) * PI)   # the landing squat
-	draw_set_transform(g.centre + Vector2(0, yo + 4.0 * sq), pose.rot, Vector2(pose.sx * (1.0 + 0.1 * sq), 1.0 - 0.14 * sq) * pose.pulse)
-	draw_texture_rect(ht, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a))
+	draw_set_transform(xf.o + Vector2(0, yo + 4.0 * sq), xf.rot, Vector2(xf.s.x * (1.0 + 0.1 * sq), xf.s.y * (1.0 - 0.14 * sq)))
+	draw_texture_rect(ht, xf.r, false, Color(1, 1, 1, a))
 	var fk := _fire_k(t)
 	if fk > 0.0 and _tex.has(t.type + "_head_fire"):
-		draw_texture_rect(_tex[t.type + "_head_fire"], Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, Color(1, 1, 1, a * fk))
+		draw_texture_rect(_tex[t.type + "_head_fire"], xf.r, false, Color(1, 1, 1, a * fk))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if mounted_gun:
+		_draw_split_base(t, look, yo, a)
+
+func _draw_split_base(t: Dictionary, look: Dictionary, yo: float, a: float) -> void:
+	if float(look.base_w) <= 0.0:
+		return
+	var bt: Texture2D = _tex[t.type + "_base"]
+	var bs := bt.get_size() * (float(look.base_w) / bt.get_width())
+	draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.55 + yo), bs), false, Color(1, 1, 1, a))
+	Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # seated in the socket
 
 # how a split turret's head is turned, mirrored and pulsed right now (shared by the head
 # and its light layer, dev154)
@@ -3968,6 +4001,11 @@ func _split_pose(t: Dictionary) -> Dictionary:
 		# the cannon turns to its target; mirrored when it aims to the right
 		var face: float = -1.0 if cos(float(t.ang)) > 0.05 else 1.0
 		var art: float = float(look.art_dir) if face > 0.0 else PI - float(look.art_dir)
+		if look.has("pivot"):
+			# the barrel's own axis in the picture: pivot -> muzzle (mirrored when it faces right)
+			var g := _split_geo(t)
+			var m: Vector2 = (Vector2(look.muzzle) - Vector2(look.pivot)) * Vector2(g.hw, g.hh)
+			art = Vector2(m.x * face, m.y).angle()
 		rot = angle_difference(art, float(t.ang))
 		sx = face
 	elif t.type == "prism" or look.get("lean", false):
@@ -4006,11 +4044,11 @@ func _draw_turret_lights() -> void:
 				_fx.draw_texture_rect(fl, hr, false, fcol)
 		elif SPLIT_LOOK.has(t.type):
 			var g := _split_geo(t)
-			var pose := _split_pose(t)
-			_fx.draw_set_transform(g.centre, pose.rot, Vector2(pose.sx, 1.0) * pose.pulse)
-			_fx.draw_texture_rect(lt, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, col)
+			var xf := _head_xf(t, g, _split_pose(t))
+			_fx.draw_set_transform(xf.o, xf.rot, xf.s)
+			_fx.draw_texture_rect(lt, xf.r, false, col)
 			if fl != null and kick > 0.0:
-				_fx.draw_texture_rect(fl, Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh), false, fcol)
+				_fx.draw_texture_rect(fl, xf.r, false, fcol)
 		else:
 			# the whole-picture turrets (Swarm): same placement as _draw_turret
 			var look: Dictionary = TURRET_LOOK[t.type]
@@ -4134,8 +4172,11 @@ func _turret_tip(t: Dictionary) -> Vector2:
 		return _sentry_geo(t).muzzle
 	if SPLIT_LOOK.has(t.type):
 		var g := _split_geo(t)
-		if t.type == "lance":
-			return g.centre + Vector2.from_angle(float(t.ang)) * g.hw * 0.48
+		if SPLIT_LOOK[t.type].has("muzzle"):
+			# the measured muzzle carried through the head's own transform: the beam leaves the tip
+			var xf := _head_xf(t, g, _split_pose(t))
+			var mz: Vector2 = SPLIT_LOOK[t.type].muzzle
+			return Transform2D(xf.rot, xf.s, 0.0, xf.o) * (xf.r.position + Vector2(mz.x * g.hw, mz.y * g.hh))
 		if SPLIT_LOOK[t.type].has("tip"):
 			return g.centre + Vector2(0, -g.hh * float(SPLIT_LOOK[t.type].tip))
 		return g.centre if t.type != "prism" else g.centre + Vector2(0, -g.hh * 0.1)
@@ -4587,13 +4628,14 @@ func _draw_hud() -> void:
 	_draw_objectives_banner()
 	_draw_intro()
 
-# A boss's health in stacked layers (5 for a boss, 3 for a mini-boss): the bar empties
+# A boss's health in stacked layers (8 for a boss, 5 for a mini-boss): the bar empties
 # one colour at a time, the next colour shows underneath, "x3" counts what is left,
 # a white chunk trails each hit and the bar flashes when a layer breaks.
-const BOSS_LAYER_COLS := [Color(0.95, 0.30, 0.40), Color(1.0, 0.55, 0.25), Color(1.0, 0.85, 0.3), Color(0.45, 0.9, 0.5), Color(0.80, 0.40, 1.0)]
+const BOSS_LAYER_COLS := [Color(0.95, 0.30, 0.40), Color(1.0, 0.55, 0.25), Color(1.0, 0.85, 0.3), Color(0.45, 0.9, 0.5),
+	Color(0.3, 0.85, 1.0), Color(0.35, 0.5, 1.0), Color(0.80, 0.40, 1.0), Color(1.0, 0.45, 0.75)]
 
 func _boss_layers(e: Dictionary) -> int:
-	return 3 if e.get("mini", false) else 5
+	return 5 if e.get("mini", false) else 8   # was 3 / 5 (dev209: bosses last longer)
 
 func _draw_boss_bar(e: Dictionary) -> void:
 	var a: float = smoothstep(0.0, 1.0, _boss_bar_in)
@@ -4888,6 +4930,8 @@ func _hp_mult() -> float:
 # boss every 10th wave. The run ends when you fall; the score is the wave count.
 const HORDE_HP_PER_WAVE := 0.04
 const BOSS_WALL := 1.5   # the planet boss (stage 10, 20, ...): a soft wall (16 g, dev198)
+const BOSS_HP := 2.5    # every boss (dev209); a mini-boss keeps MINI_HP of that (2.5 x 0.48 = 1.2, twice the old 0.6)
+const MINI_HP := 0.48
 const WRECKER_HOLD_MAX := 6.0   # the Wrecker lets a turret go after this long whatever happens
 func _horde_wave(k: int) -> Array:
 	var src: Array = StageData.waves(stage)
