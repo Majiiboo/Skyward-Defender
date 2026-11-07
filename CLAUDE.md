@@ -643,6 +643,45 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    lost and hull down to 66-84 (threatened). The bot dodges every goo, so Normal "never
    threatened" is partly the bot. OLDER
    (dev145 sweep, SIM_KIT=auto human): Normal 1-60 never threatened; Elite 30+ unwinnable. dev164: StageData HP_A / HP_B / ELITE_HP knobs (SIM_HP_A, SIM_HP_B, SIM_ELITE) for the sim; experiments 2026-11-05: hp 1.065/1.03 + Elite 1.45 = cliff at 40+ and Elite still lost; hp 1.055/1.025 + Elite 1.35 = Elite 30-60 still 0 wins (+5 kit). Not applied; the autopilot may be the weak link (pilot dmg share 50-60%). Rudy playtests dev166 first.
+29. RUDY PLAYTEST dev209 (2026-11-07, phone; screenshots to come; "step by step"). His notes:
+   GAMEPLAY: status effects must SHOW on bugs (ice: bluish, frost building up, slow -> freeze
+   at high levels; fire: burning, spreads bug to bug on touch later, burning ground patches);
+   boss needs MORE health layers (Hive Mother went down at once, kit was strong); cards come
+   too fast (lower gem XP so picks are rarer and worth more); weapon bolts + their animation
+   need a rework (the hero bolt that looks like a DNA strand); XP gems: no ring, a small
+   glitter, never confusable with enemy shots; the end-of-wave vacuum of coins / gems is
+   pointless: fly away only at the end of a STAGE, not every wave (check what counts);
+   Lance laser does not line up (fires from a random spot, not the tip) and its base vanishes
+   while turning: turrets "throw him off", wants ideas; Stage Cleared box went off-screen once.
+   POWER CARDS: text spills out of the boxes; say only what THIS pick does ("2 extra bolts per
+   burst"), no "then 3, then 4", no next-level text; chain text maybe too much; bigger icons.
+   PAUSE: drop "leaving ends this run" text and the damage list; Back to Hub asks "Are you
+   sure? The stage restarts"; damage by source on the END screen only (ranked).
+   LOOK (overall): font too thin/crumpled (wants bold, fun); icons too small with too much text
+   under them; buttons have a black bar under them, text not centred, gold button weak; BIG
+   SQUARE cards (like Store's stage pack / season pass) wanted across the game instead of long
+   bars; menus feel "2000s": consider leaving the 3D/bevel look for a polished, smooth, animated
+   modern style (research modern games, propose). Battle top bar squished, card row / x1 /
+   pause touching edges.
+   PAGES: Patrol window: no stage arrows, just Patrol (collect what built up) + maybe an auto
+   patrol that feeds on power tokens; collect button has the black bar, text off-centre, plain
+   ("written in Word"). Store: seamless tab bar (one strip, not separate bubbles), bigger icons,
+   less text, chest opening needs a real animation that shows the item won, blue buttons too.
+   Top bar: Power / coins / crystals look typed-in; power icon looks like a coin (drop the
+   hexagon). Nav bar: the active tab's blue square overlay looks pasted on, not part of the bar.
+   HERO PAGE: replace "KIT + SAVE" with one Loadout button (Loadout 1/2/3); hero lower so he
+   stands on the platform (head behind TALENTS now); drop "Suit: Commander" (name elsewhere or
+   just the name); TALENTS + STATS to the right, stacked; rethink the weapon button (line points
+   to the weapon, button elsewhere); the swivel shows cross-fading frames (not 3D-looking);
+   too much info: show name, grade, element, ATK, level + a LEVEL UP button opening its own
+   screen (hero big, what you get, what it costs, animated level-up). RARITY QUESTION: heroes
+   locked to a grade make Commons useless; he suggests merging hero cards / shards to raise a
+   hero's rarity so any hero can become Legendary; wants my view. Star map: idea perfect, look
+   plain (straight lines), needs oomph; reward text only when tapped. Stats panel lines squished.
+   Modes cards wider than the screen. Quests: look not working. Home "STANDARD 1 · HIVE WORLD ·
+   WEAK TO FIRE": no plain weakness text; an ELEMENT WHEEL (circle of element icons, arrows for
+   who beats whom) under Heroes instead. Menu > Stage Map should not be there: the stage map
+   becomes the CAMPAIGN mode (story, Candy Crush trail).
 28. RUDY PLAYTEST dev166 (2026-11-05, phone, old save with Commander suit). His notes, in his order:
    - A Patrol tip pops the moment the game opens: bad first impression. Tip boxes are huge for
      one or two sentences; in Modes the spotlight sat on a random area. VERDICT: tips OFF (keep the
