@@ -345,6 +345,34 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 7 (after dev195): THE LONG-GAME RE-TUNE, first pass (your item 16 g), after a full sweep.
+- The sweep before: with the star ladder, the talent map and the twelve turrets, the auto
+  kit won every Normal stage 1 to 60 with the base never touched, and Elite 15 lost both runs
+  with the base down by wave 6 (an Elite Wrecker held a turret too long).
+- Changes: bug health after stage 30 climbs 3.5% a stage instead of 2%; the planet boss (stage
+  10, 20, ... 60) is half again as tough and arrives with its wave still coming, halfway on
+  planet 2 and a third of the way in from planet 3, so each boss is a soft wall with company;
+  the Wrecker lets a turret go after six seconds whatever happens.
+- The sweep after: Elite 15 won 2 of 2; Elite 25 and 40 won 1 of 2 with the base down to 25
+  and 50 (Elite is the hard ladder, as meant); a kit six stages behind lost half at stage 20
+  and still won 40 and 60. Normal 10 to 60 still won every run with the base untouched.
+- Honest note: the simulator's pilot dodges every shot and never takes damage, so Normal
+  looks softer in the sim than it will on a phone. Bigger moves (more boss layers, the boss
+  earlier on planet 1, chip damage in the first waves: IDEAS-rogue-defense.md) wait for your
+  playtest of this build. Sim knobs: SIM_STAR (force a star), SIM_KIT_PLUS (kit stages ahead
+  or behind).
+
+Update 6 (after dev195): LUNA'S STORE ART (21 of 30 renders so far: three keys, the three tier
+chests closed and open, five crates, four coin piles, two crystal piles, four badges; the chest
+pieces body / lid / burst and crystal piles 2-4 are still to come). The crates stand on the
+Offers packs (daily, weekly, monthly) and the Starter pack, the coin piles grow with the deal
+in the Shop, the crystal piles on the Crystals tab, the Exchange tab and its token teaser wear
+their icons, the chest cards carry the pity badge and a FREE tag. The Uncommon and Epic keys show everywhere keys do (prices, drops, the
+Workshop recipe, the chest cards), the gold Legendary key is kept for later. The Chests tab
+shows each chest closed in its tier's colour, and opening one pops the closed chest and swaps
+to its open picture with the burst, then the reward rises. Cutter: tools/cut_store2.gd (it also picks up the rest of the brief when it
+lands); archive art_src/store2/.
+
 Update 5 (after dev195): THE SCRAP BELT FAMILY is in (Luna's 36 renders, all usable; queue item
 17 b). Planet 2 gets its own enemies: junk machines the bugs built, and from here on families
 STACK: the Hive bugs never leave, the machines join them.

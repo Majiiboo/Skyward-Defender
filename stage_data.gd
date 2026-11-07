@@ -177,7 +177,7 @@ static func hp_mult(stage: int, elite: bool) -> float:
 # the long-game knobs (16 g): bug health per stage 11-30, per stage after 30, and the Elite
 # factor; the balance simulator can override them (SIM_HP_A, SIM_HP_B, SIM_ELITE)
 static var HP_A: float = _knob("SIM_HP_A", 1.05)
-static var HP_B: float = _knob("SIM_HP_B", 1.02)
+static var HP_B: float = _knob("SIM_HP_B", 1.035)   # dev198 sweep (stars + talents + turrets 2): 1-60 never threatened at 1.02
 static var ELITE_HP: float = _knob("SIM_ELITE", 1.85)
 
 static func _knob(env: String, dflt: float) -> float:

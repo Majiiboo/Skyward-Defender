@@ -651,9 +651,12 @@ func _start_wave() -> void:
 		if not wave_queue.has(bid):
 			continue
 		wave_queue.erase(bid)
-		# from planet 3 (stage 21) the boss comes in a third of the way through, with bugs still arriving
+		# from planet 2 (stage 11) the boss comes in with the wave still arriving (a third of the way
+		# through from planet 3, halfway on planet 2), so the wall has company (16 g)
 		if stage >= 21:
 			wave_queue.insert(wave_queue.size() / 3, bid)
+		elif stage >= 11:
+			wave_queue.insert(wave_queue.size() / 2, bid)
 		else:
 			wave_queue.append(bid)
 	wave_spawn_t = 0.6
@@ -668,6 +671,11 @@ func _spawn(id: String) -> void:
 			e.mini = true
 			e.hp *= 0.6
 			e.hp_max *= 0.6
+		elif stage >= 10 and not horde:
+			# the planet boss is a soft wall (Rudy, 16 g): half again as tough from stage 10, and she
+			# fights with the last wave still arriving (dev198 sweep: nothing threatened the base)
+			e.hp *= BOSS_WALL
+			e.hp_max *= BOSS_WALL
 		e.r = float(e.r) * (1.4 if e.get("mini", false) else 1.8)   # drawn much bigger now (dev108)
 		_boss_bar_max = e.hp_max
 	_meet(id)
@@ -1357,10 +1365,14 @@ func _update_enemies(delta: float) -> void:
 								_float_text(e.pos + Vector2(0, -70), "TURRET GRABBED!", Color(1.0, 0.5, 0.4), true)
 						"hold":
 							e.pos.x += sin(e.t * 2.0) * 6.0 * delta
-							if e.hp < float(e.get("grab_hp", e.hp)) - e.hp_max * 0.25:
+							e.hold_t = float(e.get("hold_t", 0.0)) + delta
+							# shot off (a quarter of its health since the grab) or it tires after HOLD_MAX s
+							# (Elite 15 fell to this: an Elite Wrecker took too long to shoot off)
+							if e.hp < float(e.get("grab_hp", e.hp)) - e.hp_max * 0.25 or float(e.hold_t) >= WRECKER_HOLD_MAX:
 								if not held.is_empty():
 									held.held_by = -1
 								e.state = "lift"
+								e.hold_t = 0.0
 								e.grab_cd = float(def.grab_every)
 								_burst(e.pos + Vector2(0, 60), 24.0, Color(0.3, 0.9, 1.0), 14)
 								_float_text(e.pos + Vector2(0, -70), "LET GO!", Color(0.4, 1.0, 0.6), true)
@@ -4661,6 +4673,8 @@ func _hp_mult() -> float:
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
 # boss every 10th wave. The run ends when you fall; the score is the wave count.
 const HORDE_HP_PER_WAVE := 0.04
+const BOSS_WALL := 1.5   # the planet boss (stage 10, 20, ...): a soft wall (16 g, dev198)
+const WRECKER_HOLD_MAX := 6.0   # the Wrecker lets a turret go after this long whatever happens
 func _horde_wave(k: int) -> Array:
 	var src: Array = StageData.waves(stage)
 	var body: Array = []

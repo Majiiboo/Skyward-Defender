@@ -343,8 +343,8 @@ func _fill_chests() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 10)
 		var tr := TextureRect.new()
-		tr.texture = UIKit.ic(String(c.icon), "chest3d_closed")
-		tr.custom_minimum_size = Vector2(64, 64)
+		tr.texture = UIKit.ic("chest2_%s_closed" % String(tier), String(c.icon))   # Luna's tier chest (store2) when cut, else her icon
+		tr.custom_minimum_size = Vector2(72, 72)
 		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		h.add_child(tr)
@@ -357,7 +357,7 @@ func _fill_chests() -> void:
 		tv.add_child(odds)
 		if int(c.pity) > 0:
 			var left: int = int(c.pity) - opens_of(d, tier) % int(c.pity)
-			tv.add_child(UIKit.label("%s in %d open%s" % [String(c.pity_text).capitalize() if left > 1 else String(c.pity_text).capitalize(), left, "" if left == 1 else "s"], 10, UIKit.GOLD))
+			tv.add_child(UIKit.iconed(UIKit.ic("ic_pity"), "%s in %d open%s" % [String(c.pity_text).capitalize(), left, "" if left == 1 else "s"], 10, UIKit.GOLD, 16.0))   # Luna's pity badge (store2)
 		h.add_child(tv)
 		v.add_child(h)
 		var row := HBoxContainer.new()
@@ -366,6 +366,9 @@ func _fill_chests() -> void:
 		if c.free:
 			var left_s := free_left_s(d, "chest_" + tier, DAY_S)
 			var fb := UIKit.gold_button("FREE" if left_s == 0 else "Free in %s" % left_text(left_s), 13)
+			if left_s == 0 and UIKit.ic("ic_free") != null:   # Luna's free tag (store2)
+				fb.icon = UIKit.ic("ic_free")
+				fb.add_theme_constant_override("icon_max_width", 20)
 			fb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 			fb.custom_minimum_size = Vector2(0, 38)
 			fb.disabled = left_s > 0
@@ -403,7 +406,7 @@ func _open_key_chest(tier: String, how: String) -> void:
 	Sfx.play("buy")
 	Progress.write(d)
 	Progress.bump("chests")
-	_chest_fx(reward)
+	_chest_fx(reward, tier)
 	_fill()
 
 # ------------------------------------------------------------------ offers
@@ -494,8 +497,8 @@ func _fill_offers() -> void:
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 10)
 		var ic := TextureRect.new()
-		ic.texture = UIKit.ic("ic_pack", "gifts")
-		ic.custom_minimum_size = Vector2(44, 44)
+		ic.texture = UIKit.ic("pack_" + String(p.id), "ic_pack")   # Luna's crates (store2): daily, weekly, monthly
+		ic.custom_minimum_size = Vector2(56, 56)
 		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		h.add_child(ic)
@@ -597,7 +600,10 @@ func _fill_shop() -> void:
 		b.pressed.connect(func(): _buy(offer))
 		var speed: bool = o.id == "speed"
 		var big: String = "x2 speed" if speed else "+" + UIKit.num(int(o.reward.coins))
-		g.add_child(_tile(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("ic_coin", "ui_coin"), big, o.name, o.color, b))
+		# Luna's coin piles (store2): three coins, a stack, a pile, a sack, by the size of the deal
+		var oc: int = int(Dictionary(o.get("reward", {})).get("coins", 0))
+		var pile: int = 1 + (1 if oc >= 1000 else 0) + (1 if oc >= 3000 else 0) + (1 if oc >= 10000 else 0)
+		g.add_child(_tile(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("coins_%d" % pile, "ic_coin"), big, o.name, o.color, b))
 	# keys
 	col.add_child(UIKit.header("KEYS"))
 	var gk := _grid(col)
@@ -651,11 +657,12 @@ func _fill_crystals() -> void:
 		var b := UIKit.ghost_button("%s  soon" % p[2], 13)
 		b.disabled = true
 		var name: String = p[0]
-		var icon: Texture2D = load("res://icons/ui_crystal.png")
+		# Luna's piles and crates (store2): a small pile for 300, the heap for 1400, the starter crate
+		var icon: Texture2D = UIKit.ic("crystals_5" if name.contains("1400") else "crystals_1", "ui_crystal")
 		if name.begins_with("Speed"):
 			icon = load("res://icons/ui_energy.png")
 		elif name.begins_with("Starter"):
-			icon = load("res://icons/starter.png")
+			icon = UIKit.ic("pack_starter", "starter")
 		g.add_child(_tile(icon, name, p[1], "epic", b))
 	_page.add_child(UIKit.label("Opens on Google Play", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 
@@ -726,16 +733,37 @@ func _code_popup() -> void:
 
 # the chest opens in the middle of the screen: lid up, light out, then the reward (the pity
 # item says so in gold)
-func _chest_fx(reward: Dictionary) -> void:
+func _chest_fx(reward: Dictionary, tier: String = "") -> void:
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0.01, 0.04, 0.7)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(dim)
-	var prop := HomeProp.new()
-	prop.kind = "chest"
-	prop.size = Vector2(180, 180)
-	prop.position = size * 0.5 - Vector2(90, 120)
-	dim.add_child(prop)
+	# Luna's tier chest (store2): the closed chest pops, then its open picture with the burst
+	# takes over; without it, the old three-piece chest prop opens
+	var closed := "res://icons/chest2_%s_closed.png" % tier
+	var opened := "res://icons/chest2_%s_open.png" % tier
+	if tier != "" and ResourceLoader.exists(closed) and ResourceLoader.exists(opened):
+		var pic := TextureRect.new()
+		pic.texture = load(closed)
+		pic.size = Vector2(200, 200)
+		pic.position = size * 0.5 - Vector2(100, 130)
+		pic.pivot_offset = Vector2(100, 120)
+		pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		dim.add_child(pic)
+		var ct := pic.create_tween()
+		ct.tween_property(pic, "scale", Vector2(0.92, 1.06), 0.12)
+		ct.tween_property(pic, "scale", Vector2(1.08, 0.94), 0.12)
+		ct.tween_callback(func(): pic.texture = load(opened))
+		ct.tween_property(pic, "scale", Vector2(1.18, 1.18), 0.18).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		ct.tween_property(pic, "scale", Vector2(1.0, 1.0), 0.4).set_trans(Tween.TRANS_SINE)
+	else:
+		var hp := HomeProp.new()
+		hp.kind = "chest"
+		hp.size = Vector2(180, 180)
+		hp.position = size * 0.5 - Vector2(90, 120)
+		dim.add_child(hp)
+		hp.call_deferred("open")
 	var shown := reward.duplicate()
 	shown.erase("pity")
 	var l := UIKit.label(("PITY ITEM!\n" if reward.get("pity", false) else "") + "+ " + Progress.reward_text(shown), 20, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
@@ -744,7 +772,6 @@ func _chest_fx(reward: Dictionary) -> void:
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	l.modulate.a = 0.0
 	dim.add_child(l)
-	prop.call_deferred("open")
 	var tw := dim.create_tween()
 	tw.tween_interval(0.35)
 	tw.tween_property(l, "modulate:a", 1.0, 0.25)

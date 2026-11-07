@@ -5,7 +5,22 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 5 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 7 updates (next push = dev195 + that count; see the build rule).
+  7. RE-TUNE pass 1 (16 g, dev198 sweeps in README update 7): StageData.HP_B 1.02 -> 1.035; battle
+     BOSS_WALL 1.5 on the planet boss (stage % 10 == 0, not mini, not horde) in _spawn; the boss
+     inserted halfway into the queue from stage 11 (a third from 21); WRECKER_HOLD_MAX 6 s (e.hold_t).
+     Sim: _auto_kit stars by stage (SIM_STAR), turret stars; sweeps: Normal 1-60 all won, hull
+     untouched (the bot never gets hit); Elite 15 fixed, 25 / 40 half; kit -6 loses half at 20.
+     NEXT after Rudy's phone playtest: more boss layers, boss earlier on planet 1, chip damage early.
+  6. LUNA STORE ART part 1 (keys + chest stack checks; art_src/store2/, tools/cut_store2.gd ->
+     icons/mat_key_u / mat_key_e.png (Materials.icon picks them up), icons/key_l.png, icons/
+     chest2_<t>_closed / _open.png from the stack checks; the cutter also handles chest pieces,
+     packs, piles and ic_* when delivered). store.gd chest cards UIKit.ic("chest2_<t>_closed", icon),
+     _chest_fx(reward, tier) closed -> open pop (HomeProp fallback); the Home chest overlay stays text;
+     packs pack_<id>, coins_N by deal size, crystals_1 / _5 + pack_starter, ic_pity line, ic_free on
+     the FREE button. IDEAS-rogue-defense.md: Rudy's two recordings (stats panel, boss as half the
+     stage, chain cards, coin rerolls, card row on the HUD).
+     SIM: balance_sim _auto_kit stars by stage (SIM_STAR override), turret stars in the kit.
   5. SCRAP BELT FAMILY in (queue 17 b; Luna 36 renders, art_src/scrap/, tools/cut_scrap.gd ->
      enemies/scrap/<id>_whole + pieces at the whole's scale, enemies/parts/<id>_chunk_N, ui/
      commander_calm / _urgent): StageData.ENEMIES mite / hulk / rivet / dart / bolt / wrecker /
@@ -433,7 +448,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    so far x1.5, 60% gear / 40% turrets on open mounts, even levels). hp_mult +5%/stage 11-30, +2%
    after; waves(): extra = (min(stage,30)-1)/2 + (stage-30)/4, and from stage 21 extra ramps 60%..100%
    over waves 1-5. Human bot: 22-50 win 4/4, 55 and 60 win 3/4. Turrets still ~15-25% of damage.
-16. LONG-GAME PLAN (Rudy, 2026-11-04), in this order ((e) talent map DONE dev197, talents.gd): (a) DONE dev128 turret tracks ATK/Rate/Range
+16. LONG-GAME PLAN (Rudy, 2026-11-04), in this order ((e) talent map DONE dev197, talents.gd; (g) re-tune pass 1 dev198, see hand-over item 7): (a) DONE dev128 turret tracks ATK/Rate/Range
    Lv.1-20 (Turrets.TRACKS, stats() -> battle t.def, level_of = sum, milestone every 5 = +5% dmg;
    save turrets.tracks; gear.gd _on_track_upgrade, _milestone_toast). (b) DONE dev133: 6 turret cards (Cards "turret" key, draw(mounted),
    battle _turret_mod, flags flak/twin/stun/horizon/boom/frost_light, Sentry "bounce"). Was: Turret power cards, only
@@ -514,6 +529,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    tiles (store.gd _teaser). dev157: UIKit.enter / leave / pop_in (page transitions, pause menu). PROPOSED (Rudy picks; README-RUDY dev140 has the plain list): sound
    (none exists), Orbitron on Modes/Stage Map vs the Exo 2 rule, Luna trophy art, quest task icons, hide "x1 Common"
    base stacks in Workshop > Gear (DONE dev152, _inv_filter.show), a Settings page after sound, battle HUD/end-screen visual pass.
+23b. IDEAS FROM ROGUE DEFENSE + UNDEAD SLAYER (Rudy's recordings, 2026-11-06): IDEAS-rogue-defense.md,
+   ranked: stats per source on pause / clear, the boss as half the stage, Chain tags on fusion
+   cards, base HP as a number with slow leaks, coin-cost rerolls, the taken-cards row on the HUD.
 23. IDEAS FROM SLAYER LEGEND (Rudy's video, 2026-11-04): IDEAS-slayer-legend.md lists what that
    game has, what we already have, and 12 things worth taking, ranked: red dots everywhere,
    attendance calendar, welcome-back missions, repeat quests, daily meta bar, stage drops on

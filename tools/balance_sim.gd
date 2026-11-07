@@ -138,9 +138,14 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 	# the one weapon piece; the old armour pieces are gone
 	var hero_budget := spend * 0.6
 	var wlv := _level_for(hero_budget * 0.2, 120.0)
+	# stars by stage (DESIGN-stars.md): 2 from stage 10, 3 from 20, 4 from 35, 5 from 50; the star
+	# caps the hero level and every turret track, and multiplies power (Gates.power_mult)
+	var star := 1 + (1 if stage >= 10 else 0) + (1 if stage >= 20 else 0) + (1 if stage >= 35 else 0) + (1 if stage >= 50 else 0)
+	if OS.get_environment("SIM_STAR") != "":
+		star = int(OS.get_environment("SIM_STAR"))
 	var hl := 1
 	var hb := hero_budget * 0.8
-	while hl < Gates.level_cap("hero", Gates.GOLD) and hb >= Heroes.level_cost(hl):   # the sim kit stops at five gold stars (Lv.50)
+	while hl < Gates.level_cap("hero", star) and hb >= Heroes.level_cost(hl):   # capped by the star
 		hb -= Heroes.level_cost(hl)
 		hl += 1
 	var dl := 1
@@ -148,7 +153,7 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 	while dl < Heroes.MAX_DEF_LEVEL and db >= Heroes.def_cost(dl):
 		db -= Heroes.def_cost(dl)
 		dl += 1
-	d["hero"] = {"selected": "rook", "owned": ["rook"], "levels": {"rook": hl}, "def": {"rook": dl}, "tiers": {}, "shards": {}}
+	d["hero"] = {"selected": "rook", "owned": ["rook"], "levels": {"rook": hl}, "def": {"rook": dl}, "tiers": {"rook": star}, "shards": {}}
 	var glv := wlv
 	var lv := {}
 	for s in GearData.SLOTS:
@@ -162,13 +167,15 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 			lo[i] = types[i]
 			n += 1
 	# each turret's share split evenly over its three tracks (a track costs 60 x level a step)
-	var tl := _level_for(spend * 0.4 / maxf(1.0, n) / 3.0, 30.0) if n > 0 else 1
+	var tl := mini(_level_for(spend * 0.4 / maxf(1.0, n) / 3.0, 30.0), Gates.level_cap("turret", star)) if n > 0 else 1
 	var ttr := {}
+	var tst := {}
 	for t in lo:
 		if t != "":
 			ttr[t] = {"atk": tl, "rate": tl, "range": tl}
-	d["turrets"] = {"loadout": lo, "tracks": ttr}
-	r_kit = "hero Lv.%d DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, dl, glv, n, tl]
+			tst[t] = star
+	d["turrets"] = {"loadout": lo, "tracks": ttr, "stars": tst}
+	r_kit = "hero Lv.%d %d-star DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, star, dl, glv, n, tl]
 var r_kit := ""
 
 func _next() -> void:
