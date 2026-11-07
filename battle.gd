@@ -174,6 +174,7 @@ var _shatter := false              # its overcharge: a slowed bug that dies blas
 var _phase_bonus := false          # Hollow overcharge: +30% damage per bug passed
 var _burn_level := 0               # Ember: hits set bugs burning (5% HP/s, longer per level)
 var _burn_spread := false          # its overcharge: a burning bug that dies spreads the fire
+var _fire_patches: Array = []      # burning patches a burning bug leaves when it dies (Afterburn overcharged, dev209)
 # damage numbers (Rudy, dev172): per bug, batched over a quarter second; crits big and gold
 var _dmg_acc := {}                 # enemy id -> {"v": damage so far, "t": when it started, "pos"}
 const DMG_BATCH := 0.25
@@ -493,6 +494,7 @@ func _start_stage() -> void:
 	_turret_dmg_mult = 1.0
 	_overdrive = false
 	_thunder = false
+	_fire_patches.clear()
 	zaps.clear()
 	_boss_bar_max = 0.0
 	_boss_bar_in = 0.0
@@ -861,6 +863,7 @@ func _process(delta: float) -> void:
 	zaps = zaps.filter(func(z): return z.life > 0.0)
 	_spawn_step(delta)
 	_update_bullets(delta)
+	_update_fire_patches(delta)
 	_update_enemies(delta)
 	_update_gems(delta)
 	_update_shards(delta)
@@ -1170,6 +1173,9 @@ func _update_bullets(delta: float) -> void:
 					if _freeze_level > 0:
 						e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
 						e.slow = maxf(float(e.get("slow", 0.0)), minf(0.2 * _freeze_level, 0.6))
+						# at full strength a hit can freeze a bug solid for a moment (dev209: ice must SHOW)
+						if float(e.slow) >= 0.6 and not _is_boss(e) and rng.randf() < 0.25:
+							e.freeze_t = 0.9
 					if _burn_level > 0 and e.type != "spore":
 						e.burn_t = 1.5 + 0.75 * _burn_level
 						e.burn_dps = 0.05 * float(e.hp_max)
@@ -1303,7 +1309,8 @@ func _update_enemies(delta: float) -> void:
 					e.pos.y += e.speed * 1.3 * delta   # done hovering: comes down for the base
 				if e.fire_t > SPIT_WARN and e.fire_t - delta <= SPIT_WARN and e.pos.y > 40.0:
 					Sfx.play("spit")   # the telegraph starts (drawn in _draw_enemy)
-				e.fire_t -= delta
+				if float(e.get("freeze_t", 0.0)) <= 0.0:   # frozen bugs hold their fire
+					e.fire_t -= delta
 				if e.fire_t <= 0.0 and e.pos.y > 40.0:
 					e.fire_t = float(def.fire_every) * _spit_mult
 					e.shots = int(e.get("shots", 0)) + 1
@@ -1464,6 +1471,12 @@ func _update_enemies(delta: float) -> void:
 					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(bcol, 0.9))
 					_float_text(e.pos + Vector2(0, -110), "RELEASING!" if brood != "scout" else "HATCHING!", bcol.lightened(0.3), true)
 					shake = maxf(shake, 0.35)
+		# frozen solid: it does not move (or shoot) until the ice breaks
+		if float(e.get("freeze_t", 0.0)) > 0.0:
+			e.freeze_t = float(e.freeze_t) - delta
+			e.pos = prev
+			if float(e.freeze_t) <= 0.0:
+				_burst(e.pos, float(e.r) * 0.6, Color(0.75, 0.92, 1.0), 6)   # the ice breaks
 		# Frost Rounds: a slowed bug covers only part of its move
 		if float(e.get("slow_t", 0.0)) > 0.0:
 			e.slow_t = float(e.slow_t) - delta
@@ -1487,6 +1500,15 @@ func _update_enemies(delta: float) -> void:
 				_show_dmg(e, bd, false, _elem_mult)
 			if rng.randf() < delta * 10.0:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
+			# from Afterburn level 2 the fire jumps to bugs it touches
+			if _burn_level >= 2:
+				e.spread_t = float(e.get("spread_t", 0.0)) - delta
+				if float(e.spread_t) <= 0.0:
+					e.spread_t = 0.3
+					for o in enemies:
+						if o != e and o.type != "spore" and float(o.get("burn_t", 0.0)) <= 0.0 and o.pos.distance_to(e.pos) < (float(e.r) + float(o.r)) * 0.75:
+							o.burn_t = 1.5 + 0.75 * _burn_level
+							o.burn_dps = 0.05 * float(o.hp_max)
 		if not _is_boss(e):
 			e.pos.x = clampf(e.pos.x, 16.0, FIELD_W - 16.0)   # never drifts off the sides (a wave must stay killable)
 			if e.pos.y < -120.0:
@@ -1605,6 +1627,9 @@ func _kill(e: Dictionary) -> void:
 			nxt.burn_t = 2.5
 			nxt.burn_dps = 0.05 * float(nxt.hp_max)
 			zaps.append({"a": e.pos, "b": nxt.pos, "life": 0.2, "seed": rng.randf() * 100.0})
+		# and it leaves a burning patch that sets bugs passing through it alight
+		if _fire_patches.size() < 8:
+			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
@@ -3809,6 +3834,7 @@ func _draw() -> void:
 		else:
 			draw_circle(eb.pos, 5, Color(1.0, 0.2, 0.6, 0.5))
 			draw_circle(eb.pos, 2.5, Color(1.0, 0.8, 0.9))
+	_draw_fire_patches()   # burning patches under the bugs (dev209)
 	# enemies
 	for e in enemies:
 		_draw_enemy(e)
@@ -3860,8 +3886,7 @@ func _draw_enemy(e: Dictionary) -> void:
 	if e.get("hatchling", false):
 		size *= lerpf(0.6, 1.0, smoothstep(0.2, 1.2, float(e.t)))   # grows out of the sac
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
-	if float(e.get("burn_t", 0.0)) > 0.0:   # Afterburn: an orange glow round a burning bug
-		draw_circle(e.pos, size * 0.55, Color(1.0, 0.45, 0.15, 0.14 + 0.08 * sin(time_alive * 20.0)))
+	EnemyRig.tint = _status_tint(e)   # icy blue when slowed or frozen, red-orange when burning (dev209)
 	var sac_k := -1.0   # the Spitter's sac / the Rivet Gun's pod: fills over the cycle, empties on the shot
 	if e.type == "spitter" or e.type == "rivet":
 		# the sac swells before it spits and settles right after, on smooth ramps
@@ -3896,6 +3921,8 @@ func _draw_enemy(e: Dictionary) -> void:
 		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a * (1.0 - fold), float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
 	else:
 		EnemyRig.draw_bug(self, e.type, e.pos, size, time_alive, float(e.ph), ang, fold, 1.0 + float(e.speed) / 150.0, a, float(e.get("stretch_s", 0.0)), e.vel.angle(), bright, sac_k)
+	EnemyRig.tint = Color.WHITE
+	_draw_status(e, size)
 	_draw_variant(e, size)
 	if e.hp < e.hp_max and not _is_boss(e):
 		var w := size * 0.9
@@ -5109,3 +5136,93 @@ func _draw_variant(e: Dictionary, size: float) -> void:
 	if not ["booster", "healer"].has(v):
 		return
 	draw_string(hud_font, Vector2(e.pos.x - 40.0, e.pos.y - size * 0.75), VARIANTS[v].name, HORIZONTAL_ALIGNMENT_CENTER, 80, 9, Color(col, 0.9))
+
+# ---- status effects that SHOW on the bug (Rudy, dev209 playtest) ----
+# Ice: the bug turns icy blue as it slows, frost crystals sit on it, and a frozen bug is an
+# ice block. Fire: it glows red-orange and flames lick up off it. Burning patches flicker
+# where a burning bug died (Afterburn overcharged).
+
+func _status_tint(e: Dictionary) -> Color:
+	var t := Color.WHITE
+	if float(e.get("freeze_t", 0.0)) > 0.0:
+		t = Color(0.62, 0.88, 1.35)
+	elif float(e.get("slow_t", 0.0)) > 0.0:
+		var k: float = clampf(float(e.get("slow", 0.0)) / 0.45, 0.35, 1.0)
+		t = t.lerp(Color(0.62, 0.86, 1.25), k)
+	if float(e.get("burn_t", 0.0)) > 0.0:
+		var f: float = 0.88 + 0.12 * sin(time_alive * 18.0 + float(e.ph))
+		t = Color(t.r * 1.28 * f, t.g * 0.8, t.b * 0.6)
+	return t
+
+func _draw_status(e: Dictionary, size: float) -> void:
+	var frozen: bool = float(e.get("freeze_t", 0.0)) > 0.0
+	var slowed: bool = float(e.get("slow_t", 0.0)) > 0.0
+	if frozen or slowed:
+		# frost crystals round the body: a few while slowed, a full crust when frozen
+		var n: int = 8 if frozen else (2 + int(clampf(float(e.get("slow", 0.0)) / 0.15, 1.0, 3.0)))
+		var ph: float = float(e.ph) * 7.0
+		for i in n:
+			var a: float = ph + float(i) * TAU / float(n)
+			var dir := Vector2.from_angle(a)
+			var at: Vector2 = e.pos + dir * size * (0.3 if frozen else 0.34)
+			var ln: float = size * (0.2 if frozen else 0.13) * (0.8 + 0.4 * fmod(float(i) * 0.37 + ph, 1.0))
+			var side := dir.orthogonal() * ln * 0.32
+			var pts := PackedVector2Array([at - dir * ln * 0.25, at + side, at + dir * ln, at - side])
+			draw_colored_polygon(pts, Color(0.86, 0.96, 1.0, 0.8 if frozen else 0.65))
+			draw_polyline(PackedVector2Array([pts[0], pts[1], pts[2], pts[3], pts[0]]), Color(0.45, 0.75, 1.0, 0.8), 1.0, true)
+		if frozen:
+			# the ice block: a pale shell over the body with a glint across it
+			draw_circle(e.pos, size * 0.44, Color(0.72, 0.9, 1.0, 0.22))
+			draw_arc(e.pos, size * 0.44, 0.0, TAU, 28, Color(0.85, 0.96, 1.0, 0.55), 1.5, true)
+			draw_line(e.pos + Vector2(-size * 0.2, -size * 0.26), e.pos + Vector2(size * 0.04, -size * 0.34), Color(1, 1, 1, 0.7), 2.0, true)
+	if float(e.get("burn_t", 0.0)) > 0.0:
+		# flames licking up off the bug: four tongues that flicker and sway
+		for i in 4:
+			var a: float = PI + float(i) * PI / 3.0 + 0.3 * sin(float(e.ph) + float(i))
+			var base: Vector2 = e.pos + Vector2(cos(a) * size * 0.3, sin(a) * size * 0.16 - size * 0.02)
+			var h: float = size * (0.24 + 0.1 * sin(time_alive * 14.0 + float(i) * 2.1 + float(e.ph)))
+			_flame(base, h, size * 0.09, sin(time_alive * 9.0 + float(i)) * size * 0.05, 1.0)
+
+# one flame tongue: a teardrop rising from `base`, orange outside, yellow inside
+func _flame(base: Vector2, h: float, w: float, sway: float, a: float) -> void:
+	var tip: Vector2 = base + Vector2(sway, -h)
+	var outer := PackedVector2Array([base + Vector2(-w, 0), base + Vector2(-w * 0.6, -h * 0.45) + Vector2(sway * 0.4, 0), tip,
+		base + Vector2(w * 0.6, -h * 0.45) + Vector2(sway * 0.4, 0), base + Vector2(w, 0), base + Vector2(0, w * 0.7)])
+	draw_colored_polygon(outer, Color(1.0, 0.42, 0.1, 0.75 * a))
+	var ih: float = h * 0.55
+	var itip: Vector2 = base + Vector2(sway * 0.6, -ih)
+	var inner := PackedVector2Array([base + Vector2(-w * 0.5, 0), itip, base + Vector2(w * 0.5, 0), base + Vector2(0, w * 0.4)])
+	draw_colored_polygon(inner, Color(1.0, 0.88, 0.35, 0.85 * a))
+
+func _update_fire_patches(delta: float) -> void:
+	if _fire_patches.is_empty():
+		return
+	var live: Array = []
+	for fp in _fire_patches:
+		fp.life = float(fp.life) - delta
+		if float(fp.life) <= 0.0:
+			continue
+		for o in enemies:
+			if o.type != "spore" and o.pos.distance_to(fp.pos) < float(fp.r):
+				o.burn_t = maxf(float(o.get("burn_t", 0.0)), 1.2)
+				o.burn_dps = 0.05 * float(o.hp_max)
+		live.append(fp)
+	_fire_patches = live
+
+func _draw_fire_patches() -> void:
+	for fp in _fire_patches:
+		var k: float = clampf(float(fp.life) / float(fp.max), 0.0, 1.0)
+		var a: float = minf(1.0, k * 3.0)
+		var c: Vector2 = fp.pos
+		var r: float = float(fp.r)
+		draw_set_transform(c, 0.0, Vector2(1.0, 0.45))
+		draw_circle(Vector2.ZERO, r, Color(1.0, 0.35, 0.08, 0.16 * a))
+		draw_circle(Vector2.ZERO, r * 0.6, Color(1.0, 0.6, 0.15, 0.18 * a))
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# flames of uneven size, scattered over the patch, each on its own flicker (not a tidy row)
+		for i in 6:
+			var u: float = fmod(float(i) * 0.618 + float(fp.ph), 1.0)
+			var x: float = (u * 2.0 - 1.0) * r * 0.75
+			var y: float = sin(float(i) * 2.3 + float(fp.ph)) * r * 0.16
+			var h: float = r * (0.18 + 0.28 * fmod(float(i) * 0.41 + float(fp.ph), 1.0) + 0.12 * sin(time_alive * (9.0 + float(i)) + float(i) * 1.7)) * a
+			_flame(c + Vector2(x, y), h, r * (0.08 + 0.06 * u), sin(time_alive * 6.0 + float(i) * 1.3) * 4.0, a * (0.7 + 0.3 * u))

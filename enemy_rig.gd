@@ -46,6 +46,10 @@ static func _t(name: String) -> Texture2D:
 		_tex[name] = load("res://enemies/parts/%s.png" % name)
 	return _tex[name]
 
+# A colour every piece of the bug is drawn in (battle sets it for a frozen or burning bug,
+# dev209: the effect must show ON the bug), white = as painted.
+static var tint := Color.WHITE
+
 static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float, rot: float, pivot: Vector2, flip_x: bool = false, alpha: float = 1.0, pre: Transform2D = Transform2D.IDENTITY, bright: float = 1.0) -> void:
 	# pivot is 0..1 inside the texture; the texture is placed so pivot sits at pos. `pre` is an
 	# extra world-space transform applied over the part (the whole-bug stretch, dev153).
@@ -54,7 +58,7 @@ static func _draw_tex(c: CanvasItem, tex: Texture2D, pos: Vector2, scale: float,
 		c.draw_set_transform(pos, rot, Vector2(-1.0 if flip_x else 1.0, 1.0))
 	else:
 		c.draw_set_transform_matrix(pre * Transform2D(rot, Vector2(-1.0 if flip_x else 1.0, 1.0), 0.0, pos))
-	c.draw_texture_rect(tex, Rect2(-Vector2(pivot.x * sz.x, pivot.y * sz.y), sz), false, Color(bright, bright, bright, alpha))   # bright > 1 = the hit flash
+	c.draw_texture_rect(tex, Rect2(-Vector2(pivot.x * sz.x, pivot.y * sz.y), sz), false, Color(bright * tint.r, bright * tint.g, bright * tint.b, alpha))   # bright > 1 = the hit flash
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # fold: 0 = wings open and flapping, 1 = folded flat (diving, hatching). Values in
@@ -291,7 +295,7 @@ static func draw_machine(c: CanvasItem, kind: String, pos: Vector2, size: float,
 			var arm_at: Vector2 = at.call(spec.arm)
 			c.draw_set_transform_matrix(pre * Transform2D(tilt + PI * 0.5, Vector2(reach, 1.0), 0.0, arm_at))
 			var asz := arm.get_size() * s
-			c.draw_texture_rect(arm, Rect2(-asz.x * 0.05, -asz.y * 0.5, asz.x, asz.y), false, Color(bright, bright, bright, alpha))
+			c.draw_texture_rect(arm, Rect2(-asz.x * 0.05, -asz.y * 0.5, asz.x, asz.y), false, Color(bright * tint.r, bright * tint.g, bright * tint.b, alpha))
 			c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			var claw_at: Vector2 = arm_at + Vector2(0, asz.x * 0.95 * reach).rotated(tilt)
 			_draw_tex(c, _m("wrecker_claw_open"), claw_at, s * 0.75 * (0.8 + 0.4 * ext), tilt + sin(t * 3.0) * 0.1 * ext, Vector2(0.5, 0.2), false, alpha * clampf(ext * 2.0, 0.0, 1.0), pre, bright)
