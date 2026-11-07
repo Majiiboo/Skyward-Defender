@@ -653,6 +653,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    pointless: fly away only at the end of a STAGE, not every wave (check what counts);
    Lance laser does not line up (fires from a random spot, not the tip) and its base vanishes
    while turning: turrets "throw him off", wants ideas; Stage Cleared box went off-screen once.
+   TURRETS may stay ATTACHED to their base (no floating heads) if it reads better (Rudy).
    POWER CARDS: text spills out of the boxes; say only what THIS pick does ("2 extra bolts per
    burst"), no "then 3, then 4", no next-level text; chain text maybe too much; bigger icons.
    PAUSE: drop "leaving ends this run" text and the damage list; Back to Hub asks "Are you
