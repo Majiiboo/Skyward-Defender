@@ -92,6 +92,17 @@ func _process(_d: float) -> bool:
 			var t_share: float = b.stat_turret_dmg / maxf(b.stat_turret_dmg + b.stat_pilot_dmg, 1.0)
 			print("loadout %d: %d steps, wave %d, kills %d, turret damage share %d%%, mines alive %d, shield %d / %d, hull %d" % [li, steps, b.wave_index + 1, b.kills, roundi(t_share * 100.0), b.mines.size(), roundi(b.shield), roundi(b.shield_max), roundi(b.hull)])
 			_expect(b.stat_turret_dmg > 0.0, "the turrets dealt damage")
+			# damage by source (dev199): every mounted turret and the hero counted
+			var by: Dictionary = b._dmg_by
+			print("loadout %d damage by source: %s" % [li, str(by)])
+			_expect(float(by.get("hero", 0.0)) > 0.0, "the hero is counted")
+			for type in LOADOUTS[li]:
+				if type == "beacon" or type == "repair":
+					continue   # support turrets deal no damage
+				_expect(float(by.get(type, 0.0)) > 0.0, "%s is counted (got %s)" % [type, str(by.get(type, 0.0))])
+			var rows: Control = b._dmg_rows(true)
+			_expect(rows.get_child_count() >= 2, "the damage rows build")
+			rows.free()
 			li += 1
 			_next()
 			return false
