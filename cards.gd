@@ -149,6 +149,40 @@ const FUSIONS := {
 }
 
 # the fusion a card is a part of ("" when none): the CHAIN tag on its card (dev199)
+# What THIS pick gives, in one short line (Rudy, dev209: no "then 3, then 4", nothing about later
+# picks). Index = picks taken so far. The overcharge pick shows its OVERCHARGE line instead.
+const STEPS := {
+	"rapid_pulse": ["Fire rate +10%"], "heavy_bolts": ["Bolt damage +15%"],
+	"burst_fire": ["2-bolt bursts", "3-bolt bursts", "4-bolt bursts"],
+	"piercing_rounds": ["Bolts pierce 1 bug", "Bolts pierce 2 bugs", "Bolts pierce 3 bugs"],
+	"chain_spark": ["Every 5th bolt chains to 1 bug", "Chains to 2 bugs", "Chains to 3 bugs"],
+	"frost_rounds": ["Hits slow bugs 15%", "Hits slow bugs 30%", "Hits slow bugs 45%"],
+	"turret_overclock": ["Turrets fire 15% faster"], "aegis": ["+30 HP and a light shield"],
+	"reinforced_hull": ["Base shield +30, hull +20"],
+	"shield_recharge": ["Shield heals 1% a second", "Shield heals 2% a second", "Shield heals 3% a second"],
+	"magnet": ["Wider magnet, XP +10%"],
+	"sentry_ricochet": ["Sentry bolts bounce once", "Bounce to 2 bugs", "Bounce to 3 bugs"],
+	"lance_focus": ["Lance beam wider, ATK +30%"], "storm_chain": ["Lightning hits 2 more bugs"],
+	"gravity_horizon": ["Gravity pull area +25%"], "swarm_surge": ["+2 Swarm drones"], "prism_fan": ["+2 Prism beams"],
+	"repair_overdrive": ["Repair Node mends +50%"], "tesla_chain": ["Tesla zaps hit 1 more bug"],
+	"cryo_deep": ["Cryo cone wider, slows more"], "mines_cluster": ["+1 mine in the air"],
+	"beacon_dread": ["Marks last longer, ATK +5%"], "flak_shrapnel": ["Flak blast +20%"],
+	"focus_fire": ["Bolt damage +6%"], "salvage": ["Bugs drop +25% coins"],
+	"second_wind": ["Once a run: survive a hit at 50% HP", "Survive at 75% HP", "Survive at full HP"],
+	"mirror_shell": ["Stopped shots fly back (50%)", "Fly back at 75%", "Fly back at full damage"],
+	"rook_twin": ["Every 4th bolt fires twice", "Every 3rd bolt fires twice", "Every 2nd bolt fires twice"],
+	"sparks_weld": ["Every 3rd bolt arcs to 1 bug", "Arcs to 2 bugs", "Arcs to 3 bugs"],
+	"frost_freeze": ["Hits slow bugs 20%", "Hits slow bugs 40%", "Hits slow bugs 60%"],
+	"hollow_phase": ["Bolts pierce 1 bug", "Bolts pierce 2 bugs", "Bolts pierce 3 bugs"],
+	"nyx_mark": ["Crit rate +10%"], "ember_burn": ["Hits set bugs burning", "Burns last longer", "Burns last even longer"],
+}
+
+static func pick_text(id: String, picks_so_far: int) -> String:
+	if STEPS.has(id):
+		var s: Array = STEPS[id]
+		return String(s[mini(picks_so_far, s.size() - 1)])
+	return String(def(id).desc)
+
 static func chain_of(id: String) -> String:
 	for f in FUSIONS:
 		if Array(FUSIONS[f].parts).has(id):

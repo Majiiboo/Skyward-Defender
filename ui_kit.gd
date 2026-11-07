@@ -346,6 +346,11 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 	row.add_theme_constant_override("separation", 6)
 	var buttons: Array = []
 	var map: Array = []
+	# five tabs or more: no icons, a size smaller, and every tab may shrink (clip_text), so the row
+	# never grows wider than the phone (Rudy, dev209: the Store tabs ran off the screen)
+	var crowded: bool = names.size() - hidden.size() >= 5
+	if crowded:
+		row.add_theme_constant_override("separation", 4)
 	for i in names.size():
 		if hidden.has(i):
 			continue
@@ -353,8 +358,9 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 		b.text = names[i]
 		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		b.custom_minimum_size = Vector2(0, 34)
-		b.add_theme_font_size_override("font_size", 13)
-		if i < icons.size() and icons[i] != null:   # Luna's tab icons (dev182)
+		b.add_theme_font_size_override("font_size", 12 if crowded else 13)
+		b.clip_text = true
+		if not crowded and i < icons.size() and icons[i] != null:   # Luna's tab icons (dev182)
 			b.icon = icons[i]
 			b.add_theme_constant_override("icon_max_width", 18)
 			b.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
@@ -472,6 +478,7 @@ static func kit_ready(name: String) -> bool:
 
 # a 9-slice box from a kit piece; `edge` = the corner size kept as painted (px of the
 # picture); `pad` = the content margins; `col` tints it (chips and bars)
+const BTN_LIP := 10.0
 static func nine(name: String, edge: float = 40.0, pad: Vector2 = Vector2(12, 8), col: Color = Color.WHITE) -> StyleBoxTexture:
 	var key := "%s|%.0f|%s|%s" % [name, edge, str(pad), str(col)]
 	if _kit_cache.has(key):
@@ -488,6 +495,10 @@ static func nine(name: String, edge: float = 40.0, pad: Vector2 = Vector2(12, 8)
 	s.content_margin_right = pad.x
 	s.content_margin_top = pad.y
 	s.content_margin_bottom = pad.y
+	# Luna's buttons are a face on a dark lip (the bottom ~11 px of the drawn button): centre the
+	# text on the face, so it is never low and a second line never runs into the lip (dev209 playtest)
+	if name.begins_with("btn_"):
+		s.content_margin_bottom = pad.y + BTN_LIP
 	s.modulate_color = col
 	_kit_cache[key] = s
 	return s

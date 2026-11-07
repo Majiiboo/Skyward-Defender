@@ -201,7 +201,11 @@ func _card(m: Dictionary) -> Control:
 # ------------------------------------------------------------------ promotion (rank trials)
 # The card's bottom row: your rank and what it gives, a Ranks button (the ladder), and
 # Challenge for the next trial (or what unlocks it). Promotion.start sends battle into it.
-func _promotion_row(row: HBoxContainer) -> HBoxContainer:
+# the rank text on its own lines (wrapping), the buttons on a row under it, so the card never
+# grows wider than the phone (Rudy, dev209 playtest: the Modes cards ran off the screen)
+func _promotion_row(row: HBoxContainer) -> Control:
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 6)
 	var r := Promotion.rank(_save)
 	var nxt := Promotion.next(_save)
 	var info := VBoxContainer.new()
@@ -210,7 +214,11 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 	info.add_child(UIKit.label("%s  ·  %s" % [Promotion.rank_name(_save), Promotion.bonus_text(r)] if r > 0 else "Rookie  ·  no rank yet", 11, UIKit.GOLD))
 	var next_txt := "All ranks won" if nxt < 0 else ("Next: %s trial  ·  recommended Lv.%d%s" % [Promotion.RANKS[nxt].name, int(Promotion.RANKS[nxt].level), "" if Promotion.unlocked(_save, player_level) else "  ·  opens at Lv.%d" % Promotion.open_level(nxt)])
 	info.add_child(UIKit.label(next_txt, 11, UIKit.MUTED))
-	row.add_child(info)
+	for l in info.get_children():
+		(l as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	outer.add_child(info)
+	row.alignment = BoxContainer.ALIGNMENT_END
+	outer.add_child(row)
 	var elems := UIKit.ghost_button("Elements", 11)   # the element ladders (dev172)
 	elems.custom_minimum_size = Vector2(62, 36)
 	elems.pressed.connect(_etrials)
@@ -238,7 +246,7 @@ func _promotion_row(row: HBoxContainer) -> HBoxContainer:
 	b.custom_minimum_size = Vector2(94, 38)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
-	return row
+	return outer
 
 # the rank ladder: ten rows, won ones in gold with a tick, the next one lit, the rest dim
 func _ladder() -> void:

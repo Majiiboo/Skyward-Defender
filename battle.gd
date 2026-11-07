@@ -868,7 +868,8 @@ func _process(delta: float) -> void:
 		_end_run(false)
 	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared and _outro_t < 0.0:
 		wave_index += 1
-		_vacuum_t = 1.4   # what is left flies to him
+		if horde or wave_index < waves.size():
+			_vacuum_t = 1.4   # between waves what is left flies to him (gems feed the next cards)
 		if horde:
 			waves.append(_horde_wave(wave_index))   # endless: the next wave is built as it comes
 			_coins_f += 20.0 + 4.0 * wave_index   # a bounty per wave cleared
@@ -960,12 +961,20 @@ func _update_outro(delta: float) -> void:
 	_outro_t += delta
 	dragging = false
 	if _outro_lift < 0.0:
-		# everything left flies to him (at least 0.8 s, at most 2.5 s) while he settles
-		_vacuum_t = maxf(_vacuum_t, 0.2)
-		soldier_pos.x = lerpf(soldier_pos.x, FIELD_W * 0.5, minf(1.0, delta * 2.0))
-		if (gems.is_empty() and _outro_t > 0.8) or _outro_t > 2.5:
-			_outro_lift = _outro_t
-		return
+		# no vacuum show at the end of a stage (Rudy, dev209: pointless, the cards reset anyway):
+		# coins and parts still on screen are counted at once, gems vanish, and he lifts off
+		var left_coins := 0.0
+		for g in gems:
+			if g.has("part"):
+				_parts_got[g.part] = int(_parts_got.get(g.part, 0)) + 1
+			elif g.get("coin", false):
+				left_coins += float(g.get("value", 1.0)) * _coin_mult
+		gems.clear()
+		if left_coins > 0.0:
+			_coins_f += left_coins
+			coins_earned = int(_coins_f)
+			_float_text(soldier_pos + Vector2(0, -44), "+%d" % int(left_coins), Color(1.0, 0.85, 0.35))
+		_outro_lift = _outro_t
 	var k: float = _outro_t - _outro_lift
 	soldier_pos.x = lerpf(soldier_pos.x, FIELD_W * 0.5, minf(1.0, delta * 3.0))
 	soldier_pos.y -= (80.0 + 900.0 * k * k) * delta   # slow lift-off, then a rush upward
@@ -1688,11 +1697,13 @@ func _gain_xp(amount: float) -> void:
 		_open_cards()
 
 func _xp_need() -> float:
-	# the first card after 2 kills, then one about every 10-14 s; cards build up over the
-	# whole stage (they reset only when a new stage starts). Past level 18 they slow down.
-	var base := 4.0 + 3.0 * (run_level - 1)
-	if run_level > 18:
-		base *= pow(1.6, run_level - 18)
+	# cards build up over the whole stage (they reset only when a new stage starts). Rudy
+	# (dev209 playtest): they came too fast (level 11 by the end of stage 5), so each level asks
+	# for more gem XP and the climb steepens past 14: a short stage ends near level 7, a long
+	# late one near 13-14, and each pick matters more.
+	var base := 8.0 + 7.0 * (run_level - 1)
+	if run_level > 14:
+		base *= pow(1.5, run_level - 14)
 	return base * _xp_cut
 
 # ------------------------------------------------------------------ turrets
@@ -2686,6 +2697,24 @@ func _dmg_rows(compact: bool = false) -> Control:
 		box.add_child(row)
 	return box
 
+# one loot tile on the end screen: the item's picture big, its amount under it
+func _loot_tile(tex: Texture2D, text: String, col: Color) -> Control:
+	var p := PanelContainer.new()
+	var sb := UIKit.box(Color(col.r * 0.14, col.g * 0.14, col.b * 0.2, 0.85), Color(col, 0.55), 10, 1)
+	sb.set_content_margin_all(4)
+	p.add_theme_stylebox_override("panel", sb)
+	var vb := VBoxContainer.new()
+	vb.add_theme_constant_override("separation", 0)
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.custom_minimum_size = Vector2(44, 40)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	vb.add_child(tr)
+	vb.add_child(UIKit.label(text, 12, col, HORIZONTAL_ALIGNMENT_CENTER))
+	p.add_child(vb)
+	return p
+
 # a five-pointed star outline
 func _star_pts(c: Vector2, r: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -2771,19 +2800,51 @@ func _fill_pause() -> void:
 			b.text = "%s: %s" % [spec[1], "On" if now else "Off"])
 		srow.add_child(b)
 	v.add_child(srow)
-	v.add_child(_dmg_rows(false))   # who is doing the damage (dev199)
 	var resume := UIKit.gold_button("Resume", 17)
 	resume.custom_minimum_size = Vector2(0, 46)
 	resume.pressed.connect(_toggle_pause)
 	v.add_child(resume)
 	var quit_b := UIKit.ghost_button("Back to Hub", 14)
 	quit_b.custom_minimum_size = Vector2(0, 42)
-	quit_b.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
+	quit_b.pressed.connect(_confirm_leave)   # asks first (Rudy, dev209)
 	v.add_child(quit_b)
-	v.add_child(UIKit.label("Leaving ends this run (you restart the stage).", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	_pause_panel.add_child(box)
 	box.size = Vector2(340.0, box.get_combined_minimum_size().y)
 	UIKit.pop_in(box)   # the menu pops into place (dev157)
+
+# "Are you sure?" before leaving a stage from the pause menu: leaving restarts the stage
+func _confirm_leave() -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0.0, 0.01, 0.04, 0.55)
+	layer.position = Vector2(0, -_safe_top)
+	layer.size = get_viewport_rect().size
+	_pause_panel.add_child(layer)
+	var p := UIKit.popup_panel()
+	var w := 300.0
+	p.custom_minimum_size = Vector2(w, 0)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	v.add_child(UIKit.label("LEAVE THE STAGE?", 17, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	var msg := UIKit.label("You will restart it from wave 1.", 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(msg)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var stay := UIKit.teal_button("Stay", 15)
+	stay.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	stay.custom_minimum_size = Vector2(0, 44)
+	stay.pressed.connect(layer.queue_free)
+	row.add_child(stay)
+	var go := UIKit.ghost_button("Leave", 15)
+	go.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	go.custom_minimum_size = Vector2(0, 44)
+	go.pressed.connect(func(): get_tree().change_scene_to_file("res://hub.tscn"))
+	row.add_child(go)
+	v.add_child(row)
+	p.add_child(v)
+	layer.add_child(p)
+	p.position = Vector2((layer.size.x - w) * 0.5, layer.size.y * 0.36)
+	UIKit.pop_in(p)
 
 func _toggle_pause() -> void:
 	if _cards_open:
@@ -2963,6 +3024,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
 	v.offset_left = 24; v.offset_right = -24; v.offset_top = 24; v.offset_bottom = -22   # text kept well inside the frame
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	b.clip_contents = true   # nothing ever drawn outside the card (dev209: text spilled past the frame)
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	v.add_child(_card_pic(id, 50.0 if fusion or over else 62.0))
@@ -2970,15 +3032,24 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
 	var gold := Color(1.0, 0.82, 0.32)
-	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)))
+	# the frame already shows the rarity: the tag is just NEW or the level, in the rarity colour
+	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else ("NEW" if lvl == 0 else "Lv.%d" % (lvl + 1)))
 	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
-	# a card that leads to a fusion says so (dev199, Rudy's Rogue Defense note: "Chain")
-	var chain := Cards.chain_of(id)
-	if chain != "" and not fusion and not over:
-		v.add_child(UIKit.label("CHAIN  ·  %s" % String(Cards.FUSIONS[chain].name), 9, Cards.COLOR.fusion, HORIZONTAL_ALIGNMENT_CENTER))
+	# a card that leads to a fusion carries a small link badge in its corner (was a CHAIN line)
+	if Cards.chain_of(id) != "" and not fusion and not over:
+		var link := Control.new()
+		link.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		link.position = Vector2(size.x - 34.0, 12.0)
+		link.size = Vector2(22, 22)
+		var lc: Color = Cards.COLOR.fusion
+		link.draw.connect(func():
+			link.draw_circle(Vector2(11, 11), 11.0, Color(0.05, 0.03, 0.08, 0.85))
+			link.draw_arc(Vector2(8, 11), 4.5, 0.0, TAU, 16, lc, 2.0, true)
+			link.draw_arc(Vector2(14, 11), 4.5, 0.0, TAU, 16, lc, 2.0, true))
+		b.add_child(link)
 	# an overcharge card shows only its new bonus (the card itself is known by now)
 	if not over:
-		var d := UIKit.label(def.desc, 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+		var d := UIKit.label(Cards.pick_text(id, lvl) if not fusion else String(def.desc), 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(d)
 	if over:
@@ -3543,33 +3614,30 @@ func _show_end(won: bool) -> void:
 	v.add_child(rw)
 	if _xp_bonus > 0:
 		v.add_child(UIKit.label("includes first clear bonus +%d XP" % _xp_bonus, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	if not _parts_got.is_empty():
-		var bits: Array = []
-		for k in Parts.ORDER:
-			if int(_parts_got.get(k, 0)) > 0:
-				bits.append("+%d %s" % [int(_parts_got[k]), Parts.KINDS[k].name])
-		v.add_child(UIKit.label("Parts:  " + "   ".join(bits), 12, Color(0.7, 0.9, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
+	# everything this stage dropped, as tiles (big icon, amount) that wrap onto more rows, so a
+	# lucky stage never pushes the box off the screen (Rudy, dev209 playtest)
+	var loot := HFlowContainer.new()
+	loot.alignment = FlowContainer.ALIGNMENT_CENTER
+	loot.add_theme_constant_override("h_separation", 6)
+	loot.add_theme_constant_override("v_separation", 6)
+	for k in Parts.ORDER:
+		if int(_parts_got.get(k, 0)) > 0:
+			loot.add_child(_loot_tile(Parts.icon(k), "+%d" % int(_parts_got[k]), Color(0.75, 0.9, 1.0)))
 	if not _gear_got.is_empty():
-		# the gear copy this clear dropped: its picture, name and rarity (merge it in the Workshop)
 		var gid: String = _gear_got.id
-		var grow := HBoxContainer.new()
-		grow.alignment = BoxContainer.ALIGNMENT_CENTER
-		grow.add_theme_constant_override("separation", 8)
-		var gpic := TextureRect.new()
 		var gpath := "res://gear/%s_t1.png" % gid
-		gpic.texture = load(gpath) if ResourceLoader.exists(gpath) else load("res://gear/%s.png" % gid)
-		gpic.custom_minimum_size = Vector2(36, 36)
-		gpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		gpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		grow.add_child(gpic)
-		grow.add_child(UIKit.label("GEAR:  %s %s" % [GearData.rarity_name(_gear_got.rarity), GearData.ITEMS[gid].name], 12, GearData.rarity_color(_gear_got.rarity)))
-		if not _shards_got.is_empty():
-			grow.add_child(UIKit.label("SHARDS:  %d for %s" % [int(_shards_got.n), Heroes.ROSTER[_shards_got.id].name], 12, Heroes.element_color(Heroes.element_of(_shards_got.id))))
-		v.add_child(_dmg_rows(true))   # damage by source (dev199)
-		for mk in _mats_got:
-			if int(_mats_got[mk]) > 0:
-				grow.add_child(UIKit.iconed(Materials.icon(String(mk)), "%d %s" % [int(_mats_got[mk]), Materials.name_of(String(mk))], 12, Materials.color_of(String(mk)), 18.0))
-		v.add_child(grow)
+		loot.add_child(_loot_tile(load(gpath) if ResourceLoader.exists(gpath) else load("res://gear/%s.png" % gid), GearData.rarity_name(_gear_got.rarity), GearData.rarity_color(_gear_got.rarity)))
+	if not _shards_got.is_empty():
+		var sid: String = _shards_got.id
+		var pp := "res://heroes/%s/portrait.png" % sid
+		loot.add_child(_loot_tile(load(pp) if ResourceLoader.exists(pp) else UIKit.ic("mat_shard", "ic_shard"), "+%d" % int(_shards_got.n), Heroes.element_color(Heroes.element_of(sid))))
+	for mk in _mats_got:
+		if int(_mats_got[mk]) > 0:
+			loot.add_child(_loot_tile(Materials.icon(String(mk)), "+%d" % int(_mats_got[mk]), Materials.color_of(String(mk))))
+	if loot.get_child_count() > 0:
+		v.add_child(loot)
+	# who did the damage, best first (moved here from the pause menu)
+	v.add_child(_dmg_rows(true))
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
 		for id in Turrets.TURRETS:
@@ -3654,24 +3722,31 @@ func _draw() -> void:
 			draw_texture_rect(ctx, Rect2(-ctx.get_size() * 0.5, ctx.get_size()), false, Color(1, 1, 1, blink))
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			continue
-		# stand out on any world (Rudy: blue gems vanished on blue skies): a dark backing,
-		# a thin light ring that pulses, then the gem and a white glint
-		draw_circle(p, r * 2.3, Color(0.0, 0.01, 0.05, 0.55 * blink))
-		var pulse: float = 0.5 + 0.5 * sin(time_alive * 5.0 + p.x * 0.1)
-		draw_arc(p, r * (2.0 + 0.4 * pulse), 0.0, TAU, 20, Color(c.lightened(0.5), (0.35 + 0.35 * pulse) * blink), 1.2, true)
+		# no ring any more (Rudy, dev209): the gem itself, a thin dark edge so it still shows on blue
+		# worlds, and a little glitter, so it never looks like a round enemy shot
 		if g.get("pull", false):
 			# flying to the pilot: a short fading streak behind it
 			var back: Vector2 = (p - soldier_pos).normalized() * (10.0 + 3.0 * g.tier)
 			draw_line(p + back, p, Color(c, 0.0), r * 1.2, true)
 			draw_line(p + back * 0.6, p, Color(c, 0.45), r * 0.9, true)
-		draw_circle(p, r * 2.2, Color(c, 0.12 * blink))
 		# Luna's gem, turning slowly (a squeeze across its width) and bobbing
 		var gtx: Texture2D = _tex["gem_%d" % int(g.tier)]
 		var gs: float = r * 4.2 / maxf(gtx.get_width(), gtx.get_height())
 		var spin: float = 0.75 + 0.25 * cos(time_alive * 3.0 + p.x * 0.05)
+		draw_set_transform(p + Vector2(0, sin(time_alive * 4.0 + p.x) * 1.2), 0.0, Vector2(gs * spin * 1.18, gs * 1.18))
+		draw_texture_rect(gtx, Rect2(-gtx.get_size() * 0.5, gtx.get_size()), false, Color(0, 0, 0, 0.55 * blink))   # dark edge
 		draw_set_transform(p + Vector2(0, sin(time_alive * 4.0 + p.x) * 1.2), 0.0, Vector2(gs * spin, gs))
 		draw_texture_rect(gtx, Rect2(-gtx.get_size() * 0.5, gtx.get_size()), false, Color(1, 1, 1, blink))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		# glitter: two tiny four-point sparkles that wink in turn round the gem
+		for si in 2:
+			var tw: float = maxf(0.0, sin(time_alive * 3.1 + p.x * 0.21 + si * PI))
+			if tw > 0.4:
+				var sk: float = (tw - 0.4) / 0.6
+				var sp: Vector2 = p + Vector2(r * (1.7 if si == 0 else -1.5), -r * (1.3 if si == 0 else -0.9))
+				var sl: float = r * 0.9 * sk
+				draw_line(sp - Vector2(sl, 0), sp + Vector2(sl, 0), Color(c.lightened(0.6), 0.9 * sk * blink), 1.0, true)
+				draw_line(sp - Vector2(0, sl), sp + Vector2(0, sl), Color(c.lightened(0.6), 0.9 * sk * blink), 1.0, true)
 		var gl: float = maxf(0.0, sin(time_alive * 2.2 + p.x * 0.37))
 		if gl > 0.85:
 			var k: float = (gl - 0.85) / 0.15
@@ -4400,7 +4475,7 @@ func _draw_hud() -> void:
 		Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
 	# row 1: stage number (white) and name (cyan), then the run time
 	# the stage title and the clock are built once per change, not per frame (efficiency pass, 27)
-	var hud_key: int = wave_index if horde else -1
+	var hud_key: int = (wave_index if horde else 0) * 1000 + stage   # rebuilt on a new stage too (Next stage keeps the scene)
 	if _hud_title == "" or _hud_title_key != hud_key:
 		_hud_title_key = hud_key
 		_hud_num = "%d " % stage

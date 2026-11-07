@@ -515,6 +515,8 @@ func _fill_offers() -> void:
 		tv.add_child(UIKit.label(String(p.name), 14, col))
 		tv.add_child(UIKit.label("FREE: " + Progress.reward_text(resolve(d, p.free)), 10, Color(0.55, 1.0, 0.6)))
 		tv.add_child(UIKit.label("Paid: %s  ·  coming soon" % String(p.paid), 10, UIKit.MUTED))
+		for wl in tv.get_children():   # wrap, so a long line never widens the page
+			(wl as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		h.add_child(tv)
 		var left_s := free_left_s(d, "pack_" + String(p.id), int(p.every))
 		var b := UIKit.gold_button("Claim" if left_s == 0 else left_text(left_s), 13)
