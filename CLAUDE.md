@@ -3,7 +3,7 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-05, build dev206)
+## Where we are (hand-over, 2026-11-06, build dev206)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
 - UNPUSHED since dev206: 0 updates (next push = dev206 + that count; see the build rule).
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
