@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev206 (version/code=206 and version/name="1.0-dev206" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev209 (version/code=209 and version/name="1.0-dev209" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2189,7 +2189,7 @@ Other useful files:
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
 
-## Next build (unpushed since dev206: 3 updates)
+## dev209: Luna's star map art and Rook's five-star set, icons 3, and the Store art complete with chests that open as body, lid and burst (three updates since dev206)
 
 Update 1: LUNA'S STAR MAP ART and ROOK'S FIVE-STAR REDO are in.
 - The star map (Gear > TALENTS) now shows Luna's four constellation skies, each with its figure
