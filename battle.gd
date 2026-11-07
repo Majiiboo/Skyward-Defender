@@ -705,6 +705,16 @@ func _meet(id: String) -> void:
 	_write_save({"seen_enemies": _seen})
 	_intro = {"id": id, "t": 0.0}
 
+# The first time ever a variant shows up: the same small info card as a new enemy (Rudy, dev209:
+# what it does, no "kill it first"; players work out the strategy). Waits if a card is up.
+func _meet_variant(v: String, bug: String) -> void:
+	var key := "v_" + v
+	if _seen.has(key) or not _intro.is_empty():
+		return
+	_seen.append(key)
+	_write_save({"seen_enemies": _seen})
+	_intro = {"id": bug, "t": 0.0, "variant": v}
+
 func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var e := {"id": next_enemy_id, "type": id, "pos": pos,
@@ -4713,7 +4723,9 @@ func _draw_intro() -> void:
 	var frame := PackedVector2Array([r.position + Vector2(cut, 0), Vector2(r.end.x, r.position.y), Vector2(r.end.x, r.end.y - cut),
 		Vector2(r.end.x - cut, r.end.y), Vector2(r.position.x, r.end.y), r.position + Vector2(0, cut), r.position + Vector2(cut, 0)])
 	_hc.draw_colored_polygon(frame, Color(0.03, 0.045, 0.10, 0.88 * a))
-	_hc.draw_polyline(frame, Color(1.0, 0.55, 0.35, 0.8 * a), 1.2, true)
+	var vv: String = String(_intro.get("variant", ""))
+	var edge: Color = VARIANTS[vv].col if vv != "" else Color(1.0, 0.55, 0.35)
+	_hc.draw_polyline(frame, Color(edge, 0.8 * a), 1.2, true)
 	# the bug itself, small, on the left
 	var icon := r.position + Vector2(38.0, 37.0)
 	if id == "hive_mother":
@@ -4722,9 +4734,12 @@ func _draw_intro() -> void:
 		EnemyRig.draw_machine(_hc, id, icon, 26.0 if _is_boss_id(id) else 46.0, time_alive, 0.0, 0.0, a)
 	else:
 		EnemyRig.draw_bug(_hc, id, icon, 46.0, time_alive, 0.0, 0.0, 0.0, 1.0, a)
-	_hc.draw_string(title_font, r.position + Vector2(76.0, 20.0), "NEW ENEMY", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(1.0, 0.6, 0.4, a))
-	_hc.draw_string(hud_font, r.position + Vector2(76.0, 38.0), id.replace("_", " ").capitalize(), HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
-	_hc.draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), String(StageData.ENEMIES[id].intro), HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
+	var head := "NEW VARIANT" if vv != "" else "NEW ENEMY"
+	var title := (String(VARIANTS[vv].name).capitalize() + " " + id.replace("_", " ").capitalize()) if vv != "" else id.replace("_", " ").capitalize()
+	var body := String(VARIANTS[vv].desc) if vv != "" else String(StageData.ENEMIES[id].intro)
+	_hc.draw_string(title_font, r.position + Vector2(76.0, 20.0), head, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(edge.lightened(0.2), a))
+	_hc.draw_string(hud_font, r.position + Vector2(76.0, 38.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
+	_hc.draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), body, HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
 
 # Luna's armoured hatch over a locked socket. On the first run after a mount opens,
 # the hatch tips up (closed -> half -> open, standing behind the socket) with a cyan
@@ -5025,10 +5040,10 @@ func _can_hurt(e: Dictionary) -> bool:
 # healer:   a SUPPORT bug: heals bugs near it; kill it first (green aura)
 # One roll per bug: the chance rises with the stage, each variant from its own stage on.
 const VARIANTS := {
-	"armoured": {"from": 6,  "name": "ARMOURED", "col": Color(0.75, 0.78, 0.85)},
-	"shielded": {"from": 11, "name": "SHIELDED", "col": Color(0.4, 0.9, 1.0)},
-	"booster":  {"from": 16, "name": "BOOSTER",  "col": Color(1.0, 0.6, 0.2)},
-	"healer":   {"from": 21, "name": "HEALER",   "col": Color(0.4, 1.0, 0.5)},
+	"armoured": {"from": 6,  "name": "ARMOURED", "col": Color(0.75, 0.78, 0.85), "desc": "Steel bands soak the hits and break off as it weakens."},
+	"shielded": {"from": 11, "name": "SHIELDED", "col": Color(0.4, 0.9, 1.0), "desc": "An energy shell takes the hits until it breaks."},
+	"booster":  {"from": 16, "name": "BOOSTER",  "col": Color(1.0, 0.6, 0.2), "desc": "Speeds up the bugs around it."},
+	"healer":   {"from": 21, "name": "HEALER",   "col": Color(0.4, 1.0, 0.5), "desc": "Mends the bugs around it."},
 }
 const AURA_R := 120.0
 var _variants_seen := {}   # variant -> true once its card showed this run
@@ -5059,10 +5074,7 @@ func _roll_variant(e: Dictionary) -> void:
 		"booster", "healer":
 			e.hp *= 0.85
 			e.hp_max *= 0.85
-	if not _variants_seen.has(v):
-		_variants_seen[v] = true
-		var vd: Dictionary = VARIANTS[v]
-		_float_text(Vector2(FIELD_W * 0.5, 200), ("%s BUG: KILL IT FIRST" if v in ["booster", "healer"] else "%s BUG") % vd.name, vd.col, true)
+	_meet_variant(v, String(e.type))
 
 # the bug's traits: its kind's plus its variant's (turret "strong vs" bonuses)
 func _traits(e: Dictionary) -> Array:
@@ -5103,39 +5115,82 @@ func _update_auras(delta: float) -> void:
 					zaps.append({"a": e.pos, "b": o.pos, "life": 0.18, "seed": rng.randf() * 100.0, "col": Color(0.4, 1.0, 0.5)})
 
 func _draw_variant(e: Dictionary, size: float) -> void:
+	# each variant shows ON the bug, not as a ring round it (Rudy, dev209 playtest)
 	var v := String(e.get("variant", ""))
 	if v == "":
 		return
 	var col: Color = VARIANTS[v].col
+	var ang: float = float(e.get("tilt_s", 0.0))
 	match v:
 		"armoured":
-			# plates round the body: a thick dark ring with lighter segments
-			draw_arc(e.pos, size * 0.62, 0.0, TAU, 32, Color(0.25, 0.27, 0.32, 0.8), 4.0, true)
-			for i in 6:
-				var a0 := TAU * i / 6.0 + time_alive * 0.4
-				draw_arc(e.pos, size * 0.62, a0, a0 + TAU / 6.0 * 0.55, 8, Color(col, 0.75), 3.0, true)
+			# curved steel bands across its back, like an armadillo shell (the bug is drawn head
+			# down, so the bands lie across the picture); one falls off per third of its health,
+			# and the last cracks before it goes
+			var k: float = clampf(float(e.hp) / maxf(float(e.hp_max), 1.0), 0.0, 1.0)
+			var plates: int = ceili(k * 3.0 - 0.001)
+			var bw: float = size * 0.27
+			var bh: float = size * 0.085
+			draw_set_transform(e.pos, ang, Vector2.ONE)
+			for i in plates:
+				var y: float = (float(i) - 1.0) * size * 0.15 - size * 0.04
+				var top := PackedVector2Array()
+				var bot := PackedVector2Array()
+				for j in 9:
+					var u: float = float(j) / 8.0 * 2.0 - 1.0
+					var bulge: float = (1.0 - u * u) * size * 0.05
+					top.append(Vector2(u * bw, y - bh * 0.5 - bulge))
+					bot.append(Vector2(u * bw * 0.92, y + bh * 0.5 - bulge * 0.6))
+				var poly := PackedVector2Array(top)
+				for j in range(bot.size() - 1, -1, -1):
+					poly.append(bot[j])
+				draw_colored_polygon(poly, Color(0.34, 0.37, 0.44, 0.95))
+				draw_polyline(top, Color(0.85, 0.89, 0.96, 0.85), 1.4, true)    # the top edge catches the light
+				draw_polyline(bot, Color(0.1, 0.11, 0.14, 0.9), 1.0, true)      # its shadow edge
+				draw_circle(top[0].lerp(bot[0], 0.5), 1.3, Color(0.8, 0.84, 0.92))
+				draw_circle(top[8].lerp(bot[8], 0.5), 1.3, Color(0.8, 0.84, 0.92))
+				if i == plates - 1 and fmod(k * 3.0, 1.0) > 0.0 and fmod(k * 3.0, 1.0) < 0.5:
+					draw_polyline(PackedVector2Array([Vector2(-bw * 0.4, y - bh * 0.5), Vector2(-bw * 0.1, y + bh * 0.1), Vector2(bw * 0.15, y - bh * 0.3), Vector2(bw * 0.35, y + bh * 0.5)]), Color(0.05, 0.05, 0.07, 0.95), 1.2, true)
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			var was: int = int(e.get("plates", 3))
+			if plates < was:
+				e.plates = plates
+				_burst(e.pos, size * 0.3, Color(0.75, 0.8, 0.9), 6)   # a band breaks off
 		"shielded":
 			var sh: float = float(e.get("shield_hp", 0.0))
 			if sh > 0.0:
+				# an energy shell with a hex pattern and a bright rim along its top
 				var k: float = sh / maxf(float(e.get("shield_max", 1.0)), 1.0)
-				var r := size * 0.78
-				draw_circle(e.pos, r, Color(col, 0.08 + 0.06 * k))
-				draw_arc(e.pos, r, 0.0, TAU, 40, Color(col, 0.35 + 0.4 * k + 0.1 * sin(time_alive * 9.0)), 1.5, true)
-		"booster", "healer":
+				var r := size * 0.72
+				var flick: float = 0.85 + 0.15 * sin(time_alive * 9.0 + float(e.ph))
+				draw_circle(e.pos, r, Color(col, (0.06 + 0.06 * k) * flick))
+				for i in 7:
+					var hc: Vector2 = e.pos if i == 0 else e.pos + Vector2.from_angle(float(i) * TAU / 6.0 + 0.5) * r * 0.52
+					var hp := PackedVector2Array()
+					for j in 7:
+						hp.append(hc + Vector2.from_angle(float(j) * TAU / 6.0) * r * 0.25)
+					draw_polyline(hp, Color(col, (0.12 + 0.2 * k) * flick), 1.0, true)
+				draw_arc(e.pos, r, 0.0, TAU, 40, Color(col, (0.3 + 0.35 * k) * flick), 1.4, true)
+				draw_arc(e.pos, r, PI * 1.12, PI * 1.88, 16, Color(col.lightened(0.5), 0.6 * k + 0.2), 2.4, true)
+		"booster":
+			# orange speed chevrons above it, and links to the bugs it is speeding up
+			for i in 3:
+				var cy: float = e.pos.y - size * 0.55 - float(i) * 6.0 - fmod(time_alive * 18.0, 6.0)
+				var ca: float = 0.85 - 0.25 * float(i)
+				draw_polyline(PackedVector2Array([Vector2(e.pos.x - 6, cy + 4), Vector2(e.pos.x, cy - 1), Vector2(e.pos.x + 6, cy + 4)]), Color(col, ca), 2.0, true)
+			for o in enemies:
+				if o != e and float(o.get("boost_t", 0.0)) > 0.0 and o.pos.distance_to(e.pos) <= AURA_R:
+					draw_line(e.pos, o.pos, Color(col, 0.35), 1.0, true)
+		"healer":
+			# a green cross above it that breathes (its green zaps show who it mends)
 			var pulse: float = 0.5 + 0.5 * sin(time_alive * 4.0)
-			draw_arc(e.pos, AURA_R * (0.95 + 0.05 * pulse), 0.0, TAU, 48, Color(col, 0.18), 1.0, true)
-			draw_circle(e.pos, size * 0.7, Color(col, 0.08 + 0.05 * pulse))
-			if v == "booster":
-				for o in enemies:
-					if o != e and float(o.get("boost_t", 0.0)) > 0.0 and o.pos.distance_to(e.pos) <= AURA_R:
-						draw_line(e.pos, o.pos, Color(col, 0.35), 1.0, true)
+			var cc := Vector2(e.pos.x, e.pos.y - size * 0.6)
+			var arm: float = 5.0 + 1.5 * pulse
+			draw_rect(Rect2(cc.x - arm, cc.y - 2.0, arm * 2.0, 4.0), Color(col, 0.75 + 0.25 * pulse))
+			draw_rect(Rect2(cc.x - 2.0, cc.y - arm, 4.0, arm * 2.0), Color(col, 0.75 + 0.25 * pulse))
 	# the shield bar over the health bar
 	if v == "shielded" and float(e.get("shield_hp", 0.0)) > 0.0:
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6 - 5.0, w * clampf(float(e.shield_hp) / float(e.shield_max), 0.0, 1.0), 3), Color(0.4, 0.9, 1.0))
-	if not ["booster", "healer"].has(v):
-		return
-	draw_string(hud_font, Vector2(e.pos.x - 40.0, e.pos.y - size * 0.75), VARIANTS[v].name, HORIZONTAL_ALIGNMENT_CENTER, 80, 9, Color(col, 0.9))
 
 # ---- status effects that SHOW on the bug (Rudy, dev209 playtest) ----
 # Ice: the bug turns icy blue as it slows, frost crystals sit on it, and a frozen bug is an
@@ -5152,6 +5207,8 @@ func _status_tint(e: Dictionary) -> Color:
 	if float(e.get("burn_t", 0.0)) > 0.0:
 		var f: float = 0.88 + 0.12 * sin(time_alive * 18.0 + float(e.ph))
 		t = Color(t.r * 1.28 * f, t.g * 0.8, t.b * 0.6)
+	if String(e.get("variant", "")) == "armoured":
+		t = Color(t.r * 0.74, t.g * 0.78, t.b * 0.88)   # a steel cast under its plates
 	return t
 
 func _draw_status(e: Dictionary, size: float) -> void:
