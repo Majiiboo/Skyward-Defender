@@ -5,7 +5,11 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-05, build dev195)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev195: 7 updates (next push = dev195 + that count; see the build rule).
+- UNPUSHED since dev195: 8 updates (next push = dev195 + that count; see the build rule).
+  8. FROM THE RECORDINGS (IDEAS-rogue-defense.md 1, 3, Undead 1): battle _dmg_by + _count_dmg at
+     every hit (b.src / t.type / "hero" / "drone"), _dmg_rows(compact) on the pause menu and the
+     end screen (share bar, total, per second); Cards.chain_of(id) + CHAIN tag in _make_card;
+     coin refreshes after the free ones (_coin_refreshes, 150 x n run coins, _coins_f).
   7. RE-TUNE pass 1 (16 g, dev198 sweeps in README update 7): StageData.HP_B 1.02 -> 1.035; battle
      BOSS_WALL 1.5 on the planet boss (stage % 10 == 0, not mini, not horde) in _spawn; the boss
      inserted halfway into the queue from stage 11 (a third from 21); WRECKER_HOLD_MAX 6 s (e.hold_t).

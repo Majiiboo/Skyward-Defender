@@ -345,6 +345,18 @@ Update 11: LUNA'S UI KIT, DEV MODE, and the Workshop plan.
   Sun Rifle's high levels; a weapon line and a drone line), the Workshop as the crafting bench
   with a CRAFT tab (essences from lower essences, weapon variants, unlock materials), drops by
   planet and trial. Loadouts stay: a kit now saves hero + weapon + turrets + drone (a planet kit).
+Update 8 (after dev195): THREE SMALL THINGS FROM YOUR RECORDINGS (IDEAS-rogue-defense.md).
+- DAMAGE BY SOURCE: the pause menu and the Stage Cleared screen now show who did the damage
+  this run: your hero, the drone and each turret by name, biggest first, with a share bar,
+  the total and the damage per second. You can see at a glance whether the Lance earns its
+  mount.
+- CHAIN: a card that is half of a fusion (Rapid Pulse, Heavy Bolts, Burst Fire, Magnet,
+  Reinforced Hull, Aegis, Chain Spark, Piercing Rounds) now carries a small CHAIN tag naming
+  the fusion it leads to, so the fusion system is visible on the pick instead of a surprise.
+- COIN REFRESH: once the free refresh is used, the card pick offers another refresh for the
+  coins picked up in this run: 150 coins, then 300, then 450. Spending them lowers the coins
+  the stage pays out, so it is a real choice.
+
 Update 7 (after dev195): THE LONG-GAME RE-TUNE, first pass (your item 16 g), after a full sweep.
 - The sweep before: with the star ladder, the talent map and the twelve turrets, the auto
   kit won every Normal stage 1 to 60 with the base never touched, and Elite 15 lost both runs

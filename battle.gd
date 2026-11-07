@@ -197,6 +197,8 @@ var _hc: Node2D                   # top bar layer (_draw_hud draws on it)
 var _fx_tex := {}
 var stat_pilot_dmg := 0.0
 var stat_turret_dmg := 0.0
+var _dmg_by := {}                 # damage by source this run: "hero", "drone", each turret type (the pause + clear stats, dev199)
+var _coin_refreshes := 0          # card refreshes bought with run coins after the free ones (dev199)
 var sparks: Array = []
 var rings: Array = []
 var floaters: Array = []
@@ -505,6 +507,8 @@ func _start_stage() -> void:
 	fxs.clear()
 	stat_pilot_dmg = 0.0
 	stat_turret_dmg = 0.0
+	_dmg_by = {}
+	_coin_refreshes = 0
 	var sv := _read_save()
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
 	_speed_pack = bool(sv.get("speed_pack", false))
@@ -1120,6 +1124,7 @@ func _update_bullets(delta: float) -> void:
 				if b.has("src"):
 					dmg *= Turrets.trait_mult(b.src, _traits(e)) * Turrets.element_mult(String(b.src), stage)
 					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
+					_count_dmg(String(b.src), dmg, e)
 					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
 					# Ricochet (turret card): the Sentry bolt bounces on to the nearest other bug
 					if int(b.get("bounce", 0)) > 0:
@@ -1153,6 +1158,7 @@ func _update_bullets(delta: float) -> void:
 						dmg *= _crit_dmg
 						b.lucky = true
 					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
+					_count_dmg("drone" if b.get("drone", false) else "hero", dmg, e)
 					_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
 					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
@@ -1458,6 +1464,7 @@ func _update_enemies(delta: float) -> void:
 				var bd: float = float(e.get("burn_dps", 0.0)) * delta
 				e.hp -= bd
 				stat_pilot_dmg += bd
+				_count_dmg("hero", bd, e)
 				_show_dmg(e, bd, false, _elem_mult)
 			if rng.randf() < delta * 10.0:
 				sparks.append({"pos": e.pos + Vector2(rng.randf_range(-8, 8), rng.randf_range(-8, 8)), "vel": Vector2(rng.randf_range(-20, 20), rng.randf_range(-70, -30)), "life": 0.35, "col": Color(1.0, 0.55, 0.2)})
@@ -1719,6 +1726,7 @@ func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
 	dmg *= Turrets.trait_mult(t.type, _traits(e)) * Turrets.element_mult(t.type, stage)   # traits, the variant and the element (dev172)
 	dmg = _through_shield(e, dmg)
 	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
+	_count_dmg(String(t.type), dmg, e)
 	e.hp -= dmg
 	e.hit_t = HIT_FLINCH_T
 	# turret card overcharges: Overload (Storm) stuns now and then, Frozen Light (Prism) slows
@@ -2626,6 +2634,52 @@ func _objectives(won: bool = false) -> Array:
 		{"text": "Take no damage", "state": ("done" if won else "ok") if _hp_lost <= 0.0 else "fail"},
 	]
 
+# damage by source (dev199, from Rudy's Rogue Defense note): "hero", "drone" or a turret type;
+# counted as what the bug actually lost, like the share stats
+func _count_dmg(src: String, dmg: float, e: Dictionary) -> void:
+	_dmg_by[src] = float(_dmg_by.get(src, 0.0)) + minf(dmg, maxf(float(e.hp), 0.0))
+
+# the DAMAGE block for the pause menu and the clear screen: every source with its share
+# and total, biggest first, a thin bar each; compact = fewer rows, smaller
+func _dmg_rows(compact: bool = false) -> Control:
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 2)
+	var total := 0.0
+	for k in _dmg_by:
+		total += float(_dmg_by[k])
+	var keys: Array = _dmg_by.keys()
+	keys.sort_custom(func(a, b): return float(_dmg_by[a]) > float(_dmg_by[b]))
+	box.add_child(UIKit.label("DAMAGE  ·  %s total" % UIKit.num(int(total)), 10 if compact else 11, UIKit.MUTED))
+	if total <= 0.0:
+		box.add_child(UIKit.label("nothing hit yet", 10, UIKit.MUTED))
+		return box
+	var elapsed: float = maxf(time_alive, 1.0)
+	for k in keys.slice(0, 5 if compact else 8):
+		var d: float = float(_dmg_by[k])
+		var name := "Drone" if k == "drone" else (String(Heroes.ROSTER.get(_hero_id, {}).get("name", "Hero")) if k == "hero" else String(Turrets.TURRETS.get(k, {}).get("name", k)))
+		var col: Color = Heroes.element_color(Heroes.element_of(_hero_id)) if k == "hero" else (Color(0.8, 0.6, 1.0) if k == "drone" else Heroes.element_color(Turrets.element(String(k))))
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 6)
+		var nl := UIKit.label(name, 11 if not compact else 10, Color.WHITE)
+		nl.custom_minimum_size = Vector2(96, 0)
+		row.add_child(nl)
+		var bar := ProgressBar.new()
+		bar.show_percentage = false
+		bar.min_value = 0.0
+		bar.max_value = 1.0
+		bar.value = d / total
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.add_theme_stylebox_override("background", UIKit.box(Color(1, 1, 1, 0.08), Color(0, 0, 0, 0), 4, 0))
+		bar.add_theme_stylebox_override("fill", UIKit.box(Color(col, 0.85), Color(0, 0, 0, 0), 4, 0))
+		row.add_child(bar)
+		var sl := UIKit.label("%d%%  ·  %s  ·  %s/s" % [roundi(100.0 * d / total), UIKit.num(int(d)), UIKit.num(int(d / elapsed))], 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_RIGHT)
+		sl.custom_minimum_size = Vector2(118, 0)
+		row.add_child(sl)
+		box.add_child(row)
+	return box
+
 # a five-pointed star outline
 func _star_pts(c: Vector2, r: float) -> PackedVector2Array:
 	var pts := PackedVector2Array()
@@ -2711,6 +2765,7 @@ func _fill_pause() -> void:
 			b.text = "%s: %s" % [spec[1], "On" if now else "Off"])
 		srow.add_child(b)
 	v.add_child(srow)
+	v.add_child(_dmg_rows(false))   # who is doing the damage (dev199)
 	var resume := UIKit.gold_button("Resume", 17)
 	resume.custom_minimum_size = Vector2(0, 46)
 	resume.pressed.connect(_toggle_pause)
@@ -2777,13 +2832,24 @@ func _open_cards() -> void:
 		tw.tween_property(card, "modulate:a", 1.0, 0.18).set_delay(0.07 * i)
 		tw.tween_property(card, "scale", Vector2.ONE, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 		tw.tween_property(card, "position:y", card.position.y - 26.0, 0.32).set_delay(0.07 * i).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
-	var refresh := UIKit.ghost_button("Refresh (%d left)" % refreshes if refreshes > 0 else "No refresh left", 13)
-	refresh.position = Vector2(FIELD_W * 0.5 - 80, FIELD_H * 0.5 + 50)
-	refresh.size = Vector2(160, 34)
-	refresh.disabled = refreshes <= 0
+	# the free refresh(es), then refreshes bought with the coins picked up in this run (dev199,
+	# from Rudy's Undead Slayer note): 150 coins, then 300, 450...
+	var coin_cost: int = 150 * (_coin_refreshes + 1)
+	var coins_now: int = int(_coins_f)
+	var txt: String = ("Refresh (%d left)" % refreshes) if refreshes > 0 else ("Refresh  ·  %d coins" % coin_cost)
+	var refresh := UIKit.ghost_button(txt, 13)
+	refresh.position = Vector2(FIELD_W * 0.5 - 90, FIELD_H * 0.5 + 50)
+	refresh.size = Vector2(180, 34)
+	refresh.disabled = refreshes <= 0 and coins_now < coin_cost
 	refresh.pressed.connect(func():
 		if refreshes > 0:
 			refreshes -= 1
+			_open_cards()
+		elif int(_coins_f) >= coin_cost:
+			_coins_f -= float(coin_cost)
+			coins_earned = int(_coins_f)
+			_coin_refreshes += 1
+			Sfx.play("coin")
 			_open_cards())
 	if _card_panel.get_child_count() > 3:
 		Tips.first(get_tree(), [["cards", _card_panel.get_child(3)]])   # the first card
@@ -2860,6 +2926,10 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	var gold := Color(1.0, 0.82, 0.32)
 	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else String(def.rarity).to_upper() + ("  Lv.%d" % (lvl + 1)))
 	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
+	# a card that leads to a fusion says so (dev199, Rudy's Rogue Defense note: "Chain")
+	var chain := Cards.chain_of(id)
+	if chain != "" and not fusion and not over:
+		v.add_child(UIKit.label("CHAIN  ·  %s" % String(Cards.FUSIONS[chain].name), 9, Cards.COLOR.fusion, HORIZONTAL_ALIGNMENT_CENTER))
 	# an overcharge card shows only its new bonus (the card itself is known by now)
 	if not over:
 		var d := UIKit.label(def.desc, 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
@@ -3190,6 +3260,7 @@ func _update_drone(delta: float) -> void:
 			best.hp -= dmg if _can_hurt(best) else 0.0
 			_show_dmg(best, dmg, false, _drone_mult)
 			stat_pilot_dmg += dmg
+			_count_dmg("drone", dmg, best)
 			_drone_beam = {"a": p + dir * 14.0, "b": best.pos, "life": 0.18, "col": Color(0.8, 0.5, 1.0)}
 			_fx_add("impact", best.pos, 24.0, 0.2, 0.0, 1.6, Color(0.85, 0.6, 1.0))
 		"missile":
@@ -3440,6 +3511,7 @@ func _show_end(won: bool) -> void:
 		grow.add_child(UIKit.label("GEAR:  %s %s" % [GearData.rarity_name(_gear_got.rarity), GearData.ITEMS[gid].name], 12, GearData.rarity_color(_gear_got.rarity)))
 		if not _shards_got.is_empty():
 			grow.add_child(UIKit.label("SHARDS:  %d for %s" % [int(_shards_got.n), Heroes.ROSTER[_shards_got.id].name], 12, Heroes.element_color(Heroes.element_of(_shards_got.id))))
+		v.add_child(_dmg_rows(true))   # damage by source (dev199)
 		for mk in _mats_got:
 			if int(_mats_got[mk]) > 0:
 				grow.add_child(UIKit.iconed(Materials.icon(String(mk)), "%d %s" % [int(_mats_got[mk]), Materials.name_of(String(mk))], 12, Materials.color_of(String(mk)), 18.0))

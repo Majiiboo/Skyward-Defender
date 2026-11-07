@@ -148,6 +148,13 @@ const FUSIONS := {
 		"desc": "Bugs a bolt passes through throw sparks"},
 }
 
+# the fusion a card is a part of ("" when none): the CHAIN tag on its card (dev199)
+static func chain_of(id: String) -> String:
+	for f in FUSIONS:
+		if Array(FUSIONS[f].parts).has(id):
+			return f
+	return ""
+
 # the pick on which a card overcharges: the 3rd, or the last for cards that stop sooner
 static func over_level(id: String) -> int:
 	return mini(OVER_AT, int(CARDS[id].max))
