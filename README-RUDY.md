@@ -2189,7 +2189,7 @@ Other useful files:
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
 
-## Next build (unpushed since dev206: 1 update)
+## Next build (unpushed since dev206: 2 updates)
 
 Update 1: LUNA'S STAR MAP ART and ROOK'S FIVE-STAR REDO are in.
 - The star map (Gear > TALENTS) now shows Luna's four constellation skies, each with its figure
@@ -2204,6 +2204,17 @@ Update 1: LUNA'S STAR MAP ART and ROOK'S FIVE-STAR REDO are in.
   The second turn_4 she sent is kept as an alt. The white-and-gold set stays parked as his
   Ceremonial skin for the skin library later.
 - Nothing else changed; smoke passes.
+
+Update 2: LUNA'S ICONS 3 are in (all 24 usable).
+- Fourteen material icons: the six essences (Energy Spark, Arc Charge, Frost Core, Void
+  Fragment, Dark Ember, Solar Flare), the weapon line (Scrap Barrel, Focus Lens, Prime Coil),
+  the drone line (Rotor, Gyro, Flight Core), the hero shard and an event token for the Exchange
+  later. They show everywhere a material is named: the Workshop CRAFT tab, upgrade and star
+  prices, the end-of-stage drops, Patrol. The hero panel's shard line uses the new shard.
+- Ten card pictures: the six turret cards (Overdrive Node, Chain Coil, Deep Chill, Cluster
+  Mines, Dread Mark, Shrapnel) and the four star-map cards (Focus Fire, Salvage, Second Wind,
+  Mirror Shell) have their own art on the card instead of a borrowed turret or stat icon.
+- Cutter: tools/cut_icons3.gd. Luna has no open brief left except the last Store pieces.
 
 ## How sending work back works
 

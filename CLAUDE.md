@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-06, build dev206)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev206: 1 update (next push = dev206 + that count; see the build rule).
+- UNPUSHED since dev206: 2 updates (next push = dev206 + that count; see the build rule).
   1. LUNA STAR MAP + ROOK 5-STAR in (unpushed update 1): art_src/talents/ (nebula_0..3, the redone
      nebula_0 in use, _v1 kept; node_/system_ dim/lit/next), tools/cut_talents.gd -> talents/nebula_<s>.png
      640x720 alpha-from-light + node_* / system_* 128 keyed; gear.gd StarMap: node_pos = shares of the
@@ -15,9 +15,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      + portrait_t3.png; no code change (PilotRig hero_mode picks the folder up). LUNA-PROGRAM rows 11, 12
      DELIVERED; open: 13 icons 3, Store leftovers (chest body/lid/burst x3, crystals_2..4). Rudy: the
      Genesis recording (a lane tower defense) has nothing for us; not written up.
+  2. LUNA ICONS 3 in (unpushed update 2; art_src/icons3/ materials_sheet.webp 4x4 of 256 + pic_<card>.webp x10;
+     tools/cut_icons3.gd MATS order = the brief's cells -> icons/mat_<id>.png 96 (Materials.icon picks them up;
+     mat_shard on the hero panel via UIKit.ic("mat_shard", "ic_shard"); mat_token unused until the Exchange),
+     cards/pic_<id>.png 256 (battle _card_pic prefers them). LUNA-PROGRAM row 13 DELIVERED; Luna's only open
+     work: Store leftovers (row 9).
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
-  dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, two still open (LUNA-PROGRAM.md
-  rows 9 part, 13 icons 3; 11 star map and 12 Rook redo landed, unpushed update 1); Rudy's rules of the day: stars not stage
+  dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, one still open (LUNA-PROGRAM.md
+  row 9 part: the Store leftovers; 11 star map, 12 Rook redo, 13 icons 3 all landed, unpushed updates 1-2); Rudy's rules of the day: stars not stage
   gates (DESIGN-stars.md), evolutions keep the theme / skins are named themes, no dividing lines
   on maps, Luna art never redrawn in code; nothing has been played on a phone since dev166, so the
   balance moves after the re-tune (more boss layers, boss earlier on planet 1, chip damage early)

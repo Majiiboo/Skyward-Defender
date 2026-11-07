@@ -246,7 +246,7 @@ func _build() -> void:
 	var hrow := HBoxContainer.new()
 	hrow.add_theme_constant_override("separation", 6)
 	hrow.alignment = BoxContainer.ALIGNMENT_END
-	var srow := UIKit.iconed(UIKit.ic("ic_shard"), "", 13, UIKit.GOLD, 18.0)   # Luna's shard icon in front (dev189)
+	var srow := UIKit.iconed(UIKit.ic("mat_shard", "ic_shard"), "", 13, UIKit.GOLD, 18.0)   # Luna's hero shard (icons 3), the old badge until it lands
 	_stars_l = srow.get_child(srow.get_child_count() - 1)
 	_stars_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # never wider than the phone (the line grew with materials)
 	_stars_l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
