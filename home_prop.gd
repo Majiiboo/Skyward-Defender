@@ -117,6 +117,16 @@ func _draw_light() -> void:
 		return
 	var w := size.x * 0.95
 	var bt: Texture2D = _tex.chest3d_burst
+	if _stacked:
+		# Luna's burst is painted in the body's frame (rays from the rim): same rect as the body,
+		# growing from the chest's mouth as the lid comes up
+		var body: Texture2D = _tex.chest3d_body
+		var h := w * body.get_height() / body.get_width()
+		var c := size * 0.5 + Vector2(0, sin(t * 1.8) * 1.2 + h * 0.06)
+		var k := 0.7 + 0.5 * _open
+		var mouth := c + Vector2(0, h * 0.05)
+		_light.draw_texture_rect(bt, Rect2(mouth.x - w * 0.5 * k, mouth.y - h * 0.55 * k, w * k, h * k), false, Color(1, 1, 1, 0.9 * _open))
+		return
 	var bs := w * (0.9 + 0.5 * _open)
 	_light.draw_texture_rect(bt, Rect2(size.x * 0.5 - bs * 0.5, size.y * 0.35 - bs * 0.45, bs, bs), false, Color(1, 1, 1, 0.8 * _open))
 

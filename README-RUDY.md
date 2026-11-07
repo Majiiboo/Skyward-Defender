@@ -2189,7 +2189,7 @@ Other useful files:
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
 
-## Next build (unpushed since dev206: 2 updates)
+## Next build (unpushed since dev206: 3 updates)
 
 Update 1: LUNA'S STAR MAP ART and ROOK'S FIVE-STAR REDO are in.
 - The star map (Gear > TALENTS) now shows Luna's four constellation skies, each with its figure
@@ -2217,11 +2217,19 @@ Update 2: LUNA'S ICONS 3 are in (all 24 usable).
 - Deep Chill was redone a few minutes later without the stray turret piece at the fan's base;
   the redo is the one on the card (the first is kept as pic_cryo_deep_v1).
 - Cutter: tools/cut_icons3.gd. Luna has no open brief left except the last Store pieces.
-- Also in this update: the first of the Store chest pieces, the Legendary chest BODY (black and
-  gold, floating specks). Its lid and burst are still to come, so the Store keeps the closed-to-
-  open pop for now; the code for the real opening (the lid lifts off its hinge and tips back,
-  the light bursts out, per tier) is in place and switches on by itself once all three pieces of a
-  tier are cut.
+- Also in this update: the first of the Store chest pieces, the Legendary chest BODY.
+
+Update 3: LUNA'S STORE 2.0 ART IS COMPLETE (the last twelve pieces, all usable).
+- The three key chests open for real now: Luna's chest body, its lid and its burst of light are
+  three pictures painted in one frame, so the lid lifts off its hinge and tips back while the
+  light pours out of the open chest, then it settles shut. Uncommon is the riveted steel box with
+  a teal latch, Epic the armoured charcoal chest with a purple core window, Legendary the black-
+  and-gold chest with the sun on its lid and gold specks floating round it.
+- Crystal piles: all five sizes are in (one crystal, a handful, a small pile, a big pile, the
+  heap), and the Crystals tab now shows five crystal packs (x80, x300, x650, x1400, x3200) with
+  the pile that matches each size. The prices there are placeholders until Google Play Billing;
+  change them in store.gd PACKS.
+- Luna has no open brief. Everything in LUNA-PROGRAM.md is delivered.
 
 ## How sending work back works
 

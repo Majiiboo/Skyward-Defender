@@ -44,10 +44,17 @@ const PACKS_FREE := [
 	{"id": "weekly", "name": "Weekly Pack", "every": 7 * DAY_S, "free": {"cell": 3, "key_e": 1}, "paid": "Cores + an Epic key", "color": "epic"},
 	{"id": "monthly", "name": "Monthly Pack", "every": 30 * DAY_S, "free": {"crystals": 30, "core": 1, "ess": 1}, "paid": "Crystals x300 + a Legendary chest", "color": "legendary"},
 ]
-const PACKS := [
-	["Starter Pack", "1,500 coins + 100 crystals", "$1.99"], ["Crystals x300", "premium currency", "$4.99"],
-	["Crystals x1400", "premium currency", "$19.99"], ["Speed Pack", "x2 game speed forever", "$2.99"],
+const PACKS := [   # placeholder prices until Google Play Billing; one of Luna's five crystal piles per size
+	["Starter Pack", "1,500 coins + 100 crystals", "$1.99"], ["Crystals x80", "premium currency", "$0.99"],
+	["Crystals x300", "premium currency", "$4.99"], ["Crystals x650", "premium currency", "$9.99"],
+	["Crystals x1400", "premium currency", "$19.99"], ["Crystals x3200", "best value", "$49.99"],
+	["Speed Pack", "x2 game speed forever", "$2.99"],
 ]
+
+# Luna's crystal piles (store2 crystals_1..5): one crystal, a handful, a small pile, a big pile, a heap
+static func crystal_pile(n: int) -> Texture2D:
+	var k := 1 if n < 150 else (2 if n < 500 else (3 if n < 1000 else (4 if n < 2500 else 5)))
+	return UIKit.ic("crystals_%d" % k, "ui_crystal")
 # Redeem codes (upper case). Add a code here to give everyone something free.
 const CODES := {
 	"SKYBOUND": {"coins": 500, "crystals": 20},
@@ -657,8 +664,8 @@ func _fill_crystals() -> void:
 		var b := UIKit.ghost_button("%s  soon" % p[2], 13)
 		b.disabled = true
 		var name: String = p[0]
-		# Luna's piles and crates (store2): a small pile for 300, the heap for 1400, the starter crate
-		var icon: Texture2D = UIKit.ic("crystals_5" if name.contains("1400") else "crystals_1", "ui_crystal")
+		# Luna's piles and crates (store2): a pile by the pack's size, the starter crate
+		var icon: Texture2D = crystal_pile(int(name.get_slice("x", 1)) if name.contains("x") else 0)
 		if name.begins_with("Speed"):
 			icon = load("res://icons/ui_energy.png")
 		elif name.begins_with("Starter"):

@@ -5,7 +5,7 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-06, build dev206)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev206: 2 updates (next push = dev206 + that count; see the build rule).
+- UNPUSHED since dev206: 3 updates (next push = dev206 + that count; see the build rule).
   1. LUNA STAR MAP + ROOK 5-STAR in (unpushed update 1): art_src/talents/ (nebula_0..3, the redone
      nebula_0 in use, _v1 kept; node_/system_ dim/lit/next), tools/cut_talents.gd -> talents/nebula_<s>.png
      640x720 alpha-from-light + node_* / system_* 128 keyed; gear.gd StarMap: node_pos = shares of the
@@ -25,9 +25,15 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
      (Luna's pieces share one frame: lid over the body rect, hinge at the back); store _chest_fx opens a
      HomeProp with the tier when has_tier, else the chest2 closed/open pop. Tested with stand-in lid/burst
      (removed); tune the lid hinge when her lid lands. Still owed: chest_u/e/l lid + burst, chest_u/e body, crystals_2..4.
+  3. LUNA STORE 2.0 COMPLETE (unpushed update 3): the last twelve pieces (chest_u/e/l body + lid + burst, crystals_2..4)
+     in art_src/store2/, cut_store2 -> icons/chest3d_<t>_body/_lid/_burst.png 256 + crystals_2..4.png 192. HomeProp
+     _stacked: the burst drawn in the body's frame from the chest mouth (_draw_light), lid over the body rect
+     tipping from its back hinge; store _chest_fx uses it for all three tiers (captured, good). store.gd PACKS
+     = five crystal packs (x80..x3200, placeholder prices) + Starter + Speed, crystal_pile(n) picks crystals_1..5.
+     LUNA-PROGRAM: every row delivered; no open brief. Next brief when needed: super weapons (queue 10).
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
-  dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, one still open (LUNA-PROGRAM.md
-  row 9 part: the Store leftovers; 11 star map, 12 Rook redo, 13 icons 3 all landed, unpushed updates 1-2); Rudy's rules of the day: stars not stage
+  dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, none still open (LUNA-PROGRAM.md
+  rows 9, 11, 12, 13 all landed in unpushed updates 1-3; Luna is free for the next brief); Rudy's rules of the day: stars not stage
   gates (DESIGN-stars.md), evolutions keep the theme / skins are named themes, no dividing lines
   on maps, Luna art never redrawn in code; nothing has been played on a phone since dev166, so the
   balance moves after the re-tune (more boss layers, boss earlier on planet 1, chip damage early)
