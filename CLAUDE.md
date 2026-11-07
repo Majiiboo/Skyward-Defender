@@ -685,6 +685,18 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    becomes the CAMPAIGN mode (story, Candy Crush trail).
    VARIANTS: the grey ring round some bugs (= ARMOURED, battle _draw_variant draw_arc) reads as
    nothing; needs a major rework (all four variants: show it ON the bug, not a ring round it).
+   FROM HIS SCREENSHOTS (checked in code): (1) OFF-SCREEN boxes = one-line texts / rows wider than
+   480: Stage Cleared "grow" HBox (gear + shards + every material in one row, battle ~3555),
+   Modes _promotion_row (rank text + Elements + Ranks + Challenge), Store tabs (5 with icons) and
+   Offers pack lines, the Store wallet cut at the right. (2) HUD title STALE after Next stage:
+   _hud_title_key = -1 outside horde, never rebuilt (stage 5 showed "1 EMBER REACH"; pause
+   showed the real stage). (3) Two-line buttons clip line 2 ("Level up / 90 coins", "Chart star 1
+   / 330 coins", Quests "Go" sits low). (4) "Black bar" = the button 3D lip (Luna kit art +
+   draw_bevel bottom shade + lift shadow 6/3). (5) DNA bolt = bolt_twin (Burst Fire), pill bolts =
+   bolt_heavy. (6) Gems sit in grey rings (dev108 outline). (7) Star map: Luna's skies and ghost
+   figures barely visible; The Rifle reads as a straight diagonal. (8) Stats icons repeat (one
+   bolt icon for hit and DPS, one shield for three rows). (9) Card pick: text spills past frames,
+   Common frame differs (thick grey). (10) Power icon = gold hexagon like the coin.
 28. RUDY PLAYTEST dev166 (2026-11-05, phone, old save with Commander suit). His notes, in his order:
    - A Patrol tip pops the moment the game opens: bad first impression. Tip boxes are huge for
      one or two sentences; in Modes the spotlight sat on a random area. VERDICT: tips OFF (keep the
