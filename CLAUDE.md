@@ -682,6 +682,8 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    WEAK TO FIRE": no plain weakness text; an ELEMENT WHEEL (circle of element icons, arrows for
    who beats whom) under Heroes instead. Menu > Stage Map should not be there: the stage map
    becomes the CAMPAIGN mode (story, Candy Crush trail).
+   VARIANTS: the grey ring round some bugs (= ARMOURED, battle _draw_variant draw_arc) reads as
+   nothing; needs a major rework (all four variants: show it ON the bug, not a ring round it).
 28. RUDY PLAYTEST dev166 (2026-11-05, phone, old save with Commander suit). His notes, in his order:
    - A Patrol tip pops the moment the game opens: bad first impression. Tip boxes are huge for
      one or two sentences; in Modes the spotlight sat on a random area. VERDICT: tips OFF (keep the
