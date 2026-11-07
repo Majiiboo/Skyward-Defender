@@ -2214,6 +2214,8 @@ Update 2: LUNA'S ICONS 3 are in (all 24 usable).
 - Ten card pictures: the six turret cards (Overdrive Node, Chain Coil, Deep Chill, Cluster
   Mines, Dread Mark, Shrapnel) and the four star-map cards (Focus Fire, Salvage, Second Wind,
   Mirror Shell) have their own art on the card instead of a borrowed turret or stat icon.
+- Deep Chill was redone a few minutes later without the stray turret piece at the fan's base;
+  the redo is the one on the card (the first is kept as pic_cryo_deep_v1).
 - Cutter: tools/cut_icons3.gd. Luna has no open brief left except the last Store pieces.
 
 ## How sending work back works

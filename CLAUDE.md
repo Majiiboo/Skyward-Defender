@@ -18,7 +18,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   2. LUNA ICONS 3 in (unpushed update 2; art_src/icons3/ materials_sheet.webp 4x4 of 256 + pic_<card>.webp x10;
      tools/cut_icons3.gd MATS order = the brief's cells -> icons/mat_<id>.png 96 (Materials.icon picks them up;
      mat_shard on the hero panel via UIKit.ic("mat_shard", "ic_shard"); mat_token unused until the Exchange),
-     cards/pic_<id>.png 256 (battle _card_pic prefers them). LUNA-PROGRAM row 13 DELIVERED; Luna's only open
+     cards/pic_<id>.png 256 (battle _card_pic prefers them); pic_cryo_deep redone the same night (v1 kept). LUNA-PROGRAM row 13 DELIVERED; Luna's only open
      work: Store leftovers (row 9).
   dev206 (pushed 2026-11-06, Fable 5.1 session) carried the eleven updates listed next (README-RUDY
   dev206). STATE FOR THE NEXT SESSION: 7 Luna briefs went out today, one still open (LUNA-PROGRAM.md
