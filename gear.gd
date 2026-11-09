@@ -182,6 +182,8 @@ func _build() -> void:
 	col.add_child(_loadout_row)
 	_loadout_row.visible = Unlocks.open(_read(), "loadouts")   # kits appear once a second set is in reach (Unlocks)
 	_paint_loadouts()
+	if UIKit.CLEAN:
+		_loadout_row.visible = false   # one Loadout button beside the hero instead (Rudy, dev209 playtest)
 	# the pilot (live rig) on his platform, three slots on each side (Luna's mockup)
 	var stage := Control.new()
 	stage.custom_minimum_size = Vector2(0, 350)   # the hero big, front and centre (Rudy)
@@ -214,7 +216,7 @@ func _build() -> void:
 		for i in 1:
 			var tb: Button = _slot_tiles[GearData.SLOTS[i]]
 			tb.position.x = stage.size.x - SLOT_PX if i >= 3 else 0.0)
-	plat.tiles = _slot_tiles
+	plat.tiles = {} if UIKit.CLEAN else _slot_tiles   # (clean: no line from the weapon tile to the hero)
 	# the suit switch (Rookie / Commander) on the platform steps
 	_suit_btn = UIKit.ghost_button("", 11)
 	_suit_btn.custom_minimum_size = Vector2(160, 28)
@@ -233,13 +235,59 @@ func _build() -> void:
 	_talent_btn.pressed.connect(_talents_screen)
 	stage.add_child(_talent_btn)
 	stage.resized.connect(func(): _talent_btn.position = Vector2(stage.size.x - SLOT_PX - 156.0, 4.0))
+	if UIKit.CLEAN:
+		# the clean page (mock-up "Round 2 · Clean"): Talents and Stats as squares stacked on the right,
+		# the Loadout square under the weapon on the left (tap = the next kit, hold = rename / save)
+		stats_btn.visible = false
+		_talent_btn.visible = false
+		var tal := _side_square("Talents", "talents")
+		tal.pressed.connect(_talents_screen)
+		stage.add_child(tal)
+		_talent_btn = tal
+		var sts := _side_square("Stats", "stats")
+		sts.pressed.connect(_show_stats)
+		stage.add_child(sts)
+		_kit_btn = _side_square("Loadout", "loadout")
+		_kit_btn.visible = Unlocks.open(_read(), "loadouts")
+		var held := [false]
+		_kit_btn.button_down.connect(func():
+			held[0] = false
+			get_tree().create_timer(0.55).timeout.connect(func():
+				if is_instance_valid(_kit_btn) and _kit_btn.button_pressed:
+					held[0] = true
+					_loadout_box(Loadouts.active(_read()))))
+		_kit_btn.pressed.connect(func():
+			if held[0]:
+				return
+			_on_loadout((Loadouts.active(_read()) + 1) % Loadouts.SLOTS))
+		stage.add_child(_kit_btn)
+		stage.resized.connect(func():
+			tal.position = Vector2(stage.size.x - 56.0, 6.0)
+			sts.position = Vector2(stage.size.x - 56.0, 92.0)
+			_kit_btn.position = Vector2(0.0, SLOT_PX + 30.0))
 	_paint_suit()
 	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
 	_hero_panel = UIKit.panel(10)
 	var hv := VBoxContainer.new()
 	hv.add_theme_constant_override("separation", 4)
 	_hero_name = UIKit.label("", 16, Color.WHITE)
+	if UIKit.CLEAN:
+		# centred: the name big, a tag row (element, stars, grade), the numbers as chips, the level bar
+		hv.add_theme_constant_override("separation", 8)
+		_hero_name = UIKit.title("", 30, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		_hero_tags = HBoxContainer.new()
+		_hero_tags.alignment = BoxContainer.ALIGNMENT_CENTER
+		_hero_tags.add_theme_constant_override("separation", 8)
+		_hero_chips = HBoxContainer.new()
+		_hero_chips.alignment = BoxContainer.ALIGNMENT_CENTER
+		_hero_chips.add_theme_constant_override("separation", 10)
+		_hero_bar = HBoxContainer.new()
+		_hero_bar.add_theme_constant_override("separation", 10)
 	hv.add_child(_hero_name)
+	if UIKit.CLEAN:
+		hv.add_child(_hero_tags)
+		hv.add_child(_hero_chips)
+		hv.add_child(_hero_bar)
 	_hero_line = UIKit.label("", 12, Color(0.85, 0.92, 1.0))
 	_hero_line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	hv.add_child(_hero_line)
@@ -273,10 +321,24 @@ func _build() -> void:
 	hrow.add_child(_crystal_btn)
 	hrow.add_child(_unlock_btn)
 	hv.add_child(hrow)
+	if UIKit.CLEAN:
+		# one big gold LEVEL UP with its cost; Evolve beside it; the shard line small under them
+		hv.move_child(srow, hv.get_child_count() - 1)
+		_stars_l.add_theme_font_size_override("font_size", 11)
+		_stars_l.add_theme_color_override("font_color", UIKit.SOFT)
+		_level_btn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		_level_btn.custom_minimum_size = Vector2(0, 56)
+		_level_btn.add_theme_font_size_override("font_size", 20)
+		_level_btn.icon = UIKit.ic("ic_coin", "ui_coin")
+		_level_btn.add_theme_constant_override("icon_max_width", 22)
+		_level_btn.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		_evolve_btn.custom_minimum_size = Vector2(96, 56)
+		hrow.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hero_panel.add_child(hv)
 	col.add_child(_hero_panel)
 	# the roster under him (Rudy's layout): grade rows, scrolling sideways, locked ones dimmed
-	col.add_child(UIKit.header("HEROES"))
+	if not UIKit.CLEAN:
+		col.add_child(UIKit.header("HEROES"))
 	_roster_row = VBoxContainer.new()
 	_roster_row.add_theme_constant_override("separation", 4)
 	col.add_child(_roster_row)
@@ -311,10 +373,11 @@ func _build() -> void:
 	_bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	bp.add_child(_bonus)
 	col.add_child(bp)
+	bp.visible = not UIKit.CLEAN   # (the old gear-set bonuses: not on the clean page)
 
 # The suit (PilotRig.suit_for): Rookie, or the Commander armour once the Area 1 boss is beaten.
 func _paint_suit() -> void:
-	_suit_btn.visible = _hero_id() == Heroes.DEFAULT   # only Rook has two suits (heroes, dev172)
+	_suit_btn.visible = _hero_id() == Heroes.DEFAULT and not UIKit.CLEAN   # only Rook has two suits (heroes, dev172); the clean page drops the switch (Rudy)
 	var data := _read()
 	if PilotRig.commander_unlocked(data):
 		_suit_btn.text = "Suit: Commander" if PilotRig.suit_for(data) == "commander" else "Suit: Rookie"
@@ -953,6 +1016,8 @@ func _filter_box() -> void:
 # Three kits (Loadouts): tap an empty one to save what you wear now; tap a saved one to
 # wear it (gear, turrets, drone); tap the one in use to rename it or save over it.
 func _paint_loadouts() -> void:
+	if _kit_btn != null:
+		_kit_btn.queue_redraw()   # (clean) the Loadout square shows the kit in use
 	for c in _loadout_row.get_children():
 		c.queue_free()
 	var data := _read()
@@ -1222,7 +1287,10 @@ class PilotShowcase extends Control:
 			if not ev.pressed:
 				_idle = 0.0
 		elif (ev is InputEventScreenDrag or ev is InputEventMouseMotion) and _drag:
-			if PilotRig.spin_ready():
+			if UIKit.CLEAN:
+				# only a slight turn left or right, never his back (Rudy, 2026-11-09)
+				swivel = clampf(swivel - ev.relative.x * 0.008, -0.35, 0.35)
+			elif PilotRig.spin_ready():
 				swivel = wrapf(swivel - ev.relative.x * 0.011, -2.0, 2.0)   # the full circle: Luna's back frames
 			else:
 				swivel = clampf(swivel - ev.relative.x * 0.011, -1.0, 1.0)
@@ -1232,7 +1300,7 @@ class PilotShowcase extends Control:
 		t += delta
 		if not _drag:
 			_idle += delta
-			if _idle > 4.0:
+			if _idle > (1.2 if UIKit.CLEAN else 4.0):
 				swivel = move_toward(swivel, 0.0, delta * 0.8)   # drifts back to face you
 		if PilotRig.spin_ready():
 			view.face_override = 2.0
@@ -1251,7 +1319,7 @@ class PilotShowcase extends Control:
 			return
 		var a: float = _hint * (0.45 + 0.25 * sin(t * 3.0))
 		var y := size.y - 14.0
-		draw_string(ThemeDB.fallback_font, Vector2(0, y), "<  drag to spin  >", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.6, 0.85, 1.0, a))
+		draw_string(ThemeDB.fallback_font, Vector2(0, y), "<  drag to turn  >" if UIKit.CLEAN else "<  drag to spin  >", HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, Color(0.6, 0.85, 1.0, a))
 
 # The round platform he stands on: Luna's two layers (gear/platform_floor.png + the
 # buildings on the back rim, platform_rim.png), else her single picture (platform.png),
@@ -1893,6 +1961,10 @@ var _view_id := ""             # the hero the panel talks about (the one on duty
 var _roster_row: VBoxContainer   # the grade rows (one scrolling row per star grade)
 var _hero_panel: PanelContainer
 var _hero_name: Label
+var _hero_tags: HBoxContainer    # (clean) element, stars, grade
+var _hero_chips: HBoxContainer   # (clean) ATK and HP as chips
+var _hero_bar: HBoxContainer     # (clean) Lv.N ---- cap
+var _kit_btn: Button             # (clean) the Loadout square
 var _hero_line: Label
 var _level_btn: Button
 var _stars_l: Label
@@ -1911,6 +1983,9 @@ func _paint_roster() -> void:
 	for c in _roster_row.get_children():
 		c.queue_free()
 	var data := _read()
+	if UIKit.CLEAN:
+		_paint_roster_clean()
+		return
 	for g in Heroes.GRADES.size():
 		var ids: Array = []
 		for id in Heroes.ORDER:
@@ -1956,6 +2031,46 @@ func _paint_roster() -> void:
 			row.add_child(t)
 		scroll.add_child(row)
 		_roster_row.add_child(scroll)
+
+# (clean) the roster as one row of round portraits: the hero on duty ringed in cyan, the one you are
+# looking at in white, locked ones dimmed with a padlock; the grade colour as a thin ring
+func _paint_roster_clean() -> void:
+	var scroll := ScrollContainer.new()
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	scroll.custom_minimum_size = Vector2(0, 66)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	for hid in Heroes.ORDER:
+		var id := String(hid)
+		var own: bool = Heroes.owned(hero, id)
+		var duty: bool = id == _hero_id()
+		var looking: bool = id == _view_id and not duty
+		var gc: Color = Heroes.GRADES[Heroes.grade(id) - 1].color
+		var face: Texture2D = _hero_portrait(id)
+		var b := Button.new()
+		b.custom_minimum_size = Vector2(58, 58)
+		b.tooltip_text = String(Heroes.ROSTER[id].name)
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		b.draw.connect(func():
+			var c := b.size * 0.5
+			b.draw_circle(c, 28.0, Color(0.086, 0.141, 0.239))
+			if face != null:
+				var fs := Vector2(46, 46)
+				b.draw_texture_rect(face, Rect2(c - fs * 0.5, fs), false, Color(1, 1, 1, 1.0 if own else 0.35))
+			b.draw_arc(c, 27.0, 0.0, TAU, 48, UIKit.CYAN if duty else (Color.WHITE if looking else Color(gc, 0.55)), 3.0 if duty or looking else 1.5, true)
+			if not own:   # a padlock
+				b.draw_arc(c + Vector2(0, -4), 6.0, PI, TAU, 12, Color.WHITE, 2.4, true)
+				b.draw_rect(Rect2(c + Vector2(-8, -3), Vector2(16, 12)), Color.WHITE))
+		var tap := id
+		b.pressed.connect(func(): _tap_hero(tap))
+		UIKit.press_fx(b)
+		row.add_child(b)
+	scroll.add_child(row)
+	_roster_row.add_child(scroll)
 
 # Luna's portrait when it exists, else his weapon picture as a stand-in
 func _hero_portrait(id: String) -> Texture2D:
@@ -2051,6 +2166,8 @@ func _paint_hero() -> void:
 		_unlock_btn.disabled = not (Heroes.gate_open(data, id) and Heroes.can_afford(data, id))
 		_crystal_btn.text = "%d crystals" % Heroes.crystal_price(id)
 		_crystal_btn.disabled = not Heroes.gate_open(data, id) or int(data.get("crystals", 0)) < Heroes.crystal_price(id)
+	if UIKit.CLEAN:
+		_paint_hero_clean(id, own)
 	_power_label.text = "POWER %d" % Heroes.power(_read())
 	if _talent_btn:
 		UIKit.dot(_talent_btn, Talents.affordable(_read()))   # a node is ready to buy (dev197)
@@ -2060,6 +2177,109 @@ func _paint_hero() -> void:
 		var dt := Heroes.tier(hero, _hero_id())
 		_plat.glow = clampf((dt - 1) / 4.0, 0.0, 1.0)   # brighter with every star (Gates)
 		_plat.glow_col = Heroes.element_color(Heroes.element_of(_hero_id()))
+
+# the clean panel (mock-up "Round 2 · Clean"): the name alone, a tag row (element icon, the stars
+# he earned, his grade), ATK and HP chips, the level bar to his cap, and LEVEL UP with its cost
+func _paint_hero_clean(id: String, own: bool) -> void:
+	var h: Dictionary = Heroes.ROSTER[id]
+	var el: String = h.element
+	_hero_name.text = String(h.name)
+	_hero_name.add_theme_color_override("font_color", UIKit.TEXT)
+	for box in [_hero_tags, _hero_chips, _hero_bar]:
+		for c in box.get_children():
+			c.queue_free()
+	var ei := TextureRect.new()
+	ei.texture = UIKit.element_icon(el)
+	ei.custom_minimum_size = Vector2(24, 24)
+	ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_hero_tags.add_child(ei)
+	if own:
+		var hs := Heroes.tier(hero, id)
+		_hero_tags.add_child(UIKit.title(Gates.text(hs), 16, Color(1.0, 0.35, 0.35) if Gates.is_red(hs) else UIKit.GOLD))
+	var gc: Color = Heroes.GRADES[Heroes.grade(id) - 1].color
+	_hero_tags.add_child(UIKit.chip(Heroes.grade_name(id), gc))
+	_hero_line.visible = not own   # a locked hero: his passive and price stay as text
+	_hero_chips.visible = own
+	_hero_bar.visible = own
+	if not own:
+		return
+	var data := _read()
+	var lv := Heroes.level(hero, id)
+	var t := Heroes.tier(hero, id)
+	var gm: float = float(Heroes.GRADES[Heroes.grade(id) - 1].mult)
+	var atk := roundi(((gm * (1.0 + float(Heroes.PER_LEVEL.atk) * (lv - 1)) * Gates.power_mult(t)) - 1.0) * 100.0)
+	var st := Heroes.stats(data) if id == _hero_id() else {}
+	for chip in [[UIKit.ic("st_atk"), "ATK +%d%%" % atk], [UIKit.ic("st_hp"), "HP %d" % roundi(float(st.get("hp", 0.0)))] if not st.is_empty() else []]:
+		if chip.is_empty():
+			continue
+		var p := PanelContainer.new()
+		p.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 17, Vector2(12, 4)))
+		p.add_child(UIKit.iconed(chip[0], chip[1], 16, UIKit.TEXT, 22.0))
+		_hero_chips.add_child(p)
+	var cap := Heroes.level_cap(hero, id)
+	_hero_bar.add_child(UIKit.title("Lv.%d" % lv, 14, UIKit.TEXT))
+	var bar := ProgressBar.new()
+	bar.max_value = maxi(cap, 1)
+	bar.value = lv
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 6)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+	bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 3, Vector2.ZERO))
+	_hero_bar.add_child(bar)
+	_hero_bar.add_child(UIKit.title(str(cap), 14, UIKit.SOFT))
+	# LEVEL UP with the cost beside the coin, or what is in the way
+	var cost := Heroes.level_cost(lv)
+	if lv >= Heroes.MAX_LEVEL:
+		_level_btn.text = "MAX"
+		_level_btn.icon = null
+	elif lv >= cap:
+		_level_btn.text = "Lv.%d cap: next star" % cap
+		_level_btn.icon = null
+	else:
+		_level_btn.text = "LEVEL UP   %s" % UIKit.num(cost)
+		_level_btn.icon = UIKit.ic("ic_coin", "ui_coin")
+	# the shard line: only the next star's shards (the rest is in Stats / the Evolve button)
+	var need := Heroes.next_tier_cost(hero, id)
+	_stars_l.text = ("%d / %d shards to the next star" % [Heroes.shards(hero, id), need]) if t < Gates.MAX_STAR else "Max stars"
+	# the next milestone, small, under the bar
+	var next_lv := ((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY
+	var ms := Heroes.milestone_at(next_lv)
+	if not ms.is_empty():
+		_stars_l.text += "   ·   Lv.%d: %s" % [next_lv, ms.text]
+
+# a square side button on the hero page (Talents, Stats, Loadout): a dark rounded square with a
+# drawn icon (the loadout's number) and its name under it
+func _side_square(text: String, kind: String) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(56, 74)
+	b.size = Vector2(56, 74)
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.draw.connect(func():
+		var r := Rect2(0, 0, 56, 56)
+		b.draw_style_box(UIKit.pill(Color(UIKit.CARD, 0.92), 18, Vector2.ZERO), r)
+		var c := r.get_center()
+		match kind:
+			"talents":
+				var pts := PackedVector2Array()
+				for i in 10:
+					var a := -PI / 2.0 + i * PI / 5.0
+					pts.append(c + Vector2(cos(a), sin(a)) * (14.0 if i % 2 == 0 else 6.0))
+				b.draw_colored_polygon(pts, UIKit.GOLD)
+			"stats":
+				for i in 4:
+					var hgt: float = [10.0, 18.0, 13.0, 22.0][i]
+					var x: float = c.x - 13.0 + i * 8.7
+					b.draw_line(Vector2(x, c.y + 11.0), Vector2(x, c.y + 11.0 - hgt), UIKit.CYAN, 4.0, true)
+			"loadout":
+				var n := str(Loadouts.active(_read()) + 1)
+				b.draw_string(UIKit.title_font(), Vector2(0, c.y + 9.0), n, HORIZONTAL_ALIGNMENT_CENTER, 56.0, 26, UIKit.CYAN)
+		b.draw_string(get_theme_default_font(), Vector2(0, 70.0), text, HORIZONTAL_ALIGNMENT_CENTER, 56.0, 11, UIKit.SOFT))
+	UIKit.press_fx(b)
+	return b
 
 func _on_level_up() -> void:
 	var data := _read()
