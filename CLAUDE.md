@@ -668,7 +668,21 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    scratchpad): Store + Home each in A Command Deck (Oxanium, cut corners), B Arcade Pop (Baloo 2,
    rounded rarity-filled cards; my pick), C Frosted Glass (Outfit); Home = live battle, next-goal line,
    stage card with first-clear reward + fire icon (no WEAK TO text), gold PLAY raised in the nav centre
-   (base platform removed at Rudy's ask). Rudy STILL DECIDING (2026-11-09).
+   (base platform removed at Rudy's ask). ROUND 2 "CLEAN" (2026-11-09, canvas page "Round 2 · Clean"):
+   Rudy found round 1 too busy. Shared frame: Oxanium titles/numbers + Inter text, navy #070c18, cards
+   #0e1728 radius 22-24, cyan #4fe0ff, gold #ffc845 = the one main button per screen; NAV ICONS ONLY,
+   the page you are on lights up (cyan pill that slides between tabs) and shows its name; calm starry
+   background, no fighting behind menus. Rudy's verdicts: Home -> HOME 3 (big planet, stage name big
+   top-left, icon column right, round gold PLAY) with the AFK battle as small dark SHADOWS in the
+   distance over the horizon (hero and bugs small, not the same scale as the menus), depth and smooth
+   page-to-page motion; no big hero on Home. HEROES page: loved as is. STORE: liked; daily gift strip,
+   today's gift highlighted; per chest: free open a day (Uncommon + Epic; my advice Legendary weekly,
+   not daily), open x1 / x10 with keys, buy x1 / x10 with crystals (x10 = 10% off), pity every 10th
+   open = next tier up (already in store.gd), shown as a bar per chest; tapping a chest opens a bottom
+   sheet with those buttons. MODES: liked; Campaign, Elite Campaign (the campaign on elite), Promotion,
+   Trials, Horde (endless). QUESTS: Daily, Career, Trophies (drop the Repeat tab; fold repeat quests
+   into Career or retire them). Prototype.dc.html = clickable version (nav slide, page fade-slide,
+   chest sheet). NEXT: build this frame in Godot page by page (fonts into fonts/, OFL).
    FROM RUDY'S CHATGPT/CODEX PAGES (Documents/Codex/2026-11-07/.../outputs: home.html, index.html,
    skybound-ui-system.html), "take what we like": TAKE one shared frame (same top bar + nav on every
    page; button ranks gold main / cyan second / dark third), Modes = one full-width card per mode with
@@ -685,7 +699,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    scale is ours to set). PHOTOGRAPHED 2026-11-09 with tools/dev/photo3d (README there): the raw texture
    photographs flat grey; neon.gdshader (dark armour, glowing lines) brings Rook close to Luna's look;
    detail is softer than her paintings (fine at battle size, visible on a big Hero page). Lance head on
-   its base aims cleanly at any angle (fixes the beam origin + vanishing base for good). Rudy undecided.
+   its base aims cleanly at any angle (fixes the beam origin + vanishing base for good).
+   DECIDED (Rudy, 2026-11-09): NO full 3D route (free tiers too slow, paid too costly). Stay 2.5D and
+   fight flatness with depth tricks (parallax layers, haze, shadows, springy motion). Hero page swivel:
+   only a slight turn left / right (turn frames 2-3 and a mirror), no back view, no full turnaround.
+   (Option left open: the Lance model already exists, so photographing it alone is cheap.)
    3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
    Lance rotates a side-view picture). DECIDED: option 3 first = Luna makes 3D models from her
    renders with an image-to-3D tool (Meshy / Tripo), Claude PHOTOGRAPHS them in Godot at many
