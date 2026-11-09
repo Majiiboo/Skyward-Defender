@@ -54,26 +54,22 @@ func _fill() -> void:
 	# ---- DEV MODE (Rudy, dev172): one switch, everything open and free, for trying things out
 	var dev_p := UIKit.panel(12)
 	if DevTools.on:
-		dev_p.add_theme_stylebox_override("panel", UIKit.box(Color(1.0, 0.6, 0.2, 0.18), Color(1.0, 0.6, 0.2), 12))
+		dev_p.add_theme_stylebox_override("panel", UIKit.box(Color(1.0, 0.6, 0.2, 0.14), Color(1.0, 0.6, 0.2, 0.7), 20))
 	var dh := HBoxContainer.new()
 	dh.add_theme_constant_override("separation", 10)
 	var dv := VBoxContainer.new()
 	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dv.add_theme_constant_override("separation", 1)
-	dv.add_child(UIKit.label("DEV MODE", 15, Color(1.0, 0.75, 0.3) if DevTools.on else Color(0.85, 0.9, 1.0)))
+	dv.add_child(UIKit.title("DEV MODE  ·  UNLOCK EVERYTHING", 15, Color(1.0, 0.75, 0.3) if DevTools.on else UIKit.TEXT))
 	dv.add_child(UIKit.label("Every hero, turret, drone, weapon, mode and trial open; upgrades and unlocks free; no power cost. Your real progress stays as it is.", 11, UIKit.MUTED))
 	dv.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dh.add_child(dv)
-	var db := UIKit.gold_button("ON" if DevTools.on else "OFF", 14)
-	db.custom_minimum_size = Vector2(80, 40)
-	db.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	db.pressed.connect(func():
+	dh.add_child(_toggle(DevTools.on, func():
 		d = Progress.read()
 		d["dev_mode"] = not DevTools.on
 		DevTools.on = bool(d.dev_mode)
 		Progress.write(d)
-		_fill())
-	dh.add_child(db)
+		_fill(), Color(1.0, 0.6, 0.2)))
 	dev_p.add_child(dh)
 	_page.add_child(dev_p)
 	# ---- performance: three cards, the chosen one lit
@@ -84,7 +80,7 @@ func _fill() -> void:
 		var on: bool = m == cur
 		var p := UIKit.panel(12)
 		if on:
-			p.add_theme_stylebox_override("panel", UIKit.nine("panel_gold", 22.0, Vector2(12, 9)) if UIKit.kit_ready("panel_gold") else UIKit.lift(UIKit.box(Color(UIKit.CYAN, 0.16), UIKit.CYAN, 12)))
+			p.add_theme_stylebox_override("panel", UIKit.box(Color(UIKit.CYAN, 0.12), Color(UIKit.CYAN, 0.7), 20) if UIKit.CLEAN else (UIKit.nine("panel_gold", 22.0, Vector2(12, 9)) if UIKit.kit_ready("panel_gold") else UIKit.lift(UIKit.box(Color(UIKit.CYAN, 0.16), UIKit.CYAN, 12))))
 		var h := HBoxContainer.new()
 		h.add_theme_constant_override("separation", 10)
 		var v := VBoxContainer.new()
@@ -208,6 +204,22 @@ func _fill() -> void:
 	UIKit.reveal(_page)
 
 # a row with a name, one line of help and an On / Off switch (greyed when not built)
+# an on/off switch (the clean look): a pill track, coloured when on, with a white knob that sits right
+func _toggle(on: bool, on_press: Callable, col: Color = UIKit.CYAN) -> Button:
+	var b := Button.new()
+	b.custom_minimum_size = Vector2(58, 34)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	for st in ["normal", "hover", "pressed", "disabled", "focus"]:
+		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	b.draw.connect(func():
+		var r := Rect2(Vector2(2.0, (b.size.y - 30.0) * 0.5), Vector2(54.0, 30.0))
+		b.draw_style_box(UIKit.pill(col if on else Color(0.165, 0.22, 0.32), 15, Vector2.ZERO), r)
+		var kx: float = r.position.x + (r.size.x - 15.0 if on else 15.0)
+		b.draw_circle(Vector2(kx, r.get_center().y), 11.0, Color(1, 1, 1, 0.45 if b.disabled else 1.0)))
+	b.pressed.connect(on_press)
+	UIKit.press_fx(b)
+	return b
+
 func _switch(name: String, help: String, on: bool, on_change: Callable, soon: bool = false) -> Control:
 	var p := UIKit.panel(12)
 	var h := HBoxContainer.new()
@@ -218,14 +230,8 @@ func _switch(name: String, help: String, on: bool, on_change: Callable, soon: bo
 	v.add_child(UIKit.label(name, 15, Color(0.85, 0.9, 1.0) if not soon else UIKit.MUTED))
 	v.add_child(UIKit.label(help, 11, UIKit.MUTED))
 	h.add_child(v)
-	var b := UIKit.ghost_button("On" if on else "Off", 13)
-	b.custom_minimum_size = Vector2(70, 34)
-	if soon:
-		b.disabled = true
-	else:
-		if on:
-			b.add_theme_stylebox_override("normal", UIKit.box(Color(UIKit.CYAN, 0.25), UIKit.CYAN, 10))
-		b.pressed.connect(func(): on_change.call(not on))
+	var b := _toggle(on, func(): on_change.call(not on))
+	b.disabled = soon
 	h.add_child(b)
 	p.add_child(h)
 	if soon:

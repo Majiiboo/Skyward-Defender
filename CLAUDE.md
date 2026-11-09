@@ -9,8 +9,11 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   fonts; UIKit.CLEAN (flat cards, flat gold / dark / outline buttons, pill tab strip with icon-only closed
   tabs, pill chips, title() helper; Luna's kit stays for the battle HUD only); NavDock flat bar + sliding
   cyan pill, nav names only under the open tab; hub _build_home_clean (top bar avatar + bolt / coin /
-  crystal pills, stage block top-left, SideColumn of round buttons, round gold PlayButton; Battle tab no
-  longer starts a fight on Home; Settings moved into the profile pop-up); afk_wallpaper DISTANT (the fight
+  crystal pills + the MenuButton (Rudy wanted it back: Settings + Stage Map), stage block top-left,
+  SideColumn of round buttons, round gold PlayButton; Battle tab no longer starts a fight on Home; profile
+  pop-up = stats + "Change picture" (save "profile_pic", any owned hero) + Trophies; NAV: no box at all, the
+  open tab's icon lights up (NAV_DIM dims the rest) and its name shows; Settings: _toggle switches, DEV MODE
+  (unlock everything) card at the top, reached via the menu); afk_wallpaper DISTANT (the fight
   drawn small + dimmed by a FarFight layer over the horizon, no base strip). NEXT: Store, Modes, Quests,
   Heroes pages in the clean layouts (mock-up), then push with a README block.
   dev210 = Rudy's dev209 playtest BATCH 1 (queue item 29: gameplay + broken

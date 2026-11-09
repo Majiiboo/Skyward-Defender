@@ -8,8 +8,8 @@ extends Control
 # changing a button means editing a table, not hunting through a scene.
 
 const NAV_TABS := ["NavStore", "NavGear", "NavBattle", "NavModes", "NavQuests"]
-const NAV_DIM := Color(0.42, 0.45, 0.55, 1.0)   # look of an inactive tab icon (painted icons: darker and greyer)
-const NAV_LIFT := -3.0                           # how far the active icon rises (stays inside the bar)
+const NAV_DIM := Color(0.38, 0.41, 0.5, 0.72)   # look of an inactive tab icon (painted icons: darker, greyer, see-through)
+const NAV_LIFT := -5.0                           # how far the active icon rises (stays inside the bar)
 const NAV_BUMP := 4.0                            # space above the nav bar (nav_dock.gd bump_h)
 
 const CYAN := Color(0.18, 0.9, 1.0)
@@ -500,6 +500,10 @@ func _build_home_clean() -> void:
 		get_tree().root.set_meta("store_tab", 0)
 		_on_nav_tap("NavStore", NAV_PATHS["NavStore"]))
 	top.add_child(_crystal_btn)
+	# the menu (Rudy, 2026-11-09: back in the corner): Settings and everything that is not the profile
+	var menu := _round_button("MenuButton", Icons.get_icon("menu"), 34.0, 16)
+	menu.pressed.connect(_menu_popup)
+	top.add_child(menu)
 	var et := Timer.new()
 	et.wait_time = 2.0
 	et.autostart = true
@@ -608,9 +612,14 @@ func _build_home_clean() -> void:
 	pl.add_theme_constant_override("outline_size", 4)
 	row.add_child(pl)
 
-# the hero on duty's face for the profile button (Rook has no portrait.png: a crop of his turn frame)
+# the profile picture: a hero you own (save "profile_pic", chosen in the profile pop-up), else the
+# hero on duty (Rook has no portrait.png: a crop of his turn frame)
 func _hero_face() -> Texture2D:
-	var hid: String = Heroes.selected(Heroes.read(Progress.read()))
+	var sv := Progress.read()
+	var h := Heroes.read(sv)
+	var hid: String = String(sv.get("profile_pic", ""))
+	if not Heroes.owned(h, hid):
+		hid = Heroes.selected(h)
 	var p := "res://heroes/%s/portrait.png" % hid
 	if ResourceLoader.exists(p):
 		return load(p)
@@ -620,15 +629,35 @@ func _hero_face() -> Texture2D:
 	a.region = Rect2(t.get_width() * 0.1, 0.0, t.get_width() * 0.8, t.get_width() * 0.8)
 	return a
 
+# the menu in the top-right corner: Settings, the stage map, and what comes with the online update
+func _menu_popup() -> void:
+	_side_popup("MENU", "Build %s\nMail, log-in rewards and community come with the online update (2.0)." % BuildInfo.BUILD,
+		[["Settings", func(): _smooth_change_scene("res://settings.tscn")], ["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]])
+
+# the next hero you own becomes the profile picture
+func _next_profile_pic() -> void:
+	var sv := Progress.read()
+	var h := Heroes.read(sv)
+	var own: Array = h.owned
+	if own.is_empty():
+		return
+	var cur: String = String(sv.get("profile_pic", Heroes.selected(h)))
+	sv["profile_pic"] = String(own[(own.find(cur) + 1) % own.size()])
+	Progress.write(sv)
+	var pb := _find_button(self, "ProfileButton")
+	if pb != null:
+		pb.icon = _hero_face()
+	_profile_popup()   # back to the profile, so the next tap shows the next face
+
 func _profile_popup() -> void:
-	# level, XP and lifetime numbers; Settings lives here now (the menu button is gone)
+	# the player: level, XP, lifetime numbers, the picture (account settings come with the online update)
 	var sv := Progress.read()
 	_side_popup("%s  ·  LEVEL %d" % [Promotion.rank_name(sv).to_upper(), level], "Rank %d of %d: %s\n%d / %d XP to level %d\nHighest stage: %d of %d  ·  stars %d\nBugs destroyed: %d  ·  bosses: %d\nStages cleared: %d  ·  %.1f hours in battle" % [
 		Promotion.rank(sv), Promotion.RANKS.size(), Promotion.bonus_text(Promotion.rank(sv)),
 		pilot_xp - Turrets.xp_for_level(level), Turrets.xp_for_level(level + 1) - Turrets.xp_for_level(level), level + 1,
 		maxi(stage_unlocked - 1, 0), StageData.MAX_STAGE, int(Progress.stat(sv, "stars")),
 		int(Progress.stat(sv, "kills")), int(Progress.stat(sv, "bosses")), int(Progress.stat(sv, "stages")), Progress.stat(sv, "hours")],
-		[["Settings", func(): _smooth_change_scene("res://settings.tscn")],
+		[["Change picture", _next_profile_pic],
 		["Trophies", func():
 			get_tree().root.set_meta("quests_tab", 2)
 			_on_nav_tap("NavQuests", NAV_PATHS["NavQuests"])]])
@@ -1239,7 +1268,7 @@ func _side_popup(title: String, body: String, actions: Array = []) -> void:
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.28)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label(title, 17, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.title(title, 18, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	var b := UIKit.label(body, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(b)

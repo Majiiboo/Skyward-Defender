@@ -85,17 +85,11 @@ func _draw() -> void:
 	if size.x < 10.0 or size.y < 10.0:
 		return
 	if UIKit.CLEAN:
-		# the clean bar (mock-up "Round 2 · Clean"): flat, full width, a faint line on top; the open
-		# tab sits in a soft cyan pill that slides from tab to tab (no gold, no glass)
+		# the clean bar: flat, full width, a faint line on top. No box behind the open tab (Rudy,
+		# 2026-11-09): its icon lights up (the others stay dim) and its name shows under it (hub.gd)
 		var fb := Rect2(0.0, bump_h, size.x, size.y - bump_h)
 		draw_rect(fb, Color(0.039, 0.071, 0.125, 0.98))
 		draw_line(Vector2(0.0, bump_h), Vector2(size.x, bump_h), Color(1, 1, 1, 0.06), 1.0)
-		var pr := Rect2(notch_x + 4.0, bump_h + 5.0, bump_w - 8.0, fb.size.y - 14.0)
-		var ps := StyleBoxFlat.new()
-		ps.bg_color = Color(UIKit.CYAN, 0.13)
-		ps.set_corner_radius_all(18)
-		ps.anti_aliasing = true
-		draw_style_box(ps, pr)
 		return
 	# the bar: one glass capsule
 	var bar := Rect2(INSET, bump_h, size.x - INSET * 2.0, size.y - bump_h - INSET)
