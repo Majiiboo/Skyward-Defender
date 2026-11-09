@@ -663,9 +663,22 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    dark navy + one accent (cyan) + gold, cut-corner sci-fi shapes (Commander phones); hero big on a
    podium with a slim stat panel at the side (shooter collage); rounded cards, pill badges, generous
    spacing (purple social app); micro-interactions (press bounce, count-ups, pop-ins); frosted glass
-   kept but flat. SKIP: kids/fantasy ornate wood/gold frames, AI-generated glossy phones. NEXT: an HTML
-   mock-up (Artifact, Google Fonts) of one page in 2-3 style/font options for Rudy to pick; then
-   fonts into fonts/ (OFL) and the page-by-page pass.
+   kept but flat. SKIP: kids/fantasy ornate wood/gold frames, AI-generated glossy phones. MOCK-UP DONE
+   (2026-11-07): claude.ai/artifact/8n6AMuMVhhrpAqGyP1kswD (Design canvas; source in the session
+   scratchpad): Store + Home each in A Command Deck (Oxanium, cut corners), B Arcade Pop (Baloo 2,
+   rounded rarity-filled cards; my pick), C Frosted Glass (Outfit); Home = live battle, next-goal line,
+   stage card with first-clear reward + fire icon (no WEAK TO text), gold PLAY raised in the nav centre
+   (base platform removed at Rudy's ask). Rudy STILL DECIDING (2026-11-09).
+   FROM RUDY'S CHATGPT/CODEX PAGES (Documents/Codex/2026-11-07/.../outputs: home.html, index.html,
+   skybound-ui-system.html), "take what we like": TAKE one shared frame (same top bar + nav on every
+   page; button ranks gold main / cyan second / dark third), Modes = one full-width card per mode with
+   one entry button, Quests = task cards (progress bar + reward + Go; Claim turns gold), Heroes = big
+   hero on the stand + one upgrade card + roster + sub-tabs Hero / Turrets / Drones / Gear, Store = a
+   7-day gift strip on top, first-clear reward on the Home stage card, page content fades + lifts in
+   ~200 ms while the backdrop stays. SKIP its 8-10 px text, emoji icons, glow edges, gradient fills,
+   filler lines ("Outpost secure", "Fleet 3/3"), the static Home (keep the live battle), long Store
+   rows (Rudy likes big squares), WEAK TO text. (Its Play page has the planet over the stage name.)
+   NEXT: Rudy picks a style; then fonts into fonts/ (OFL) and the page-by-page pass.
 30. 3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
    Lance rotates a side-view picture). DECIDED: option 3 first = Luna makes 3D models from her
    renders with an image-to-3D tool (Meshy / Tripo), Claude PHOTOGRAPHS them in Godot at many
