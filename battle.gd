@@ -2573,6 +2573,9 @@ func _end_run(won: bool) -> void:
 		if _horde_new_best:
 			_write_save({"best_horde": wave_index + 1})
 			d["best_horde"] = wave_index + 1
+		if score > int(d.get("best_horde_score", 0)):   # the Modes card shows it (style pass, 2026-11-09)
+			_write_save({"best_horde_score": score})
+			d["best_horde_score"] = score
 	var patch := {"coins": int(d.get("coins", 0)) + coins_earned, "best_score": maxi(score, int(d.get("best_score", 0))),
 		"best_kills": maxi(kills, int(d.get("best_kills", 0))), "pilot_xp": old_xp + _xp_gain}
 	# stars for the stage map = the 3 stage objectives (_objectives): cleared, base hull

@@ -51,6 +51,10 @@ func _build() -> void:
 		tab = int(get_tree().root.get_meta("quests_tab"))
 		get_tree().root.remove_meta("quests_tab")
 	var hidden: Array = [] if Unlocks.open(d, "repeat") else [3]   # Repeat quests from stage 4 (Unlocks)
+	if UIKit.CLEAN:
+		hidden = [3]   # no Repeat tab (Rudy, 2026-11-09): repeat quests sit at the end of Career
+		if tab == 3:
+			tab = 1
 	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
 	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat"], func(i): tab = i; _fill(), tab, [], hidden, [UIKit.ic("tab_daily"), UIKit.ic("tab_career"), UIKit.ic("tab_trophies"), UIKit.ic("tab_repeat")])
 	col.add_child(_tabs_row)
@@ -77,12 +81,21 @@ func _fill() -> void:
 				if m.claimed:
 					left -= 1
 			_note.text = "All 5 done: +%s  ·  %d left today" % [Progress.reward_text(Progress.DAILY_ALL_BONUS), left]
+			if UIKit.CLEAN:
+				_note.visible = false
+				_daily_card(ms)
 			for m in ms:
 				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_daily(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 		1:
 			_note.text = "Milestones that never reset."
+			_note.visible = not UIKit.CLEAN
 			for m in Progress.career(d):
 				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
+			if UIKit.CLEAN and Unlocks.open(d, "repeat"):
+				# the old Repeat tab: goals that come back bigger every time you claim them
+				_list.add_child(UIKit.header("Again and again"))
+				for m in Progress.repeat(d):
+					_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
 			_trophy_grid()
@@ -92,7 +105,137 @@ func _fill() -> void:
 				_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 	UIKit.reveal(_list)
 
+# ---- the CLEAN Quests look (Rudy, 2026-11-09, mock-up "Round 2 · Clean") ----
+# The day's progress as one card: done / 5, five segments, and the chest the fifth one opens.
+func _daily_card(ms: Array) -> void:
+	var done := 0
+	for m in ms:
+		if m.done:
+			done += 1
+	var p := UIKit.panel(22)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 8)
+	var num := HBoxContainer.new()
+	num.add_theme_constant_override("separation", 4)
+	num.add_child(UIKit.title(str(done), 28, UIKit.TEXT))
+	var of := UIKit.title("/ %d" % ms.size(), 20, UIKit.SOFT)
+	of.size_flags_vertical = Control.SIZE_SHRINK_END
+	num.add_child(of)
+	v.add_child(num)
+	var segs := Control.new()
+	segs.custom_minimum_size = Vector2(0, 8)
+	var n := ms.size()
+	segs.draw.connect(func():
+		var gap := 4.0
+		var w: float = (segs.size.x - gap * float(n - 1)) / float(maxi(n, 1))
+		for i in n:
+			segs.draw_style_box(UIKit.pill(UIKit.CYAN if i < done else Color(0.1, 0.153, 0.25), 4, Vector2.ZERO), Rect2(i * (w + gap), 0.0, w, 8.0)))
+	v.add_child(segs)
+	var bonus := UIKit.label("All %d: +%s" % [n, Progress.reward_text(Progress.DAILY_ALL_BONUS)], 11, UIKit.SOFT)
+	bonus.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(bonus)
+	h.add_child(v)
+	var chest := TextureRect.new()
+	chest.texture = UIKit.ic("chest_closed", "ic_gift")
+	chest.custom_minimum_size = Vector2(66, 66)
+	chest.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	chest.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	chest.modulate = Color.WHITE if done >= n else Color(1, 1, 1, 0.75)
+	h.add_child(chest)
+	p.add_child(h)
+	_list.add_child(p)
+
+# a picture for each kind of task
+const STAT_ICON := {"bosses_any": "ic_elite", "bosses": "ic_elite", "stages": "ic_trial", "best_stage": "ic_trial",
+	"stars": "ic_trial", "planets": "ic_trial", "upgrades": "st_atk", "merges": "ic_core", "turret_upgrades": "ic_mount"}
+func _stat_icon(stat: String) -> Texture2D:
+	if stat.contains("kill") or stat.contains("bug"):
+		return load("res://enemies/scout.png")
+	if stat.contains("spit"):
+		return load("res://enemies/spitter.png")
+	return UIKit.ic(String(STAT_ICON.get(stat, "ic_rank")), "ic_rank")
+
+# one task: picture, name, bar with x / y, and the reward AS the button (gold when it is ready)
+func _clean_row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String) -> void:
+	var p := UIKit.panel(22)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 12)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(56, 56)
+	frame.add_theme_stylebox_override("panel", UIKit.box(Color(0.086, 0.137, 0.227), Color(0, 0, 0, 0), 16, 0))
+	var tr := TextureRect.new()
+	tr.texture = _stat_icon(stat)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.custom_minimum_size = Vector2(40, 40)
+	frame.add_child(tr)
+	row.add_child(frame)
+	var body := VBoxContainer.new()
+	body.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	body.alignment = BoxContainer.ALIGNMENT_CENTER
+	body.add_theme_constant_override("separation", 7)
+	var name_l := UIKit.label(text, 15, UIKit.TEXT if not claimed else UIKit.SOFT)
+	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	body.add_child(name_l)
+	var bar_row := HBoxContainer.new()
+	bar_row.add_theme_constant_override("separation", 8)
+	var bar := ProgressBar.new()
+	bar.min_value = 0
+	bar.max_value = goal
+	bar.value = minf(progress, goal)
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 6)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+	bar.add_theme_stylebox_override("fill", UIKit.pill(Color(0.44, 0.94, 0.72) if done else UIKit.CYAN, 3, Vector2.ZERO))
+	bar_row.add_child(bar)
+	var cnt := UIKit.title("%d/%d" % [int(minf(progress, goal)), int(goal)], 12, Color(0.44, 0.94, 0.72) if done else UIKit.SOFT)
+	bar_row.add_child(cnt)
+	body.add_child(bar_row)
+	row.add_child(body)
+	# the reward on the button: coins, else crystals, else XP
+	var icon: Texture2D = null
+	var amount := ""
+	if reward.has("coins"):
+		icon = UIKit.ic("ic_coin", "ui_coin")
+		amount = str(int(reward.coins))
+	elif reward.has("crystals"):
+		icon = UIKit.ic("ic_crystal", "ui_crystal")
+		amount = str(int(reward.crystals))
+	else:
+		amount = Progress.reward_text(reward)
+	var b: Button
+	if claimed:
+		b = UIKit.ghost_button("Done", 13)
+		b.disabled = true
+	elif done:
+		b = UIKit.gold_button(amount, 15)
+		b.pressed.connect(func():
+			on_claim.call()
+			_toast("+ " + Progress.reward_text(reward)))
+	else:
+		b = UIKit.teal_button(amount, 15)
+		b.add_theme_font_override("font", UIKit.title_font())
+		b.pressed.connect(func(): _go(stat))
+	if icon != null and not claimed:
+		b.icon = icon
+		b.add_theme_constant_override("icon_max_width", 20)
+	b.custom_minimum_size = Vector2(86, 44)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(b)
+	p.add_child(row)
+	if claimed:
+		p.modulate.a = 0.6
+	_list.add_child(p)
+
 func _row(text: String, progress: float, goal: float, reward: Dictionary, done: bool, claimed: bool, on_claim: Callable, stat: String = "") -> void:
+	if UIKit.CLEAN:
+		_clean_row(text, progress, goal, reward, done, claimed, on_claim, stat)
+		return
 	var p := UIKit.panel(10)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 10)

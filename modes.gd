@@ -79,6 +79,12 @@ func _build() -> void:
 	top.add_child(back)
 	top.add_child(UIKit.screen_title("MODES"))
 	col.add_child(top)
+	if UIKit.CLEAN:
+		col.add_theme_constant_override("separation", 12)
+		_build_clean(col)
+		UIKit.reveal(col, 0.06)
+		call_deferred("_tips")
+		return
 	# Modes the player has not reached are not shown, except the NEXT one as a teaser
 	# (Unlocks, dev168: a new player sees Normal and one card to look forward to)
 	var teased := false
@@ -94,6 +100,169 @@ func _build() -> void:
 			col.add_child(_card(m))
 	UIKit.reveal(col, 0.06)
 	call_deferred("_tips")
+
+# ---- the CLEAN Modes page (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): one wide card per mode,
+# a picture, the name, two small lines (where you are, a hint of what it gives) and one round
+# button; Campaign's is the gold one. Not reached yet = hidden, except the next one as a teaser.
+const CLEAN_ORDER := ["standard", "elite", "promotion", "trials", "horde"]
+
+func _build_clean(col: VBoxContainer) -> void:
+	var teased := false
+	for id in CLEAN_ORDER:
+		var reached := true
+		match id:
+			"elite": reached = Unlocks.open(_save, "elite") and player_level >= 10
+			"promotion", "trials": reached = Unlocks.open(_save, "promotion")
+			"horde": reached = player_level >= 5
+		if DevTools.on:
+			reached = true
+		if reached:
+			col.add_child(_clean_card(id, false))
+		elif not teased:
+			teased = true
+			col.add_child(_clean_card(id, true))
+
+func _clean_card(id: String, locked: bool) -> Button:
+	var title_txt := ""
+	var line1 := ""
+	var line2 := ""
+	var line2_col := UIKit.SOFT
+	var pic: Texture2D = null
+	var pic_bg := Color(0.09, 0.14, 0.24)
+	var action := Callable()
+	match id:
+		"standard":
+			title_txt = "Campaign"
+			line1 = "Stage %d" % selected_stage
+			line2 = StageData.stage_name(selected_stage)
+			var pk := Backdrop.planet_of(String(StageData.sector(selected_stage).get("bg", "hive_a")))
+			pic = load("res://skies/%s_planet.webp" % pk) if ResourceLoader.exists("res://skies/%s_planet.webp" % pk) else UIKit.ic("ic_base")
+			action = func(): _play(false)
+		"elite":
+			var es := StageData.elite_top(_save)
+			title_txt = "Elite Campaign"
+			line1 = "Stage %d" % es
+			line2 = StageData.stage_name(es)
+			line2_col = Color(0.73, 0.64, 1.0)
+			pic = UIKit.ic("ic_elite")
+			pic_bg = Color(0.11, 0.086, 0.25)
+			action = func(): _play(true)
+		"promotion":
+			title_txt = "Promotion"
+			line1 = "Rank %d of %d" % [Promotion.rank(_save), Promotion.RANKS.size()]
+			line2 = "Permanent upgrades"
+			pic = UIKit.ic("ic_rank")
+			pic_bg = Color(0.16, 0.13, 0.06)
+			action = _ladder
+		"trials":
+			var started := 0
+			for el in Heroes.ELEMENTS:
+				if Promotion.etrial_steps(_save, String(el)) > 0:
+					started += 1
+			title_txt = "Trials"
+			line1 = "%d of %d elements" % [started, Heroes.ELEMENTS.size()]
+			line2 = "Shards for your heroes"
+			pic = UIKit.ic("ic_trial")
+			pic_bg = Color(0.09, 0.094, 0.23)
+			action = _etrials
+		"horde":
+			var bw := int(_save.get("best_horde", 0))
+			var hs := int(_save.get("best_horde_score", 0))
+			title_txt = "Horde"
+			line1 = "Best wave %d" % bw if bw > 0 else "Endless waves"
+			line2 = "High score %s" % _thousands(hs) if hs > 0 else "Beat your best"
+			pic = load("res://enemies/spitter.png")
+			pic_bg = Color(0.16, 0.08, 0.08)
+			action = func(): _play_horde()
+	if locked:
+		line1 = "Locked"
+		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5"}.get(id, "Opens as you play")
+		line2_col = UIKit.SOFT
+	var b := Button.new()
+	b.name = "Mode_" + id
+	b.custom_minimum_size = Vector2(0, 106)
+	var nb := UIKit.glass(24.0)
+	for st in ["normal", "hover", "disabled"]:
+		b.add_theme_stylebox_override(st, nb)
+	var pb := UIKit.glass(24.0)
+	pb.bg_color = UIKit.CARD_HI
+	b.add_theme_stylebox_override("pressed", pb)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	var h := HBoxContainer.new()
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 12.0
+	h.offset_right = -12.0
+	h.offset_top = 12.0
+	h.offset_bottom = -12.0
+	h.add_theme_constant_override("separation", 14)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(82, 82)
+	frame.add_theme_stylebox_override("panel", UIKit.box(pic_bg, Color(0, 0, 0, 0), 18, 0))
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tr := TextureRect.new()
+	tr.texture = pic
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.custom_minimum_size = Vector2(62, 62)
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_child(tr)
+	h.add_child(frame)
+	var tv := VBoxContainer.new()
+	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	tv.alignment = BoxContainer.ALIGNMENT_CENTER
+	tv.add_theme_constant_override("separation", 2)
+	tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tv.add_child(UIKit.title(title_txt, 20, UIKit.TEXT))
+	tv.add_child(UIKit.label(line1, 14, Color(0.87, 0.9, 0.97)))
+	var l2 := UIKit.label(line2, 12, line2_col)
+	l2.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	tv.add_child(l2)
+	h.add_child(tv)
+	var gold: bool = id == "standard" and not locked
+	var disc := Control.new()
+	disc.custom_minimum_size = Vector2(52, 52)
+	disc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	disc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	disc.draw.connect(func():
+		var c := disc.size * 0.5
+		disc.draw_circle(c, 26.0, UIKit.GOLD if gold else UIKit.CARD_HI)
+		if gold:   # play
+			disc.draw_colored_polygon(PackedVector2Array([c + Vector2(-6, -10), c + Vector2(-6, 10), c + Vector2(11, 0)]), UIKit.GOLD_INK)
+		else:      # an arrow
+			disc.draw_polyline(PackedVector2Array([c + Vector2(-3, -8), c + Vector2(5, 0), c + Vector2(-3, 8)]), UIKit.TEXT, 3.0, true))
+	h.add_child(disc)
+	if locked:
+		b.disabled = true
+		b.modulate = Color(1, 1, 1, 0.55)
+	elif action.is_valid():
+		b.pressed.connect(action)
+	UIKit.press_fx(b)
+	if id == "promotion":
+		_promo_btn = b
+	return b
+
+func _thousands(n: int) -> String:
+	var s := str(n)
+	var out := ""
+	while s.length() > 3:
+		out = "," + s.substr(s.length() - 3) + out
+		s = s.substr(0, s.length() - 3)
+	return s + out
+
+# Campaign / Elite Campaign: the selected stage (clamped to that ladder), as the old Play buttons did
+func _play(elite: bool) -> void:
+	var sv := Progress.read()
+	var top: int = StageData.elite_top(sv) if elite else stage_unlocked
+	_save_patch({"selected_elite": elite, "selected_stage": clampi(int(sv.get("selected_stage", 1)), 1, top)})
+	if Energy.try_play(self, elite, int(Progress.read().get("selected_stage", 1))):   # a stage costs power tokens (stages 1-5 free)
+		get_tree().change_scene_to_file("res://battle.tscn")
+
+func _play_horde() -> void:
+	_save_patch({"selected_mode": "horde"})   # endless waves from your best Standard stage (battle horde)
+	if Energy.try_play(self, false, 99):
+		get_tree().change_scene_to_file("res://battle.tscn")
 
 func _card(m: Dictionary) -> Control:
 	var locked: bool = player_level < int(m.unlock) and not DevTools.on
@@ -302,6 +471,25 @@ func _ladder() -> void:
 					get_tree().change_scene_to_file("res://battle.tscn"))
 			h.add_child(fb)
 		v.add_child(h)
+	if UIKit.CLEAN:
+		# the Challenge button moved here from the old card (the clean card just opens this ladder)
+		var nxt := Promotion.next(_save)
+		var cb: Button
+		if nxt < 0:
+			cb = UIKit.ghost_button("All ranks won", 13)
+			cb.disabled = true
+		elif not Promotion.unlocked(_save, player_level):
+			cb = UIKit.ghost_button("Next trial at pilot Lv.%d" % Promotion.open_level(nxt), 13)
+			cb.disabled = true
+		else:
+			cb = UIKit.gold_button("Challenge: %s" % Promotion.RANKS[nxt].name, 16)
+			cb.pressed.connect(func():
+				if Energy.try_play(self, false):   # full price: a trial is never a free tutorial stage
+					var s := Progress.read()
+					Promotion.start(s, nxt)
+					Progress.write(s)
+					get_tree().change_scene_to_file("res://battle.tscn"))
+		v.add_child(cb)
 	var close := UIKit.ghost_button("Close", 13)
 	close.custom_minimum_size = Vector2(0, 38)
 	close.pressed.connect(layer.queue_free)
