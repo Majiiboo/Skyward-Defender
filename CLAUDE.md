@@ -679,7 +679,14 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
    filler lines ("Outpost secure", "Fleet 3/3"), the static Home (keep the live battle), long Store
    rows (Rudy likes big squares), WEAK TO text. (Its Play page has the planet over the stage name.)
    NEXT: Rudy picks a style; then fonts into fonts/ (OFL) and the page-by-page pass.
-30. 3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
+30. 3D MODELS ARRIVED (Luna, 2026-11-07, in Downloads, NOT in the repo: rook.glb 30k tris, rook_rigged.glb
+   = same mesh + 53-bone skeleton, no animations; lance_base.glb + lance_head.glb 15k tris each; one
+   material, four 4096 textures each, ~7 MB a file; each model normalised to 1 unit, so the head-to-base
+   scale is ours to set). PHOTOGRAPHED 2026-11-09 with tools/dev/photo3d (README there): the raw texture
+   photographs flat grey; neon.gdshader (dark armour, glowing lines) brings Rook close to Luna's look;
+   detail is softer than her paintings (fine at battle size, visible on a big Hero page). Lance head on
+   its base aims cleanly at any angle (fixes the beam origin + vanishing base for good). Rudy undecided.
+   3D TEST (Rudy, 2026-11-07): heroes and turrets read as flat pictures (swivel cross-fades, the
    Lance rotates a side-view picture). DECIDED: option 3 first = Luna makes 3D models from her
    renders with an image-to-3D tool (Meshy / Tripo), Claude PHOTOGRAPHS them in Godot at many
    angles (one lighting, frames that line up, turret heads one frame per aim angle), game stays
