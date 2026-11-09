@@ -293,7 +293,7 @@ func _fill() -> void:
 		3: _fill_crystals()
 		4: _fill_exchange()
 	UIKit.reveal(_page)
-	if tab == 1:
+	if tab == (0 if UIKit.CLEAN else 1):   # the daily gift's tip, wherever the gift is
 		call_deferred("_tips")
 
 # A shop tile: a big picture, a big number, one short line, the button.
@@ -339,6 +339,9 @@ func _price_button(price: int, ok: bool, gold: bool = false) -> Button:
 # One wide card per chest: the picture, the odds, the pity counter, and the ways to open it:
 # FREE (or when it is back), a key (how many you hold), crystals.
 func _fill_chests() -> void:
+	if UIKit.CLEAN:
+		_fill_chests_clean()
+		return
 	var mats := Materials.read(d)
 	for tier in CHEST_ORDER:
 		var c: Dictionary = KEY_CHESTS[tier]
@@ -403,6 +406,389 @@ func _fill_chests() -> void:
 		_page.add_child(p)
 	_page.add_child(UIKit.label("Keys drop on boss stages, in Elite and every 10 Horde waves. Essence and gear match the planet you have selected.", 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	_page.get_child(_page.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+
+# ---- the CLEAN Chests tab (Rudy, 2026-11-09, mock-up "Round 2 · Clean") ----
+# The daily gift strip on top (today's gift is the gold cell), then four big squares: the three
+# chests (keys you hold, the pity bar, FREE / when it is back / the crystal price) and a key bundle.
+# Tapping a chest slides up its sheet: open free, open 1 or 10 with keys, buy 1 or 10 with crystals.
+func _fill_chests_clean() -> void:
+	_gift_strip()
+	var g := _grid()
+	g.add_theme_constant_override("h_separation", 12)
+	g.add_theme_constant_override("v_separation", 12)
+	var mats := Materials.read(d)
+	for tier in CHEST_ORDER:
+		g.add_child(_chest_square(String(tier), mats))
+	g.add_child(_key_square())
+
+func _gift_strip() -> void:
+	var at := Progress.attend(d)
+	var p := UIKit.panel(22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	var head := HBoxContainer.new()
+	var t := UIKit.title("Daily gift", 18, UIKit.TEXT)
+	t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(t)
+	head.add_child(UIKit.label("Day %d of %d" % [int(at.day), Progress.ATTEND.size()], 12, UIKit.SOFT))
+	v.add_child(head)
+	var cells := HBoxContainer.new()
+	cells.add_theme_constant_override("separation", 6)
+	for i in Progress.ATTEND.size():
+		var day := i + 1
+		var r: Dictionary = Progress.ATTEND[i]
+		var is_today: bool = day == int(at.day) and not at.claimed_today
+		var done: bool = day < int(at.next) or (day == int(at.day) and at.claimed_today)
+		var last: bool = day == Progress.ATTEND.size()
+		var icon: Texture2D = null
+		var amount := 0
+		if r.has("crystals"):
+			icon = UIKit.ic("ic_crystal", "ui_crystal")
+			amount = int(r.crystals)
+		elif r.has("coins"):
+			icon = UIKit.ic("ic_coin", "ui_coin")
+			amount = int(r.coins)
+		var cell := Button.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.custom_minimum_size = Vector2(0, 64)
+		cell.tooltip_text = Progress.reward_text(r)
+		var fill: Color = UIKit.GOLD if is_today else (Color(0.11, 0.086, 0.25) if last else Color(0.075, 0.122, 0.208))
+		var cs := UIKit.box(fill, Color(0.63, 0.48, 1.0) if last and not is_today else Color(0, 0, 0, 0), 12, 1 if last and not is_today else 0)
+		cs.set_content_margin_all(2)
+		for st in ["normal", "hover", "pressed", "disabled"]:
+			cell.add_theme_stylebox_override(st, cs)
+		cell.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var cv := VBoxContainer.new()
+		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cv.alignment = BoxContainer.ALIGNMENT_CENTER
+		cv.add_theme_constant_override("separation", 2)
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if done:
+			cv.add_child(UIKit.title("✓", 18, Color(0.44, 0.94, 0.72), HORIZONTAL_ALIGNMENT_CENTER))
+			cell.modulate.a = 0.55
+		elif last:
+			var ch := TextureRect.new()
+			ch.texture = UIKit.ic("chest2_e_closed", "ic_chest_e")
+			ch.custom_minimum_size = Vector2(0, 40)
+			ch.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ch.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ch.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cv.add_child(ch)
+		else:
+			var ci := TextureRect.new()
+			ci.texture = icon
+			ci.custom_minimum_size = Vector2(0, 24)
+			ci.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			ci.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			cv.add_child(ci)
+			cv.add_child(UIKit.title(str(amount), 12, UIKit.GOLD_INK if is_today else UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+		cell.add_child(cv)
+		if is_today:
+			_gift_btn = cell
+			cell.pressed.connect(func():
+				d = Progress.read()
+				var got := Progress.claim_attend(d)
+				Progress.write(d)
+				if not got.is_empty():
+					Sfx.play("claim")
+					_toast("+ " + Progress.reward_text(got))
+				_fill())
+			UIKit.press_fx(cell)
+			# a slow pulse so today's gift is the thing you notice (Rudy: highlight what is not collected)
+			cell.pivot_offset = Vector2(24, 32)
+			var tw := cell.create_tween().set_loops()
+			tw.tween_property(cell, "scale", Vector2(1.06, 1.06), 0.8).set_trans(Tween.TRANS_SINE)
+			tw.tween_property(cell, "scale", Vector2.ONE, 0.8).set_trans(Tween.TRANS_SINE)
+		else:
+			cell.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cells.add_child(cell)
+	v.add_child(cells)
+	p.add_child(v)
+	_page.add_child(p)
+
+# a big square: the button, a chest picture that floats, keys held, the pity bar, the state
+func _square() -> Button:
+	var b := Button.new()
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.custom_minimum_size = Vector2(0, 206)
+	var nb := UIKit.glass(24.0)
+	for st in ["normal", "hover", "disabled"]:
+		b.add_theme_stylebox_override(st, nb)
+	var pb := UIKit.glass(24.0)
+	pb.bg_color = UIKit.CARD_HI
+	b.add_theme_stylebox_override("pressed", pb)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	UIKit.press_fx(b)
+	return b
+
+func _floating(tex: Texture2D, h: float, delay: float) -> Control:
+	var holder := Control.new()
+	holder.custom_minimum_size = Vector2(0, h)
+	holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	holder.add_child(tr)
+	if not Perf.lite():
+		var tw := tr.create_tween().set_loops()
+		tw.tween_interval(delay)
+		tw.tween_property(tr, "position:y", -5.0, 1.6).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(tr, "position:y", 0.0, 1.6).set_trans(Tween.TRANS_SINE)
+	return holder
+
+func _chest_square(tier: String, mats: Dictionary) -> Button:
+	var c: Dictionary = KEY_CHESTS[tier]
+	var b := _square()
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 10.0
+	v.offset_right = -10.0
+	v.offset_top = 10.0
+	v.offset_bottom = -10.0
+	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var top := HBoxContainer.new()
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var dot := ColorRect.new()   # the chest's rarity colour
+	dot.custom_minimum_size = Vector2(9, 9)
+	dot.color = UIKit.RARITY.get(String(c.color), UIKit.CYAN)
+	dot.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	dot.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(dot)
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(sp)
+	if String(c.key) != "":
+		top.add_child(UIKit.iconed(Materials.icon(String(c.key)), str(int(mats.get(c.key, 0))), 13, UIKit.TEXT, 20.0))
+	v.add_child(top)
+	v.add_child(_floating(UIKit.ic("chest2_%s_closed" % tier, String(c.icon)), 100.0, ["u", "e", "l"].find(tier) * 0.5))
+	if int(c.pity) > 0:
+		var into: int = opens_of(d, tier) % int(c.pity)
+		var pr := HBoxContainer.new()
+		pr.add_theme_constant_override("separation", 6)
+		pr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var bar := ProgressBar.new()
+		bar.max_value = int(c.pity)
+		bar.value = into
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(0, 4)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 2, Vector2.ZERO))
+		bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.GOLD if tier == "e" else UIKit.PURPLE, 2, Vector2.ZERO))
+		pr.add_child(bar)
+		pr.add_child(UIKit.title("%d/%d" % [into, int(c.pity)], 11, UIKit.SOFT))
+		v.add_child(pr)
+	# the state at the bottom: FREE, when the free open is back, or the crystal price
+	var left_s := free_left_s(d, "chest_" + tier, DAY_S) if c.free else -1
+	var state := PanelContainer.new()
+	state.custom_minimum_size = Vector2(0, 40)
+	state.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sl: Control
+	if left_s == 0:
+		state.add_theme_stylebox_override("panel", UIKit.pill(Color(0.44, 0.94, 0.72), 14, Vector2(6, 0)))
+		sl = UIKit.title("FREE", 17, Color(0.024, 0.19, 0.12), HORIZONTAL_ALIGNMENT_CENTER)
+	elif left_s > 0:
+		state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 14, Vector2(6, 0)))
+		sl = UIKit.label("Free in %s" % left_text(left_s), 14, Color(0.81, 0.86, 0.94), HORIZONTAL_ALIGNMENT_CENTER)
+	else:
+		state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 14, Vector2(6, 0)))
+		sl = UIKit.iconed(UIKit.ic("ic_crystal", "ui_crystal"), str(int(c.crystals)), 16, UIKit.TEXT, 20.0)
+		(sl as HBoxContainer).alignment = BoxContainer.ALIGNMENT_CENTER
+	(sl as Control).size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	state.add_child(sl)
+	v.add_child(state)
+	b.pressed.connect(func(): _chest_sheet(tier))
+	return b
+
+func _key_square() -> Button:
+	var deal: Dictionary = KEY_DEALS[2]   # five Uncommon keys
+	var resolved := resolve(d, {String(deal.kind): int(deal.n)})
+	var real: String = resolved.keys()[0]
+	var price: int = int(deal.n) * int(Parts.kind(real).crystals)
+	var b := _square()
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 10.0
+	v.offset_right = -10.0
+	v.offset_top = 10.0
+	v.offset_bottom = -10.0
+	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(v)
+	var top := HBoxContainer.new()
+	top.alignment = BoxContainer.ALIGNMENT_END
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(UIKit.title("x%d" % int(deal.n), 15, UIKit.CYAN))
+	v.add_child(top)
+	v.add_child(_floating(Materials.icon(real), 100.0, 0.8))
+	var state := PanelContainer.new()
+	state.custom_minimum_size = Vector2(0, 40)
+	state.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 14, Vector2(6, 0)))
+	var sl := UIKit.iconed(UIKit.ic("ic_crystal", "ui_crystal"), str(price), 16, UIKit.TEXT, 20.0)
+	sl.alignment = BoxContainer.ALIGNMENT_CENTER
+	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	state.add_child(sl)
+	v.add_child(state)
+	b.disabled = int(d.get("crystals", 0)) < price and not DevTools.on
+	b.pressed.connect(func(): _buy_kind(deal))
+	return b
+
+# the chest sheet: slides up from the bottom over a dimmed page
+func _chest_sheet(tier: String) -> void:
+	var c: Dictionary = KEY_CHESTS[tier]
+	var col: Color = UIKit.RARITY.get(String(c.color), UIKit.CYAN)
+	var mats := Materials.read(d)
+	var keys := int(mats.get(c.key, 0)) if String(c.key) != "" else 0
+	var crystals := int(d.get("crystals", 0))
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	dim.modulate.a = 0.0
+	dim.create_tween().tween_property(dim, "modulate:a", 1.0, 0.2)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 12
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	# the sheet hangs from the bottom of a full-screen slider; the slider moves, so the sheet's own
+	# layout (its height follows its wrapped text) is never fought by the animation
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slider.add_child(sheet)
+	slider.position.y = 700.0
+	slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	sheet.add_child(v)
+	var head := HBoxContainer.new()
+	if String(c.key) != "":
+		head.add_child(UIKit.iconed(Materials.icon(String(c.key)), str(keys), 15, UIKit.TEXT, 22.0))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(sp)
+	var x := UIKit.ghost_button("Close", 13)
+	x.custom_minimum_size = Vector2(80, 34)
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	v.add_child(_floating(UIKit.ic("chest2_%s_closed" % tier, String(c.icon)), 150.0, 0.0))
+	v.add_child(UIKit.title(String(c.name), 26, col.lerp(Color.WHITE, 0.4), HORIZONTAL_ALIGNMENT_CENTER))
+	if int(c.pity) > 0:
+		var left: int = int(c.pity) - opens_of(d, tier) % int(c.pity)
+		var pt := UIKit.iconed(UIKit.ic("ic_pity"), "%s in %d open%s" % [String(c.pity_text).capitalize(), left, "" if left == 1 else "s"], 13, UIKit.SOFT, 18.0)
+		pt.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.add_child(pt)
+	var odds := UIKit.label(odds_text(c), 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	odds.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(odds)
+	if c.free:
+		var left_s := free_left_s(d, "chest_" + tier, DAY_S)
+		if left_s == 0:
+			var fb := UIKit.gold_button("OPEN FREE", 20)
+			fb.custom_minimum_size = Vector2(0, 56)
+			fb.pressed.connect(func():
+				layer.queue_free()
+				_open_many(tier, "free", 1))
+			v.add_child(fb)
+		else:
+			v.add_child(UIKit.label("Next free open in %s" % left_text(left_s), 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		v.add_child(UIKit.label("No free opens: the best chest in the game", 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	if String(c.key) != "":
+		var kr := HBoxContainer.new()
+		kr.add_theme_constant_override("separation", 10)
+		for n in [1, 10]:
+			var kb := UIKit.teal_button("Open %d" % n, 15)
+			kb.icon = Materials.icon(String(c.key))
+			kb.add_theme_constant_override("icon_max_width", 20)
+			kb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			kb.custom_minimum_size = Vector2(0, 50)
+			kb.disabled = keys < n
+			var nn: int = n
+			kb.pressed.connect(func():
+				layer.queue_free()
+				_open_many(tier, "key", nn))
+			kr.add_child(kb)
+		v.add_child(kr)
+	var br := HBoxContainer.new()
+	br.add_theme_constant_override("separation", 10)
+	for n in [1, 10]:
+		var price: int = int(c.crystals) * (9 if n == 10 else 1)   # ten for the price of nine
+		var bb := UIKit.teal_button("Buy %d  ·  %d%s" % [n, price, "  (-10%)" if n == 10 else ""], 14)
+		bb.icon = UIKit.ic("ic_crystal", "ui_crystal")
+		bb.add_theme_constant_override("icon_max_width", 18)
+		bb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bb.custom_minimum_size = Vector2(0, 50)
+		bb.disabled = crystals < price and not DevTools.on
+		var nn: int = n
+		bb.pressed.connect(func():
+			layer.queue_free()
+			_open_many(tier, "crystals", nn))
+		br.add_child(bb)
+	v.add_child(br)
+
+# open a chest n times (Open 10 / Buy 10): one reward screen with everything added up
+func _open_many(tier: String, how: String, n: int) -> void:
+	d = Progress.read()
+	var c: Dictionary = KEY_CHESTS[tier]
+	if how == "crystals" and n > 1 and not DevTools.on:
+		var cost := int(c.crystals) * (n - 1)
+		if int(d.get("crystals", 0)) < cost:
+			_toast("Not enough crystals")
+			return
+		d["crystals"] = int(d.get("crystals", 0)) + int(c.crystals)   # the tenth is on the house
+	var total := {}
+	var pity := false
+	var opened := 0
+	for i in n:
+		var r := chest_open_in(d, tier, how)
+		if r.has("why"):
+			if opened == 0:
+				_toast(String(r.why))
+				return
+			break
+		opened += 1
+		pity = pity or bool(r.get("pity", false))
+		for k in r:
+			if k == "pity":
+				continue
+			if k == "gear":
+				total["gear"] = Array(total.get("gear", [])) + Array(r.gear)
+			else:
+				total[k] = int(total.get(k, 0)) + int(r[k])
+	Sfx.play("buy")
+	Progress.write(d)
+	Progress.bump("chests", opened)
+	if pity:
+		total["pity"] = true
+	_chest_fx(total, tier)
+	_fill()
 
 func _open_key_chest(tier: String, how: String) -> void:
 	d = Progress.read()
@@ -495,6 +881,7 @@ func _fill_offers() -> void:
 	gv.add_child(cells)
 	gp.add_child(gv)
 	_page.add_child(gp)
+	gp.visible = not UIKit.CLEAN   # the clean look keeps the gift strip on the Chests tab
 	# the packs: each with a FREE part on its own timer; the paid part waits for billing
 	_page.add_child(UIKit.header("PACKS"))
 	for p in PACKS_FREE:
