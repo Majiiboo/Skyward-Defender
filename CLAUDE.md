@@ -5,7 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-07, build dev210)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev210: 0 updates. dev210 = Rudy's dev209 playtest BATCH 1 (queue item 29: gameplay + broken
+- UNPUSHED since dev210: 1 update. STYLE PASS 1 (queue 31, Rudy's round-2 "clean" pick): Oxanium + Inter
+  fonts; UIKit.CLEAN (flat cards, flat gold / dark / outline buttons, pill tab strip with icon-only closed
+  tabs, pill chips, title() helper; Luna's kit stays for the battle HUD only); NavDock flat bar + sliding
+  cyan pill, nav names only under the open tab; hub _build_home_clean (top bar avatar + bolt / coin /
+  crystal pills, stage block top-left, SideColumn of round buttons, round gold PlayButton; Battle tab no
+  longer starts a fight on Home; Settings moved into the profile pop-up); afk_wallpaper DISTANT (the fight
+  drawn small + dimmed by a FarFight layer over the horizon, no base strip). NEXT: Store, Modes, Quests,
+  Heroes pages in the clean layouts (mock-up), then push with a README block.
+  dev210 = Rudy's dev209 playtest BATCH 1 (queue item 29: gameplay + broken
   bits, README-RUDY dev210). NEXT: batch 2 = the style pass (Rudy shared a "menu ideas" folder on his
   Desktop + an article: big square cards, one dominant action, icons over text, micro-animations,
   glass); then the Hero page + Ascend ladder (item 30); Luna is on the 3D test (item 30).
@@ -425,8 +433,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   Ideas he sends mid-work: fold into the current batch if small, otherwise queue and say so.
 - Update README-RUDY.md with a short plain-English changelog each build.
 - Don't copy the reference game "Galaxy Defense" (art, names, turret types).
-- Fonts: Exo 2 everywhere (project.godot gui/theme/custom_font), Orbitron only for the
-  stage name on Home and the battle banners. OFL licences in fonts/.
+- Fonts (style pass, 2026-11-09): Inter at weight 600 (fonts/inter_text.tres) is the project font;
+  Oxanium 800 (fonts/oxanium_heavy.tres, UIKit.title() / title_font()) for titles, big numbers and
+  main buttons. The battle HUD still uses Exo 2 / Orbitron (battle hud_font, title_font) until its
+  own pass. OFL licences in fonts/.
 - Look: thin single lines, no glow, no circles on side buttons; painted icons dimmed in
   code when inactive.
 

@@ -9,7 +9,7 @@ neon.gdshader is the "photo" material: the image-to-3D textures come out flat gr
 so it darkens the armour toward Luna's black and lets the coloured light lines glow.
 
 Run (from a copy outside the repo, so the GLBs and outputs never land in git):
-  1. copy this folder somewhere, put the .glb files in models/
+  1. copy this folder somewhere, rename project.godot.example to project.godot, put the .glb files in models/
   2. godot --headless --path <copy> --import
   3. godot --path <copy> --script res://shoot.gd      (needs a window: not headless)
 

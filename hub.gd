@@ -119,7 +119,10 @@ func _ready() -> void:
 	_frame.name = "HomeFrame"
 	add_child(_frame)
 	move_child(_frame, $Safe.get_index())
-	_build_home()
+	if UIKit.CLEAN:
+		_build_home_clean()
+	else:
+		_build_home()
 	_setup_nav()
 	_build_layered_nav_icons()
 	MenuAnim.pop_buttons($Safe)
@@ -461,6 +464,277 @@ func _build_home() -> void:
 		patrol.offset_bottom = -159.0
 		row.add_child(patrol)
 
+# ---- the CLEAN Home (Rudy's pick, 2026-11-09: mock-up "Home 3") ----
+# The planet big behind, the stage name big at the top left, every side button in one column on
+# the right, a round gold PLAY above the nav, and the Home battle small and shadowed far away
+# (afk_wallpaper DISTANT). Same node names as before, so tips, dots and the chest fx still find them.
+func _build_home_clean() -> void:
+	var home: Control = $Safe/Home
+	# top bar: the profile (XP ring + level) left, power / coins / crystals pills right
+	var top := HBoxContainer.new()
+	top.name = "TopBar"
+	top.add_theme_constant_override("separation", 6)
+	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	top.offset_left = 14.0
+	top.offset_right = -14.0
+	top.offset_top = 8.0
+	home.add_child(top)
+	var profile := _icon_button("ProfileButton", "profile", 44.0, 40.0, 32, Color(PURPLE, 0.0))
+	profile.icon = _hero_face()
+	profile.pressed.connect(_profile_popup)
+	_xp_ring(profile)
+	top.add_child(profile)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	top.add_child(spacer)
+	_energy_btn = _chip_button("EnergyButton", load("res://icons/ic_bolt.svg"), "")
+	_energy_btn.pressed.connect(func(): _side_popup("POWER", "A stage: %d  ·  stages 1-%d free  ·  Elite: %d\nCollect Patrol: %d\n+1 every 6 min, up to %d" % [Energy.STAGE_COST, Energy.FREE_STAGES, Energy.ELITE_COST, Energy.PATROL_COST, Energy.MAX]))
+	top.add_child(_energy_btn)
+	_coin_btn = _chip_button("CoinButton", UIKit.ic("ic_coin", "ui_coin"), _fmt(coins))
+	_coin_btn.pressed.connect(func(): _side_popup("COINS", "Coins: earned by defeating enemies.\nYou keep them between runs."))
+	top.add_child(_coin_btn)
+	_crystal_btn = _chip_button("CrystalButton", UIKit.ic("ic_crystal", "ui_crystal"), _fmt(crystals))
+	_crystal_btn.pressed.connect(func():
+		get_tree().root.set_meta("store_tab", 0)
+		_on_nav_tap("NavStore", NAV_PATHS["NavStore"]))
+	top.add_child(_crystal_btn)
+	var et := Timer.new()
+	et.wait_time = 2.0
+	et.autostart = true
+	et.timeout.connect(_on_energy_changed)
+	add_child(et)
+	_frame.add_dock(top, 0, Vector2(0, 4))   # the soft shade behind the top bar
+
+	# the stage block, top left: STAGE 1 · HIVE WORLD + the weak element, the name big, then
+	# Standard / Elite and the arrows
+	var sb := VBoxContainer.new()
+	sb.name = "StageBlock"
+	sb.add_theme_constant_override("separation", 8)
+	sb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sb.set_anchors_preset(Control.PRESET_TOP_LEFT)
+	sb.offset_left = 20.0
+	sb.offset_top = 72.0
+	sb.custom_minimum_size = Vector2(250, 0)
+	home.add_child(sb)
+	_stage_block = sb
+	var tag_row := HBoxContainer.new()
+	tag_row.add_theme_constant_override("separation", 6)
+	tag_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mode_tag = UIKit.label("STAGE 1", 12, MUTED)
+	tag_row.add_child(_mode_tag)
+	_weak_icon = TextureRect.new()
+	_weak_icon.custom_minimum_size = Vector2(18, 18)
+	_weak_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_weak_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	_weak_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	tag_row.add_child(_weak_icon)
+	sb.add_child(tag_row)
+	_stage_btn = Button.new()
+	_stage_btn.name = "StageNameButton"
+	_stage_btn.flat = true
+	_stage_btn.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_stage_btn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_stage_btn.custom_minimum_size = Vector2(250, 0)
+	_stage_btn.add_theme_font_override("font", UIKit.title_font())
+	_stage_btn.add_theme_font_size_override("font_size", 44)
+	_stage_btn.add_theme_constant_override("line_spacing", -10)
+	_stage_btn.add_theme_color_override("font_color", Color.WHITE)
+	_stage_btn.add_theme_color_override("font_hover_color", Color.WHITE)
+	_stage_btn.add_theme_color_override("font_pressed_color", CYAN)
+	_stage_btn.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.35))
+	_stage_btn.add_theme_constant_override("outline_size", 4)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		_stage_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_stage_btn.pressed.connect(func(): _smooth_change_scene("res://stage_map.tscn"))   # the stage trail (the Campaign later)
+	sb.add_child(_stage_btn)
+	var ctl := HBoxContainer.new()
+	ctl.add_theme_constant_override("separation", 8)
+	ctl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sb.add_child(ctl)
+	var toggle := PanelContainer.new()
+	toggle.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD, 0.85), 17, Vector2(3, 3)))
+	var seg := HBoxContainer.new()
+	seg.add_theme_constant_override("separation", 0)
+	toggle.add_child(seg)
+	_std_btn = _segment_button("NormalButton", "Standard")
+	_std_btn.pressed.connect(func(): _set_mode("Normal"))
+	seg.add_child(_std_btn)
+	_elite_btn = _segment_button("EliteButton", "Elite")
+	_elite_btn.pressed.connect(func(): _set_mode("Elite"))
+	seg.add_child(_elite_btn)
+	ctl.add_child(toggle)
+	var prev := _round_button("PrevButton", Icons.get_icon("chev_l"), 34.0, 14)
+	prev.pressed.connect(func(): _change_stage(-1))
+	ctl.add_child(prev)
+	var next := _round_button("NextButton", Icons.get_icon("chev_r"), 34.0, 14)
+	next.pressed.connect(func(): _change_stage(1))
+	ctl.add_child(next)
+
+	# the side column, top right: Chest, Patrol, then the rail buttons (Starter, Daily, Gifts)
+	var col := VBoxContainer.new()
+	col.name = "SideColumn"
+	col.add_theme_constant_override("separation", 12)
+	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	col.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	col.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	col.offset_right = -16.0
+	col.offset_top = 70.0
+	home.add_child(col)
+	col.add_child(_prop_button("ChestButton", "chest", _chest_popup))
+	if Unlocks.open(Progress.read(), "patrol"):   # Patrol appears after stage 6 (Unlocks)
+		col.add_child(_prop_button("PatrolButton", "drone", _patrol_open))
+	for d in LEFT_RAIL + RIGHT_RAIL:
+		if not d.get("hidden", false):
+			col.add_child(_round_rail(d))
+
+	# the round gold PLAY above the nav (on Home the Battle tab no longer starts a fight)
+	var row := VBoxContainer.new()
+	row.name = "ActionRow"
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.alignment = BoxContainer.ALIGNMENT_END
+	row.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
+	row.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	row.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	row.offset_bottom = -4.0
+	home.add_child(row)
+	_action_row = row
+	var play := _play_button()
+	row.add_child(play)
+	var pl := UIKit.title("PLAY", 15, GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	pl.add_theme_color_override("font_outline_color", Color(0, 0, 0, 0.6))
+	pl.add_theme_constant_override("outline_size", 4)
+	row.add_child(pl)
+
+# the hero on duty's face for the profile button (Rook has no portrait.png: a crop of his turn frame)
+func _hero_face() -> Texture2D:
+	var hid: String = Heroes.selected(Heroes.read(Progress.read()))
+	var p := "res://heroes/%s/portrait.png" % hid
+	if ResourceLoader.exists(p):
+		return load(p)
+	var t: Texture2D = load("res://pilot_turn/commander_3.png")
+	var a := AtlasTexture.new()
+	a.atlas = t
+	a.region = Rect2(t.get_width() * 0.1, 0.0, t.get_width() * 0.8, t.get_width() * 0.8)
+	return a
+
+func _profile_popup() -> void:
+	# level, XP and lifetime numbers; Settings lives here now (the menu button is gone)
+	var sv := Progress.read()
+	_side_popup("%s  ·  LEVEL %d" % [Promotion.rank_name(sv).to_upper(), level], "Rank %d of %d: %s\n%d / %d XP to level %d\nHighest stage: %d of %d  ·  stars %d\nBugs destroyed: %d  ·  bosses: %d\nStages cleared: %d  ·  %.1f hours in battle" % [
+		Promotion.rank(sv), Promotion.RANKS.size(), Promotion.bonus_text(Promotion.rank(sv)),
+		pilot_xp - Turrets.xp_for_level(level), Turrets.xp_for_level(level + 1) - Turrets.xp_for_level(level), level + 1,
+		maxi(stage_unlocked - 1, 0), StageData.MAX_STAGE, int(Progress.stat(sv, "stars")),
+		int(Progress.stat(sv, "kills")), int(Progress.stat(sv, "bosses")), int(Progress.stat(sv, "stages")), Progress.stat(sv, "hours")],
+		[["Settings", func(): _smooth_change_scene("res://settings.tscn")],
+		["Trophies", func():
+			get_tree().root.set_meta("quests_tab", 2)
+			_on_nav_tap("NavQuests", NAV_PATHS["NavQuests"])]])
+
+# a top-bar pill: icon + number in Oxanium on a dark pill
+func _chip_button(node_name: String, icon: Texture2D, text: String) -> Button:
+	var b := Button.new()
+	b.name = node_name
+	b.text = text
+	b.icon = icon
+	b.add_theme_constant_override("icon_max_width", 22)
+	b.add_theme_constant_override("h_separation", 5)
+	b.add_theme_font_override("font", UIKit.title_font())
+	b.add_theme_font_size_override("font_size", 15)
+	for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+		b.add_theme_color_override(c, UIKit.TEXT)
+	b.custom_minimum_size = Vector2(0, 34)
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.add_theme_stylebox_override("normal", UIKit.pill(Color(UIKit.CARD, 0.85), 17, Vector2(10, 0)))
+	b.add_theme_stylebox_override("hover", UIKit.pill(Color(UIKit.CARD, 0.85), 17, Vector2(10, 0)))
+	b.add_theme_stylebox_override("pressed", UIKit.pill(Color(UIKit.CARD_HI, 0.95), 17, Vector2(10, 0)))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	UIKit.press_fx(b)
+	return b
+
+# a round dark button with an icon (arrows, side column)
+func _round_button(node_name: String, icon: Texture2D, d: float, icon_px: int) -> Button:
+	var b := Button.new()
+	b.name = node_name
+	b.custom_minimum_size = Vector2(d, d)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	b.icon = icon
+	b.expand_icon = true
+	b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	b.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	b.add_theme_constant_override("icon_max_width", icon_px)
+	var r := int(d * 0.5)
+	b.add_theme_stylebox_override("normal", UIKit.pill(Color(UIKit.CARD, 0.85), r, Vector2.ZERO))
+	b.add_theme_stylebox_override("hover", UIKit.pill(Color(UIKit.CARD, 0.85), r, Vector2.ZERO))
+	b.add_theme_stylebox_override("pressed", UIKit.pill(Color(UIKit.CARD_HI, 0.95), r, Vector2.ZERO))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	UIKit.press_fx(b)
+	return b
+
+# Chest and Patrol in the side column: Luna's animated chest and drone (home_prop.gd) in a round button
+func _prop_button(node_name: String, kind: String, on_press: Callable) -> Button:
+	var b := _round_button(node_name, null, 54.0, 0)
+	var prop := HomeProp.new()
+	prop.name = "Prop"
+	prop.kind = kind
+	prop.size = Vector2(42, 42)
+	prop.position = Vector2(6, 6)
+	prop.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(prop)
+	_dot_btns[node_name] = b
+	b.pressed.connect(on_press)
+	return b
+
+# a rail button (Starter, Daily, Gifts) as a round icon button, same wiring as _rail_item
+func _round_rail(def: Dictionary) -> Button:
+	var lic: Texture2D = UIKit.ic(String(def.icon))
+	var b := _round_button(String(def.id), lic if lic != null else Icons.get_icon(String(def.icon)), 54.0, 36)
+	if def.dot:
+		_add_dot(b)
+	_dot_btns[def.id] = b
+	if def.has("go"):
+		b.pressed.connect(func():
+			get_tree().root.set_meta(def.go[1], def.go[2])
+			_on_nav_tap(def.go[0], NAV_PATHS[def.go[0]]))
+	else:
+		b.pressed.connect(func(): _side_popup(def.title, def.body))
+	return b
+
+# the round gold PLAY: a gold disc, a dark play triangle, a halo ring that keeps breathing out
+func _play_button() -> Button:
+	var b := Button.new()
+	b.name = "PlayButton"
+	b.custom_minimum_size = Vector2(104, 104)
+	b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	var disc := UIKit.pill(GOLD, 52, Vector2.ZERO)
+	disc.shadow_color = Color(0, 0, 0, 0.45)
+	disc.shadow_size = 12
+	disc.shadow_offset = Vector2(0, 6)
+	b.add_theme_stylebox_override("normal", disc)
+	b.add_theme_stylebox_override("hover", disc)
+	b.add_theme_stylebox_override("pressed", UIKit.pill(GOLD.lightened(0.2), 52, Vector2.ZERO))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	var halo := [0.0]
+	b.draw.connect(func():
+		var c := b.size * 0.5
+		var k: float = halo[0]
+		b.draw_arc(c, 52.0 + 18.0 * k, 0.0, TAU, 48, Color(GOLD, 0.55 * (1.0 - k)), 3.0, true)
+		b.draw_colored_polygon(PackedVector2Array([c + Vector2(-12, -18), c + Vector2(-12, 18), c + Vector2(20, 0)]), UIKit.GOLD_INK))
+	var tw := b.create_tween().set_loops()
+	tw.tween_method(func(v: float):
+		halo[0] = v
+		b.queue_redraw(), 0.0, 1.0, 2.4)
+	UIKit.press_fx(b)
+	b.pressed.connect(func():
+		if not Energy.try_play(self, mode == "Elite", stage):   # a stage costs power tokens (stages 1-5 free)
+			return
+		_spawn_spark_burst(b)
+		_smooth_change_scene("res://battle.tscn"))
+	return b
+
 func _action_item(node_name: String, icon_name: String, label: String, on_press: Callable) -> Control:
 	# Round button + optional small label, same size for Chest and Patrol so they line up.
 	var box := VBoxContainer.new()
@@ -535,6 +809,9 @@ func _segment_button(node_name: String, text: String) -> Button:
 	b.text = text
 	b.custom_minimum_size = Vector2(100, 34)
 	b.add_theme_font_size_override("font_size", 14)
+	if UIKit.CLEAN:
+		b.custom_minimum_size = Vector2(0, 28)
+		b.add_theme_font_size_override("font_size", 13)
 	for st in ["normal", "hover", "pressed", "focus"]:
 		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	return b
@@ -572,6 +849,9 @@ func _setup_nav() -> void:
 		nl.add_theme_font_size_override("font_size", 11)
 		nl.custom_minimum_size.y = 16
 		nl.text = NAV_NAMES[tab]
+		if UIKit.CLEAN:   # the name shows only under the open tab, in Oxanium caps
+			nl.text = String(NAV_NAMES[tab]).to_upper()
+			nl.add_theme_font_override("font", UIKit.title_font())
 		_paint_nav_label(tab, tab == "NavBattle")
 	for tab in NAV_TABS:
 		var btn := _nav_btn(tab)
@@ -636,7 +916,7 @@ func _process(_delta: float) -> void:
 			if L.has(pair[0]):
 				L[pair[1]].modulate.a = clampf((1.0 - L[pair[0]].modulate.a) * 2.0, 0.0, 1.0)
 	# Home showing: the Battle tile becomes Play (breathing gold, label "Play")
-	if _nav_dock != null:
+	if _nav_dock != null and not UIKit.CLEAN:   # (the clean Home has its own round PLAY)
 		var home := _current_view == null
 		_nav_dock.play_mode = home
 		_nav_label("NavBattle").text = "Play" if home else NAV_NAMES["NavBattle"]
@@ -679,13 +959,19 @@ func _update_stage_label() -> void:
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5
+	if UIKit.CLEAN:
+		# no "WEAK TO" words: the element icon after the line says it (Rudy, dev209)
+		_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STAGE", stage, String(StageData.area(stage).name).to_upper()]
+		_mode_tag.add_theme_color_override("font_color", Color(0.79, 0.7, 1.0) if is_elite else MUTED)
+		_stage_btn.add_theme_color_override("font_color", Color(0.9, 0.85, 1.0) if is_elite else Color.WHITE)
 	# Elite look (Rudy, dev167): a purple hue over the world, and the stage name in a frame
 	# coloured by the mode
 	if _elite_tint:
 		_elite_tint.create_tween().tween_property(_elite_tint, "color:a", 0.18 if is_elite else 0.0, 0.35)
 	var fc: Color = PURPLE if is_elite else CYAN
-	for st in ["normal", "hover", "pressed"]:
-		_stage_btn.add_theme_stylebox_override(st, UIKit.box(Color(fc, 0.10), Color(fc, 0.75), 12))
+	if not UIKit.CLEAN:
+		for st in ["normal", "hover", "pressed"]:
+			_stage_btn.add_theme_stylebox_override(st, UIKit.box(Color(fc, 0.10), Color(fc, 0.75), 12))
 	_paint_segment(_std_btn, not is_elite, true)
 	_paint_segment(_elite_btn, is_elite, false)
 	$AFK.set_elite(is_elite)
@@ -700,6 +986,16 @@ func _update_stage_label() -> void:
 	_info_text += "\nFamily: %s  ·  %s" % [Heroes.family(stage).name, Heroes.family_text(stage)]   # the element to bring (heroes, dev172)
 
 func _paint_segment(b: Button, selected: bool, left: bool) -> void:
+	if UIKit.CLEAN:
+		# a white pill for Standard, a purple one for Elite, nothing behind the other
+		var on_col: Color = UIKit.TEXT if left else Color(0.63, 0.48, 1.0)
+		for st in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(st, UIKit.pill(on_col if selected else Color(1, 1, 1, 0.0), 14, Vector2(14, 0)))
+		var ink: Color = (Color(0.043, 0.075, 0.133) if left else Color.WHITE) if selected else MUTED
+		b.add_theme_color_override("font_color", ink)
+		b.add_theme_color_override("font_hover_color", ink if selected else Color.WHITE)
+		b.add_theme_color_override("font_pressed_color", ink)
+		return
 	var s := StyleBoxFlat.new()
 	s.bg_color = Color(PURPLE if not left else CYAN, 0.32) if selected else Color(0, 0, 0, 0)
 	s.corner_radius_top_left = 14 if left else 0
@@ -768,6 +1064,8 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 	Sfx.play("tap")
 	# on Home, the gold Battle tile is the Play button: tapping it starts the battle
 	if tapped == "NavBattle" and _current_view == null:
+		if UIKit.CLEAN:   # already Home: the round PLAY starts a fight, the tab just stays lit
+			return
 		if not Energy.try_play(self, mode == "Elite", stage):   # a stage costs power tokens (stages 1-5 free)
 			return
 		_spawn_spark_burst(_nav_btn("NavBattle"))
@@ -982,6 +1280,11 @@ func _fade_in_overlay() -> void:
 # Battle, cyan elsewhere), the others muted.
 func _paint_nav_label(tab: String, on: bool) -> void:
 	var l := _nav_label(tab)
+	if UIKit.CLEAN:
+		# icons only; the open tab's name fades in under it (cyan for every tab, Battle too)
+		l.add_theme_color_override("font_color", CYAN)
+		l.create_tween().tween_property(l, "modulate:a", 1.0 if on else 0.0, 0.22)
+		return
 	l.add_theme_color_override("font_color", (GOLD if tab == "NavBattle" else CYAN) if on else MUTED)
 	l.modulate.a = 1.0 if on else 0.7
 

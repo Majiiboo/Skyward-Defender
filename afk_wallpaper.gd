@@ -17,6 +17,21 @@ const SHOW_TURRETS := true   # set to false to hide the turrets on the base stri
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
 
+# The clean Home (Rudy, 2026-11-09): the fight plays SMALL and SHADOWED far away over the
+# horizon, so the menu stays calm. The world is drawn full size here; the fight (bugs, bolts,
+# pilot) is drawn by a child layer, scaled down and darkened. DISTANT false = the old full-size scene.
+const DISTANT := true
+const FAR_SCALE := 0.34              # the fight's size on screen
+const FAR_FLOOR := 0.93              # the world's bottom edge (hidden behind the nav), share of the screen height
+const FAR_RIDGE := 0.40              # the horizon sits this many screen widths above that edge
+const FAR_SHADE := Color(0.6, 0.64, 0.76)   # dimmed and a little cool: far away, still readable
+var _far: FarFight = null
+
+class FarFight extends Node2D:
+	var wall
+	func _draw() -> void:
+		wall.draw_fight(self)
+
 var fly_top := 220.0      # soldier stays between these two heights
 var fly_bottom := 600.0   # the base / horizon sits just under this
 var elite := false
@@ -64,10 +79,15 @@ func _ready() -> void:
 		_etex[k] = load("res://enemies/%s.png" % k)
 	_stars = Backdrop.make_stars(80, 3)
 	_city = Backdrop.make_city(46, 7)
+	if DISTANT:
+		_far = FarFight.new()
+		_far.wall = self
+		_far.modulate = FAR_SHADE
+		add_child(_far)
 	if PilotRig.ENABLED:
 		_rig_view = PilotRigView.new()
 		_rig_view.height = PILOT_H
-		add_child(_rig_view)
+		(_far if DISTANT else self).add_child(_rig_view)
 
 func set_elite(value: bool) -> void:
 	elite = value
@@ -112,6 +132,14 @@ func _shield_y(x: float) -> float:
 
 func _process(delta: float) -> void:
 	var dt := minf(delta, 0.05)
+	if DISTANT and _far != null:
+		# the fight runs in a full-size space of its own; the layer shrinks it onto the horizon
+		fly_top = size.y * 0.30
+		fly_bottom = size.y * 0.80
+		_far.scale = Vector2(FAR_SCALE, FAR_SCALE)
+		var ridge := size.y * FAR_FLOOR - size.x * FAR_RIDGE   # the pilot hovers just in front of the horizon glow
+		_far.position = Vector2(size.x * 0.5 * (1.0 - FAR_SCALE), ridge - (fly_bottom - 20.0) * FAR_SCALE)
+		_far.queue_redraw()
 	_t += dt
 	_hit_t += dt
 	_world_fade = minf(_world_fade + dt / 0.6, 1.0)
@@ -203,7 +231,7 @@ func _shoot(dt: float) -> void:
 		_flash = 0.07
 		if _rig_view:
 			_rig_view.fire()
-	if SHOW_TURRETS:
+	if SHOW_TURRETS and not DISTANT:   # the far fight has no base: the pilot fights alone
 		for i in _wall_turrets.size():
 			var base := _wall_turret_tip(i)
 			var ti := _nearest_enemy(base, 420.0)
@@ -320,8 +348,10 @@ func _soft_glow(c: Vector2, radius: float, col: Color) -> void:
 
 func _draw() -> void:
 	var shift: float = _soldier.x / maxf(size.x, 1.0) - 0.5
+	if DISTANT:
+		shift *= 0.3   # the far fight barely moves the sky
 	if _world != "":
-		var bottom := _horizon_y() + STRIP_DROP
+		var bottom := size.y * FAR_FLOOR if DISTANT else _horizon_y() + STRIP_DROP
 		if _world_fade < 1.0 and _world_prev != "":
 			Backdrop.draw_world(self, size, bottom, _world_prev, _stars, _t, shift)
 			Backdrop.draw_world(self, size, bottom, _world, _stars, _t, shift, smoothstep(0.0, 1.0, _world_fade))
@@ -333,22 +363,32 @@ func _draw() -> void:
 		draw_line(s.pos, s.pos - s.vel.normalized() * 34.0, Color(1, 1, 1, clampf(s.life, 0.0, 0.8)), 1.5, true)
 	_draw_ship()
 	_draw_rocks()
-	_draw_boss()
+	if DISTANT:
+		if _world == "":
+			Backdrop.draw_horizon(self, size, size.y * FAR_FLOOR, elite, _city, _t)
+		return   # the fight is drawn small by the FarFight layer (draw_fight); no base strip
+	_draw_boss(self)
 	if _world == "":
 		Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
 	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
 	Backdrop.draw_base_lights(self, size.x, _horizon_y() + STRIP_DROP, _t)
 	if SHOW_TURRETS:
 		_draw_turrets()
-	_draw_enemies()
+	draw_fight(self, false)
+
+# The fight itself (bugs, bolts, hits, the pilot) onto canvas c: this node, or the FarFight layer.
+func draw_fight(c: CanvasItem, boss: bool = true) -> void:
+	if boss:
+		_draw_boss(c)
+	_draw_enemies(c)
 	for b in _bullets:
-		draw_line(b.pos, b.pos - b.vel.normalized() * 11.0, b.col, 2.0, true)
+		c.draw_line(b.pos, b.pos - b.vel.normalized() * 11.0, b.col, 2.0, true)
 	for r in _rings:
 		var k: float = 1.0 - r.life / r.max
-		draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
+		c.draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
 	for s in _sparks:
-		draw_circle(s.pos, 1.6, Color(s.col, clampf(s.life * 3.0, 0.0, 1.0)))
-	_draw_soldier()
+		c.draw_circle(s.pos, 1.6, Color(s.col, clampf(s.life * 3.0, 0.0, 1.0)))
+	_draw_soldier(c)
 
 func _draw_ship() -> void:
 	if _ship.is_empty():
@@ -520,24 +560,24 @@ func _wall_turret_h() -> float:
 	return WALL_TURRET_H * size.x / 480.0
 
 # On a boss stage the Hive Mother hangs high in the sky, out of reach, drifting slowly.
-func _draw_boss() -> void:
+func _draw_boss(c: CanvasItem) -> void:
 	if _boss == "":
 		return
 	var bid := StageData.boss_id(stage, _boss == "mini")   # the planet's boss (the Scrap Belt: the Queen, the Wrecker)
 	var sz: float = float(StageData.ENEMIES[bid].size) * 1.35 * (0.4 if _boss == "mini" else 0.5)
 	var p := Vector2(size.x * 0.5 + sin(_t * 0.35) * size.x * 0.18, fly_top + 40.0 + sin(_t * 0.9) * 8.0)
 	if EnemyRig.is_machine(bid):
-		EnemyRig.draw_machine(self, bid, p, sz, _t, 0.0)
+		EnemyRig.draw_machine(c, bid, p, sz, _t, 0.0)
 	else:
-		EnemyRig.draw_hive_mother(self, p, sz, _t, 0.0, false)
+		EnemyRig.draw_hive_mother(c, p, sz, _t, 0.0, false)
 
-func _draw_enemies() -> void:
+func _draw_enemies(c: CanvasItem) -> void:
 	for e in _enemies:
 		var a := clampf((e.pos.y - (fly_top - 100.0)) / 60.0, 0.0, 1.0)   # fades in as it enters
 		if EnemyRig.is_machine(String(e.kind)):   # the Scrap Belt machines (dev198)
-			EnemyRig.draw_machine(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, a)
+			EnemyRig.draw_machine(c, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, a)
 		else:
-			EnemyRig.draw_bug(self, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
+			EnemyRig.draw_bug(c, String(e.kind), e.pos, float(e.size), _t, float(e.ph), sin(_t * 1.3 + e.ph) * 0.12, 0.0, 1.0, a)
 
 func _muzzle(pose: String) -> Vector2:
 	if _rig_view:
@@ -552,11 +592,11 @@ func _flip(_pose: String) -> bool:
 		return _facing_s < 0.0
 	return _anim.mirrored()
 
-func _draw_soldier() -> void:
+func _draw_soldier(c: CanvasItem) -> void:
 	var pose := _pose()
 	if _has_aim:
-		draw_line(_muzzle(pose), _aim, Color(CYAN, 0.08), 1.0, true)
+		c.draw_line(_muzzle(pose), _aim, Color(CYAN, 0.08), 1.0, true)
 	var turn: float = clampf(absf(_facing_s), 0.15, 1.0) if pose.begins_with("aim") else 1.0
 	if not _rig_view:
-		PilotSprite.draw(self, _soldier, PILOT_H, pose, _flip(pose), _bank, _t, 1.0, clampf(_soldier_vx * 0.02, -1.0, 1.0),
+		PilotSprite.draw(c, _soldier, PILOT_H, pose, _flip(pose), _bank, _t, 1.0, clampf(_soldier_vx * 0.02, -1.0, 1.0),
 			smoothstep(0.0, 0.07, _flash), _anim.mix(), turn)

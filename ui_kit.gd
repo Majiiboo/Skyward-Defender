@@ -5,11 +5,43 @@ extends RefCounted
 # Frost), a thin light-cyan edge and a faint sheen, gold for the main action, teal for
 # secondary actions, purple for premium, rarity colours on tiles.
 
-const CYAN := Color(0.18, 0.9, 1.0)
+const CYAN := Color(0.31, 0.88, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
-const GOLD := Color(1.0, 0.8, 0.3)
+const GOLD := Color(1.0, 0.784, 0.27)
 const MUTED := Color(0.62, 0.70, 0.84)
 const INK := Color(0.04, 0.063, 0.172)
+
+# ---- the CLEAN look (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): flat cards, no gloss, no dark
+# lip under buttons, pill tabs and chips, one gold button per screen, Oxanium for titles and
+# numbers, Inter for everything else. CLEAN false = the older glass + Luna kit look.
+const CLEAN := true
+const CARD := Color(0.055, 0.09, 0.157)       # the card colour (#0e1728)
+const CARD_HI := Color(0.094, 0.145, 0.239)   # a raised button on a card (#18253d)
+const TEXT := Color(0.933, 0.957, 1.0)
+const SOFT := Color(0.56, 0.635, 0.74)        # small grey text
+const GOLD_INK := Color(0.14, 0.094, 0.0)     # text on gold
+static var _title_font: Font = null
+
+# Oxanium 800: titles, big numbers, the main buttons
+static func title_font() -> Font:
+	if _title_font == null:
+		_title_font = load("res://fonts/oxanium_heavy.tres")
+	return _title_font
+
+static func title(text: String, size_px: int = 22, col: Color = TEXT, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
+	var l := label(text, size_px, col, align)
+	l.add_theme_font_size_override("font_size", size_px)
+	l.add_theme_font_override("font", title_font())
+	return l
+
+# a flat pill (chips, tab strips, top-bar currencies)
+static func pill(fill: Color, radius: int = 18, pad: Vector2 = Vector2(10, 4)) -> StyleBoxFlat:
+	var s := box(fill, Color(0, 0, 0, 0), radius, 0)
+	s.content_margin_left = pad.x
+	s.content_margin_right = pad.x
+	s.content_margin_top = pad.y
+	s.content_margin_bottom = pad.y
+	return s
 const RARITY := {
 	"common": Color(0.55, 0.62, 0.75), "uncommon": Color(0.45, 0.95, 0.5), "rare": Color(0.25, 0.75, 1.0),
 	"epic": Color(0.71, 0.55, 1.0), "legendary": Color(1.0, 0.8, 0.3),
@@ -32,6 +64,13 @@ static func box(fill: Color, line: Color, radius: float = 12.0, width: int = 1) 
 	return s
 
 static func glass(radius: float = 12.0) -> StyleBoxFlat:
+	if CLEAN:
+		# a flat card: no sheen, no bright edge, a soft shadow under it
+		var c := box(Color(CARD, 0.94), Color(1, 1, 1, 0.05), maxf(radius, 16.0))
+		c.shadow_color = Color(0, 0, 0, 0.25)
+		c.shadow_size = 6
+		c.shadow_offset = Vector2(0, 3)
+		return c
 	var s := box(Color(0.035, 0.06, 0.14, 0.5), Color(0.55, 0.85, 1.0, 0.26), radius)
 	# the sheen: a lighter top edge, like the Home glass
 	s.border_width_top = 1
@@ -44,6 +83,9 @@ static func glass(radius: float = 12.0) -> StyleBoxFlat:
 
 static func panel(radius: float = 14.0) -> PanelContainer:
 	var p := PanelContainer.new()
+	if CLEAN:
+		p.add_theme_stylebox_override("panel", glass(maxf(radius, 20.0)))
+		return p
 	# Luna's panel (round 2: gloss only in the corner, so it stretches to any height); big
 	# radius = a pop-up window, which uses her popup piece
 	if kit_ready("panel_glass"):
@@ -65,6 +107,11 @@ static func header(text: String) -> Control:
 	# Section header bar with an angled tag on the left (the style from the reference).
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
+	if CLEAN:   # a plain bold title, no bar
+		var t := title(text, 17, TEXT)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(t)
+		return row
 	if kit_ready("header_bar"):   # Luna's header bar: the angled tag is painted in
 		var hp := PanelContainer.new()
 		var hs := nine("header_bar", 10.0, Vector2(26, 2))
@@ -95,6 +142,8 @@ static func header(text: String) -> Control:
 # Depth on every kit button (Rudy, dev172: "buttons are flat"): a drop shadow under it, a
 # gloss on its top half, a darker band at the bottom and a thin light line on its top edge.
 static func draw_bevel(c: CanvasItem, s: Vector2) -> void:
+	if CLEAN:   # flat buttons (Rudy: no gloss, no black bar)
+		return
 	var clear := Color(1, 1, 1, 0.0)
 	c.draw_polygon(PackedVector2Array([Vector2(2, 1), Vector2(s.x - 2, 1), Vector2(s.x - 2, s.y * 0.48), Vector2(2, s.y * 0.48)]),
 		PackedColorArray([Color(1, 1, 1, 0.14), Color(1, 1, 1, 0.14), clear, clear]))
@@ -106,6 +155,10 @@ static func _style_btn(b: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat, t
 	lift(normal)   # the drop shadow
 	normal.shadow_size = 6
 	normal.shadow_offset = Vector2(0, 3)
+	if CLEAN:   # a soft shadow only, so a button sits on the card without a dark band
+		normal.shadow_color = Color(0, 0, 0, 0.22)
+		normal.shadow_size = 4
+		normal.shadow_offset = Vector2(0, 2)
 	if not b.has_meta("bevel"):
 		b.set_meta("bevel", true)
 		b.draw.connect(func(): if not b.disabled: draw_bevel(b, b.size))
@@ -213,6 +266,12 @@ static func gold_button(text: String, size_px: int = 16) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 40)
+	if CLEAN:   # flat gold, dark text in Oxanium: the one main action on a screen
+		b.custom_minimum_size = Vector2(0, 46)
+		b.add_theme_font_override("font", title_font())
+		_style_btn(b, box(GOLD, Color(0, 0, 0, 0), 16, 0), box(GOLD.lightened(0.2), Color(0, 0, 0, 0), 16, 0), GOLD_INK)
+		sheen(b)
+		return b
 	if kit_ready("btn_gold"):
 		_kit_btn(b, "btn_gold", Color(0.12, 0.08, 0.0))
 		return b
@@ -226,6 +285,10 @@ static func teal_button(text: String, size_px: int = 14) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 36)
+	if CLEAN:   # a raised dark button, white text
+		b.custom_minimum_size = Vector2(0, 40)
+		_style_btn(b, box(CARD_HI, Color(0, 0, 0, 0), 14, 0), box(CARD_HI.lightened(0.15), Color(0, 0, 0, 0), 14, 0), TEXT)
+		return b
 	if kit_ready("btn_teal"):
 		_kit_btn(b, "btn_teal", Color(0.02, 0.1, 0.1))
 		return b
@@ -237,6 +300,12 @@ static func ghost_button(text: String, size_px: int = 13) -> Button:
 	b.text = text
 	b.add_theme_font_size_override("font_size", size_px)
 	b.custom_minimum_size = Vector2(0, 32)
+	if CLEAN:   # an outline only
+		b.custom_minimum_size = Vector2(0, 38)
+		var gn := box(Color(1, 1, 1, 0.0), Color(1, 1, 1, 0.24), 14)
+		_style_btn(b, gn, box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.4), 14), TEXT)
+		gn.shadow_size = 0
+		return b
 	if kit_ready("btn_glass"):
 		_kit_btn(b, "btn_glass", Color.WHITE)
 		return b
@@ -250,6 +319,17 @@ static func tile(title: String, subtitle: String, rarity: String = "common", bad
 	var b := Button.new()
 	b.custom_minimum_size = size
 	b.clip_text = true
+	if CLEAN:
+		# a flat card, the item's colour as a faint tint and a thin edge (rarity still reads)
+		var cn := box(Color(CARD.lerp(col, 0.12), 0.96), Color(col, 0.38), 18)
+		_style_btn(b, cn, box(Color(CARD.lerp(col, 0.3), 1.0), Color(col, 0.8), 18), TEXT)
+		var cv := VBoxContainer.new()
+		cv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cv.name = "Body"
+		cv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		b.add_child(cv)
+		_fill_tile(cv, title, subtitle, badge, icon, size, col)
+		return b
 	if kit_ready("panel_tile"):   # Luna's tile frame (corner brackets), tinted by the item colour
 		var kt := nine("panel_tile", 22.0, Vector2(4, 4), Color(col.lerp(Color.WHITE, 0.3), 1.0))
 		_kit_tile(b, kt, col)
@@ -344,6 +424,8 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 	# on_pick and dots keep using the full `names` index.
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 6)
+	if CLEAN:
+		return _clean_tabs(row, names, on_pick, selected, dots, hidden, icons)
 	var buttons: Array = []
 	var map: Array = []
 	# five tabs or more: no icons, a size smaller, and every tab may shrink (clip_text), so the row
@@ -385,8 +467,71 @@ static func tabs(names: Array, on_pick: Callable, selected: int = 0, dots: Array
 	tab_dots(row, dots)
 	return row
 
+# The CLEAN tab strip (mock-up "Round 2 · Clean"): one dark pill, the open tab a white pill with
+# dark text; with icons, the other tabs show only their icon (dimmed), so even five fit a phone.
+static func _clean_tabs(row: HBoxContainer, names: Array, on_pick: Callable, selected: int, dots: Array, hidden: Array, icons: Array) -> HBoxContainer:
+	row.add_theme_constant_override("separation", 2)
+	var bg := pill(Color(CARD, 0.9), 22, Vector2.ZERO)
+	row.draw.connect(func(): row.draw_style_box(bg, Rect2(Vector2.ZERO, row.size).grow(4.0)))
+	var buttons: Array = []
+	var map: Array = []
+	var has_icons := false
+	for i in names.size():
+		if hidden.has(i):
+			continue
+		var b := Button.new()
+		b.text = names[i]
+		b.set_meta("tab_name", names[i])
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 38)
+		b.add_theme_font_size_override("font_size", 14)
+		b.clip_text = true
+		if i < icons.size() and icons[i] != null:
+			b.icon = icons[i]
+			b.add_theme_constant_override("icon_max_width", 26)
+			b.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+			b.expand_icon = true
+			has_icons = true
+		row.add_child(b)
+		buttons.append(b)
+		map.append(i)
+	row.set_meta("tab_map", map)
+	var paint := func(sel: int):
+		for j in buttons.size():
+			var bj: Button = buttons[j]
+			var on: bool = int(map[j]) == sel
+			var on_box := pill(TEXT, 19, Vector2(8, 2))
+			var off_box := pill(Color(1, 1, 1, 0.0), 19, Vector2(4, 2))
+			for st in ["normal", "hover", "disabled"]:
+				bj.add_theme_stylebox_override(st, on_box if on else off_box)
+			bj.add_theme_stylebox_override("pressed", pill(Color(TEXT, 0.85) if on else Color(1, 1, 1, 0.08), 19, Vector2(4, 2)))
+			bj.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+			var ink: Color = Color(0.043, 0.075, 0.133) if on else SOFT
+			for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+				bj.add_theme_color_override(c, ink)
+			bj.add_theme_color_override("icon_normal_color", Color.WHITE if on else Color(1, 1, 1, 0.45))
+			bj.add_theme_color_override("icon_hover_color", Color.WHITE if on else Color(1, 1, 1, 0.7))
+			if bj.icon != null:
+				# icon-only when closed, icon + name when open (the open one takes more room)
+				bj.text = String(bj.get_meta("tab_name")) if on else ""
+				bj.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT if on else HORIZONTAL_ALIGNMENT_CENTER
+				bj.size_flags_stretch_ratio = 2.2 if on else 1.0
+			press_fx(bj)
+	for j in buttons.size():
+		var i: int = int(map[j])
+		buttons[j].pressed.connect(func():
+			paint.call(i)
+			on_pick.call(i))
+	paint.call(tab_shown(names, selected, hidden))
+	tab_dots(row, dots)
+	return row
+
 static func chip(text: String, col: Color = CYAN) -> PanelContainer:
 	var p := PanelContainer.new()
+	if CLEAN:
+		p.add_theme_stylebox_override("panel", pill(Color(col, 0.16), 11, Vector2(9, 2)))
+		p.add_child(label(text, 11, TEXT))
+		return p
 	if kit_ready("chip"):
 		var ks := nine("chip", 11.0, Vector2(9, 2), Color(col.lerp(Color.WHITE, 0.35), 1.0))
 		p.add_theme_stylebox_override("panel", ks)
@@ -402,6 +547,8 @@ static func chip(text: String, col: Color = CYAN) -> PanelContainer:
 	return p
 
 static func screen_title(text: String) -> Label:
+	if CLEAN:
+		return title(text, 26, TEXT)
 	var l := label(text, 22, Color.WHITE)
 	return l
 
@@ -440,6 +587,13 @@ static func pop_in(panel: Control, from_scale: float = 0.92) -> void:
 # asked, a glow in the card's colour behind its picture. draw_depth paints it into any
 # CanvasItem (slot squares); depth() adds it as a layer behind a container's children.
 static func draw_depth(c: CanvasItem, s: Vector2, col: Color, glow: bool, glow_y: float = 0.36) -> void:
+	if CLEAN:
+		# flat cards: only a soft glow of the item's colour behind its picture, no gloss
+		if glow:
+			var cc := Vector2(s.x * 0.5, s.y * glow_y)
+			for k in 3:
+				c.draw_circle(cc, s.y * (0.3 - 0.07 * k), Color(col, 0.05 + 0.03 * k))
+		return
 	var clear := Color(1, 1, 1, 0.0)
 	c.draw_polygon(PackedVector2Array([Vector2(1, 1), Vector2(s.x - 1, 1), Vector2(s.x - 1, s.y * 0.45), Vector2(1, s.y * 0.45)]),
 		PackedColorArray([Color(1, 1, 1, 0.16), Color(1, 1, 1, 0.16), clear, clear]))
@@ -549,6 +703,18 @@ static func _fill_tile(v: VBoxContainer, title: String, subtitle: String, badge:
 # a pop-up window (NEW, confirm, the ladders, stats): Luna's popup piece with its notch
 static func popup_panel() -> PanelContainer:
 	var p := PanelContainer.new()
+	if CLEAN:
+		var s := glass(24.0)
+		s.bg_color = Color(CARD, 0.98)
+		s.border_color = Color(1, 1, 1, 0.08)
+		s.shadow_color = Color(0, 0, 0, 0.45)
+		s.shadow_size = 18
+		s.content_margin_left = 16
+		s.content_margin_right = 16
+		s.content_margin_top = 16
+		s.content_margin_bottom = 16
+		p.add_theme_stylebox_override("panel", s)
+		return p
 	p.add_theme_stylebox_override("panel", nine("popup", 30.0, Vector2(14, 14)) if kit_ready("popup") else glass(16.0))
 	return p
 
