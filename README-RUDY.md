@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev210 (version/code=210 and version/name="1.0-dev210" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev214 (version/code=214 and version/name="1.0-dev214" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,43 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev214: the new look (your round-2 "clean" pick, built in four updates)
+
+EVERYWHERE
+- New fonts: Inter for text, Oxanium for titles, numbers and main buttons (bolder, easier to read).
+  Both are free fonts; their licences are in the fonts folder.
+- Flat style: flat cards, buttons with no dark bar underneath, one gold button for the main action,
+  dark buttons for second actions, outlines for the rest. Tab strips are one pill: the open tab is
+  white with its name, the others show only their icon.
+- Nav bar: flat, icons only; the page you are on lights up its icon and shows its name. No box.
+- The battle screen keeps its old style for now (its own pass comes later).
+
+HOME
+- Top bar: your hero's face with the level ring, then power (a green bolt, no hexagon), coins,
+  crystals and the menu button (Settings, Stage Map). The profile pop-up has "Change picture".
+- The stage name big at the top left, Standard / Elite and the arrows under it; the side buttons
+  in one round column on the right; a big round gold PLAY above the nav.
+- The Home battle plays small and dimmed far away over the horizon (no base platform).
+
+PAGES
+- Modes: one card per mode: Campaign, Elite Campaign, Promotion (the Challenge button is in its
+  ladder), Trials, Horde (best wave and high score; the high score is saved from now on).
+- Quests: the day's progress card on top (done / 5 and the chest), every task with a picture, its
+  bar and its reward on the button (gold when ready). The Repeat tab is gone: those quests sit at
+  the end of Career.
+- Store, Chests tab: the daily gift strip on top (today's gift pulses in gold), big chest squares
+  (keys held, pity bar, FREE / when it is back / price) and a key bundle. Tapping a chest slides
+  up its panel: OPEN FREE, Open 1 or 10 with keys, Buy 1 or 10 with crystals (ten for the price
+  of nine).
+- Heroes: Talents and Stats squares on the right; one Loadout square under the weapon (tap = the
+  next kit, hold = rename or save); no suit switch; the name, element, stars and grade centred,
+  ATK and HP chips, the level bar and one big gold LEVEL UP with its cost; the roster as round
+  portraits; dragging him only turns him a little left or right.
+- Settings: real on/off switches; DEV MODE (unlock everything) is the first card.
+
+NEXT: new nav icons (you said they do not fit the game), the Level Up screen and Ascend ladder,
+the other Store tabs and the battle HUD in the same style.
 
 ## dev210: your dev209 playtest, batch 1 (gameplay and the broken bits)
 

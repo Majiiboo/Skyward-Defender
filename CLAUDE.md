@@ -3,9 +3,20 @@
 Read this first. It replaces the chat history this project grew up in. The long-term
 plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
-## Where we are (hand-over, 2026-11-07, build dev210)
+## Where we are (hand-over, 2026-11-09, build dev214)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev210: 1 update. STYLE PASS 1 (queue 31, Rudy's round-2 "clean" pick): Oxanium + Inter
+- UNPUSHED since dev214: 0 updates. dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NEXT (Rudy):
+  NEW NAV ICONS: he says Luna's painted nav icons (crate, helmet, crossed guns, atom, tablet) "are
+  completely not the style of the game"; talk options first (a new Luna set in one style vs flat glyphs).
+  Then: the Level Up screen + Ascend ladder (queue 30), the other Store tabs (Offers / Shop / Crystals /
+  Exchange still old layouts in the new colours), the Workshop / Turrets / Drone sub-pages, the battle
+  HUD and end screen in the clean style, stage map -> Campaign. Rudy has not seen dev214 on a phone.
+  Style pass 2-4 (same build): Modes cards (modes.gd _build_clean / _clean_card, Challenge moved into
+  _ladder, battle saves "best_horde_score"); Quests (_daily_card, _clean_row, STAT_ICON, Repeat folded
+  into Career); Store Chests (_fill_chests_clean, _gift_strip, _chest_square, _key_square, _chest_sheet
+  on a slider, _open_many with x10 = 9x price; the Offers calendar hidden in CLEAN); Heroes (gear.gd:
+  _side_square Talents / Stats / Loadout, _paint_hero_clean, _paint_roster_clean, swivel +-0.35 only).
+- Style pass 1 (in dev214): (queue 31, Rudy's round-2 "clean" pick): Oxanium + Inter
   fonts; UIKit.CLEAN (flat cards, flat gold / dark / outline buttons, pill tab strip with icon-only closed
   tabs, pill chips, title() helper; Luna's kit stays for the battle HUD only); NavDock flat bar + sliding
   cyan pill, nav names only under the open tab; hub _build_home_clean (top bar avatar + bolt / coin /
@@ -427,7 +438,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
 
 ## Rules that matter
 - Build number: export_presets.cfg version/code and version/name ("1.0-devNN") must
-  go UP every package (same signing key, install-over). Current: dev210 (code 210).
+  go UP every package (same signing key, install-over). Current: dev214 (code 214).
   Rudy (2026-11-05, replaces the per-item push): finish an item, COMMIT locally, but do NOT
   push every build. Push every 2-3 finished updates (or at once after a big overhaul, or
   when Rudy asks), and then bump the build by the number of updates since the last push
