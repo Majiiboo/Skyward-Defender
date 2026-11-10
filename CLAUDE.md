@@ -12,7 +12,9 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   (pill + capsule from rects, 17-tap blur, no pill rim inside the capsule, cyan glow); nav_dock.gd glass mode
   (bump_h 14, bump_w 70, slide_p springy glide + stretch); hub.gd _nav3 (NavIcon per tab, NavBackBuffer
   BackBufferCopy before the dock, side margins 20, labels white, no pulse / _icon_fx / layered icons).
-  Not seen on a phone yet. NEXT: Rudy asked for a better PLAY button on Home (the round gold one).
+  Not seen on a phone yet. NEXT: Rudy asked for a better PLAY button on Home (the round gold one): four
+  directions at claude.ai/artifact/9ZyH2NVPEENFPc9XagXKct (A Reactor ring, B wide Launch bar, C Mission card,
+  D Launch core = chevrons rising through the gold disc + a green-bolt cost badge, my pick); waiting on his pick.
   dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NAV ICONS:
   Rudy picked option C (flat two-tone: navy body + one accent) from the canvas "Nav icons" page and wants
   LUNA to paint them: LUNA-BRIEF-nav-icons.md + art_src/ref/nav_icons_ref.png (copied to Desktop/Luna nav
