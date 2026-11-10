@@ -74,6 +74,8 @@ var horde := false                # HORDE mode (dev172): endless waves, beat you
 var daily := false                # the DAILY CHALLENGE (Promotion.daily_*): three twists, one reward a day
 var event_run := false            # a WEEKLY EVENT fight (Events): the week's twists, event points at the end
 var _event_points := 0            # what this fight paid (end screen)
+var _season_xp := 0               # season XP this fight paid (Season; end screen)
+var _season_up := false           # it filled a tier
 var _daily_reward := {}           # what today's first win paid (end screen)
 var _horde_best := 0              # the best wave count before this run
 var _horde_new_best := false
@@ -1977,6 +1979,15 @@ func _end_run(won: bool) -> void:
 		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
 	if run_mode:   # an Expedition fight: the run takes the result (Runs.fight_done)
 		_run_end(won)
+	# season XP for every fight (Season): more for a win, a little on top for the special modes
+	_season_xp = 0
+	_season_up = false
+	if Season.open(d):
+		_season_xp = (Season.XP_WIN if won else Season.XP_LOSS) + (Season.XP_SPECIAL if _is_trial() else 0)
+		var tier_was := Season.tier(d)
+		Season.add_xp(d, _season_xp)
+		_season_up = Season.tier(d) > tier_was
+		_write_save({"season": d.season})
 	# a weekly event fight: event points, win or lose (Events.points_for)
 	_event_points = 0
 	if event_run:
@@ -2986,6 +2997,8 @@ func _show_end(won: bool) -> void:
 	var t := UIKit.label(title, 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
+	if _season_xp > 0:
+		v.add_child(UIKit.label(("SEASON TIER %d!   " % Season.tier(_read_save()) if _season_up else "") + "+%d season XP" % _season_xp, 12, UIKit.GOLD if _season_up else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
 	if event_run:
 		v.add_child(UIKit.label("%s  ·  +%d event points  (%d)" % [String(Events.theme().name).to_upper(), _event_points, int(Events.state(_read_save()).points)], 13, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	if daily:

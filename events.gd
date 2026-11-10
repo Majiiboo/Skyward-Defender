@@ -13,7 +13,7 @@ const WEEK_S := 7 * 86400
 const EVENT_HP := 1.1
 const EVENT_WIN := 20
 const THEMES := [
-	{"id": "scrap_rush", "name": "Scrap Rush", "text": "Turrets hit harder. Bugs wear thick shells.",
+	{"id": "scrap_rush", "name": "Scrap Rush", "text": "Your ability charges fast. Bugs wear thick shells.",
 		"mods": ["turret_boost", "thick_shells"], "col": Color(0.75, 0.8, 0.9), "icon": "ic_alloy"},
 	{"id": "night_hunt", "name": "Night Hunt", "text": "Crits come easy. Bugs come fast.",
 		"mods": ["sharpshooter", "swift_bugs"], "col": Color(0.71, 0.55, 1.0), "icon": "el_dark"},

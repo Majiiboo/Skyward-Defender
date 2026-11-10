@@ -40,6 +40,7 @@ func _initialize() -> void:
 	_check_perks()
 	_check_ability_ups()
 	_check_links()
+	_check_season()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -850,3 +851,24 @@ func _check_links() -> void:
 	_expect(Base.links(s) == ["bulwark"], "a partner off the base: that link is gone")
 	s["stage_unlocked"] = 6
 	_expect(Base.links(s).is_empty(), "the partner on a slot that is not open yet does not count")
+
+func _check_season() -> void:
+	var s := {"stage_unlocked": 5, "crystals": 100}
+	Season.add_xp(s, 500)
+	_expect(not s.has("season"), "closed before stage %d: no season XP" % Season.SEASON_FROM)
+	s["stage_unlocked"] = 20
+	Season.add_xp(s, 250)
+	_expect(Season.tier(s) == 2 and Season.tier_xp(s) == 50 and Season.waiting(s) == 2, "250 XP: tier 2, half way to 3, two free rewards waiting")
+	_expect(Season.unlock_premium(s) != "" and not bool(Season.state(s).premium), "premium refused without the crystals")
+	s["crystals"] = Season.PREMIUM_COST + 7
+	_expect(Season.unlock_premium(s) == "" and int(s.crystals) == 7 and Season.waiting(s) == 4, "premium bought: its two tiers wait too")
+	var coins0 := int(s.get("coins", 0))
+	var got := Season.claim_all(s)
+	_expect(got.size() == 4 and Season.waiting(s) == 0 and int(s.get("coins", 0)) > coins0, "claim all: four rewards, nothing left (%d)" % got.size())
+	_expect(Season.claim_all(s).is_empty(), "nothing to take twice")
+	Season.add_xp(s, 999999)
+	_expect(Season.tier(s) == Season.TIERS and Season.waiting(s) == 2 * (Season.TIERS - 2), "XP stops at the last tier")
+	for t in range(1, Season.TIERS + 1):
+		_expect(not Season.reward(t, false, s).is_empty() and not Season.reward(t, true, s).is_empty(), "tier %d pays on both tracks" % t)
+	s["season"]["n"] = Season.number() - 1
+	_expect(Season.tier(s) == 0 and not bool(Season.state(s).premium), "a new season starts fresh")

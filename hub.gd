@@ -614,6 +614,12 @@ func _build_home_clean() -> void:
 	col.add_child(_prop_button("ChestButton", "chest", _chest_popup))
 	if Unlocks.open(Progress.read(), "patrol"):   # Patrol appears after stage 6 (Unlocks)
 		col.add_child(_prop_button("PatrolButton", "drone", _patrol_open))
+	if Season.open(Progress.read()):   # the Season Pass (Season): its own page
+		var sbtn := _round_button("SeasonButton", UIKit.ic("tab_trophies"), 54.0, 36)
+		_add_dot(sbtn)
+		_dot_btns["SeasonButton"] = sbtn
+		sbtn.pressed.connect(func(): _smooth_change_scene("res://season_page.tscn"))
+		col.add_child(sbtn)
 	for d in LEFT_RAIL + RIGHT_RAIL:
 		if not d.get("hidden", false):
 			col.add_child(_round_rail(d))
@@ -1594,7 +1600,7 @@ func _refresh_dots(s: Dictionary) -> void:
 	UIKit.dot(_nav_btn("NavQuests"), at.quests)
 	UIKit.dot(_nav_btn("NavStore"), at.store)
 	UIKit.dot(_nav_btn("NavGear"), at.gear)
-	var want := {"DailyButton": at.quests, "GiftsButton": at.store, "PatrolButton": at.patrol}
+	var want := {"DailyButton": at.quests, "GiftsButton": at.store, "PatrolButton": at.patrol, "SeasonButton": Season.claimable(s)}
 	for id in want:
 		if _dot_btns.has(id) and is_instance_valid(_dot_btns[id]):
 			UIKit.dot(_dot_btns[id], want[id])

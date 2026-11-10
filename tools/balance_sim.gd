@@ -103,6 +103,7 @@ func _write_save(stage: int) -> void:
 	# unlocked (pilot_xp), the loadout says which ones stand on the base
 	var d := {"selected_stage": stage, "selected_elite": OS.get_environment("SIM_ELITE_MODE") == "1", "stage_unlocked": stage, "pilot_xp": 100000, "areas_briefed": [0, 1, 2, 3, 4, 5],
 		"turrets": {"loadout": loadout, "levels": levels, "owned": loadout}, "coins": 0}
+	d["auto_play"] = pilot == "auto"   # in the save too: the stage start reads it back (a first run used to fall to manual, standing still)
 	if kit_auto:
 		_auto_kit(d, stage)
 	if promo >= 0:

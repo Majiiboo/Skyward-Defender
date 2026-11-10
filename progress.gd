@@ -240,6 +240,7 @@ static func claim_daily(id: String) -> Dictionary:
 		if m.def.id == id and m.done and not m.claimed:
 			d.daily.claimed.append(id)
 			grant(d, m.def.reward)
+			Season.add_xp(d, Season.XP_QUEST)   # a daily quest also moves the season pass
 			if d.daily.claimed.size() == DAILY_COUNT:
 				grant(d, DAILY_ALL_BONUS)
 	write(d)
