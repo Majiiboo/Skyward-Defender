@@ -1828,4 +1828,13 @@ func _announce_new() -> void:
 			_on_nav_tap(go[0], NAV_PATHS[go[0]])])
 	elif id == "patrol":
 		actions.append(["Show me", _patrol_open])
+	if UIKit.CLEAN:   # the full-screen unlock moment (moment.gd): the picture, the name, one line, one gold button
+		var act: Callable = actions[0][1] if not actions.is_empty() else Callable()
+		Moment.show(self, {"title": String(u.name), "text": String(u.text), "tex": Unlocks.pic(id), "go": act})
+		return
 	_side_popup("NEW: %s" % String(u.name).to_upper(), String(u.text), actions)
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_moment|daily"): the unlock moment for one id
+func _dbg_moment(id: String) -> void:
+	var u: Dictionary = Unlocks.UNLOCKS[id]
+	Moment.show(self, {"title": String(u.name), "text": String(u.text), "tex": Unlocks.pic(id), "go": (func(): pass) if not Array(u.get("go", [])).is_empty() else Callable()})

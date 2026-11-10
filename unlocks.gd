@@ -11,20 +11,29 @@ extends RefCounted
 # Save "seen_new": ids already announced.
 
 const UNLOCKS := {
-	"turrets":   {"stage": 5,  "name": "Turrets",   "go": ["NavGear", "gear_page", 1],
+	# the battle buttons and modes of 2026-11-10 (battle.gd ABILITY_FROM / AUTO_FROM, Promotion.DAILY_FROM / TWIST_FROM)
+	"ability":   {"stage": 2,  "name": "Hero ability", "go": [], "pic": "el_energy",
+		"text": "The round button at the bottom left of a fight: your hero's big move, about every 40 seconds."},
+	"auto":      {"stage": 3,  "name": "AUTO pilot", "go": [], "pic": "ic_energy",
+		"text": "Tap AUTO in a fight and an autopilot flies and aims for you. Your own hands still beat it."},
+	"turrets":   {"stage": 5,  "name": "Turrets",   "go": ["NavGear", "gear_page", 1], "pic": "res://turrets/sentry_idle.png",
 		"text": "Your first base mount is open. Put a turret on it and level it with coins."},
-	"patrol":    {"stage": 6,  "name": "Patrol",    "go": [],
+	"daily":     {"stage": 5,  "name": "Daily Challenge", "go": ["NavModes", "", 0], "pic": "ic_gift",
+		"text": "One fight a day on your best stage with three twists. The first win pays coins, crystals and a key."},
+	"patrol":    {"stage": 6,  "name": "Patrol",    "go": [], "pic": "res://drone/body_scout.png",
 		"text": "Patrol farms a stage you have cleared while you are away: coins, parts, spare gear."},
-	"workshop":  {"stage": 8,  "name": "Workshop",  "go": ["NavGear", "gear_page", 3],
+	"workshop":  {"stage": 8,  "name": "Workshop",  "go": ["NavGear", "gear_page", 3], "pic": "ic_cell",
 		"text": "Merge parts into better parts, and spare gear copies into higher rarity."},
 	"repeat":    {"stage": 3,  "name": "Repeat quests", "go": ["NavQuests", "quests_tab", 3],
 		"text": "Goals that come back bigger every time you claim them."},
-	"promotion": {"level": 5,  "name": "Promotion", "go": ["NavModes", "", 0],
+	"promotion": {"level": 5,  "name": "Promotion", "go": ["NavModes", "", 0], "pic": "ic_rank",
 		"text": "Rank trials in Modes: one very hard stage each. Win once and you are stronger for good."},
-	"drone":     {"level": 8,  "name": "Drone",     "go": ["NavGear", "gear_page", 2],
+	"drone":     {"level": 8,  "name": "Drone",     "go": ["NavGear", "gear_page", 2], "pic": "res://drone/body_scout.png",
 		"text": "A sidekick that flies with you. Pick one and level it in Gear > Drone."},
-	"elite":     {"level": 10, "name": "Elite",     "go": ["NavModes", "", 0],
+	"elite":     {"level": 10, "name": "Elite",     "go": ["NavModes", "", 0], "pic": "ic_elite",
 		"text": "A second ladder from stage 1 with far tougher bugs and better drops."},
+	"twists":    {"stage": 10, "name": "Daily twists", "go": [], "pic": "tw_rapid",
+		"text": "From here every stage carries one advantage and one disadvantage that change each day, and pays 20% more coins."},
 	"loadouts":  {"stage": 12, "name": "Loadouts",  "go": ["NavGear", "gear_page", 0],
 		"text": "Save three kits of gear, turrets and drone and switch in one tap."},
 }
@@ -90,3 +99,12 @@ static func settle(save: Dictionary) -> void:
 		if open(save, id):
 			seen.append(id)
 	save["seen_new"] = seen
+
+# the picture for the unlock moment: a res:// path or an icon name ("pic"), else none
+static func pic(id: String) -> Texture2D:
+	var p := String(UNLOCKS.get(id, {}).get("pic", ""))
+	if p == "":
+		return null
+	if p.begins_with("res://"):
+		return load(p) if ResourceLoader.exists(p) else null
+	return UIKit.ic(p)

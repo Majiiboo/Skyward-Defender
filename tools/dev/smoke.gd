@@ -240,9 +240,11 @@ func _check_unlocks() -> void:
 	_expect(Unlocks.fresh(s).is_empty(), "fresh save: nothing to announce")
 	s["stage_unlocked"] = 6
 	_expect(Unlocks.open(s, "turrets") and not Unlocks.open(s, "patrol"), "stage 5 cleared: turrets open, patrol not yet")
-	_expect(Unlocks.fresh(s) == ["turrets", "repeat"], "stage 5 cleared: turrets and repeat quests to announce, table order")
+	_expect(Unlocks.fresh(s) == ["ability", "auto", "turrets", "daily", "repeat"], "stage 5 cleared: the ability, AUTO, turrets, the Daily Challenge and repeat quests to announce, table order (%s)" % str(Unlocks.fresh(s)))
 	Unlocks.mark_seen(s, "turrets")
 	Unlocks.mark_seen(s, "repeat")
+	for nid in ["ability", "auto", "daily"]:
+		Unlocks.mark_seen(s, nid)
 	_expect(Unlocks.fresh(s).is_empty(), "announced once")
 	s["stage_unlocked"] = 7
 	_expect(Unlocks.fresh(s) == ["patrol"], "stage 6 cleared: patrol next")
