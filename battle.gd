@@ -420,6 +420,7 @@ func _start_stage() -> void:
 	if horde:
 		waves = [_horde_wave(0)]
 	wave_index = 0
+	_wave_kind = ""
 	stage_cleared = false
 	_vacuum_t = 0.0
 	_outro_t = -1.0
@@ -671,8 +672,19 @@ func _start_wave() -> void:
 		_wave_patch()   # every cleared wave mends the shield a little
 	_plan_runners()
 	_plan_supply()
+	# SPECIAL WAVES (WAVE_KINDS): now and then a wave comes with a twist of its own
+	var prev_kind := _wave_kind
+	_wave_kind = _wave_kind_for(wave_index)
+	var wk: Dictionary = WAVE_KINDS.get(_wave_kind, {})
+	_wave_hp = float(wk.get("hp", 1.0))
+	_wave_speed = float(wk.get("speed", 1.0))
+	if prev_kind == "gold":   # the Gold Rush wave just cleared: its pile of coins
+		for i in 8:
+			gems.append({"pos": Vector2(FIELD_W * 0.5 + rng.randf_range(-90, 90), 200.0 + rng.randf_range(-20, 20)), "tier": 0, "coin": true, "life": 16.0,
+				"value": (12.0 + 1.0 * stage) / 8.0, "vel": Vector2(rng.randf_range(-80, 80), rng.randf_range(-40, 60))})
 	for entry in waves[wave_index]:
-		for i in int(entry[1]):
+		var many: int = int(entry[1]) if _is_boss_id(String(entry[0])) else maxi(1, roundi(int(entry[1]) * float(wk.get("count", 1.0))))
+		for i in many:
 			wave_queue.append(entry[0])
 	wave_queue.shuffle()
 	# the boss always comes last
@@ -690,6 +702,9 @@ func _start_wave() -> void:
 			wave_queue.append(bid)
 	wave_spawn_t = 0.6
 	_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
+	if not wk.is_empty():
+		_float_text(Vector2(FIELD_W * 0.5, 190), "%s  ·  %s" % [String(wk.name), String(wk.text)], wk.col, true)
+		Sfx.play("boss", 1.3)
 
 func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
@@ -735,8 +750,8 @@ func _meet_variant(v: String, bug: String) -> void:
 func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var e := {"id": next_enemy_id, "type": id, "pos": pos,
-		"hp": float(def.hp) * _hp_mult(), "hp_max": float(def.hp) * _hp_mult(),
-		"speed": float(def.speed) * StageData.speed_mult(stage) * _bug_speed, "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
+		"hp": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp), "hp_max": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp),
+		"speed": float(def.speed) * StageData.speed_mult(stage) * _bug_speed * _wave_speed, "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
 	next_enemy_id += 1
@@ -5439,3 +5454,28 @@ var _auto_next := false
 func _buzz(ms: int) -> void:
 	if _haptics and not OS.has_feature("editor") and DisplayServer.get_name() != "headless":
 		Input.vibrate_handheld(ms)
+
+# ---- SPECIAL WAVES (2026-11-10): from stage SPECIAL_FROM about one wave in four comes with a
+# twist, named on screen as it starts, so a stage is not ten of the same wave. Never the first
+# wave or the last (the boss's). Which waves are special is fixed per stage, so a replay can plan.
+#   swarm: nearly twice the bugs, each half as tough      heavy: fewer bugs, much tougher
+#   rush:  they fly a third faster, a little weaker        gold:  clear it and a pile of coins drops
+const SPECIAL_FROM := 8
+const WAVE_KINDS := {
+	"swarm": {"name": "SWARM", "text": "twice the bugs, half as tough", "count": 1.9, "hp": 0.5, "col": Color(1.0, 0.6, 0.3)},
+	"heavy": {"name": "HEAVY WAVE", "text": "fewer bugs, much tougher", "count": 0.6, "hp": 1.8, "col": Color(0.75, 0.8, 0.9)},
+	"rush":  {"name": "RUSH", "text": "they come fast", "hp": 0.85, "speed": 1.3, "col": Color(1.0, 0.45, 0.5)},
+	"gold":  {"name": "GOLD RUSH", "text": "clear it for a pile of coins", "col": Color(1.0, 0.82, 0.3)},
+}
+const WAVE_KIND_ORDER := ["swarm", "heavy", "rush", "gold"]
+var _wave_kind := ""
+var _wave_hp := 1.0
+var _wave_speed := 1.0
+
+func _wave_kind_for(w: int) -> String:
+	if stage < SPECIAL_FROM or horde or boss_rush or run_mode or w <= 0 or w >= waves.size() - 1:
+		return ""
+	var h: int = absi((stage * 7919 + w * 104729 + (5003 if elite else 0)) % 1000)
+	if h >= 260:
+		return ""
+	return String(WAVE_KIND_ORDER[absi(stage * 13 + w * 17 + h) % WAVE_KIND_ORDER.size()])
