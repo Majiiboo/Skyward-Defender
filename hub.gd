@@ -114,6 +114,8 @@ func _ready() -> void:
 	Progress.write(ps)
 	Perf.apply_from(ps)   # performance mode and frame counter (Settings)
 	Sfx.apply_from(ps)    # sound on/off
+	Music.apply_from(ps)
+	Music.play("menu")
 	_load_save()
 	# the Elite hue over the live world (hidden in Standard)
 	_elite_tint = ColorRect.new()

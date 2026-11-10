@@ -290,6 +290,8 @@ var rng := RandomNumberGenerator.new()
 func _ready() -> void:
 	rng.randomize()
 	Sfx.apply_from(_read_save())   # sound on/off (pause menu, Settings)
+	Music.apply_from(_read_save())
+	Music.play("battle")
 	PilotSprite.load_style()
 	_stars = Backdrop.make_stars(90, 11)
 	_city = Backdrop.make_city(44, 7)

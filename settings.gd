@@ -131,7 +131,14 @@ func _fill() -> void:
 		Progress.write(d)
 		Sfx.play("coin")
 		_fill()))
-	_page.add_child(_switch("Music", "Coming with the sound pack", true, Callable(), true))
+	_page.add_child(_switch("Music", "A calm loop in the menus, a driving one in a fight", bool(d.get("music_on", true)), func(v: bool):
+		d = Progress.read()
+		d["music_on"] = v
+		Music.set_on(v)
+		if v:
+			Music.play("menu")
+		Progress.write(d)
+		_fill()))
 	# ---- the fight: how it feels (battle.gd reads these at the stage start)
 	_page.add_child(UIKit.header("FIGHT"))
 	_page.add_child(_switch("Vibration", "A short buzz when you or the base are hit", bool(d.get("haptics", true)), func(v: bool):
