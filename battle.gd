@@ -534,6 +534,10 @@ func _start_stage() -> void:
 	_dmg_by = {}
 	_coin_refreshes = 0
 	_runner_due.clear()
+	_strikes.clear()
+	_strike_cd = 8.0
+	_streak_break()
+	_streak_best = 0
 	_lanes.clear()
 	_runners_caught = 0
 	_ult_live = 0.0
@@ -914,6 +918,8 @@ func _process(delta: float) -> void:
 	zaps = zaps.filter(func(z): return z.life > 0.0)
 	_spawn_step(delta)
 	_update_runners(delta)
+	_update_strikes(delta)
+	_update_streak(delta)
 	_update_ability(delta)
 	_update_bullets(delta)
 	_update_fire_patches(delta)
@@ -1151,6 +1157,9 @@ func _ai_threat(p0: Vector2, target_x: float) -> float:
 	for k in 15:
 		var t := 0.05 * k
 		var p := Vector2(move_toward(p0.x, target_x, AI_SPEED * t), p0.y)
+		for s in _strikes:   # a planet hazard about to land: inside its circle is not safe
+			if float(s.t) < 1.3:
+				worst = minf(worst, p.distance_to(s.pos) - STRIKE_R + 24.0)
 		for eb in enemy_bullets:
 			worst = minf(worst, (eb.pos + eb.vel * t).distance_to(p))
 		for e in enemies:
@@ -1814,6 +1823,8 @@ func _kill(e: Dictionary) -> void:
 			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
+	if e.type != "spore" and e.type != "bolt":
+		_streak_add()   # the kill streak (more coins from the bugs you kill while it runs)
 	if e.has("runner"):
 		_runner_caught(e)
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
@@ -1852,7 +1863,7 @@ func _kill(e: Dictionary) -> void:
 	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
 	for i in ncoins:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
-			"value": float(def.coins) / float(ncoins),
+			"value": float(def.coins) / float(ncoins) * _streak_mult(),
 			"vel": Vector2(rng.randf_range(-45, 45), rng.randf_range(-75, -30))})
 
 func _update_gems(delta: float) -> void:
@@ -2619,6 +2630,7 @@ func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if inv_t > 0.0:
 		return
 	inv_t = 1.0 * _recovery
+	_streak_break()   # a hit ends the kill streak
 	var dmg := amount * (1.0 - _def)   # DEF takes its share off
 	pilot_hp = maxf(pilot_hp - dmg, 0.0)
 	# Second Wind (talent card): once a run, the blow that would finish him heals him instead
@@ -3956,6 +3968,7 @@ func _draw() -> void:
 		_draw_turret(t)
 	_draw_turret_back()
 	_draw_lanes()   # a runner is coming down this lane
+	_draw_strikes()   # the planet's hazard about to land
 	# gems
 	for g in gems:
 		var c: Color = StageData.GEM_COLORS[g.tier] if not g.get("coin", false) else Color(1.0, 0.82, 0.3)
@@ -4878,6 +4891,7 @@ func _draw_hud() -> void:
 	_draw_card_row(Vector2(14.0, HUD_H + 24.0))   # its own row under the XP bar
 	_draw_auto_btn()
 	_draw_ult_btn()
+	_draw_streak()
 	for e in enemies:
 		if _is_boss(e):
 			_draw_boss_bar(e)
@@ -5541,6 +5555,10 @@ func _runners_for(stage_n: int, wave_n: int) -> int:
 
 func _plan_runners() -> void:
 	_runner_due.clear()
+	_strikes.clear()
+	_strike_cd = 8.0
+	_streak_break()
+	_streak_best = 0
 	for i in _runners_for(stage, wave_index):
 		_runner_due.append(rng.randf_range(3.0, 7.0) + 5.0 * i)
 
@@ -5779,3 +5797,130 @@ func _dbg_win() -> void:
 
 func _dbg_lose() -> void:
 	_end_run(false)
+
+# ------------------------------------------------------------------ KILL STREAK (2026-11-10)
+# Kills in quick succession build a streak: every kill within STREAK_HOLD seconds of the last adds
+# one, and each point is +1% coins from the bugs you kill (up to STREAK_MAX). Getting hit, or
+# going quiet, ends it. It rewards staying on the attack, which is what playing by hand is for.
+const STREAK_HOLD := 2.6
+const STREAK_MAX := 50
+var _streak := 0
+var _streak_t := 0.0
+var _streak_pop := 0.0
+var _streak_best := 0
+
+func _streak_add() -> void:
+	_streak += 1
+	_streak_t = STREAK_HOLD
+	_streak_pop = 1.0
+	_streak_best = maxi(_streak_best, _streak)
+	if _streak == 10 or _streak == 25 or _streak == 50 or (_streak > 50 and _streak % 50 == 0):
+		_float_text(soldier_pos + Vector2(0, -70), "STREAK x%d" % _streak, Color(1.0, 0.85, 0.4), true)
+		Sfx.play("level", 1.0 + minf(_streak, 100) * 0.004)
+
+func _streak_break() -> void:
+	_streak = 0
+	_streak_t = 0.0
+
+func _streak_mult() -> float:
+	return 1.0 + 0.01 * mini(_streak, STREAK_MAX)
+
+func _update_streak(delta: float) -> void:
+	_streak_pop = maxf(_streak_pop - delta * 5.0, 0.0)
+	if _streak > 0:
+		_streak_t -= delta
+		if _streak_t <= 0.0:
+			_streak_break()
+
+# top right, under the HP bar: the count, a small "+n% coins", and a line that drains
+func _draw_streak() -> void:
+	if _streak < 3:
+		return
+	var gold := Color(1.0, 0.82, 0.3)
+	var x := FIELD_W - 14.0
+	var y := HUD_H + 44.0
+	var fs := 22 + int(6.0 * _streak_pop)
+	_hc.draw_string(title_font, Vector2(x - 120.0, y), "x%d" % _streak, HORIZONTAL_ALIGNMENT_RIGHT, 120.0, fs, gold)
+	_hc.draw_string(hud_font, Vector2(x - 120.0, y + 14.0), "+%d%% coins" % mini(_streak, STREAK_MAX), HORIZONTAL_ALIGNMENT_RIGHT, 120.0, 10, Color(gold, 0.8))
+	var k: float = clampf(_streak_t / STREAK_HOLD, 0.0, 1.0)
+	_hc.draw_style_box(UIKit.pill(Color(1, 1, 1, 0.12), 2, Vector2.ZERO), Rect2(x - 64.0, y + 20.0, 64.0, 3.0))
+	_hc.draw_style_box(UIKit.pill(gold, 2, Vector2.ZERO), Rect2(x - 64.0 * k, y + 20.0, 64.0 * k, 3.0))
+
+# ------------------------------------------------------------------ PLANET HAZARDS (2026-11-10)
+# Every planet after the first has its own danger from the world itself, so a new planet feels like
+# a new place and not only new bugs: scrap falling out of orbit, eruptions, shard rain, lightning,
+# a targeting laser. One mechanic today (a STRIKE): a circle lights up near the hero, closes for
+# STRIKE_WARN seconds, then hits everything inside it: the hero, and bugs too, so you can lead
+# bugs into it. More often on later planets. Luna art can replace the code circle per planet later.
+const HAZARDS := [
+	{},
+	{"name": "FALLING SCRAP", "col": Color(0.75, 0.8, 0.9)},
+	{"name": "ERUPTION", "col": Color(1.0, 0.5, 0.2)},
+	{"name": "SHARD RAIN", "col": Color(0.75, 0.55, 1.0)},
+	{"name": "LIGHTNING", "col": Color(0.45, 0.9, 1.0)},
+	{"name": "TARGETING LASER", "col": Color(1.0, 0.3, 0.35)},
+]
+const STRIKE_WARN := 1.7
+const STRIKE_R := 48.0
+var _strikes: Array = []     # {pos, t}
+var _strike_cd := 8.0
+
+func _hazard() -> Dictionary:
+	var a := clampi(StageData.area_index(stage), 0, HAZARDS.size() - 1)
+	return HAZARDS[a]
+
+func _update_strikes(delta: float) -> void:
+	var hz := _hazard()
+	if hz.is_empty():
+		return
+	var area := StageData.area_index(stage)
+	if not enemies.is_empty():
+		_strike_cd -= delta
+	if _strike_cd <= 0.0:
+		_strike_cd = maxf(14.0 - area, 8.0) + rng.randf_range(-1.0, 2.0)   # first sweep at 11 - 1.2 x area and 12 + 2 x area damage: the autopilot died at stages 12 and 60
+		var p := Vector2(clampf(soldier_pos.x + rng.randf_range(-70.0, 70.0), 50.0, FIELD_W - 50.0), clampf(soldier_pos.y + rng.randf_range(-40.0, 20.0), 140.0, BASE_Y - 60.0))
+		_strikes.append({"pos": p, "t": STRIKE_WARN})
+		Sfx.play("spit", 0.7)
+		if not _seen.has("hazard_%d" % area):   # the first one on this planet: say what the circle means
+			_seen.append("hazard_%d" % area)
+			_write_save({"seen_enemies": _seen})
+			_float_text(Vector2(FIELD_W * 0.5, FIELD_H * 0.3), "%s! Leave the circle" % String(hz.name), Color(hz.col).lerp(Color.WHITE, 0.3), true)
+	var keep: Array = []
+	for s in _strikes:
+		s.t = float(s.t) - delta
+		if float(s.t) > 0.0:
+			keep.append(s)
+			continue
+		# it lands
+		var col: Color = hz.col
+		_fx_add("nova", s.pos, STRIKE_R * 1.6, 0.4, 0.0, 1.6, col)
+		_burst(s.pos, STRIKE_R * 0.8, col, 18)
+		shake = maxf(shake, 0.35)
+		Sfx.play("hull", 1.2)
+		if soldier_pos.distance_to(s.pos) <= STRIKE_R:
+			_hurt_pilot(8.0 + area)
+		for e in enemies:
+			if not _is_boss(e) and _can_hurt(e) and e.pos.distance_to(s.pos) <= STRIKE_R + float(e.r):
+				e.hp -= 0.4 * float(e.hp_max)
+				e.hit_t = HIT_FLINCH_T
+	_strikes = keep
+
+# the warning: a faint disc, a ring that closes onto it, the edge brightening as it is about to land
+func _draw_strikes() -> void:
+	if _strikes.is_empty():
+		return
+	var col: Color = _hazard().get("col", Color.WHITE)
+	for s in _strikes:
+		var k: float = 1.0 - float(s.t) / STRIKE_WARN
+		draw_circle(s.pos, STRIKE_R, Color(col, 0.07 + 0.12 * k))
+		draw_arc(s.pos, STRIKE_R, 0.0, TAU, 48, Color(col, 0.5 + 0.5 * k), 2.0, true)
+		draw_arc(s.pos, STRIKE_R * (2.2 - 1.2 * k), 0.0, TAU, 48, Color(col, 0.25 + 0.5 * k), 2.0, true)
+		for i in 4:
+			var a := time_alive * 1.5 + i * PI * 0.5
+			draw_line(s.pos + Vector2(cos(a), sin(a)) * STRIKE_R * 0.75, s.pos + Vector2(cos(a), sin(a)) * STRIKE_R, Color(col, 0.8), 2.0, true)
+
+# capture hook (CAP_CALL="_dbg_strike"): a hazard circle closing on the hero and a streak on the HUD
+func _dbg_strike() -> void:
+	_strikes.append({"pos": soldier_pos + Vector2(30, -10), "t": STRIKE_WARN * 0.6})
+	_streak = 12
+	_streak_t = STREAK_HOLD

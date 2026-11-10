@@ -285,6 +285,9 @@ func _threat_dist(p0: Vector2, target_x: float) -> float:
 		var t := 0.05 * k
 		var px := move_toward(p0.x, target_x, SPEED * t)
 		var p := Vector2(px, p0.y)
+		for s in b._strikes:   # a planet hazard about to land
+			if float(s.t) < 1.3:
+				worst = minf(worst, p.distance_to(s.pos) - b.STRIKE_R + 24.0)
 		for eb in b.enemy_bullets:
 			worst = minf(worst, (eb.pos + eb.vel * t).distance_to(p))
 		for e in b.enemies:
