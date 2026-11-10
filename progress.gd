@@ -340,6 +340,8 @@ static func attention(d: Dictionary) -> Dictionary:
 	for m in career(d):
 		if m.done and not m.claimed:
 			q[1] = true
+	if Contracts.claimable(d):   # a hero contract ready to pay (shown in Career)
+		q[1] = true
 	for t in trophies(d):
 		if t.claimed < t.reached:
 			q[2] = true

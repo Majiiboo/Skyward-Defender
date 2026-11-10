@@ -92,6 +92,18 @@ func _fill() -> void:
 		1:
 			_note.text = "Milestones that never reset."
 			_note.visible = not UIKit.CLEAN
+			if Contracts.open(d):   # the three contracts of the hero on duty (Contracts): paid in his shards
+				var duty := String(Heroes.read(d).selected)
+				_list.add_child(UIKit.header("%s on contract" % String(Heroes.ROSTER[duty].name)))
+				for ct in Contracts.list(d, duty):
+					var kind := String(ct.kind)
+					_row(String(ct.text), float(ct.progress), float(ct.goal), ct.reward, bool(ct.done), bool(ct.finished), func():
+						d = Progress.read()
+						Contracts.claim(d, duty, kind)
+						Progress.write(d)
+						Sfx.play("claim")
+						_fill(), String(ct.stat))
+				_list.add_child(UIKit.header("Milestones"))
 			for m in Progress.career(d):
 				_row(m.def.text, m.progress, float(m.def.goal), m.def.reward, m.done, m.claimed, func(): d = Progress.claim_career(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 			if UIKit.CLEAN and Unlocks.open(d, "repeat"):
@@ -210,6 +222,12 @@ func _clean_row(text: String, progress: float, goal: float, reward: Dictionary, 
 	if reward.has("coins"):
 		icon = UIKit.ic("ic_coin", "ui_coin")
 		amount = str(int(reward.coins))
+	elif reward.has("shards"):   # hero shards (Contracts): the shard picture and how many
+		icon = UIKit.ic("mat_shard", "ic_shard")
+		var sn := 0
+		for hid in reward.shards:
+			sn += int(reward.shards[hid])
+		amount = str(sn)
 	elif reward.has("crystals"):
 		icon = UIKit.ic("ic_crystal", "ui_crystal")
 		amount = str(int(reward.crystals))

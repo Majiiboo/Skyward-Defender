@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev249 (version/code=249 and version/name="1.0-dev249" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev254 (version/code=254 and version/name="1.0-dev254" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,29 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev254: Boss Rush, the Daily Spin, hero contracts, settings, the Elements chart (five updates since dev249)
+
+- BOSS RUSH (Modes, from stage 20). Every boss you have beaten in the campaign, one after
+  another, each tougher than the last, against the clock. Your best time is kept. The first time
+  you clear the whole line at each new length pays crystals and an Epic key; every run pays coins.
+- THE DAILY SPIN (Store > Offers, from stage 4). A wheel of eight prizes. One free spin a day,
+  up to three more for 30 crystals each. The odds are printed under the wheel.
+- HERO CONTRACTS (Quests > Career, from stage 6). The hero on duty has three running tallies:
+  fights won, bugs put down, abilities fired. Each has five marks, and each mark pays HIS shards
+  (the ones his Ascend and his ability upgrades need). Every hero keeps his own tallies.
+- SETTINGS, a new "Fight" section: Vibration (a short buzz on hits), Screen shake (Off / Less /
+  Full), Damage numbers on or off, Auto-advance (after a win the next stage starts by itself after
+  a 5 second count; "Stay on this screen" stops it). Under Sound: Volume (Quiet / Medium / Full).
+- THE ELEMENTS CHART. The small weakness icon beside the stage name on Home is now a button. It
+  opens a sheet: what each planet's bugs are weak to (green) and resist (red), the planet you are
+  on ringed, and your heroes coloured by how they fare there. This replaces the plain "weak to"
+  text you disliked.
+
+NOT CHECKED BY ME: nothing has been on a phone, so the vibration has never actually buzzed (it
+needs a real phone). Boss Rush was won by the autopilot at stage 30 (about 4 minutes, hero down to
+a quarter health) and at stage 60. The spin wheel was looked at standing still; I did not watch it
+turn (its rules pass the automatic checks). Auto-advance was watched working once.
 
 ## dev249: Luna's base, building links, the Season Pass, the Research Lab (four updates since dev245)
 

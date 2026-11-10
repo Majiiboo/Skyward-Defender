@@ -44,6 +44,7 @@ func _initialize() -> void:
 	_check_research()
 	_check_bossrush()
 	_check_spin()
+	_check_contracts()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -936,3 +937,19 @@ func _check_spin() -> void:
 	_expect(is_equal_approx(sum, 1.0), "the odds add up to 100%")
 	s["spin"]["day"] = Spin.day() - 1
 	_expect(Spin.free_ready(s), "a new day: the free spin is back")
+
+func _check_contracts() -> void:
+	var s := {"stage_unlocked": 3, "hero": {"selected": "rook", "owned": ["rook"], "levels": {}, "def": {}, "tiers": {}, "shards": {}}}
+	Contracts.add(s, "rook", true, 50, 2)
+	_expect(not s.has("contracts"), "closed before stage %d: nothing counted" % Contracts.CONTRACTS_FROM)
+	s["stage_unlocked"] = 10
+	for i in 3:
+		Contracts.add(s, "rook", true, 80, 4)
+	var l := Contracts.list(s, "rook")
+	_expect(l.size() == 3 and bool(l[0].done) and bool(l[1].done) and bool(l[2].done), "3 wins, 240 kills, 12 abilities: all three first marks reached")
+	_expect(Contracts.claimable(s), "something to claim")
+	var got := Contracts.claim(s, "rook", "wins")
+	_expect(int(got.shards.rook) == 5 and Heroes.shards(Heroes.read(s), "rook") == 5, "the wins contract pays 5 Rook shards")
+	_expect(Contracts.claim(s, "rook", "wins").is_empty(), "not twice: the next mark is 10 wins")
+	_expect(int(Contracts.list(s, "rook")[0].goal) == 10, "the next mark shows")
+	_expect(Contracts.list(s, "frost")[0].progress == 0, "every hero has his own tally")

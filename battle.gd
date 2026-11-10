@@ -76,6 +76,7 @@ var boss_rush := false            # BOSS RUSH (BossRush): every boss you have be
 var _rush := {}                    # what the run paid (BossRush.finish; end screen)
 var event_run := false            # a WEEKLY EVENT fight (Events): the week's twists, event points at the end
 var _event_points := 0            # what this fight paid (end screen)
+var _abilities_used := 0          # times the ability was fired this fight (Contracts)
 var _season_xp := 0               # season XP this fight paid (Season; end screen)
 var _season_up := false           # it filled a tier
 var _daily_reward := {}           # what today's first win paid (end screen)
@@ -1997,6 +1998,11 @@ func _end_run(won: bool) -> void:
 		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
 	if run_mode:   # an Expedition fight: the run takes the result (Runs.fight_done)
 		_run_end(won)
+	# the hero on duty adds to his contracts (Contracts): a win, his kills, his abilities
+	if Contracts.open(d):
+		Contracts.add(d, _hero_id, won, kills, _abilities_used)
+		_write_save({"contracts": d.contracts})
+	_abilities_used = 0
 	# season XP for every fight (Season): more for a win, a little on top for the special modes
 	_season_xp = 0
 	_season_up = false
@@ -4492,6 +4498,7 @@ func _use_ability() -> void:
 	_ult_t = _ult_cd
 	_ai_ult = 1.0
 	_ult_flash = 1.0
+	_abilities_used += 1
 	_buzz(30)
 	_ability_effect(_hero_id, false)
 
