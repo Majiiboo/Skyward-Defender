@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev231 (version/code=231 and version/name="1.0-dev231" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev236 (version/code=236 and version/name="1.0-dev236" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,46 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev236: the overhaul begins: no more turrets, a base you build, a drone squad, new weapons, the Expedition (five updates since dev231)
+
+THE BIG CHANGE: THE TURRETS ARE GONE
+- THE BASE YOU BUILD (Heroes, the Base tab where Turrets was). The base never shoots. Nine
+  buildings, each giving one kind of help and each with its own level: Shield Generator, Repair
+  Bay, Armory, Med Bay, Hull Plating, Hangar, Reactor, Radar, Refinery. You field four; the slots
+  open at stages 5, 15, 25 and 40 as the mounts did.
+- Every coin you spent on turrets comes back the first time you open the Base tab.
+- No turret art is used. Buildings show an icon for now; the new base still has to be designed.
+- Bugs have less health from stage 6 on (down to about two thirds by stage 20), because the hero
+  now does all the shooting. Your bolts also bend a little further toward a bug when you fly by hand.
+- DRONE SQUAD. With a Hangar on the base a second drone flies with you: a Guard (blocks a hit on
+  the hero now and then), a Collector (brings pickups in) or a Medic (heals him slowly). Pick it on
+  the Drone tab. A higher Hangar makes it better at its job.
+- WEAPONS THAT PLAY DIFFERENTLY. Ion Pistol: every 5th bolt is a charged shot. Arc Welder: arcs to
+  a second bug. Pulse Cannon: shells explode. Dread Railgun: pierces a line. Sun Rifle: a short-range
+  fan of three. Frost Rifle: a stream that slows.
+
+A NEW MODE: THE EXPEDITION (Modes, opens after stage 5)
+- A run of eight stops across one planet. At each stop you pick a fight, an elite fight, a rest or a
+  supply cache; the planet's boss is last. Your cards, your hero's health and the base carry from
+  stop to stop. Lose a fight and the run ends; you collect a reward for how far you got. Beat the
+  boss to open the next planet's expedition.
+- It sits beside the campaign for now, so we can find out which is the better game.
+
+ALSO
+- Bosses show a WEAK POINT (a gold ring and the words) and take two and a half times the damage
+  then; they have about a third more health to match.
+- Settings: a Left-handed switch swaps the AUTO and ability buttons.
+
+WHAT I NEED FROM YOU
+- Does a fight feel better or emptier without turrets?
+- Stage 30 is the tight spot in my tests (the test bot wins it about half the time). Tell me where
+  you get stuck.
+- Planet 1's Expedition is too gentle in my tests. Is a run fun?
+- What should the new base look like? I have not touched the platform art.
+
+NOT CHECKED BY ME: none of this has been on a phone or tapped by hand. Each piece was run in a real
+stage without a screen. The old turret code is switched off, not deleted yet.
 
 ## dev231: kill streaks, planet hazards, supply drops, a wingmate and the weekly event (four updates since dev227)
 
