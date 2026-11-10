@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev224 (version/code=224 and version/name="1.0-dev224" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev227 (version/code=227 and version/name="1.0-dev227" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,25 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev227: the Daily Challenge, the unlock moment and the collection book (three updates since dev224)
+
+- DAILY CHALLENGE (Modes, second card; opens after stage 5). Your best cleared stage with bugs 15%
+  tougher and three twists that change with the date (one advantage, two disadvantages). The first
+  win of the day pays coins, 10 crystals and an Uncommon key. Replays pay only what you pick up.
+  It gives no stars and opens no stages.
+- THE UNLOCK MOMENT. When something new opens, it takes the whole screen: its picture in a ring of
+  turning rays, the name, one line, a gold SHOW ME. The hero ability, AUTO, the Daily Challenge and
+  the daily twists are announced this way too. On your save you will see those four once each, one
+  per visit to Home.
+- THE COLLECTION BOOK (Quests, the new Collection tab). Enemies met, heroes and turrets owned, power
+  cards picked; the rest are dark shapes to find. Each category pays crystals at a quarter, half,
+  three quarters and full (10 / 15 / 25 / 50). Your Cards page starts empty: until now the game
+  counted how many cards you picked, not which.
+- Home's next-goal line names today's challenge when it is waiting.
+
+NOT CHECKED BY ME: whether the Daily Challenge can be won with two disadvantages (I ran it without a
+screen: it loads, pays once, gives no stars), and nothing here has been on a phone.
 
 ## dev224: the fight needs you now, the Ascend ladder, and every screen in the clean look (ten updates since dev214)
 
