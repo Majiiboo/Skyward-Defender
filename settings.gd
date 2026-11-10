@@ -124,7 +124,38 @@ func _fill() -> void:
 		Sfx.set_on(v)
 		Progress.write(d)
 		_fill()))
+	_page.add_child(_choice("Volume", "How loud the sound effects are", [["Quiet", 0.3], ["Medium", 0.6], ["Full", 1.0]], float(d.get("sfx_vol", 1.0)), func(v):
+		d = Progress.read()
+		d["sfx_vol"] = float(v)
+		Sfx.set_volume(float(v))
+		Progress.write(d)
+		Sfx.play("coin")
+		_fill()))
 	_page.add_child(_switch("Music", "Coming with the sound pack", true, Callable(), true))
+	# ---- the fight: how it feels (battle.gd reads these at the stage start)
+	_page.add_child(UIKit.header("FIGHT"))
+	_page.add_child(_switch("Vibration", "A short buzz when you or the base are hit", bool(d.get("haptics", true)), func(v: bool):
+		d = Progress.read()
+		d["haptics"] = v
+		Progress.write(d)
+		if v:
+			Input.vibrate_handheld(40)
+		_fill()))
+	_page.add_child(_choice("Screen shake", "How hard the screen shakes on big hits", [["Off", 0.0], ["Less", 0.5], ["Full", 1.0]], float(d.get("shake", 1.0)), func(v):
+		d = Progress.read()
+		d["shake"] = float(v)
+		Progress.write(d)
+		_fill()))
+	_page.add_child(_switch("Damage numbers", "Numbers over the bugs you hit", bool(d.get("dmg_numbers", true)), func(v: bool):
+		d = Progress.read()
+		d["dmg_numbers"] = v
+		Progress.write(d)
+		_fill()))
+	_page.add_child(_switch("Auto-advance", "After a win the next stage starts by itself", bool(d.get("auto_next", false)), func(v: bool):
+		d = Progress.read()
+		d["auto_next"] = v
+		Progress.write(d)
+		_fill()))
 	# ---- game
 	_page.add_child(UIKit.header("GAME"))
 	var map := UIKit.panel(12)
@@ -246,3 +277,32 @@ func _switch(name: String, help: String, on: bool, on_change: Callable, soon: bo
 func _process(_delta: float) -> void:
 	if _fps:
 		_fps.text = "%d fps  ·  %s" % [Engine.get_frames_per_second(), Perf.INFO[Perf.mode].name]
+
+# a row with a name, one line of help and a few pills to choose from: options = [[label, value], ...]
+func _choice(name: String, help: String, options: Array, current: float, on_pick: Callable) -> Control:
+	var p := UIKit.panel(12)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 6)
+	v.add_child(UIKit.label(name, 15, Color(0.85, 0.9, 1.0)))
+	v.add_child(UIKit.label(help, 11, UIKit.MUTED))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	for o in options:
+		var on: bool = is_equal_approx(float(o[1]), current)
+		var b := Button.new()
+		b.text = String(o[0])
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 36)
+		b.add_theme_font_size_override("font_size", 13)
+		b.add_theme_color_override("font_color", UIKit.GOLD_INK if on else UIKit.TEXT)
+		b.add_theme_color_override("font_pressed_color", UIKit.GOLD_INK if on else UIKit.TEXT)
+		b.add_theme_color_override("font_hover_color", UIKit.GOLD_INK if on else UIKit.TEXT)
+		var sb := UIKit.pill(UIKit.CYAN if on else Color(UIKit.CARD_HI, 0.8), 14, Vector2(8, 4))
+		for st in ["normal", "hover", "pressed", "focus"]:
+			b.add_theme_stylebox_override(st, sb)
+		var val = o[1]
+		b.pressed.connect(func(): on_pick.call(val))
+		h.add_child(b)
+	v.add_child(h)
+	p.add_child(v)
+	return p

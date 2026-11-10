@@ -597,6 +597,10 @@ func _start_stage() -> void:
 	game_speed = float(sv.get("game_speed", 1.0))
 	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
 	_lefty = bool(sv.get("left_hand", false))   # Settings: left-handed
+	_haptics = bool(sv.get("haptics", true))            # Settings: the phone buzzes on hits
+	_shake_mult = float(sv.get("shake", 1.0))            # Settings: screen shake full / less / off
+	_dmg_numbers = bool(sv.get("dmg_numbers", true))     # Settings: damage numbers over bugs
+	_auto_next = bool(sv.get("auto_next", false))        # Settings: go on to the next stage by itself
 	if not _speeds().has(game_speed):
 		game_speed = 1.0
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
@@ -786,7 +790,7 @@ func _process(delta: float) -> void:
 		hitstop -= delta
 		delta *= 0.2
 	shake = maxf(shake - delta * 3.5, 0.0)
-	var sk := shake * shake * 5.0
+	var sk := shake * shake * 5.0 * _shake_mult
 	position = Vector2(0, _safe_top) + Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
@@ -1842,6 +1846,7 @@ func _hurt_base(amount: float) -> void:
 	hit_t = 0.0
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
+	_buzz(25)
 	if shield > 0.0:
 		Sfx.play("shield")
 		shield = maxf(shield - amount, 0.0)
@@ -1866,6 +1871,7 @@ func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if _support_blocks():   # the Guard drone takes this one
 		return
 	inv_t = 1.0 * _recovery
+	_buzz(45)
 	_streak_break()   # a hit ends the kill streak
 	var dmg := amount * (1.0 - _def)   # DEF takes its share off
 	pilot_hp = maxf(pilot_hp - dmg, 0.0)
@@ -1898,6 +1904,8 @@ func _float_text(p: Vector2, text: String, col: Color, big: bool = false) -> voi
 # adds up for a quarter second and shows as one small number, coloured by the element: orange
 # when the hero is strong here, grey when the planet resists him.
 func _show_dmg(e: Dictionary, dmg: float, crit: bool, mult: float = 1.0) -> void:
+	if not _dmg_numbers:
+		return
 	if dmg <= 0.0:
 		return
 	if crit:
@@ -3130,6 +3138,29 @@ func _show_end(won: bool) -> void:
 			stage += 1
 			_start_stage())
 		v.add_child(nxt)
+		if _auto_next:   # Settings > Auto-advance: the next stage starts by itself after a short count
+			var left := [5]
+			nxt.text = "Next stage  ·  5"
+			var tm := Timer.new()
+			tm.wait_time = 1.0
+			tm.autostart = true   # it starts when the end screen enters the tree
+			nxt.add_child(tm)
+			var stay := UIKit.ghost_button("Stay on this screen", 12)
+			tm.timeout.connect(func():
+				left[0] -= 1
+				if left[0] <= 0:
+					tm.stop()
+					nxt.text = "Next stage"
+					if is_instance_valid(stay):
+						stay.queue_free()
+					nxt.pressed.emit()
+				else:
+					nxt.text = "Next stage  ·  %d" % left[0])
+			stay.pressed.connect(func():
+				tm.stop()
+				nxt.text = "Next stage"
+				stay.queue_free())
+			v.add_child(stay)
 	if run_mode:   # an Expedition fight ends on the map, never on Next stage / Play again
 		var cont := UIKit.gold_button("Continue" if won and not Runs.over(_run) else "See the run", 17)
 		cont.custom_minimum_size = Vector2(0, 50)
@@ -4440,6 +4471,7 @@ func _use_ability() -> void:
 	_ult_t = _ult_cd
 	_ai_ult = 1.0
 	_ult_flash = 1.0
+	_buzz(30)
 	_ability_effect(_hero_id, false)
 
 # WINGMATE (2026-11-10; IDEAS-2026-11-10.md 6): a second hero you own rides along as support
@@ -5224,6 +5256,7 @@ func _use_pulse() -> void:
 	_pulse_t = PULSE_CD * _pulse_cd_mult
 	_pulse_live = PULSE_T
 	_pulse_flash = 1.0
+	_buzz(55)
 	_ai_pulse = 1.0
 	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
 	_float_text(eye + Vector2(0, -DOME_RY - 8.0), "CORE PULSE!", Color(0.6, 0.95, 1.0), true)
@@ -5311,3 +5344,13 @@ func _apply_research(sv: Dictionary) -> void:
 	_drone_mult *= 1.0 + float(rb.drone)
 	_ult_cd /= 1.0 + float(rb.ability)
 	_coin_mult *= 1.0 + float(rb.coins)
+
+# ---- SETTINGS read at the stage start (settings.gd): the buzz, the shake, the numbers, auto-advance
+var _haptics := true
+var _shake_mult := 1.0
+var _dmg_numbers := true
+var _auto_next := false
+
+func _buzz(ms: int) -> void:
+	if _haptics and not OS.has_feature("editor") and DisplayServer.get_name() != "headless":
+		Input.vibrate_handheld(ms)

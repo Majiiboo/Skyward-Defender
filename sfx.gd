@@ -77,7 +77,13 @@ const DEFS := {
 }
 
 static func apply_from(save: Dictionary) -> void:
+	volume = clampf(float(save.get("sfx_vol", 1.0)), 0.0, 1.0)
 	enabled = bool(save.get("sound_on", true))
+
+static var volume := 1.0   # Settings > Volume (save "sfx_vol"): 0.3 quiet, 0.6 medium, 1.0 full
+
+static func set_volume(v: float) -> void:
+	volume = clampf(v, 0.0, 1.0)
 
 static func set_on(on: bool) -> void:
 	enabled = on
@@ -101,7 +107,7 @@ static func play(name: String, pitch: float = 1.0, vol_db: float = 0.0) -> void:
 		return
 	p.stream = st
 	p.pitch_scale = clampf(pitch, 0.5, 2.0)
-	p.volume_db = vol_db
+	p.volume_db = vol_db + linear_to_db(maxf(volume, 0.01))
 	p.play()
 
 # gems and coins: each quick pickup a little higher than the last (resets after a pause)
