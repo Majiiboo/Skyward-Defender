@@ -299,8 +299,8 @@ var anim := PilotSprite.Anim.new()
 var _rig_view: PilotRigView        # the new cut-out pilot (PilotRig.ENABLED); null = painted PilotSprite
 
 # ---- UI ----
-var hud_font: Font = preload("res://fonts/exo2_semibold.tres")   # Exo 2 at weight 600 (Rudy: bolder text everywhere)
-var title_font: Font = preload("res://fonts/Orbitron-Variable.ttf")
+var hud_font: Font = preload("res://fonts/inter_text.tres")   # Inter 600, the game's text font (the battle's style pass, 2026-11-10)
+var title_font: Font = preload("res://fonts/oxanium_heavy.tres")   # Oxanium 800: titles, numbers, buttons
 var _hud_title := ""               # the top bar strings, rebuilt only when they change (efficiency pass, 27)
 var _hud_title_key := -2
 var _hud_num := ""
@@ -4724,14 +4724,17 @@ func _zigzag(a: Vector2, b: Vector2, seed: int) -> PackedVector2Array:
 
 # Top bar layout (drawn by _draw_hud on the _hc layer)
 const HUD_H := 70.0                  # bar height (the XP bar runs along its bottom)
-const PAUSE_RECT := Rect2(FIELD_W - 50, 10, 36, 30)
-const SPEED_RECT := Rect2(FIELD_W - 92, 10, 36, 30)
-const CARDS_RECT := Rect2(FIELD_W - 134, 10, 36, 30)
+const PAUSE_RECT := Rect2(FIELD_W - 52, 10, 38, 36)
+const SPEED_RECT := Rect2(FIELD_W - 98, 10, 38, 36)
+const CARDS_RECT := Rect2(FIELD_W - 144, 10, 38, 36)
 
 # A small glass button on the top bar (lit cyan while its panel is open / active).
 func _hud_frame(p: Rect2, active: bool) -> void:
-	var fill := Color(0.18 * 0.3, 0.9 * 0.3, 0.3, 0.75) if active else Color(0.035, 0.06, 0.14, 0.7)
-	Glass.panel(_hc, Glass.box(p, 9.0), 1.0, Color(Glass.CYAN, 0.9) if active else Color(0, 0, 0, 0), fill)
+	var sb := UIKit.pill(Color(0.07, 0.2, 0.3, 0.92) if active else Color(0.055, 0.09, 0.157, 0.86), 12, Vector2.ZERO)
+	if active:
+		sb.border_color = Color(0.31, 0.88, 1.0, 0.9)
+		sb.set_border_width_all(1)
+	_hc.draw_style_box(sb, p)
 
 # Luna's heart; a lost heart shows as a dark, see-through shape.
 func _draw_heart(c: Vector2, s: float, on: bool) -> void:
@@ -4750,27 +4753,29 @@ func _draw_hud() -> void:
 	_draw_hurt_edge()
 	if _safe_top > 0.0:
 		_hc.draw_rect(Rect2(0, -_safe_top - 2.0, FIELD_W, _safe_top + 6.0), Color(0.02, 0.03, 0.08, 0.85))
-	if UIKit.kit_ready("hud_frame"):   # Luna's top bar (dev172)
-		_hc.draw_style_box(UIKit.nine("hud_frame", 30.0, Vector2.ZERO), Rect2(2, 0, FIELD_W - 4, HUD_H - 4))
-	else:
-		Glass.panel(_hc, Glass.box(Rect2(6, 3, FIELD_W - 12, HUD_H - 9), 16.0), 1.0, Color(0, 0, 0, 0), Color(0.03, 0.05, 0.12, 0.72))
+	# the clean top bar (2026-11-10, the battle's style pass): no frame, a soft shade that fades into
+	# the sky, the stage big on the left, three roomy buttons on the right, then one quiet row: wave
+	# pips, the score, the HP bar. Nothing touches the screen edge (Rudy, dev209).
+	var navy := Color(0.027, 0.047, 0.094)
+	_hc.draw_polygon(PackedVector2Array([Vector2(0, 0), Vector2(FIELD_W, 0), Vector2(FIELD_W, HUD_H + 16.0), Vector2(0, HUD_H + 16.0)]),
+		PackedColorArray([Color(navy, 0.9), Color(navy, 0.9), Color(navy, 0.0), Color(navy, 0.0)]))
 	# row 1: stage number (white) and name (cyan), then the run time
 	# the stage title and the clock are built once per change, not per frame (efficiency pass, 27)
 	var hud_key: int = (wave_index if horde else 0) * 1000 + stage   # rebuilt on a new stage too (Next stage keeps the scene)
 	if _hud_title == "" or _hud_title_key != hud_key:
 		_hud_title_key = hud_key
 		_hud_num = "%d " % stage
-		_hud_nx = 18.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13).x
+		_hud_nx = 16.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else StageData.stage_name(stage)))).to_upper()
-	_hc.draw_string(title_font, Vector2(18, 30), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
-	_hc.draw_string(title_font, Vector2(_hud_nx, 30), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, 240.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
+	_hc.draw_string(title_font, Vector2(16, 34), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
+	_hc.draw_string(title_font, Vector2(_hud_nx, 33), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, CARDS_RECT.position.x - 64.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
 	var whole_s := int(time_alive)
 	if whole_s != _hud_clock_s:
 		_hud_clock_s = whole_s
 		_hud_clock = "%02d:%02d" % [whole_s / 60, whole_s % 60]
-	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 88, 30), _hud_clock, HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
+	_hc.draw_string(hud_font, Vector2(CARDS_RECT.position.x - 90, 33), _hud_clock, HORIZONTAL_ALIGNMENT_RIGHT, 80, 13, muted)
 	if Perf.show_fps:   # Settings > frame counter
-		_hc.draw_string(hud_font, Vector2(18, HUD_H + 14), "%d fps" % Engine.get_frames_per_second(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(muted, 0.8))
+		_hc.draw_string(hud_font, Vector2(18, HUD_H + 34), "%d fps" % Engine.get_frames_per_second(), HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(muted, 0.8))
 	# cards button: three small fanned cards
 	_hud_frame(CARDS_RECT, _cards_open)
 	var cc := CARDS_RECT.get_center()
@@ -4781,56 +4786,43 @@ func _draw_hud() -> void:
 	_hc.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 	# game speed
 	_hud_frame(SPEED_RECT, game_speed > 1.0)
-	_hc.draw_string(title_font, SPEED_RECT.position + Vector2(0, 20), "x%s" % (str(game_speed) if game_speed != 1.0 else "1"), HORIZONTAL_ALIGNMENT_CENTER, SPEED_RECT.size.x, 11, Color.WHITE if _speeds().size() > 1 else Color(1, 1, 1, 0.5))
-	# pause button: two thin bars (a play arrow while paused)
+	_hc.draw_string(title_font, SPEED_RECT.position + Vector2(0, 23), "x%s" % (str(game_speed) if game_speed != 1.0 else "1"), HORIZONTAL_ALIGNMENT_CENTER, SPEED_RECT.size.x, 13, Color.WHITE if _speeds().size() > 1 else Color(1, 1, 1, 0.5))
+	# pause button: two bars (a play arrow while paused)
 	var p := PAUSE_RECT
 	_hud_frame(p, paused)
 	var pc := p.get_center()
 	if paused:
 		_hc.draw_colored_polygon(PackedVector2Array([pc + Vector2(-5, -8), pc + Vector2(8, 0), pc + Vector2(-5, 8)]), Color.WHITE)
 	else:
-		_hc.draw_rect(Rect2(pc + Vector2(-6, -8), Vector2(3.5, 16)), Color.WHITE)
-		_hc.draw_rect(Rect2(pc + Vector2(2.5, -8), Vector2(3.5, 16)), Color.WHITE)
-	# row 2: score, waves as pips (text when there are many), hearts
-	var y2 := 52.0
-	_hc.draw_string(hud_font, Vector2(18, y2), "SCORE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	_hc.draw_string(hud_font, Vector2(58, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		_hc.draw_style_box(UIKit.pill(Color.WHITE, 2, Vector2.ZERO), Rect2(pc + Vector2(-6.5, -8), Vector2(4, 16)))
+		_hc.draw_style_box(UIKit.pill(Color.WHITE, 2, Vector2.ZERO), Rect2(pc + Vector2(2.5, -8), Vector2(4, 16)))
+	# row 2: waves as pips (a count when there are many), the score, the HP bar
+	var y2 := 60.0
 	var wave_now := mini(wave_index + 1, waves.size())
-	var wx := 160.0
-	_hc.draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	wx += 36.0
+	var wx := 17.0
 	if waves.size() <= 10:
 		for i in waves.size():
-			var r := Rect2(wx + i * 13.0, y2 - 9.0, 9.0, 9.0)
-			var dia := PackedVector2Array([Vector2(r.get_center().x, r.position.y), Vector2(r.end.x, r.get_center().y),
-				Vector2(r.get_center().x, r.end.y), Vector2(r.position.x, r.get_center().y), Vector2(r.get_center().x, r.position.y)])
-			if i < wave_now - 1:
-				_hc.draw_colored_polygon(dia, Color(cyan, 0.85))
-			elif i == wave_now - 1:
-				_hc.draw_colored_polygon(dia, Color.WHITE)
-			_hc.draw_polyline(dia, Color(cyan, 0.6), 1.0, true)
+			var pr := Rect2(wx + i * 13.0, y2 - 8.0, 9.0, 5.0)
+			_hc.draw_style_box(UIKit.pill(Color.WHITE if i == wave_now - 1 else (Color(cyan, 0.85) if i < wave_now - 1 else Color(1, 1, 1, 0.16)), 2, Vector2.ZERO), pr)
+		wx += waves.size() * 13.0 + 10.0
 	else:
-		_hc.draw_string(hud_font, Vector2(wx, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
-	# the pilot's HP bar (dev172: HP instead of hearts): red, with the number, at the right
-	var bar := Rect2(FIELD_W - 132.0, y2 - 10.0, 114.0, 9.0)
-	_hc.draw_string(hud_font, Vector2(bar.position.x - 20.0, y2), "HP", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
-	if UIKit.kit_ready("bar_track"):   # Luna's bar track and red fill (dev172)
-		_hc.draw_style_box(UIKit.nine("bar_track", 5.0, Vector2.ZERO), bar.grow(1.0))
-	else:
-		_hc.draw_colored_polygon(Glass.box(bar, 3.0).slice(0, -1), Color(0.12, 0.03, 0.06, 0.85))
+		_hc.draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
+		_hc.draw_string(title_font, Vector2(wx + 38.0, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+		wx += 96.0
+	_hc.draw_string(title_font, Vector2(wx + 6.0, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
+	# the pilot's HP bar (dev172: HP instead of hearts): a red pill with the number in it, at the right
+	var bar := Rect2(FIELD_W - 174.0, y2 - 11.0, 160.0, 12.0)
+	var heart: Texture2D = _tex["ui_heart"]
+	_hc.draw_texture_rect(heart, Rect2(bar.position.x - 20.0, y2 - 13.0, 15.0, 15.0 * heart.get_height() / heart.get_width()), false)
+	_hc.draw_style_box(UIKit.pill(Color(0.16, 0.05, 0.08, 0.9), 6, Vector2.ZERO), bar)
 	var hk := clampf(pilot_hp / maxf(pilot_hp_max, 1.0), 0.0, 1.0)
 	if hk > 0.0:
-		var fill := Rect2(bar.position, Vector2(maxf(bar.size.x * hk, 6.0), bar.size.y))
-		if UIKit.kit_ready("bar_fill_red"):
-			_hc.draw_style_box(UIKit.nine("bar_fill_red", 5.0, Vector2.ZERO), fill)
-		else:
-			_hc.draw_colored_polygon(Glass.box(fill, 3.0).slice(0, -1), Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25))
-	_hc.draw_polyline(Glass.box(bar, 3.0), Color(1.0, 0.45, 0.5, 0.5), 1.0, true)
-	_hc.draw_string(hud_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 8, Color.WHITE)
+		_hc.draw_style_box(UIKit.pill(Color(1.0, 0.35, 0.42) if hk > 0.3 else Color(1.0, 0.2, 0.25), 6, Vector2.ZERO), Rect2(bar.position, Vector2(maxf(bar.size.x * hk, 12.0), bar.size.y)))
+	_hc.draw_string(title_font, Vector2(bar.position.x, y2 - 1.0), "%d / %d" % [ceili(pilot_hp), roundi(pilot_hp_max)], HORIZONTAL_ALIGNMENT_CENTER, int(bar.size.x), 10, Color.WHITE)
 	# a trial's advantages and disadvantages, announced under the bar for the first seconds
 	if not _mods.is_empty() and time_alive > 3.5 and time_alive < 11.0:   # after the objectives box has gone
 		var ma: float = clampf(11.0 - time_alive, 0.0, 1.0) * clampf((time_alive - 3.5) * 2.0, 0.0, 1.0)
-		var my := HUD_H + 30.0
+		var my := HUD_H + 64.0
 		for m in _mods:   # Luna's twist icon beside each line; green good, red bad (dev189)
 			if not Promotion.MODS.has(m):
 				continue
@@ -4843,14 +4835,11 @@ func _draw_hud() -> void:
 				x0 += 22.0
 			_hc.draw_string(hud_font, Vector2(x0, my), txt, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, Color(Promotion.GOOD_COL if Promotion.MODS[m].good else Promotion.BAD_COL, ma))
 			my += 18.0
-	# run XP: a rounded track under the capsule, filled cyan to purple, level on a chip
+	# run XP: a thin pill under the bar, filled cyan to purple, the run level on a chip
 	var need := _xp_need()
 	var xp := clampf(run_xp / need, 0.0, 1.0)
-	var track := Rect2(64, HUD_H - 1, FIELD_W - 82, 5)
-	if UIKit.kit_ready("bar_track"):
-		_hc.draw_style_box(UIKit.nine("bar_track", 5.0, Vector2.ZERO), track.grow(1.0))
-	else:
-		_hc.draw_colored_polygon(Glass.box(track, 2.5).slice(0, -1), Color(0.03, 0.05, 0.12, 0.8))
+	var track := Rect2(70, HUD_H + 7, FIELD_W - 84, 5)
+	_hc.draw_style_box(UIKit.pill(Color(0.1, 0.153, 0.25, 0.9), 3, Vector2.ZERO), track)
 	if xp > 0.02:
 		var fr := Rect2(track.position, Vector2(track.size.x * xp, track.size.y))
 		var pts := Glass.box(fr, 2.5).slice(0, -1)
@@ -4858,10 +4847,10 @@ func _draw_hud() -> void:
 		for q in pts:
 			cols.append(Glass.CYAN.lerp(Glass.PURPLE, clampf((q.x - track.position.x) / track.size.x, 0.0, 1.0)))
 		_hc.draw_polygon(pts, cols)
-	var chip := Rect2(12, HUD_H - 8, 48, 18)
-	Glass.panel(_hc, Glass.box(chip, 8.0), 1.0, Color(Glass.PURPLE, 0.8), Color(0.08, 0.05, 0.16, 0.9))
-	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
-	_draw_card_row(Vector2(chip.end.x + 8.0, chip.position.y))
+	var chip := Rect2(14, HUD_H, 48, 19)
+	_hc.draw_style_box(UIKit.pill(Color(0.094, 0.145, 0.239, 0.95), 9, Vector2.ZERO), chip)
+	_hc.draw_string(title_font, Vector2(chip.position.x, chip.position.y + 14), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
+	_draw_card_row(Vector2(14.0, HUD_H + 24.0))   # its own row under the XP bar
 	_draw_auto_btn()
 	_draw_ult_btn()
 	for e in enemies:
@@ -4890,7 +4879,7 @@ func _draw_boss_bar(e: Dictionary) -> void:
 	var fill := clampf(f * layers - (cur - 1), 0.0, 1.0)
 	var lag_fill := clampf(lag * layers - (cur - 1), 0.0, 1.0)
 	var bw := 260.0
-	var by := HUD_H + 34.0 - 8.0 * (1.0 - a)
+	var by := HUD_H + 56.0 - 8.0 * (1.0 - a)
 	var r := Rect2(FIELD_W * 0.5 - bw * 0.5, by, bw, 8)
 	var cut := 5.0
 	var frame := PackedVector2Array([r.position + Vector2(-cut - 3, 4), r.position + Vector2(-3, -3), Vector2(r.end.x + 3, r.position.y - 3),
@@ -5758,3 +5747,10 @@ func _tex_cached(icon_name: String) -> Texture2D:
 func _dbg_runner() -> void:
 	_lanes.append({"x": 330.0, "t": RUNNER_WARN})
 	_ult_t = 0.0
+
+# capture hooks (tools/dev/capture.gd CAP_CALL): the end screens with some play behind them
+func _dbg_win() -> void:
+	_end_run(true)
+
+func _dbg_lose() -> void:
+	_end_run(false)
