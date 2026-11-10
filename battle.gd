@@ -6328,6 +6328,9 @@ var _base_heal := 0.0       # Med Bay: share of the hero's health back after a w
 var _warn_mult := 1.0       # Radar: runner lanes and hazards show this much longer
 
 func _apply_base(sv: Dictionary) -> void:
+	if _mods.has("no_turrets"):   # the Base offline twist (trials): the buildings give nothing this fight
+		_base_slots = ["", "", "", ""]
+		return
 	var bs := Base.stats(sv)
 	var b := Base.read(sv)
 	var su := int(sv.get("stage_unlocked", 1))

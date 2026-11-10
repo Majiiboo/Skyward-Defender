@@ -457,84 +457,133 @@ func _promotion_row(row: HBoxContainer) -> Control:
 	return outer
 
 # the rank ladder: ten rows, won ones in gold with a tick, the next one lit, the rest dim
-func _ladder() -> void:
-	var r := Promotion.rank(_save)
-	var layer := ColorRect.new()
-	layer.color = Color(0, 0.01, 0.04, 0.75)
-	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
+# A bottom sheet in the shared look (the chest sheet, the Level Up sheet, the event sheet): the page
+# dims, the sheet slides up, a title with Close. Returns [layer, the VBox to fill].
+func _sheet(title_text: String, sub: String = "") -> Array:
+	var layer := Control.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	add_child(layer)
-	var p := UIKit.popup_panel()
-	var w := minf(size.x - 32.0, 400.0)
-	p.custom_minimum_size = Vector2(w, 0)
-	p.position = Vector2((size.x - w) * 0.5, 40.0)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for s in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(s, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slider.add_child(sheet)
+	slider.position.y = 700.0
+	slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.popup_title("PILOT RANKS"))
-	v.add_child(UIKit.label("Each trial: one hard stage, bugs %s tougher and more of them; power cards come 25%% faster. Win it once: +%d%% ATK and +%d%% base shield and hull, for good." % [Promotion.hp_range_text(), roundi(Promotion.PER_RANK * 100.0), roundi(Promotion.PER_RANK * 100.0)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	for i in Promotion.RANKS.size():
-		var rk: Dictionary = Promotion.RANKS[i]
-		var won: bool = i < r
-		var is_next: bool = i == r
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
-		var badge := Control.new()
-		badge.custom_minimum_size = Vector2(30, 30)
-		var col: Color = UIKit.GOLD if won else (UIKit.CYAN if is_next else Color(0.5, 0.55, 0.68))
-		var idx := i
-		badge.draw.connect(func():
-			badge.draw_circle(Vector2(15, 15), 13.0, Color(col, 0.18 if not won else 0.5))
-			badge.draw_arc(Vector2(15, 15), 13.0, 0.0, TAU, 32, col, 1.5, true)
-			badge.draw_string(ThemeDB.fallback_font, Vector2(0, 20), "✓" if won else str(idx + 1), HORIZONTAL_ALIGNMENT_CENTER, 30.0, 13, Color.WHITE if won or is_next else col))
-		h.add_child(badge)
-		var name_box := VBoxContainer.new()   # the rank's name over its twists as Luna's icons (dev189)
-		name_box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		name_box.add_theme_constant_override("separation", 1)
-		name_box.add_child(UIKit.label(rk.name, 14, Color.WHITE if won or is_next else Color(0.6, 0.66, 0.78)))
-		var twists := Promotion.mods_row(Promotion.RANK_MODS[i], 10, 18.0)
-		if not (won or is_next):
-			twists.modulate = Color(1, 1, 1, 0.7)
-		name_box.add_child(twists)
-		h.add_child(name_box)
-		var status := "Won" if won else (("Next  ·  rec. Lv.%d" if is_next and Promotion.unlocked(_save, player_level) else "Rec. Lv.%d") % int(rk.level))
-		h.add_child(UIKit.label(status, 11, col, HORIZONTAL_ALIGNMENT_RIGHT))
-		if DevTools.on and not won:   # dev mode: fight any rank straight from the ladder (Rudy)
-			var fb := UIKit.gold_button("Fight", 11)
-			fb.custom_minimum_size = Vector2(56, 30)
+	v.add_theme_constant_override("separation", 12)
+	sheet.add_child(v)
+	var head := HBoxContainer.new()
+	var tl := UIKit.title(title_text, 24, UIKit.TEXT)
+	tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(tl)
+	var x := UIKit.ghost_button("Close", 13)
+	x.custom_minimum_size = Vector2(80, 34)
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	if sub != "":
+		var sl := UIKit.label(sub, 13, UIKit.SOFT)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(sl)
+	return [layer, v]
+
+# PILOT RANKS (clean, 2026-11-10): the ten ranks as a row of pips, the next trial as one card
+# (its name, the recommended level, its two twists), one gold CHALLENGE. No list of ten rows.
+func _ladder() -> void:
+	_save = Progress.read()
+	var r := Promotion.rank(_save)
+	var made := _sheet("Pilot ranks", "One very hard fight per rank. Win it once and you are stronger for good: +%d%% attack, +%d%% base shield and hull." % [roundi(Promotion.PER_RANK * 100.0), roundi(Promotion.PER_RANK * 100.0)])
+	var v: VBoxContainer = made[1]
+	var total := Promotion.RANKS.size()
+	var pips := Control.new()
+	pips.custom_minimum_size = Vector2(0, 40)
+	pips.draw.connect(func():
+		var gap := pips.size.x / total
+		for i in total:
+			var c := Vector2(gap * (i + 0.5), 14.0)
+			var col: Color = UIKit.GOLD if i < r else (UIKit.CYAN if i == r else Color(1, 1, 1, 0.25))
+			if i < total - 1:
+				pips.draw_line(c + Vector2(13, 0), c + Vector2(gap - 13, 0), Color(UIKit.GOLD, 0.6) if i < r - 1 else Color(1, 1, 1, 0.12), 2.0, true)
+			if i < r:
+				pips.draw_circle(c, 7.0, col)
+			elif i == r:
+				pips.draw_circle(c, 8.0, Color(col, 0.25))
+				pips.draw_arc(c, 10.0, 0.0, TAU, 32, col, 2.0, true)
+			else:
+				pips.draw_arc(c, 6.0, 0.0, TAU, 24, col, 1.5, true)
+			pips.draw_string(UIKit.title_font(), Vector2(c.x - 20.0, 36.0), str(i + 1), HORIZONTAL_ALIGNMENT_CENTER, 40.0, 10, Color(col, 0.9)))
+	v.add_child(pips)
+	var nxt := Promotion.next(_save)
+	if nxt < 0:
+		var done := UIKit.label("Every rank won. You are %s." % String(Promotion.RANKS[total - 1].name), 14, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+		v.add_child(done)
+		return
+	var rk: Dictionary = Promotion.RANKS[nxt]
+	var card := PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.7), 18, Vector2(16, 12)))
+	var cv := VBoxContainer.new()
+	cv.add_theme_constant_override("separation", 6)
+	var top := HBoxContainer.new()
+	var nm := UIKit.title("%d  ·  %s" % [nxt + 1, String(rk.name)], 20, UIKit.TEXT)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(nm)
+	top.add_child(UIKit.chip("Pilot Lv.%d" % int(rk.level), UIKit.CYAN if player_level >= int(rk.level) else Color(1.0, 0.55, 0.55)))
+	cv.add_child(top)
+	cv.add_child(Promotion.mods_row(Promotion.RANK_MODS[nxt], 12, 20.0))
+	var what := UIKit.label("Stage %d bugs, tougher and more of them. Power cards come faster." % int(rk.stage), 12, UIKit.SOFT)
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # a long single line would push the sheet wider than the phone
+	cv.add_child(what)
+	card.add_child(cv)
+	v.add_child(card)
+	var cb: Button
+	if not Promotion.unlocked(_save, player_level):
+		cb = UIKit.ghost_button("Opens at pilot Lv.%d" % Promotion.open_level(nxt), 14)
+		cb.disabled = true
+	else:
+		cb = UIKit.gold_button("CHALLENGE", 20)
+		cb.pressed.connect(func():
+			if Energy.try_play(self, false):   # full price: a trial is never a free tutorial stage
+				var s := Progress.read()
+				Promotion.start(s, nxt)
+				Progress.write(s)
+				get_tree().change_scene_to_file("res://battle.tscn"))
+	cb.custom_minimum_size = Vector2(0, 56)
+	v.add_child(cb)
+	if DevTools.on:   # dev mode: fight any rank straight from here (Rudy)
+		var drow := HBoxContainer.new()
+		drow.add_theme_constant_override("separation", 4)
+		for i in range(r, total):
+			var fb := UIKit.ghost_button(str(i + 1), 11)
+			fb.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			var idx: int = i
 			fb.pressed.connect(func():
 				if Energy.try_play(self, false):
 					var s2 := Progress.read()
 					Promotion.start(s2, idx)
 					Progress.write(s2)
 					get_tree().change_scene_to_file("res://battle.tscn"))
-			h.add_child(fb)
-		v.add_child(h)
-	if UIKit.CLEAN:
-		# the Challenge button moved here from the old card (the clean card just opens this ladder)
-		var nxt := Promotion.next(_save)
-		var cb: Button
-		if nxt < 0:
-			cb = UIKit.ghost_button("All ranks won", 13)
-			cb.disabled = true
-		elif not Promotion.unlocked(_save, player_level):
-			cb = UIKit.ghost_button("Next trial at pilot Lv.%d" % Promotion.open_level(nxt), 13)
-			cb.disabled = true
-		else:
-			cb = UIKit.gold_button("Challenge: %s" % Promotion.RANKS[nxt].name, 16)
-			cb.pressed.connect(func():
-				if Energy.try_play(self, false):   # full price: a trial is never a free tutorial stage
-					var s := Progress.read()
-					Promotion.start(s, nxt)
-					Progress.write(s)
-					get_tree().change_scene_to_file("res://battle.tscn"))
-		v.add_child(cb)
-	var close := UIKit.ghost_button("Close", 13)
-	close.custom_minimum_size = Vector2(0, 38)
-	close.pressed.connect(layer.queue_free)
-	v.add_child(close)
-	p.add_child(v)
-	layer.add_child(p)
+			drow.add_child(fb)
+		v.add_child(drow)
 
 func _on_back_pressed() -> void:
 	get_tree().change_scene_to_file("res://hub.tscn")
@@ -598,53 +647,89 @@ func _tips() -> void:
 
 # ELEMENT TRIALS (Rudy, dev172): one ladder per element inside Promotion; only a hero of that
 # element may fight it. Six rows: element, the hero it needs, steps cleared, and Fight.
+# ELEMENT TRIALS (clean, 2026-11-10): six squares, one per element: its icon, five pips for the
+# steps won, the twists of the next step, and a state pill (FIGHT in gold, or what is in the way).
+# The whole square is the button.
 func _etrials() -> void:
-	var layer := ColorRect.new()
-	layer.color = Color(0, 0.01, 0.04, 0.75)
-	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
-	add_child(layer)
-	var p := UIKit.popup_panel()
-	var w := minf(size.x - 32.0, 400.0)
-	p.custom_minimum_size = Vector2(w, 0)
-	p.position = Vector2((size.x - w) * 0.5, 40.0)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.popup_title("ELEMENT TRIALS"))
-	var intro := UIKit.label("One ladder per element, %d steps each, across every planet. Only a hero of that element may fight it. The first clear of a step pays that hero's shards and coins; the last step pays crystals too." % Promotion.ETRIAL_STEPS, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(intro)
+	_save = Progress.read()
+	var made := _sheet("Element trials", "A ladder of %d fights per element. Only a hero of that element may fight it; a first win pays his shards." % Promotion.ETRIAL_STEPS)
+	var layer: Control = made[0]
+	var v: VBoxContainer = made[1]
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
 	for el in Heroes.ELEMENTS:
 		var elid: String = String(el)
 		var col := Heroes.element_color(elid)
 		var steps := Promotion.etrial_steps(_save, elid)
 		var why := Promotion.etrial_why_not(_save, elid)
-		var hid := Promotion.etrial_owned_hero(_save, elid)
-		var h := HBoxContainer.new()
-		h.add_theme_constant_override("separation", 8)
+		var done: bool = steps >= Promotion.ETRIAL_STEPS
+		var ready: bool = why == ""
+		var b := Button.new()
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 138)
+		var nb := UIKit.box(Color(UIKit.CARD_HI, 0.55), Color(col, 0.7) if ready else Color(1, 1, 1, 0.05), 20, 1)
+		for st in ["normal", "hover", "disabled"]:
+			b.add_theme_stylebox_override(st, nb)
+		b.add_theme_stylebox_override("pressed", UIKit.box(UIKit.CARD_HI, col, 20, 2))
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var bv := VBoxContainer.new()
+		bv.set_anchors_preset(Control.PRESET_FULL_RECT)
+		bv.offset_left = 10.0
+		bv.offset_right = -10.0
+		bv.offset_top = 8.0
+		bv.offset_bottom = -8.0
+		bv.add_theme_constant_override("separation", 5)
+		bv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var top := HBoxContainer.new()
+		top.add_theme_constant_override("separation", 8)
+		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var ei := TextureRect.new()
+		ei.texture = UIKit.element_icon(elid)
+		ei.custom_minimum_size = Vector2(30, 30)
+		ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		ei.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if not ready and not done:
+			ei.modulate = Color(1, 1, 1, 0.5)
+		top.add_child(ei)
+		var nl := UIKit.title(Heroes.element_name(elid), 16, UIKit.TEXT if ready or done else UIKit.SOFT)
+		nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		top.add_child(nl)
+		bv.add_child(top)
 		var pips := Control.new()
-		pips.custom_minimum_size = Vector2(70, 30)
+		pips.custom_minimum_size = Vector2(0, 14)
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		pips.draw.connect(func():
 			for i in Promotion.ETRIAL_STEPS:
-				var c := Vector2(8.0 + i * 14.0, 15.0)
-				pips.draw_circle(c, 5.0, Color(col, 0.9) if i < steps else Color(col, 0.15))
-				pips.draw_arc(c, 5.0, 0.0, TAU, 16, Color(col, 0.7), 1.0, true))
-		h.add_child(pips)
-		var info := VBoxContainer.new()
-		info.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		info.add_theme_constant_override("separation", 0)
-		info.add_child(UIKit.label("%s  ·  %d / %d" % [Heroes.element_name(elid), steps, Promotion.ETRIAL_STEPS], 14, col))
-		var sub := why if why != "" else ("Fight with %s  ·  step %d: stage %d bugs x%.1f" % [Heroes.ROSTER[hid].name, steps + 1, int(Promotion.ETRIAL_STAGES[steps]), Promotion.etrial_hp(steps)])
-		info.add_child(UIKit.label(sub, 10, UIKit.MUTED))
-		if why == "":
-			info.add_child(Promotion.mods_row(Promotion.ETRIAL_MODS[steps], 10, 16.0))   # the step's twists as icons
-		h.add_child(info)
-		var b: Button
-		if why != "":
-			b = UIKit.ghost_button("Done" if steps >= Promotion.ETRIAL_STEPS else "Locked", 12)
-			b.disabled = true
-		else:
-			b = UIKit.gold_button("Fight", 13)
+				var c := Vector2(7.0 + i * 18.0, 7.0)
+				if i < steps:
+					pips.draw_circle(c, 5.5, col)
+				else:
+					pips.draw_arc(c, 5.0, 0.0, TAU, 20, Color(col, 0.5), 1.5, true))
+		bv.add_child(pips)
+		var mid := Control.new()
+		mid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bv.add_child(mid)
+		if ready:
+			var mr := Promotion.mods_row(Promotion.ETRIAL_MODS[steps], 10, 16.0)
+			mr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			mr.clip_contents = true
+			bv.add_child(mr)
+		var state := PanelContainer.new()
+		state.custom_minimum_size = Vector2(0, 32)
+		state.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if ready else Color(UIKit.CARD, 0.9), 12, Vector2(6, 0)))
+		var st_text := ("FIGHT  ·  step %d" % (steps + 1)) if ready else ("Done" if done else why)
+		var sl := UIKit.title(st_text, 13 if ready else 11, UIKit.GOLD_INK if ready else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.clip_text = true
+		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		state.add_child(sl)
+		bv.add_child(state)
+		b.add_child(bv)
+		if ready:
 			var step := steps
 			b.pressed.connect(func():
 				if Energy.try_play(self, false):
@@ -652,15 +737,11 @@ func _etrials() -> void:
 					Promotion.start_etrial(s, elid, step)
 					Progress.write(s)
 					get_tree().change_scene_to_file("res://battle.tscn"))
-		b.custom_minimum_size = Vector2(72, 34)
-		h.add_child(b)
-		v.add_child(h)
-	var close := UIKit.ghost_button("Close", 13)
-	close.custom_minimum_size = Vector2(0, 38)
-	close.pressed.connect(layer.queue_free)
-	v.add_child(close)
-	p.add_child(v)
-	layer.add_child(p)
+			UIKit.press_fx(b)
+		else:
+			b.disabled = true
+		grid.add_child(b)
+	v.add_child(grid)
 
 # ---- the WEEKLY EVENT (Events, 2026-11-10) ----
 # Its card opens a sheet: the week's name and what it does, the two twists, the track of ten

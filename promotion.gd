@@ -243,7 +243,7 @@ const MODS := {
 	"overcharge":   {"name": "Overcharge",     "good": true,  "text": "Power cards come 50% faster"},
 	"swift_bugs":   {"name": "Swift bugs",     "good": false, "text": "Bugs move 25% faster"},
 	"thick_shells": {"name": "Thick shells",   "good": false, "text": "Bugs +25% health"},
-	"no_turrets":   {"name": "Turrets down",   "good": false, "text": "No turrets on the base"},
+	"no_turrets":   {"name": "Base offline",   "good": false, "text": "No buildings on the base"},   # (was Turrets down; the id is kept for the tables)
 	"double_spit":  {"name": "Double spit",    "good": false, "text": "Spitters spit twice as often"},
 	"weak_shield":  {"name": "Cracked shield", "good": false, "text": "Base shield halved"},
 }
