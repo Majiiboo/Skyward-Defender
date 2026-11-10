@@ -72,6 +72,8 @@ var promo := -1                   # the promotion trial being fought (Promotion.
 var _promoted := false            # this win earned the next rank (end screen)
 var horde := false                # HORDE mode (dev172): endless waves, beat your best; save "best_horde"
 var daily := false                # the DAILY CHALLENGE (Promotion.daily_*): three twists, one reward a day
+var boss_rush := false            # BOSS RUSH (BossRush): every boss you have beaten, in a row, against the clock
+var _rush := {}                    # what the run paid (BossRush.finish; end screen)
 var event_run := false            # a WEEKLY EVENT fight (Events): the week's twists, event points at the end
 var _event_points := 0            # what this fight paid (end screen)
 var _season_xp := 0               # season XP this fight paid (Season; end screen)
@@ -365,6 +367,11 @@ func _load() -> void:
 		_write_save({"selected_mode": "normal"})
 		stage = Events.stage(d)
 		elite = false
+	boss_rush = String(d.get("selected_mode", "normal")) == "bossrush"
+	if boss_rush:
+		_write_save({"selected_mode": "normal"})
+		stage = BossRush.stage(d)
+		elite = false
 	daily = String(d.get("selected_mode", "normal")) == "daily"
 	if daily:
 		_write_save({"selected_mode": "normal"})
@@ -399,6 +406,8 @@ func _write_save(patch: Dictionary) -> void:
 
 func _start_stage() -> void:
 	waves = Promotion.waves(promo) if promo >= 0 else (Promotion.etrial_waves(int(etrial.step)) if not etrial.is_empty() else StageData.waves(stage))
+	if boss_rush:
+		waves = BossRush.waves(_read_save())
 	if run_mode:
 		waves = Runs.trim_waves(waves, _run_kind())
 	if horde:
@@ -2003,6 +2012,11 @@ func _end_run(won: bool) -> void:
 		_event_points = Events.points_for(won, hull / maxf(hull_max, 1.0), _hp_lost)
 		Events.add_points(d, _event_points)
 		_write_save({"event": d.event})
+	# a Boss Rush: coins for every boss down, the first full line of each length pays more (BossRush.finish)
+	_rush = {}
+	if boss_rush:
+		_rush = BossRush.finish(d, won, waves.size() if won else wave_index, waves.size(), time_alive)
+		_write_save({"bossrush": d.bossrush, "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "materials": d.get("materials", {})})
 	# the daily challenge: the first win of the day pays its reward
 	_daily_reward = {}
 	if daily and won and Promotion.daily_won(d):
@@ -2995,6 +3009,8 @@ func _show_end(won: bool) -> void:
 		title = "NEW BEST!" if _horde_new_best else "HORDE OVER"
 	if not etrial.is_empty():   # an element trial (Promotion)
 		title = "STEP CLEARED" if won else "TRIAL FAILED"
+	if boss_rush:
+		title = "RUSH CLEARED" if won else "RUSH OVER"
 	if daily:
 		title = "CHALLENGE CLEARED" if won else "CHALLENGE FAILED"
 	if event_run:
@@ -3010,6 +3026,9 @@ func _show_end(won: bool) -> void:
 		v.add_child(UIKit.label(("SEASON TIER %d!   " % Season.tier(_read_save()) if _season_up else "") + "+%d season XP" % _season_xp, 12, UIKit.GOLD if _season_up else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
 	if event_run:
 		v.add_child(UIKit.label("%s  ·  +%d event points  (%d)" % [String(Events.theme().name).to_upper(), _event_points, int(Events.state(_read_save()).points)], 13, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	if boss_rush and not _rush.is_empty():
+		v.add_child(UIKit.label("%d of %d bosses  ·  %s%s" % [waves.size() if won else wave_index, waves.size(), BossRush.time_text(time_alive), "  ·  NEW BEST" if bool(_rush.new_best) else ""], 13, UIKit.GOLD if won else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+		v.add_child(UIKit.label(("FIRST CLEAR:  " if bool(_rush.first) else "") + Progress.reward_text(_rush.reward), 12, UIKit.GOLD if bool(_rush.first) else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
 	if daily:
 		if not _daily_reward.is_empty():
 			v.add_child(UIKit.label("TODAY'S REWARD:  " + Progress.reward_text(_daily_reward), 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
@@ -3619,6 +3638,8 @@ func _draw_hud() -> void:
 		_hud_num = "%d " % stage
 		_hud_nx = 16.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
 		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else (String(Events.theme().name) if event_run else (("EXPEDITION · " + String(Runs.KINDS[_run_kind()].name)) if run_mode else StageData.stage_name(stage))))))).to_upper()
+		if boss_rush:
+			_hud_title = "BOSS RUSH"
 	_hc.draw_string(title_font, Vector2(16, 34), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	_hc.draw_string(title_font, Vector2(_hud_nx, 33), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, CARDS_RECT.position.x - 64.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
 	var whole_s := int(time_alive)
@@ -3979,7 +4000,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (BossRush.RUSH_HP * (1.0 + BossRush.RUSH_STEP * wave_index) if boss_rush else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -4012,7 +4033,7 @@ func _horde_wave(k: int) -> Array:
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
-	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode
+	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode or boss_rush
 
 # A red flash round the screen edge the moment the pilot loses a heart (dev156), fading
 # over a third of a second; drawn on the HUD layer so it sits over the whole field.

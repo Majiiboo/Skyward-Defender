@@ -104,7 +104,7 @@ func _build() -> void:
 # ---- the CLEAN Modes page (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): one wide card per mode,
 # a picture, the name, two small lines (where you are, a hint of what it gives) and one round
 # button; Campaign's is the gold one. Not reached yet = hidden, except the next one as a teaser.
-const CLEAN_ORDER := ["standard", "run", "daily", "event", "elite", "promotion", "trials", "horde"]
+const CLEAN_ORDER := ["standard", "run", "daily", "event", "elite", "promotion", "trials", "bossrush", "horde"]
 
 func _build_clean(col: VBoxContainer) -> void:
 	var teased := false
@@ -114,6 +114,7 @@ func _build_clean(col: VBoxContainer) -> void:
 			"elite": reached = Unlocks.open(_save, "elite") and player_level >= 10
 			"promotion", "trials": reached = Unlocks.open(_save, "promotion")
 			"horde": reached = player_level >= 5
+			"bossrush": reached = BossRush.open(_save)
 			"daily": reached = Promotion.daily_open(_save)
 			"run": reached = Runs.open(_save)
 			"event": reached = Events.open(_save)
@@ -199,6 +200,16 @@ func _clean_card(id: String, locked: bool) -> Button:
 			pic = UIKit.ic("ic_rank")
 			pic_bg = Color(0.06, 0.16, 0.2)
 			action = func(): get_tree().change_scene_to_file("res://run_map.tscn")
+		"bossrush":
+			# Boss Rush (BossRush): every boss you have beaten, in a row, against the clock
+			var rb := BossRush.best(_save)
+			title_txt = "Boss Rush"
+			line1 = "%d bosses in a row" % BossRush.bosses(_save).size()
+			line2 = ("Best: %d bosses in %s" % [int(rb.n), BossRush.time_text(float(rb.t))]) if int(rb.n) > 0 else "Beat the clock"
+			line2_col = UIKit.GOLD if int(rb.n) > 0 else UIKit.SOFT
+			pic = load("res://enemies/hive_mother.png") if ResourceLoader.exists("res://enemies/hive_mother.png") else UIKit.ic("ic_elite")
+			pic_bg = Color(0.18, 0.07, 0.1)
+			action = func(): _play_bossrush()
 		"horde":
 			var bw := int(_save.get("best_horde", 0))
 			var hs := int(_save.get("best_horde_score", 0))
@@ -210,7 +221,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 			action = func(): _play_horde()
 	if locked:
 		line1 = "Locked"
-		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM, "event": "Opens after stage %d" % Events.EVENT_FROM, "run": "Opens after stage %d" % Runs.RUN_FROM}.get(id, "Opens as you play")
+		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "bossrush": "Opens after stage %d" % BossRush.RUSH_FROM, "daily": "Opens after stage %d" % Promotion.DAILY_FROM, "event": "Opens after stage %d" % Events.EVENT_FROM, "run": "Opens after stage %d" % Runs.RUN_FROM}.get(id, "Opens as you play")
 		line2_col = UIKit.SOFT
 	var b := Button.new()
 	b.name = "Mode_" + id
@@ -296,6 +307,11 @@ func _play(elite: bool) -> void:
 func _play_daily() -> void:
 	if Energy.try_play(self, false, 99):
 		_save_patch({"selected_mode": "daily"})   # your best stage with today's three twists (battle daily); set only once the fight is paid for
+		get_tree().change_scene_to_file("res://battle.tscn")
+
+func _play_bossrush() -> void:
+	if Energy.try_play(self, false, 99):
+		_save_patch({"selected_mode": "bossrush"})   # set only once the fight is paid for
 		get_tree().change_scene_to_file("res://battle.tscn")
 
 func _play_horde() -> void:

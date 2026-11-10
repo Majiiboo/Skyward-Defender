@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_check_links()
 	_check_season()
 	_check_research()
+	_check_bossrush()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -892,3 +893,18 @@ func _check_research() -> void:
 	_expect(Research.start(s, "ammunition") == "Finished", "a finished project cannot start again")
 	s["research"] = {"levels": {}, "active": "optics", "done_at": Research.now() - 5}
 	_expect(Research.ready(s), "a project whose time has passed while away is ready")
+
+func _check_bossrush() -> void:
+	var s := {"stage_unlocked": 12}
+	_expect(not BossRush.open(s), "closed before stage %d" % BossRush.RUSH_FROM)
+	s["stage_unlocked"] = 31
+	_expect(BossRush.open(s) and BossRush.bosses(s) == ["hive_mother", "hive_mother", "wrecker", "queen", "hive_mother", "hive_mother"], "30 stages cleared: six bosses in campaign order (%s)" % str(BossRush.bosses(s)))
+	_expect(BossRush.waves(s).size() == 6, "one wave a boss")
+	var lost := BossRush.finish(s, false, 2, 6, 80.0)
+	_expect(int(lost.reward.coins) == 200 and not bool(lost.new_best) and int(BossRush.best(s).n) == 0, "a loss pays for the bosses down, no record")
+	var won := BossRush.finish(s, true, 6, 6, 200.0)
+	_expect(bool(won.first) and bool(won.new_best) and int(won.reward.crystals) == 90, "the first full line: crystals and a record")
+	var again := BossRush.finish(s, true, 6, 6, 230.0)
+	_expect(not bool(again.first) and not bool(again.new_best) and not again.reward.has("crystals"), "slower and already paid: coins only")
+	var faster := BossRush.finish(s, true, 6, 6, 180.0)
+	_expect(bool(faster.new_best) and is_equal_approx(float(BossRush.best(s).t), 180.0), "a faster run is the new best")
