@@ -601,7 +601,7 @@ func _build_home_clean() -> void:
 	# the round gold PLAY above the nav (on Home the Battle tab no longer starts a fight)
 	var row := VBoxContainer.new()
 	row.name = "ActionRow"
-	row.add_theme_constant_override("separation", 6)
+	row.add_theme_constant_override("separation", 20)   # the PLAY label clears the Reactor ring
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.alignment = BoxContainer.ALIGNMENT_END
 	row.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
@@ -739,6 +739,17 @@ func _round_rail(def: Dictionary) -> Button:
 
 # the round gold PLAY: a gold disc, a dark play triangle, a halo ring that keeps breathing out
 func _play_button() -> Button:
+	if UIKit.CLEAN:   # the Reactor (play_reactor.gd): turning ring, two-tone disc, cost badge
+		var r := PlayReactor.new()
+		r.cost_fn = func() -> int: return Energy.cost(mode == "Elite", stage)
+		r.pressed.connect(func():
+			if not Energy.try_play(self, mode == "Elite", stage):   # a stage costs power tokens (stages 1-5 free)
+				return
+			r.disabled = true   # one launch per tap (no double charge while it spins up)
+			r.launch()
+			await get_tree().create_timer(0.3).timeout
+			_smooth_change_scene("res://battle.tscn"))
+		return r
 	var b := Button.new()
 	b.name = "PlayButton"
 	b.custom_minimum_size = Vector2(104, 104)
