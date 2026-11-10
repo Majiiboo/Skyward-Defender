@@ -239,7 +239,7 @@ const MODS := {
 	"sharpshooter": {"name": "Sharpshooter",   "good": true,  "text": "Crit rate +20%"},
 	"fortified":    {"name": "Fortified",      "good": true,  "text": "Base shield +50%"},
 	"reinforced":   {"name": "Reinforced",     "good": true,  "text": "Pilot HP +50%"},
-	"turret_boost": {"name": "Turret boost",   "good": true,  "text": "Turrets +50% damage"},
+	"turret_boost": {"name": "Quick charge",   "good": true,  "text": "The ability charges 50% faster"},
 	"overcharge":   {"name": "Overcharge",     "good": true,  "text": "Power cards come 50% faster"},
 	"swift_bugs":   {"name": "Swift bugs",     "good": false, "text": "Bugs move 25% faster"},
 	"thick_shells": {"name": "Thick shells",   "good": false, "text": "Bugs +25% health"},

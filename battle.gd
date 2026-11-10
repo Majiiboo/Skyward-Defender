@@ -4,7 +4,7 @@ extends Node2D
 #
 # Loop: waves of enemies arrive from the top; the pilot flies where you drag
 # and fires straight up, or auto-aims when your finger is lifted; kills drop XP
-# gems; collecting gems fills the run level and offers 3 cards; mounted turrets
+# gems; collecting gems fills the run level and offers 3 cards; the base and its buildings
 # help. Enemies that reach the force field hurt the shield, then the hull.
 # Clear the last wave to win the stage.
 
@@ -14,34 +14,7 @@ var BASE_Y := 786.0
 const DOME_RX := 300.0
 const DOME_RY := 112.0
 const PILOT_HEIGHT := 60.0
-# How each turret sits on its socket: draw height and widest width (px), where its
-# weapon tip is (fraction of the drawn height from the foot), a hover bob (px), and cx =
-# the painted turret's visual centre across its picture (0.5 = middle), so it sits
-# centred on the socket ring (measured from the art's weight, 2026-11-03).
-const TURRET_LOOK := {
-	"lance":   {"h": 92.0, "w": 60.0, "tip": 0.96, "bob": 0.0, "cx": 0.481},
-	"storm":   {"h": 82.0, "w": 76.0, "tip": 0.90, "bob": 0.0, "cx": 0.479},
-	"gravity": {"h": 66.0, "w": 84.0, "tip": 0.52, "bob": 2.0, "cx": 0.435},
-	"swarm":   {"h": 88.0, "w": 88.0, "tip": 0.60, "bob": 0.0, "cx": 0.501},   # bigger, with weight (Rudy, dev172)
-	"prism":   {"h": 84.0, "w": 66.0, "tip": 0.74, "bob": 0.0, "cx": 0.441},
-}
-const STRIP_LIFT := 8.0            # the base strip's bottom sits this far above the screen's bottom edge
-const SENTRY_BASE_W := 70.0   # bigger turrets (Rudy, dev172: "bigger, with weight")
-const SENTRY_HEAD_H := 78.0
-const SENTRY_ART_DIR := -PI / 2.0 - 0.26    # the painted barrels point up and a little left
-# The Sentry's gun head floats above its ring base, held up by a field: it hovers a
-# few px clear, bobs and drifts, leans into its swings, and dips toward the base on
-# each shot before springing back up. On landing it powers up and lifts off the base.
-const SENTRY_GAP := 9.0
-# Every turret sits ON its base (Rudy, dev209: the hovering heads looked off): no gap, no float,
-# no Sentry energy field; the shot dip and the turn stay. false = the old hovering look.
-const TURRETS_SEATED := true
-const SENTRY_HEAD_CX := 0.498              # centre of the head's lower body (the part over the base), not the leaning barrels
-# charge-up glow colour at the weapon tip, for turrets that wait on a cooldown
-const CHARGE_COL := {"storm": Color(0.71, 0.55, 1.0), "swarm": Color(1.0, 0.75, 0.3), "prism": Color(0.85, 0.9, 1.0), "mines": Color(0.71, 0.55, 1.0), "flak": Color(1.0, 0.7, 0.3), "repair": Color(0.2, 0.85, 1.0)}
 const FX_NAMES := ["sentry_tracer", "spark", "lance_flare", "lance_beam", "storm_zap", "gravity_ring", "crush", "drone", "pop", "prism_beam", "prism_burst", "bolt", "impact", "nova", "bolt_rail", "bolt_spark", "bolt_heavy", "bolt_twin"]
-const FIRE_TIME := {"sentry": 0.14, "lance": 0.3, "storm": 0.22, "gravity": 0.3, "swarm": 0.25, "prism": 0.3,
-	"repair": 0.5, "tesla": 0.12, "cryo": 0.55, "mines": 0.3, "beacon": 0.4, "flak": 0.2}   # how long each turret's firing art shows
 const SAVE := "user://skybound_save.json"
 
 # ---- weapons ----
@@ -147,14 +120,7 @@ var spawned: Array = []            # enemies born this frame (spore pods), joine
 var _seen: Array = []              # enemy types this player has met (save "seen_enemies")
 var _intro := {}                  # the "new enemy" card showing now: {id, t}
 var gems: Array = []
-var turrets: Array = []           # {type, lvl, pos, cd, fire_t, ang, flip, charge, build, bolt}
-var turret_loadout: Array = []    # from the save: turret id (or "") per mount
-var turret_levels := {}
-var turret_tracks := {}           # id -> {atk, rate, range} (Turrets upgrade tracks)
-var turret_stars := {}            # id -> star 1-10 (Gates, DESIGN-stars.md)
-var stage_unlocked := 1           # from the save: decides which base mounts are open (Turrets.mount_open)
-var _new_mount := -1              # a mount this win just opened (shown on the end screen)
-var _lid_anim := {}               # mount -> seconds into its hatch opening (first run after it opened)
+var stage_unlocked := 1           # from the save: decides which base slots are open (Base.slot_open)
 var game_speed := 1.0             # x1 / x1.5 (after stage 10) / x2 (store pack); saved as "game_speed"
 var _speed_pack := false           # save "speed_pack" (read at stage start)
 var _cards_open := false          # the "your cards" panel is showing (the game is paused meanwhile)
@@ -201,9 +167,6 @@ var _shot_n := 0
 var _stars_got := 0
 var _level_before := 1
 var _level_after := 1
-var drones: Array = []            # Swarm Hive micro-drones {type, pos, vel, life, dmg}
-var mines: Array = []             # Mine Layer mines {type, pos, vel, dmg, blast, target, life, age} (dev196)
-var _beacon_mult := 1.0           # hero ATK while a Dread Beacon stands (dev196)
 var fxs: Array = []               # short effect sprites {tex, pos, size, rot, life, max, grow, col}
 var _fx: Node2D                   # additive effect layer
 var _hc: Node2D                   # top bar layer (_draw_hud draws on it)
@@ -232,8 +195,6 @@ var _vacuum_t := 0.0              # > 0: every pickup flies to the pilot (wave e
 var _outro_t := -1.0              # >= 0: stage won, the closing flight is playing
 var _outro_lift := -1.0           # when (in _outro_t) he lifted off
 var _press := {}                 # finger down: {pos, t, moved} (long-press on a turret shows its range)
-var _range_mount := -1           # turret whose range ring is showing
-var _range_a := 0.0
 var _boss_bar_hp := 0.0           # the white "damage taken" chunk that trails the boss bar
 var _boss_bar_max := 0.0
 var _boss_bar_in := 0.0           # 0 -> 1 as the boss bar slides in
@@ -277,8 +238,6 @@ var _mirror := 0                  # Mirror Shell card level: a bolt that stops a
 var _mirror_through := false      # its overcharge: the bolt flies on
 var frost_level := 0              # Frost Rounds: hits slow bugs
 var _frost_bonus := false         # its overcharge: slowed bugs take +20%
-var _turret_rate := 1.0           # Turret Overclock: turrets run faster
-var _turret_dmg_mult := 1.0       # its overcharge
 var _overdrive := false           # Rapid Pulse overcharge: 3 s of double fire every 8 s
 var _thunder := false             # Thunder Lance fusion: every pierced bug sparks
 var zaps: Array = []              # spark arcs {a, b, life}
@@ -330,12 +289,6 @@ func _ready() -> void:
 			continue   # drawn in code (spore pods)
 		_tex[id + "_up"] = load("res://enemies/%s_up.png" % id)
 		_tex[id + "_down"] = load("res://enemies/%s_down.png" % id)
-	for id in Turrets.TURRETS:
-		_tex[Turrets.TURRETS[id].art + "_idle"] = load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art)
-	_tex["sentry_head"] = load("res://turrets/sentry_head.png")
-	# Luna's batch D turrets in two pieces: a base on the socket and a head on top
-	for n in ["lance_base", "lance_head", "storm_base", "storm_head", "gravity_base", "gravity_head", "prism_head"]:
-		_tex[n] = load("res://turrets/%s.png" % n)
 	for n in ["body_scout", "body_striker", "body_warden", "pod_blaster", "pod_beam", "pod_missile", "body_spark", "body_wisp", "body_bat", "pod_repair", "pod_magnet"]:
 		if not ResourceLoader.exists("res://drone/%s.png" % n):
 			continue
@@ -350,23 +303,6 @@ func _ready() -> void:
 					_tex["%s_%s" % [extra, b]] = load("res://drone/%s_%s.png" % [b, extra])
 	for n in ["blaster", "beam", "missile"]:
 		_fx_tex["drone_flash_" + n] = load("res://drone/flash_%s.png" % n)
-	_tex["sentry_base"] = load("res://turrets/sentry_base.png")
-	for n in ["swarm_body_nolid", "swarm_lid"]:   # Luna's Swarm Hive parts (dev162)
-		if ResourceLoader.exists("res://turrets/%s.png" % n):
-			_tex[n] = load("res://turrets/%s.png" % n)
-	for id in Turrets.ROUND2:   # Luna's round 2 turrets (dev196): base + head
-		for n in [id + "_base", id + "_head"]:
-			if ResourceLoader.exists("res://turrets/%s.png" % n):
-				_tex[n] = load("res://turrets/%s.png" % n)
-		if ResourceLoader.exists("res://fx/shot_%s.png" % id):
-			_fx_tex["shot_" + id] = load("res://fx/shot_%s.png" % id)
-	for n in Turrets.TURRETS:   # the turrets' own glow (dev154), and the firing head that fades in on a shot (dev196)
-		if ResourceLoader.exists("res://turrets/%s_light.png" % n):
-			_fx_tex["light_" + n] = load("res://turrets/%s_light.png" % n)
-		if ResourceLoader.exists("res://turrets/%s_head_fire.png" % n):
-			_tex[n + "_head_fire"] = load("res://turrets/%s_head_fire.png" % n)
-		if ResourceLoader.exists("res://turrets/%s_fire_light.png" % n):
-			_fx_tex["fire_light_" + n] = load("res://turrets/%s_fire_light.png" % n)
 	for i in 4:
 		_tex["gem_%d" % i] = load("res://pickups/gem_%d.png" % i)
 	_tex["goo"] = load("res://fx/goo.png")
@@ -438,11 +374,6 @@ func _load() -> void:
 		_write_save({"selected_mode": "normal"})
 		stage = int(Promotion.RANKS[promo].stage)
 		elite = false
-	var t := Turrets.read(d)
-	turret_loadout = t.loadout
-	turret_levels = t.levels
-	turret_tracks = t.tracks
-	turret_stars = t.get("stars", {})   # the turrets' stars (Gates)
 
 func _read_save() -> Dictionary:
 	if FileAccess.file_exists(SAVE):
@@ -523,8 +454,6 @@ func _start_stage() -> void:
 	_pierce_bonus = false
 	frost_level = 0
 	_frost_bonus = false
-	_turret_rate = 1.0
-	_turret_dmg_mult = 1.0
 	_overdrive = false
 	_thunder = false
 	_fire_patches.clear()
@@ -538,13 +467,11 @@ func _start_stage() -> void:
 	burst_left = 0
 	magnet_radius = MAGNET_BASE
 	magnet_level = 0
-	bullets.clear(); enemy_bullets.clear(); enemies.clear(); gems.clear(); turrets.clear()
+	bullets.clear(); enemy_bullets.clear(); enemies.clear(); gems.clear()
 	spawned.clear()
 	_seen = Array(_read_save().get("seen_enemies", []))
 	_intro = {}
 	sparks.clear(); rings.clear(); floaters.clear()
-	drones.clear()
-	mines.clear()
 	fxs.clear()
 	stat_pilot_dmg = 0.0
 	stat_turret_dmg = 0.0
@@ -597,8 +524,6 @@ func _start_stage() -> void:
 	if _mods.has("reinforced"):
 		pilot_hp_max *= 1.5
 		pilot_hp = pilot_hp_max
-	if _mods.has("turret_boost"):
-		_turret_dmg_mult *= 1.5
 	if _mods.has("overcharge"):
 		_gem_xp_mult *= 1.5
 	_bolt_set = String(gs.element)   # bolts in the hero's element colour
@@ -636,6 +561,8 @@ func _start_stage() -> void:
 	_pierce5 = gs.pierce5
 	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
 	_ult_cd = float(gs.get("ability_cd", 40.0))   # shorter on the higher rarity steps
+	if _mods.has("turret_boost"):   # the old Turret boost twist is Quick charge now: the ability comes back half again as fast
+		_ult_cd /= 1.5
 	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
 	_ult_t = 0.0 if _base_perks.has("reactor") else 12.0   # Reactor Lv.5: the ability is ready from the start
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
@@ -650,8 +577,6 @@ func _start_stage() -> void:
 		pierce_level += 1
 	if float(gs.get("burst2", 0.0)) > 0.0:
 		burst_count = maxi(burst_count, 2)
-	_turret_dmg_mult = gs.turret_dmg
-	_turret_rate = gs.turret_rate
 	_pilot_xp_mult = gs.pilot_xp
 	_move_mult = float(gs.get("speed", 1.0))
 	if _rig_view:
@@ -670,14 +595,6 @@ func _start_stage() -> void:
 	_lefty = bool(sv.get("left_hand", false))   # Settings: left-handed
 	if not _speeds().has(game_speed):
 		game_speed = 1.0
-	# a mount opened since the last run: its hatch opens before the turret drops in
-	_lid_anim = {}
-	var seen := int(sv.get("mounts_seen", 0))
-	var open_now := Turrets.mounts_open(stage_unlocked)
-	for i in range(seen, open_now):
-		_lid_anim[i] = -0.4
-	if open_now != seen:
-		_write_save({"mounts_seen": open_now})
 	var plevel := Turrets.pilot_level(int(sv.get("pilot_xp", 0)))
 	_talents = Talents.count(sv)
 	# the drone sidekick flies along once the pilot is level 8 (Gear > Drone)
@@ -696,15 +613,6 @@ func _start_stage() -> void:
 	_stars_got = 0
 	_gems_got = 0
 	_kills_by = {}
-	_new_mount = -1
-	# a turret stands on the base only if its mount is open (stages) and you OWN it (bought, dev172)
-	var tdat := Turrets.read(sv)
-	for i in turret_loadout.size():
-		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]) and not _mods.has("no_turrets") and TURRETS_ON:
-			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
-	for t in turrets:
-		if _lid_anim.has(t.mount):
-			t.drop_wait = float(t.drop_wait) + 1.2   # wait for the hatch
 	if stage == 1 and not _is_trial() and not _seen.has("tip_move"):   # the first fight ever: say how to play, once
 		_seen.append("tip_move")
 		_write_save({"seen_enemies": _seen})
@@ -841,50 +749,6 @@ func _input(event: InputEvent) -> void:
 	elif event is InputEventMouseButton and not event.pressed and dragging:
 		dragging = false
 
-# Long-press (0.4 s, finger still) on a turret: its range shows as a see-through red
-# shape until the finger lifts.
-func _update_range_ring(delta: float) -> void:
-	var want := -1
-	if not _press.is_empty() and float(_press.moved) < 14.0 and time_alive - float(_press.t) > 0.4:
-		for t in turrets:
-			if float(t.drop) >= 1.0 and Vector2(_press.pos).distance_to(t.pos + Vector2(0, -30)) < 52.0:
-				want = int(t.mount)
-	if want >= 0:
-		_range_mount = want
-	_range_a = move_toward(_range_a, 1.0 if want >= 0 else 0.0, delta * 6.0)
-
-func _draw_range_ring() -> void:
-	if _range_mount < 0 or _range_a <= 0.01:
-		return
-	var t: Dictionary = {}
-	for tt in turrets:
-		if int(tt.mount) == _range_mount:
-			t = tt
-	if t.is_empty():
-		return
-	var def: Dictionary = t.def
-	var fill := Color(1.0, 0.25, 0.25, 0.12 * _range_a)
-	var edge := Color(1.0, 0.35, 0.35, 0.6 * _range_a)
-	var p: Vector2 = t.pos
-	match String(t.type):
-		"lance":
-			var w: float = float(def.width)
-			var r := Rect2(p.x - w * 0.5, 0.0, w, p.y)
-			draw_rect(r, fill)
-			draw_rect(r, edge, false, 1.2)
-		"storm":
-			_ring_shape(Vector2(p.x, p.y - float(def.cloud_h) * 0.5), float(def.cloud_r), float(def.cloud_h) * 0.5, fill, edge)
-		"gravity":
-			_ring_shape(Vector2(p.x, p.y - float(def.height)), float(def.radius), float(def.radius), fill, edge)
-		"swarm":
-			var rr: float = float(def.speed) * float(def.life) * 0.4
-			_ring_shape(p, rr, rr, fill, edge)
-		"prism":
-			_ring_shape(p, float(def.split_h), float(def.split_h), fill, edge)
-		_:
-			_ring_shape(p, float(def.get("range", 300.0)), float(def.get("range", 300.0)), fill, edge)
-	draw_string(hud_font, p + Vector2(-60, -70), "%s RANGE" % String(def.name).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, 120, 11, Color(1, 0.6, 0.6, _range_a))
-
 func _ring_shape(c: Vector2, rx: float, ry: float, fill: Color, edge: Color) -> void:
 	var pts := PackedVector2Array()
 	for i in 49:
@@ -922,10 +786,6 @@ func _process(delta: float) -> void:
 	position = Vector2(0, _safe_top) + Vector2(sin(time_alive * 93.0), cos(time_alive * 71.0)) * sk
 	time_alive += delta
 	hit_t += delta
-	for k in _lid_anim.keys():
-		_lid_anim[k] = float(_lid_anim[k]) + delta
-		if _lid_anim[k] > 1.6:
-			_lid_anim.erase(k)
 	if not _intro.is_empty():
 		_intro.t += delta
 		if _intro.t > 4.0:
@@ -950,7 +810,6 @@ func _process(delta: float) -> void:
 			_auto_pilot(delta)
 		_aim_and_fire(delta)
 	_update_drone(delta)
-	_update_range_ring(delta)
 	for z in zaps:
 		z.life -= delta
 	zaps = zaps.filter(func(z): return z.life > 0.0)
@@ -968,7 +827,6 @@ func _process(delta: float) -> void:
 	_update_enemies(delta)
 	_update_gems(delta)
 	_update_shards(delta)
-	_update_turrets(delta)
 	_step_effects(delta)
 	_pilot_motion(delta)
 	anim.update(_wanted_pose(), delta)
@@ -1290,7 +1148,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
-			"dmg": float(w.damage) * damage_mult * _beacon_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
+			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
@@ -1356,15 +1214,10 @@ func _update_bullets(delta: float) -> void:
 					break
 		b.pos += b.vel * delta
 		var hit := false
-		# a flak shell bursts in the air once its fuse runs out (dev196)
 		if b.has("ttl"):   # a short-range bolt (the Sun Rifle's fan) fades out
 			b.ttl = float(b.ttl) - delta
 			if float(b.ttl) <= 0.0:
 				continue
-		if b.has("fuse"):
-			b.fuse = float(b.fuse) - delta
-			if float(b.fuse) <= 0.0:
-				_burst_at(b, b.pos, float(b.dmg), float(b.splash))
 				continue
 		for e in enemies:
 			if b.has("hits") and Array(b.hits).has(e.id):
@@ -1375,53 +1228,30 @@ func _update_bullets(delta: float) -> void:
 				var dmg: float = float(b.dmg)
 				if _boss_weak(e):
 					dmg *= WEAK_MULT   # her weak point is open (_boss_weak): a reticle shows it
-				if b.has("fuse"):   # a flak shell that meets a bug on the way up bursts there
-					_burst_at(b, b.pos, float(b.dmg), float(b.splash), e)
-					hit = true
-					break
-				if b.has("src"):
-					dmg *= Turrets.trait_mult(b.src, _traits(e)) * Turrets.element_mult(String(b.src), stage)
-					stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
-					_count_dmg(String(b.src), dmg, e)
-					_fx_add("spark", b.pos, 34.0, 0.28, rng.randf() * TAU)
-					# Ricochet (turret card): the Sentry bolt bounces on to the nearest other bug
-					if int(b.get("bounce", 0)) > 0:
-						var nxt := {}
-						var nd := 220.0
-						for o in enemies:
-							if o != e and not Array(b.get("hits", [])).has(o.id) and o.pos.distance_to(e.pos) < nd:
-								nd = o.pos.distance_to(e.pos)
-								nxt = o
-						if not nxt.is_empty():
-							var hs: Array = Array(b.get("hits", [])).duplicate()
-							hs.append(e.id)
-							bounced.append({"pos": e.pos, "vel": (Vector2(nxt.pos) - Vector2(e.pos)).normalized() * 420.0, "dmg": float(b.dmg) * 0.8, "r": 14.0,
-								"tid": -2, "col": "tracer", "src": b.src, "bounce": int(b.bounce) - 1, "splash": float(b.get("splash", 0.0)), "hits": hs})
-				else:
-					var emult: float = _drone_mult if b.get("drone", false) else _elem_mult   # the drone has its own element
-					dmg *= emult
-					if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
-						dmg *= 1.2
-					if b.get("frost", false):
-						e.slow_t = 1.5
-						e.slow = minf(0.15 * maxi(frost_level, 1) + _chill_bonus, 0.5)
-					# hero cards: Deep Freeze slows, Afterburn sets burning
-					if _freeze_level > 0:
-						e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
-						e.slow = maxf(float(e.get("slow", 0.0)), minf(0.2 * _freeze_level, 0.6))
-						# at full strength a hit can freeze a bug solid for a moment (dev209: ice must SHOW)
-						if float(e.slow) >= 0.6 and not _is_boss(e) and rng.randf() < 0.25:
-							e.freeze_t = 0.9
-					if _burn_level > 0 and e.type != "spore":
-						e.burn_t = 1.5 + 0.75 * _burn_level
-						e.burn_dps = 0.05 * float(e.hp_max)
-					if float(e.get("mark_t", 0.0)) > 0.0 and not b.get("lucky", false):   # a Dread Beacon's mark: every bolt crits (dev196)
-						dmg *= _crit_dmg
-						b.lucky = true
-					stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
-					_count_dmg("drone" if b.get("drone", false) else "hero", dmg, e)
-					_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
-					_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
+				var emult: float = _drone_mult if b.get("drone", false) else _elem_mult   # the drone has its own element
+				dmg *= emult
+				if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
+					dmg *= 1.2
+				if b.get("frost", false):
+					e.slow_t = 1.5
+					e.slow = minf(0.15 * maxi(frost_level, 1) + _chill_bonus, 0.5)
+				# hero cards: Deep Freeze slows, Afterburn sets burning
+				if _freeze_level > 0:
+					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
+					e.slow = maxf(float(e.get("slow", 0.0)), minf(0.2 * _freeze_level, 0.6))
+					# at full strength a hit can freeze a bug solid for a moment (dev209: ice must SHOW)
+					if float(e.slow) >= 0.6 and not _is_boss(e) and rng.randf() < 0.25:
+						e.freeze_t = 0.9
+				if _burn_level > 0 and e.type != "spore":
+					e.burn_t = 1.5 + 0.75 * _burn_level
+					e.burn_dps = 0.05 * float(e.hp_max)
+				if float(e.get("mark_t", 0.0)) > 0.0 and not b.get("lucky", false):   # a Dread Beacon's mark: every bolt crits (dev196)
+					dmg *= _crit_dmg
+					b.lucky = true
+				stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
+				_count_dmg("drone" if b.get("drone", false) else "hero", dmg, e)
+				_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
+				_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
@@ -1611,7 +1441,7 @@ func _update_enemies(delta: float) -> void:
 						e.grab_cd = 1.5
 				else:
 					var held: Dictionary = {}
-					for t in turrets:
+					for t in _pods:
 						if int(t.get("held_by", -1)) == int(e.id):
 							held = t
 					match String(e.state):
@@ -1619,7 +1449,7 @@ func _update_enemies(delta: float) -> void:
 							e.grab_cd = float(e.get("grab_cd", 0.0)) - delta
 							var target: Dictionary = {}
 							var bd := 1e9
-							for t in turrets:
+							for t in _pods:
 								if t.drop >= 1.0 and not t.get("held_by", -1) >= 0 and absf(t.pos.x - e.pos.x) < bd:
 									bd = absf(t.pos.x - e.pos.x)
 									target = t
@@ -1635,15 +1465,17 @@ func _update_enemies(delta: float) -> void:
 							e.pos.y = move_toward(e.pos.y, ty, delta * 130.0)
 							e.ext = move_toward(float(e.get("ext", 0.0)), 1.0, delta * 1.6)
 							if e.pos.y >= ty - 1.0 and float(e.ext) >= 1.0:
-								for t in turrets:
+								for t in _pods:
 									if int(t.mount) == int(e.target_mount):
 										t.held_by = int(e.id)
 								e.state = "hold"
 								e.grab_hp = e.hp
 								shake = maxf(shake, 0.4)
 								Sfx.play("hull")
-								_float_text(e.pos + Vector2(0, -70), "TURRET GRABBED!", Color(1.0, 0.5, 0.4), true)
+								_float_text(e.pos + Vector2(0, -70), "POD GRABBED!", Color(1.0, 0.5, 0.4), true)
 						"hold":
+							if not held.is_empty():   # it tears at the pod: the shield drains until it is shot off
+								shield = maxf(shield - shield_max * 0.02 * delta, 0.0)
 							e.pos.x += sin(e.t * 2.0) * 6.0 * delta
 							e.hold_t = float(e.get("hold_t", 0.0)) + delta
 							# shot off (a quarter of its health since the grab) or it tires after HOLD_MAX s
@@ -1993,685 +1825,6 @@ func _xp_need() -> float:
 		base *= pow(1.5, run_level - 14)
 	return base * _xp_cut
 
-# ------------------------------------------------------------------ turrets
-
-# Turrets from the Gear loadout are mounted at the start of every run (mount =
-# index into Backdrop.STRIP_SOCKETS), only on mounts the player has opened by clearing
-# stages (Turrets.mount_open). Each type's numbers live in turrets.gd.
-func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true) -> bool:
-	if mount < 0:
-		for i in Backdrop.STRIP_SOCKETS.size():
-			var taken := false
-			for t in turrets:
-				if t.mount == i:
-					taken = true
-			if not taken:
-				mount = i
-				break
-	if mount < 0:
-		return false
-	# every turret drops onto its socket, one after another at the start of a run
-	# (fx = true drops it straight away, used by tests)
-	# t.def = this turret's numbers with its upgrade tracks and milestones in (Turrets.stats)
-	turrets.append({"type": type, "lvl": lvl, "def": Turrets.stats(type, Turrets.one_tracks(turret_tracks, type), Turrets.star({"stars": turret_stars}, type)), "mount": mount, "pos": _socket(mount), "cd": 0.5 + 0.3 * mount,
-		"fire_t": 0.0, "ang": -PI / 2.0, "face": 1.0, "charge": 0.0, "build": 0.0, "bolt": [],
-		"drop": 0.0, "drop_wait": 0.0 if fx else 0.3 + 0.18 * mount})
-	return true
-
-func _socket(i: int) -> Vector2:
-	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT) if TURRETS_ON else Backdrop.pod_pos(i, FIELD_W, BASE_Y)
-
-func _turret_dmg(t: Dictionary) -> float:
-	return float(t.def.damage) * _turret_dmg_mult
-
-func _turret_hit(t: Dictionary, e: Dictionary, dmg: float) -> void:
-	if not _can_hurt(e):
-		return
-	dmg *= Turrets.trait_mult(t.type, _traits(e)) * Turrets.element_mult(t.type, stage)   # traits, the variant and the element (dev172)
-	dmg = _through_shield(e, dmg)
-	stat_turret_dmg += minf(dmg, maxf(e.hp, 0.0))
-	_count_dmg(String(t.type), dmg, e)
-	e.hp -= dmg
-	e.hit_t = HIT_FLINCH_T
-	# turret card overcharges: Overload (Storm) stuns now and then, Frozen Light (Prism) slows
-	if t.get("stun", false) and rng.randf() < 0.2:
-		e.slow_t = 0.8
-		e.slow = 0.95
-	elif t.get("frost_light", false):
-		e.slow_t = 1.5
-		e.slow = maxf(float(e.get("slow", 0.0)), 0.3)
-
-func _update_turrets(delta: float) -> void:
-	for t in turrets:
-		t.pos = _socket(t.mount)   # follows the screen height
-		if int(t.get("held_by", -1)) >= 0:   # in the Wrecker's claw (dev198): it cannot fire until shot free
-			var holder_alive := false
-			for e in enemies:
-				if int(e.id) == int(t.held_by) and e.hp > 0.0:
-					holder_alive = true
-			if not holder_alive:
-				t.held_by = -1
-			else:
-				t.fire_t = maxf(float(t.fire_t) - delta, 0.0)
-				t.alert = 0.0
-				continue
-		if t.drop < 1.0:
-			t.drop_wait -= delta
-			if t.drop_wait <= 0.0:
-				t.drop = minf(t.drop + delta / 0.45, 1.0)
-				if t.drop >= 1.0:
-					t.squash = 1.0   # lands with weight: squats on the socket and springs back (dev172)
-					t.hov_v = 70.0
-					# landed: a flash on the socket
-					_fx_add("spark", t.pos + Vector2(0, -6), 70.0, 0.35, 0.0, 1.8)
-					_burst(t.pos, 18.0, Color(0.2, 0.85, 1.0), 8)
-			continue
-		t.fire_t = maxf(t.fire_t - delta, 0.0)
-		t.squash = maxf(float(t.get("squash", 0.0)) - delta * 2.6, 0.0)
-		# rest or fire pose (Rudy, dev172): a turret with a bug in reach wakes up (lights, lift,
-		# tracking); with the sky clear it settles, dims and parks
-		var reach: float = float(t.def.get("range", t.def.get("reach", 560.0))) if (t.type == "sentry" or Turrets.ROUND2.has(t.type)) else 560.0
-		var awake := false
-		for e in enemies:
-			if e.pos.y > 90.0 and t.pos.distance_to(e.pos) < reach:
-				awake = true
-				break
-		t.alert = move_toward(float(t.get("alert", 0.0)), 1.0 if awake else 0.0, delta * (4.0 if awake else 1.4))
-		if t.type == "sentry" and not awake:
-			t.ang = lerp_angle(float(t.ang), -PI / 2.0, minf(1.0, delta * 1.2))   # parks pointing up
-		match String(t.type):
-			"lance": _update_lance(t, delta * _turret_rate)
-			"storm": _update_storm(t, delta * _turret_rate)
-			"gravity": _update_gravity(t, delta * _turret_rate)
-			"swarm": _update_swarm(t, delta * _turret_rate)
-			"prism": _update_prism(t, delta * _turret_rate)
-			"repair": _update_repair(t, delta * _turret_rate)
-			"tesla": _update_tesla(t, delta * _turret_rate)
-			"cryo": _update_cryo(t, delta * _turret_rate)
-			"mines": _update_mine_layer(t, delta * _turret_rate)
-			"beacon": _update_beacon(t, delta * _turret_rate)
-			"flak": _update_flak(t, delta * _turret_rate)
-			_: _update_sentry(t, delta * _turret_rate)
-	# a Dread Beacon on the base lifts the hero's ATK while it stands
-	_beacon_mult = 1.0
-	for t in turrets:
-		if t.type == "beacon" and float(t.drop) >= 1.0:
-			_beacon_mult = 1.0 + float(t.def.get("atk", 0.1))
-	_update_drones(delta)
-	_update_mines(delta)
-
-func _update_sentry(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	# hover: lift off once landed, a spring for the shot dip, swing speed for the lean
-	if float(t.drop) >= 1.0:
-		t.lift = move_toward(float(t.get("lift", 0.0)), 0.5 + 0.5 * float(t.get("alert", 0.0)), delta * 1.4)   # rests lower, lifts when awake
-	var hv: float = float(t.get("hov_v", 0.0))
-	var hy: float = float(t.get("hov_y", 0.0))
-	hv += (-hy * 140.0 - hv * 9.0) * delta
-	t.hov_y = hy + hv * delta
-	t.hov_v = hv
-	var prev_ang: float = float(t.ang)
-	var best := -1
-	var bd: float = float(def.range)
-	for i in enemies.size():
-		var d: float = t.pos.distance_to(enemies[i].pos)
-		if enemies[i].pos.y > 100.0 and d < bd:
-			bd = d
-			best = i
-	if best >= 0:
-		_spring_ang(t, (enemies[best].pos - t.pos).angle(), delta, 110.0, 12.0)   # overshoots a touch and settles (dev153)
-		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
-		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 6.0)
-		t.cd -= delta
-		if t.cd <= 0.0:
-			t.cd = float(def.every)
-			t.fire_t = FIRE_TIME.sentry
-			t.hov_v = float(t.hov_v) + 55.0      # the shot pushes the head down toward its base
-			var dir := Vector2.from_angle(t.ang)
-			Sfx.play("turret", rng.randf_range(0.9, 1.1))
-			bullets.append({"pos": _turret_tip(t), "vel": dir * 360.0, "dmg": _turret_dmg(t), "r": 18.0, "tid": -2, "col": "tracer", "src": t.type,
-				"bounce": int(card_levels.get("sentry_ricochet", 0)), "splash": 55.0 if t.get("flak", false) else 0.0, "hits": []})
-	else:
-		# nothing in range: the head sweeps slowly from side to side, searching
-		var search: float = -PI / 2.0 + sin(time_alive * 0.7 + float(t.mount) * 1.3) * 0.9
-		t.ang = lerp_angle(t.ang, search, minf(1.0, delta * 2.0))
-		t.ang_v = float(t.get("ang_v", 0.0)) * 0.8
-		t.swing = lerpf(float(t.get("swing", 0.0)), angle_difference(prev_ang, t.ang) / maxf(delta, 0.001), 0.2)
-		t.face = move_toward(float(t.face), -1.0 if cos(t.ang) > 0.05 else (1.0 if cos(t.ang) < -0.05 else float(t.face)), delta * 3.0)
-		t.cd = maxf(float(t.cd) - delta, 0.0)
-
-# is the bug on the Lance's firing line (from its tip along t.ang)?
-func _lance_in_column(t: Dictionary, e: Dictionary) -> bool:
-	var tip := _turret_tip(t)
-	var dir := Vector2.from_angle(float(t.ang))
-	var rel: Vector2 = e.pos - tip
-	var along := rel.dot(dir)
-	return along > 0.0 and absf(rel.cross(dir)) < float(t.def.width) * 0.5 + float(e.r) * 0.6 and e.pos.y > 90.0
-
-# Lance: turns its cannon toward the nearest bug in range (sweeping slowly while it
-# waits), charges, and fires a spear of light along that line that hits everything on
-# it (enemy shots included).
-func _update_lance(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var best := -1
-	var bd := 650.0
-	for i in enemies.size():
-		var d: float = t.pos.distance_to(enemies[i].pos)
-		if enemies[i].pos.y > 90.0 and d < bd:
-			bd = d
-			best = i
-	var want: float = (enemies[best].pos - _turret_tip(t)).angle() if best >= 0 else -PI / 2.0 + sin(time_alive * 0.6 + float(t.mount)) * 0.7
-	want = clampf(want, -PI + 0.15, -0.15)   # never aims down into the base
-	if best >= 0:
-		_spring_ang(t, want, delta, 70.0, 10.0)
-		t.ang = clampf(float(t.ang), -PI + 0.15, -0.15)
-	else:
-		t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * 1.5))
-		t.ang_v = float(t.get("ang_v", 0.0)) * 0.8
-	t.charge = minf(t.charge + delta, float(def.every))
-	if t.charge < float(def.every):
-		return
-	var any := false
-	for e in enemies:
-		if _lance_in_column(t, e):
-			any = true
-			break
-	if not any:
-		return
-	# Twin Lance (card overcharge): a second beam a moment after the first
-	if t.get("twin", false) and not t.get("twin_shot", false):
-		t.charge = float(def.every) - 0.25
-		t.twin_shot = true
-	else:
-		t.charge = 0.0
-		t.twin_shot = false
-	t.fire_t = FIRE_TIME.lance
-	var dmg := _turret_dmg(t)
-	for e in enemies:
-		if _lance_in_column(t, e):
-			_turret_hit(t, e, dmg)
-			for k in 3:
-				_fx_add("lance_flare", e.pos, 44.0, 0.3, 0.0, 1.4)
-	var tip := _turret_tip(t)
-	var dir := Vector2.from_angle(float(t.ang))
-	var half: float = float(def.width) * 0.5
-	enemy_bullets = enemy_bullets.filter(func(b): return (b.pos - tip).dot(dir) < 0.0 or absf((b.pos - tip).cross(dir)) > half)
-
-func _storm_centre(t: Dictionary) -> Vector2:
-	var def: Dictionary = t.def
-	var sway: float = sin(time_alive * 0.4 + float(t.mount)) * 18.0
-	return Vector2(clampf(t.pos.x, float(def.cloud_r) * 0.7, FIELD_W - float(def.cloud_r) * 0.7) + sway, BASE_Y - float(def.cloud_h))
-
-# Storm Spire: the cloud builds over 3 s; then lightning strikes the enemy
-# nearest the cloud's middle and jumps to up to `chain` more nearby (70% each).
-func _update_storm(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	t.build = minf(t.build + delta / 3.0, 1.0)
-	# the cloud gathers when bugs come near and thins away when the sky is clear
-	var near := false
-	var cc := _storm_centre(t)
-	for e in enemies:
-		if e.pos.y > 100.0 and cc.distance_to(e.pos) < float(def.cloud_r) * 1.6:
-			near = true
-			break
-	t.storm_a = move_toward(float(t.get("storm_a", 0.0)), 1.0 if near else 0.0, delta * 3.0)
-	if t.fire_t <= 0.0:
-		t.bolt = []
-	if t.build < 1.0:
-		return
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	var c := _storm_centre(t)
-	var first := {}
-	var fd: float = float(def.cloud_r)
-	for e in enemies:
-		var d: float = c.distance_to(e.pos)
-		if e.pos.y > 100.0 and d < fd:
-			fd = d
-			first = e
-	if first.is_empty():
-		t.cd = 0.2
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.storm
-	var dmg := _turret_dmg(t)
-	var hit: Array = [first.id]
-	var path: Array = [c, first.pos]
-	_turret_hit(t, first, dmg)
-	var last: Dictionary = first
-	for k in int(def.chain):
-		dmg *= 0.7
-		var nxt := {}
-		var nd := 110.0
-		for e in enemies:
-			if hit.has(e.id) or e.pos.y < 100.0:
-				continue
-			var d: float = last.pos.distance_to(e.pos)
-			if d < nd:
-				nd = d
-				nxt = e
-		if nxt.is_empty():
-			break
-		_turret_hit(t, nxt, dmg)
-		hit.append(nxt.id)
-		path.append(nxt.pos)
-		last = nxt
-	t.bolt = path
-	t.bolt_seed = rng.randi()   # one fixed zigzag per strike, so the bolt doesn't jitter
-	for p in path.slice(1):
-		_fx_add("storm_zap", p, 40.0, 0.3, rng.randf() * TAU)
-
-func _gravity_centre(t: Dictionary) -> Vector2:
-	var def: Dictionary = t.def
-	return Vector2(clampf(t.pos.x, float(def.radius), FIELD_W - float(def.radius)), BASE_Y - float(def.height))
-
-# Gravity Anchor: for the last `pull` seconds of each cycle it drags enemies near
-# its well toward the middle (bosses are too heavy), then crushes everything in
-# the inner circle with a pulse. With nothing in reach it keeps pulling and waits.
-func _update_gravity(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var c := _gravity_centre(t)
-	t.cd = maxf(t.cd - delta, 0.0)
-	var catching := false
-	var in_crush := false
-	# Black Hole (card overcharge): enemy shots inside the pull are swallowed
-	if t.get("horizon", false):
-		enemy_bullets = enemy_bullets.filter(func(b): return c.distance_to(b.pos) > float(def.radius))
-	if t.cd <= float(def.pull):
-		for e in enemies:
-			if e.pos.y < 100.0 or _is_boss(e):
-				continue
-			var d: float = c.distance_to(e.pos)
-			if d < float(def.radius):
-				catching = true
-				e.pos = e.pos.move_toward(c, (40.0 + 70.0 * (1.0 - d / float(def.radius))) * delta)
-			if d < float(def.crush_r):
-				in_crush = true
-	# the well only opens while it has something to pull, and fades in and out
-	t.well_a = move_toward(float(t.get("well_a", 0.0)), 1.0 if catching else 0.0, delta * 3.0)
-	if t.cd > float(def.pull):
-		return
-	if t.cd > 0.0 or not in_crush:
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.gravity
-	var dmg := _turret_dmg(t)
-	for e in enemies:
-		if e.pos.y > 100.0 and c.distance_to(e.pos) < float(def.crush_r):
-			_turret_hit(t, e, dmg)
-	_fx_add("crush", c, float(def.crush_r) * 1.9, 0.45, rng.randf() * TAU, 1.3)
-
-# Swarm Hive: lets out a handful of micro-drones; they live in `drones`.
-func _update_swarm(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var any := false
-	for e in enemies:
-		if e.pos.y > 100.0:
-			any = true
-			break
-	# the hatch lid (dev162): opens over the half second before a launch, stays open while the
-	# drones leave, closes after (drawn in _draw_turret)
-	var want: float = 1.0 if ((any and t.cd < 0.55) or float(t.fire_t) > 0.0) else 0.0
-	t.lid = move_toward(float(t.get("lid", 0.0)), want, delta * (9.0 if want > 0.5 else 3.5))
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	if not any:
-		t.cd = 0.2
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.swarm
-	for i in int(def.count):
-		var a: float = -PI / 2.0 + lerpf(-0.7, 0.7, float(i) / maxf(float(def.count) - 1.0, 1.0))
-		drones.append({"type": "swarm", "pos": _turret_tip(t), "vel": Vector2.from_angle(a) * 120.0,
-			"life": float(def.life), "age": 0.0, "dmg": _turret_dmg(t), "boom": t.get("boom", false)})
-
-# Each drone steers toward the nearest enemy, hits once and is gone.
-func _update_drones(delta: float) -> void:
-	var speed: float = float(Turrets.TURRETS.swarm.speed)
-	var live: Array = []
-	for dr in drones:
-		dr.life -= delta
-		dr.age += delta
-		var best := {}
-		var bd := 1e9
-		for e in enemies:
-			var d: float = dr.pos.distance_to(e.pos)
-			if e.pos.y > 100.0 and d < bd:
-				bd = d
-				best = e
-		if not best.is_empty():
-			dr.vel = dr.vel.lerp((best.pos - dr.pos).normalized() * speed, minf(1.0, delta * 4.0))
-			if bd < float(best.r) * 0.6 + 6.0:
-				_turret_hit(dr, best, float(dr.dmg))
-				if dr.get("boom", false):   # Kamikaze (card overcharge): the drone bursts on nearby bugs
-					for o in enemies:
-						if o != best and o.pos.distance_to(dr.pos) < 60.0:
-							_turret_hit(dr, o, float(dr.dmg) * 0.6)
-					_fx_add("nova", dr.pos, 50.0, 0.3, 0.0, 1.6, Color(0.4, 0.9, 1.0))
-				_fx_add("pop", dr.pos, 30.0, 0.3, rng.randf() * TAU)
-				continue
-		dr.pos += dr.vel * delta
-		if dr.life > 0.0:
-			live.append(dr)
-	drones = live
-
-func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
-	return p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
-
-# Prism Tower: sends a bright orb up; at the split height it breaks into a fan of
-# beams aimed around the nearest enemy, each hitting everything along its line.
-func _update_prism(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var split := Vector2(t.pos.x, BASE_Y - float(def.split_h))
-	if float(t.get("orb_t", 0.0)) > 0.0:
-		t.orb_t -= delta
-		if t.orb_t <= 0.0:
-			var aim := -PI / 2.0
-			var bd := 1e9
-			for e in enemies:
-				if e.pos.y > 100.0 and e.pos.y < split.y and split.distance_to(e.pos) < bd:
-					bd = split.distance_to(e.pos)
-					aim = clampf((e.pos - split).angle(), -PI / 2.0 - 1.0, -PI / 2.0 + 1.0)
-			var segs: Array = []
-			var n: int = int(def.beams)
-			for i in n:
-				var a: float = aim + lerpf(-float(def.spread), float(def.spread), float(i) / float(n - 1)) * 0.5
-				segs.append([split, split + Vector2.from_angle(a) * 900.0])
-			var dmg := _turret_dmg(t)
-			for e in enemies:
-				if e.pos.y < 100.0:
-					continue
-				for s in segs:
-					if _seg_dist(e.pos, s[0], s[1]) < float(e.r) * 0.6 + 6.0:
-						_turret_hit(t, e, dmg)
-						break   # one hit per enemy per volley, even where beams overlap
-			t.beams = segs
-			t.fire_t = FIRE_TIME.prism
-			_fx_add("prism_burst", split, 70.0, 0.4, 0.0, 1.3)
-		return
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	for e in enemies:
-		if e.pos.y > 100.0 and e.pos.y < split.y:
-			t.cd = float(def.every)
-			t.orb_t = 0.25
-			return
-	t.cd = 0.2
-
-# ---- round 2 turrets (dev196, Luna's turrets round 2: a second turret per element) ----
-# the nearest bug in `reach` of the turret (above the HUD), or {}
-func _nearest_bug(from: Vector2, reach: float) -> Dictionary:
-	var best := {}
-	var bd := reach
-	for e in enemies:
-		var d: float = from.distance_to(e.pos)
-		if e.pos.y > 100.0 and d < bd:
-			bd = d
-			best = e
-	return best
-
-# Repair Node (Support, Energy): every few seconds it mends the base shield (the shield never
-# regenerates on its own, dev108), a ring of light rising from its dish to the dome
-func _update_repair(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	var weld: bool = t.get("hull_mend", false) and shield >= shield_max and hull < hull_max   # Hull Weld (card overcharge)
-	if (shield >= shield_max and not weld) or hull <= 0.0:
-		t.cd = 0.3
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.repair
-	if weld:
-		hull = minf(hull_max, hull + float(def.heal) * 0.4)
-	else:
-		shield = minf(shield_max, shield + float(def.heal))
-	var tip := _turret_tip(t)
-	if _fx_tex.has("shot_repair"):
-		_fx_add("shot_repair", tip, 50.0, 0.55, 0.0, 2.4, Color(0.6, 0.95, 1.0))
-	_fx_add("nova", Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY * 0.6), 90.0, 0.4, 0.0, 1.4, Color(0.4, 0.9, 1.0, 0.6))
-	Sfx.play("shield", 1.2)
-
-# Tesla Coil (Striker, Electric): fast zaps at the nearest bug within its short reach, an
-# arc drawn from the ball to the bug (t.bolt, _draw_turret_front)
-func _update_tesla(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	if t.fire_t <= 0.0:
-		t.bolt = []
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	var e := _nearest_bug(t.pos, float(def.range))
-	if e.is_empty():
-		t.cd = 0.1
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.tesla
-	var dmg := _turret_dmg(t)
-	_turret_hit(t, e, dmg)
-	t.bolt = [_turret_tip(t), e.pos]
-	t.bolt_seed = rng.randi()
-	# Chain Coil (card): the zap jumps on to nearby bugs, weaker each jump
-	var hit: Array = [e.id]
-	var last: Dictionary = e
-	for k in int(def.get("chain", 0)):
-		dmg *= 0.7
-		var nxt := {}
-		var nd := 90.0
-		for o in enemies:
-			if hit.has(o.id) or o.pos.y < 100.0:
-				continue
-			var d: float = last.pos.distance_to(o.pos)
-			if d < nd:
-				nd = d
-				nxt = o
-		if nxt.is_empty():
-			break
-		_turret_hit(t, nxt, dmg)
-		hit.append(nxt.id)
-		t.bolt.append(nxt.pos)
-		last = nxt
-	if _fx_tex.has("shot_tesla"):
-		_fx_add("shot_tesla", e.pos, 36.0, 0.18, rng.randf() * TAU, 1.2)
-	Sfx.play("turret", rng.randf_range(1.2, 1.4))
-
-# Cryo Lens (Control, Ice): the lens turns to the nearest bug and breathes a cone of cold:
-# every bug in the cone is slowed and chipped
-func _update_cryo(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var tip := _turret_tip(t)
-	var e := _nearest_bug(tip, float(def.reach))
-	var want: float = (e.pos - tip).angle() if not e.is_empty() else -PI / 2.0 + sin(time_alive * 0.5 + float(t.mount)) * 0.5
-	want = clampf(want, -PI + 0.5, -0.5)
-	if e.is_empty():
-		t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * 1.5))
-		t.cd = maxf(float(t.cd) - delta, 0.0)
-		return
-	_spring_ang(t, want, delta, 60.0, 9.0)
-	t.ang = clampf(float(t.ang), -PI + 0.5, -0.5)
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.cryo
-	var dir := Vector2.from_angle(float(t.ang))
-	var dmg := _turret_dmg(t)
-	for o in enemies:
-		var rel: Vector2 = o.pos - tip
-		if o.pos.y > 100.0 and rel.length() < float(def.reach) and absf(angle_difference(rel.angle(), float(t.ang))) < float(def.cone):
-			var chilled: bool = float(o.get("slow_t", 0.0)) > 0.0   # Shatter (card overcharge): a bug already chilled takes x2.5
-			o.slow_t = maxf(float(o.get("slow_t", 0.0)), float(def.every) + 0.3)
-			o.slow = maxf(float(o.get("slow", 0.0)), float(def.slow))
-			_turret_hit(t, o, dmg * (2.5 if chilled and t.get("shatter", false) else 1.0))
-	if _fx_tex.has("shot_cryo"):
-		_fx_add("shot_cryo", tip + dir * float(def.reach) * 0.45, float(def.reach) * 0.85, float(def.every) + 0.1, float(t.ang) + PI / 2.0, 1.15, Color(1, 1, 1, 0.55))
-
-# Mine Layer (Breaker, Void): launches slow floating mines that drift to the biggest bug in
-# the sky (bosses and armoured shells first) and burst on it, with a blast round it
-func _update_mine_layer(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	var mine_n := 0
-	for m in mines:
-		if int(m.mount) == int(t.mount):
-			mine_n += 1
-	var target := _mine_target(Vector2.ZERO)
-	if target.is_empty() or mine_n >= int(def.get("mines", 3)):
-		t.cd = 0.2
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.mines
-	mines.append({"type": "mines", "pos": _turret_tip(t), "vel": Vector2(rng.randf_range(-20.0, 20.0), -60.0), "dmg": _turret_dmg(t),
-		"blast": float(def.blast), "target": int(target.id), "life": 14.0, "age": 0.0, "mount": int(t.mount), "stun": t.get("stun", false)})
-	Sfx.play("turret", 0.7)
-
-# the bug a mine wants: a boss or an armoured shell first, else the toughest bug in the sky
-func _mine_target(exclude: Vector2) -> Dictionary:
-	var best := {}
-	var score := -1.0
-	for e in enemies:
-		if e.pos.y < 100.0 or not _can_hurt(e):
-			continue
-		var tr := _traits(e)
-		var s: float = float(e.hp) + (10000.0 if tr.has("boss") else 0.0) + (3000.0 if tr.has("armoured") else 0.0)
-		if s > score:
-			score = s
-			best = e
-	return best
-
-func _update_mines(delta: float) -> void:
-	var live: Array = []
-	for m in mines:
-		m.life -= delta
-		m.age += delta
-		var target := {}
-		for e in enemies:
-			if int(e.id) == int(m.target):
-				target = e
-				break
-		if target.is_empty() or not _can_hurt(target):
-			var nt := _mine_target(m.pos)
-			if nt.is_empty():
-				m.vel = m.vel.lerp(Vector2(0, -40.0), minf(1.0, delta * 2.0))
-			else:
-				m.target = int(nt.id)
-		else:
-			var speed: float = 70.0 + 60.0 * minf(m.age / 3.0, 1.0)   # picks up speed as it goes
-			m.vel = m.vel.lerp((target.pos - m.pos).normalized() * speed, minf(1.0, delta * 2.5))
-			if m.pos.distance_to(target.pos) < float(target.r) * 0.6 + 8.0:
-				_burst_at(m, m.pos, float(m.dmg), float(m.blast), target)
-				continue
-		m.pos += m.vel * delta
-		if m.life > 0.0 and m.pos.y > 60.0:
-			live.append(m)
-		elif m.life <= 0.0:
-			_fx_add("pop", m.pos, 26.0, 0.3, rng.randf() * TAU)
-	mines = live
-
-# a blast from turret-ish `src` (a dict with "type" and the card flags): full damage on the
-# bug it burst on, 60% on everything else within `radius`
-func _burst_at(src: Dictionary, pos: Vector2, dmg: float, radius: float, first: Dictionary = {}) -> void:
-	if not first.is_empty():
-		_turret_hit(src, first, dmg)
-	for o in enemies:
-		if o != first and o.pos.y > 90.0 and o.pos.distance_to(pos) < radius:
-			_turret_hit(src, o, dmg * 0.6)
-	if src.get("embers", false):   # Incendiary (Flak card overcharge): everything in the blast burns
-		for o in enemies:
-			if o.pos.y > 90.0 and o.type != "spore" and o.pos.distance_to(pos) < radius:
-				o.burn_t = maxf(float(o.get("burn_t", 0.0)), 2.0)
-				o.burn_dps = maxf(float(o.get("burn_dps", 0.0)), 0.04 * float(o.hp_max))
-	var glow: Color = Turrets.TURRETS[String(src.type)].glow if Turrets.TURRETS.has(String(src.type)) else Color.WHITE
-	var sprite: String = "shot_" + String(src.type)
-	if _fx_tex.has(sprite):
-		_fx_add(sprite, pos, radius * 1.3, 0.35, rng.randf_range(-0.3, 0.3) if src.type == "flak" else rng.randf() * TAU, 1.5)
-	_fx_add("nova", pos, radius * 1.1, 0.3, 0.0, 1.7, glow)
-	shake = maxf(shake, 0.12)
-	Sfx.play("boss_hit", 0.8)
-
-# Dread Beacon (Support, Dark): paints a mark on a bug in range; the hero's bolts crit a
-# marked bug every time (the hero ATK boost is _beacon_mult, _update_turrets)
-func _update_beacon(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	var best := {}
-	var bd: float = float(def.range)
-	for e in enemies:   # the nearest bug without a mark; a marked one only if nothing else is in range
-		var d: float = t.pos.distance_to(e.pos)
-		if e.pos.y > 100.0 and _can_hurt(e) and d < bd and float(e.get("mark_t", 0.0)) <= 0.0:
-			bd = d
-			best = e
-	if best.is_empty():
-		t.cd = 0.15
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.beacon
-	var marked: Array = [best]
-	if t.get("double_mark", false):   # Twin Mark (card overcharge): the next nearest too
-		var second := {}
-		var sd: float = float(def.range)
-		for e in enemies:
-			var d: float = t.pos.distance_to(e.pos)
-			if e != best and e.pos.y > 100.0 and _can_hurt(e) and d < sd and float(e.get("mark_t", 0.0)) <= 0.0:
-				sd = d
-				second = e
-		if not second.is_empty():
-			marked.append(second)
-	t.mark_ids = []
-	for e in marked:
-		e.mark_t = float(def.mark)
-		t.mark_ids.append(int(e.id))
-		if _fx_tex.has("shot_beacon"):
-			_fx_add("shot_beacon", e.pos, 40.0, 0.3, 0.0, 1.6, Color(1.0, 0.4, 0.4))
-	Sfx.play("turret", 0.6)
-
-# Flak Battery (Swarm, Fire): a shell toward the thickest knot of bugs; it bursts in the air
-# at their height (b.fuse) and shreds everything around (_burst_at)
-func _update_flak(t: Dictionary, delta: float) -> void:
-	var def: Dictionary = t.def
-	var tip := _turret_tip(t)
-	var best := {}
-	var score := -1
-	var bd := 1e9
-	for e in enemies:
-		var d: float = tip.distance_to(e.pos)
-		if e.pos.y < 100.0 or d > float(def.range):
-			continue
-		var n := 0
-		for o in enemies:
-			if o.pos.distance_to(e.pos) < float(def.blast):
-				n += 1
-		if n > score or (n == score and d < bd):
-			score = n
-			bd = d
-			best = e
-	var want: float = (best.pos - tip).angle() if not best.is_empty() else -PI / 2.0 + sin(time_alive * 0.5 + float(t.mount)) * 0.4
-	want = clampf(want, -PI + 0.6, -0.6)
-	if best.is_empty():
-		t.ang = lerp_angle(float(t.ang), want, minf(1.0, delta * 1.5))
-		t.cd = maxf(float(t.cd) - delta, 0.0)
-		return
-	_spring_ang(t, want, delta, 60.0, 9.0)
-	t.ang = clampf(float(t.ang), -PI + 0.6, -0.6)
-	t.cd -= delta
-	if t.cd > 0.0:
-		return
-	t.cd = float(def.every)
-	t.fire_t = FIRE_TIME.flak
-	var dir := Vector2.from_angle(float(t.ang))
-	var speed := 430.0
-	bullets.append({"pos": tip, "vel": dir * speed, "dmg": _turret_dmg(t), "r": 10.0, "tid": -2, "col": "shell", "src": "flak", "type": "flak",
-		"fuse": bd / speed, "splash": float(def.blast), "hits": [], "stun": t.get("stun", false), "embers": t.get("embers", false)})
-	_fx_add("spark", tip, 30.0, 0.2, 0.0, 1.5, Color(1.0, 0.8, 0.5))
-	Sfx.play("turret", 0.8)
 
 # ------------------------------------------------------------------ damage, effects, end
 
@@ -2906,8 +2059,6 @@ func _end_run(won: bool) -> void:
 		patch["elite_unlocked"] = maxi(stage + 1, int(d.get("elite_unlocked", 1)))
 	if won and not _is_trial() and not elite:   # a trial never unlocks stages; Elite has its own ladder
 		patch["stage_unlocked"] = maxi(stage + 1, was)
-		if Turrets.mounts_open(patch["stage_unlocked"]) > Turrets.mounts_open(was):
-			_new_mount = Turrets.mounts_open(patch["stage_unlocked"]) - 1
 		stage_unlocked = patch["stage_unlocked"]
 	_write_save(patch)
 	var ncards := 0
@@ -3005,8 +2156,8 @@ func _dmg_rows(compact: bool = false) -> Control:
 	var elapsed: float = maxf(time_alive, 1.0)
 	for k in keys.slice(0, 5 if compact else 8):
 		var d: float = float(_dmg_by[k])
-		var name := "Drone" if k == "drone" else (String(Heroes.ROSTER.get(_hero_id, {}).get("name", "Hero")) if k == "hero" else String(Turrets.TURRETS.get(k, {}).get("name", k)))
-		var col: Color = Heroes.element_color(Heroes.element_of(_hero_id)) if k == "hero" else (Color(0.8, 0.6, 1.0) if k == "drone" else Heroes.element_color(Turrets.element(String(k))))
+		var name := "Drone" if k == "drone" else (String(Heroes.ROSTER.get(_hero_id, {}).get("name", "Hero")) if k == "hero" else String(k))
+		var col: Color = Heroes.element_color(Heroes.element_of(_hero_id)) if k == "hero" else (Color(0.8, 0.6, 1.0) if k == "drone" else UIKit.SOFT)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
 		var nl := UIKit.label(name, 11 if not compact else 10, Color.WHITE)
@@ -3320,10 +2471,6 @@ func _card_pic(id: String, h: float) -> Control:
 			var add := CanvasItemMaterial.new()
 			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
 			icon.material = add
-	elif Cards.CARDS.has(id) and Cards.CARDS[id].has("turret"):
-		# a turret card shows its turret until Luna paints the card (LUNA-BRIEF-turret-cards.md)
-		icon.texture = _tex[Turrets.TURRETS[Cards.CARDS[id].turret].art + "_idle"]
-		icon.custom_minimum_size = Vector2(0, h * 0.9)
 	else:
 		icon.texture = Icons.get_icon(String(Cards.def(id).get("icon", "event")))
 		icon.custom_minimum_size = Vector2(0, h * 0.76)
@@ -3458,23 +2605,6 @@ func _pick_card(id: String) -> void:
 		"chain_spark": chain_level += 1
 		"piercing_rounds": pierce_level += 1
 		"frost_rounds": frost_level += 1
-		"turret_overclock": _turret_rate *= 1.15
-		# turret cards: change that turret's own numbers (t.def)
-		"lance_focus": _turret_mod("lance", _lance_focus)
-		"storm_chain": _turret_mod("storm", func(t): t.def.chain = int(t.def.chain) + 2)
-		"gravity_horizon": _turret_mod("gravity", _gravity_grow)
-		"swarm_surge": _turret_mod("swarm", func(t): t.def.count = int(t.def.count) + 2)
-		"prism_fan": _turret_mod("prism", func(t): t.def.beams = int(t.def.beams) + 2)
-		"repair_overdrive": _turret_mod("repair", func(t): t.def.heal = float(t.def.heal) * 1.5)
-		"tesla_chain": _turret_mod("tesla", func(t): t.def.chain = int(t.def.get("chain", 0)) + 1)
-		"cryo_deep": _turret_mod("cryo", func(t):
-			t.def.cone = float(t.def.cone) * 1.2
-			t.def.slow = minf(float(t.def.slow) + 0.1, 0.85))
-		"mines_cluster": _turret_mod("mines", func(t): t.def.mines = int(t.def.mines) + 1)
-		"beacon_dread": _turret_mod("beacon", func(t):
-			t.def.mark = float(t.def.mark) + 1.0
-			t.def.atk = float(t.def.atk) + 0.05)
-		"flak_shrapnel": _turret_mod("flak", func(t): t.def.blast = float(t.def.blast) * 1.2)
 		# talent cards (Talents.CARD_AT, dev197)
 		"focus_fire": damage_mult *= 1.06
 		"salvage": _coin_mult += 0.25
@@ -3502,35 +2632,8 @@ func _pick_card(id: String) -> void:
 	_card_panel.visible = false
 	picking = false
 
-# The third pick of a card: its extra bonus (Cards.OVERCHARGE), with a gold flourish.
-# Turret cards: run `f` on every turret of this type on the base.
-func _turret_mod(type: String, f: Callable) -> void:
-	for t in turrets:
-		if String(t.type) == type:
-			f.call(t)
-
-func _lance_focus(t: Dictionary) -> void:
-	t.def.width = float(t.def.width) * 1.4
-	t.def.damage = float(t.def.damage) * 1.3
-
-func _gravity_grow(t: Dictionary) -> void:
-	t.def.radius = float(t.def.radius) * 1.25
-	t.def.crush_r = float(t.def.crush_r) * 1.25
-
 func _overcharge(id: String) -> void:
 	match id:
-		"sentry_ricochet": _turret_mod("sentry", func(t): t.flak = true)
-		"lance_focus": _turret_mod("lance", func(t): t.twin = true)
-		"storm_chain": _turret_mod("storm", func(t): t.stun = true)
-		"gravity_horizon": _turret_mod("gravity", func(t): t.horizon = true)
-		"swarm_surge": _turret_mod("swarm", func(t): t.boom = true)
-		"prism_fan": _turret_mod("prism", func(t): t.frost_light = true)
-		"repair_overdrive": _turret_mod("repair", func(t): t.hull_mend = true)
-		"tesla_chain": _turret_mod("tesla", func(t): t.stun = true)
-		"cryo_deep": _turret_mod("cryo", func(t): t.shatter = true)
-		"mines_cluster": _turret_mod("mines", func(t): t.stun = true)
-		"beacon_dread": _turret_mod("beacon", func(t): t.double_mark = true)
-		"flak_shrapnel": _turret_mod("flak", func(t): t.embers = true)
 		"focus_fire": _crit_rate += 0.10
 		"salvage": _salvage = true
 		"mirror_shell": _mirror_through = true
@@ -3538,7 +2641,6 @@ func _overcharge(id: String) -> void:
 		"heavy_bolts": _crit6 = true
 		"piercing_rounds": _pierce_bonus = true
 		"frost_rounds": _frost_bonus = true
-		"turret_overclock": _turret_dmg_mult *= 1.3
 		"burst_fire": _burst_pierce = true
 		"magnet": _gem_shield = true
 		"reinforced_hull":
@@ -3583,7 +2685,7 @@ func _offer() -> Array:
 		var forced := _dbg_offer
 		_dbg_offer = []
 		return forced
-	var picks := Cards.draw(card_levels, 3, rng, run_level, not turrets.is_empty(), turrets.map(func(tt): return String(tt.type)), _hero_id, _talents)
+	var picks := Cards.draw(card_levels, 3, rng, run_level, false, [], _hero_id, _talents)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]
@@ -3994,17 +3096,8 @@ func _show_end(won: bool) -> void:
 	v.add_child(_dmg_rows(true))
 	if _level_after > _level_before:
 		v.add_child(UIKit.label("PILOT LEVEL %d!" % _level_after, 15, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER))
-		for id in Turrets.TURRETS:
-			var u: int = int(Turrets.TURRETS[id].unlock)
-			if u > _level_before and u <= _level_after:
-				v.add_child(UIKit.label("%s unlocked" % Turrets.TURRETS[id].name, 12, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	if not won:
 		v.add_child(UIKit.label("Reached wave %d of %d" % [mini(wave_index + 1, waves.size()), waves.size()], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	if won and _new_mount >= 0:
-		v.add_child(UIKit.label("NEW TURRET MOUNT OPEN!", 14, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
-		var on_m: String = turret_loadout[_new_mount] if _new_mount < turret_loadout.size() else ""
-		var hint := ("Your %s stands on mount %d from the next stage." % [Turrets.TURRETS[on_m].name, _new_mount + 1]) if on_m != "" and _level_after >= int(Turrets.TURRETS[on_m].unlock) else ("Place a turret on mount %d in Gear." % (_new_mount + 1))
-		v.add_child(UIKit.label(hint, 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var sp := Control.new(); sp.custom_minimum_size = Vector2(0, 4)
 	v.add_child(sp)
 	if won and stage < StageData.MAX_STAGE and not _is_trial():
@@ -4060,19 +3153,9 @@ func _draw() -> void:
 	else:
 		Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow, soldier_pos.x / FIELD_W - 0.5)
 		Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
-	if not TURRETS_ON:
-		Backdrop.draw_base_shade(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY)
+	Backdrop.draw_base_shade(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
-	if TURRETS_ON:   # the old painted strip with its sockets (asleep)
-		Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
-		Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
-		for i in Turrets.MOUNTS:
-			_draw_socket_lid(i)
-	else:
-		_draw_core_base()
-	for t in turrets:
-		_draw_turret(t)
-	_draw_turret_back()
+	_draw_core_base()
 	_draw_lanes()   # a runner is coming down this lane
 	_draw_strikes()   # the planet's hazard about to land
 	# gems
@@ -4181,7 +3264,6 @@ func _draw() -> void:
 	for e in enemies:
 		_draw_enemy(e)
 	_draw_shards()
-	_draw_turret_front()
 	for r in rings:
 		var k: float = 1.0 - r.life / r.max
 		draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
@@ -4190,7 +3272,6 @@ func _draw() -> void:
 	for f in (floaters if not picking else []):
 		var big: bool = f.get("big", false)
 		draw_string(title_font if big else hud_font, f.pos + Vector2(-40 if big else -14, 0), f.text, HORIZONTAL_ALIGNMENT_LEFT, -1, 18 if big else 14, Color(f.col, clampf(f.life * 1.5, 0.0, 1.0)))
-	_draw_range_ring()
 	_hc.queue_redraw()   # the top bar lives on its own layer above the pilot (_hc)
 	_fx.queue_redraw()
 
@@ -4275,293 +3356,6 @@ func _draw_enemy(e: Dictionary) -> void:
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w * clampf(e.hp / e.hp_max, 0.0, 1.0), 3), Color(1.0, 0.5, 0.4))
-
-# Batch D turrets (Luna's bases and heads). base_w: base width on screen; head_h: head
-# height; gap: how far the head floats above the base's top; art_dir: where the painted
-# head points (radians) for the ones that turn (Lance), 0 for round heads that hover.
-const SPLIT_LOOK := {
-	# the Lance is a mounted gun (Rudy, dev209: the beam came from the middle of the barrel and the
-	# base vanished as it turned): it pivots on "pivot" (a point on the barrel's axis, as shares of
-	# the head picture) set into the top of its base, the base drawn in front of the barrel's back
-	# end, and it fires from "muzzle" (the claw end), both measured on Luna's picture
-	"lance":   {"base_w": 72.0, "head_h": 46.0, "gap": 2.0, "art_dir": 2.68, "turns": true,
-		"pivot": Vector2(0.56, 0.45), "muzzle": Vector2(0.01, 0.86)},
-	"storm":   {"base_w": 70.0, "head_h": 60.0, "gap": -22.0, "art_dir": 0.0, "turns": false},
-	"gravity": {"base_w": 72.0, "head_h": 44.0, "gap": -14.0, "art_dir": 0.0, "turns": false},
-	"prism":   {"base_w": 0.0, "head_h": 94.0, "gap": 0.0, "art_dir": 0.0, "turns": false},
-	# round 2 (dev196): a negative gap sinks the head into its base; "lean" tilts the head toward
-	# its target (the lens, the mortar cradle); "tip" = where it fires from, as a share of the
-	# head height above its centre
-	"repair":  {"base_w": 46.0, "head_h": 46.0, "gap": -16.0, "art_dir": 0.0, "turns": false, "tip": 0.0},
-	"tesla":   {"base_w": 58.0, "head_h": 56.0, "gap": -14.0, "art_dir": 0.0, "turns": false, "tip": 0.4},
-	"cryo":    {"base_w": 64.0, "head_h": 50.0, "gap": -10.0, "art_dir": 0.0, "turns": false, "lean": true, "tip": 0.0},
-	"mines":   {"base_w": 74.0, "head_h": 40.0, "gap": -12.0, "art_dir": 0.0, "turns": false, "tip": 0.15},
-	"beacon":  {"base_w": 62.0, "head_h": 76.0, "gap": -12.0, "art_dir": 0.0, "turns": false, "tip": 0.3},
-	"flak":    {"base_w": 64.0, "head_h": 34.0, "gap": -10.0, "art_dir": 0.0, "turns": false, "lean": true, "tip": 0.25},
-}
-
-# how far into its firing pose a turret is (1 = the shot this instant); the firing head
-# (turrets/<id>_head_fire.png, Luna's round 2) fades in by this over the resting head
-func _fire_k(t: Dictionary) -> float:
-	return clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
-
-func _split_geo(t: Dictionary) -> Dictionary:
-	var look: Dictionary = SPLIT_LOOK[t.type]
-	var base_h := 0.0
-	if float(look.base_w) > 0.0:
-		var bt: Texture2D = _tex[t.type + "_base"]
-		base_h = bt.get_height() * float(look.base_w) / bt.get_width()
-	var ph: float = float(t.mount) * 1.3
-	var alert: float = smoothstep(0.0, 1.0, float(t.get("alert", 1.0)))
-	var bob: float = sin(time_alive * 1.6 + ph) * (2.0 if not look.turns else 0.6) * (0.4 + 0.6 * alert) + 5.0 * (1.0 - alert)   # heavier, and it settles lower at rest
-	if TURRETS_SEATED:
-		bob = 0.0
-	var ht: Texture2D = _tex[t.type + "_head"]
-	var hh: float = float(look.head_h)
-	var hw: float = ht.get_width() * hh / ht.get_height()
-	var centre: Vector2 = t.pos + Vector2(0, -base_h * 0.55 - float(look.gap) - hh * 0.5 + bob)
-	if t.type == "prism":
-		centre = t.pos + Vector2(0, 6.0 - hh * 0.5)
-	var pivot: Vector2 = centre
-	if look.has("pivot"):
-		pivot = t.pos + Vector2(0, -base_h * 0.23 + bob)   # set into the collar on top of the base
-	return {"base_h": base_h, "centre": centre, "hw": hw, "hh": hh, "pivot": pivot}
-
-# Where and how a split turret's head is drawn: origin, turn, scale, and the picture's rect
-# around the origin (its centre, or the measured pivot for a mounted gun like the Lance).
-# The head, its firing head, its light and its muzzle all use this one transform.
-func _head_xf(t: Dictionary, g: Dictionary, pose: Dictionary) -> Dictionary:
-	var look: Dictionary = SPLIT_LOOK[t.type]
-	var rect := Rect2(-g.hw * 0.5, -g.hh * 0.5, g.hw, g.hh)
-	var o: Vector2 = g.centre
-	if look.has("pivot"):
-		var pv: Vector2 = look.pivot
-		rect = Rect2(-pv.x * g.hw, -pv.y * g.hh, g.hw, g.hh)
-		o = g.pivot
-	return {"o": o, "rot": pose.rot, "s": Vector2(pose.sx, 1.0) * pose.pulse, "r": rect}
-
-func _draw_split_turret(t: Dictionary, yo: float, a: float) -> void:
-	var look: Dictionary = SPLIT_LOOK[t.type]
-	var mounted_gun: bool = look.has("pivot")   # the head goes behind the base (its back end hides in it)
-	if not mounted_gun:
-		_draw_split_base(t, look, yo, a)
-	var g := _split_geo(t)
-	var ht: Texture2D = _tex[t.type + "_head"]
-	var xf := _head_xf(t, g, _split_pose(t))
-	var sq: float = sin(clampf(float(t.get("squash", 0.0)), 0.0, 1.0) * PI)   # the landing squat
-	draw_set_transform(xf.o + Vector2(0, yo + 4.0 * sq), xf.rot, Vector2(xf.s.x * (1.0 + 0.1 * sq), xf.s.y * (1.0 - 0.14 * sq)))
-	draw_texture_rect(ht, xf.r, false, Color(1, 1, 1, a))
-	var fk := _fire_k(t)
-	if fk > 0.0 and _tex.has(t.type + "_head_fire"):
-		draw_texture_rect(_tex[t.type + "_head_fire"], xf.r, false, Color(1, 1, 1, a * fk))
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	if mounted_gun:
-		_draw_split_base(t, look, yo, a)
-
-func _draw_split_base(t: Dictionary, look: Dictionary, yo: float, a: float) -> void:
-	if float(look.base_w) <= 0.0:
-		return
-	var bt: Texture2D = _tex[t.type + "_base"]
-	var bs := bt.get_size() * (float(look.base_w) / bt.get_width())
-	draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.55 + yo), bs), false, Color(1, 1, 1, a))
-	Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # seated in the socket
-
-# how a split turret's head is turned, mirrored and pulsed right now (shared by the head
-# and its light layer, dev154)
-func _split_pose(t: Dictionary) -> Dictionary:
-	var look: Dictionary = SPLIT_LOOK[t.type]
-	var rot := 0.0
-	var sx := 1.0
-	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
-	if look.turns:
-		# the cannon turns to its target; mirrored when it aims to the right
-		var face: float = -1.0 if cos(float(t.ang)) > 0.05 else 1.0
-		var art: float = float(look.art_dir) if face > 0.0 else PI - float(look.art_dir)
-		if look.has("pivot"):
-			# the barrel's own axis in the picture: pivot -> muzzle (mirrored when it faces right)
-			var g := _split_geo(t)
-			var m: Vector2 = (Vector2(look.muzzle) - Vector2(look.pivot)) * Vector2(g.hw, g.hh)
-			art = Vector2(m.x * face, m.y).angle()
-		rot = angle_difference(art, float(t.ang))
-		sx = face
-	elif t.type == "prism" or look.get("lean", false):
-		rot = clampf(angle_difference(-PI / 2.0, float(t.ang)) * 0.25, -0.3, 0.3)   # leans toward its target
-	var pulse: float = 1.0 + 0.06 * kick + (0.03 * sin(time_alive * 3.0 + float(t.mount)) if not look.turns else 0.0)
-	pulse *= 0.97 + 0.03 * smoothstep(0.0, 1.0, float(t.get("alert", 1.0)))
-	return {"rot": rot, "sx": sx, "pulse": pulse}
-
-# The turrets' own light (dev154): the glow cut from each turret picture
-# (tools/cut_turret_light.gd) drawn on the additive layer exactly over the turret, breathing
-# while idle, swelling as it charges, flashing when it fires.
-func _draw_turret_lights() -> void:
-	for t in turrets:
-		if t.drop < 1.0 or not _fx_tex.has("light_" + String(t.type)):
-			continue
-		var lt: Texture2D = _fx_tex["light_" + String(t.type)]
-		var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
-		var strength: float = (0.5 + 0.22 * sin(time_alive * 2.1 + float(t.mount) * 1.7)) * (0.35 + 0.65 * float(t.get("alert", 1.0))) + 0.6 * kick   # dim at rest, bright awake
-		if CHARGE_COL.has(t.type):
-			var every: float = float(t.def.every)
-			strength += 0.5 * smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd))
-		elif t.type == "lance":
-			strength += 0.5 * smoothstep(0.5, 1.0, float(t.charge) / maxf(float(t.def.every), 0.1))
-		var col := Color(1, 1, 1, clampf(strength, 0.0, 1.0))
-		# the firing head's own light (Luna's round 2) flares in with the firing head
-		var fl: Texture2D = _fx_tex.get("fire_light_" + String(t.type), null)
-		var fcol := Color(1, 1, 1, clampf(0.4 + 0.8 * kick, 0.0, 1.0))
-		if t.type == "sentry":
-			var g := _sentry_geo(t)
-			var hs: float = SENTRY_HEAD_H / lt.get_height()
-			var hsz := lt.get_size() * hs
-			_fx.draw_set_transform(g.pivot, g.rot, Vector2(g.face, 1.0))
-			var hr := Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz)
-			_fx.draw_texture_rect(lt, hr, false, col)
-			if fl != null and kick > 0.0:
-				_fx.draw_texture_rect(fl, hr, false, fcol)
-		elif SPLIT_LOOK.has(t.type):
-			var g := _split_geo(t)
-			var xf := _head_xf(t, g, _split_pose(t))
-			_fx.draw_set_transform(xf.o, xf.rot, xf.s)
-			_fx.draw_texture_rect(lt, xf.r, false, col)
-			if fl != null and kick > 0.0:
-				_fx.draw_texture_rect(fl, xf.r, false, fcol)
-		else:
-			# the whole-picture turrets (Swarm): same placement as _draw_turret
-			var look: Dictionary = TURRET_LOOK[t.type]
-			var sz := lt.get_size() * minf(float(look.h) / lt.get_height(), float(look.w) / lt.get_width())
-			var bob: float = sin(time_alive * 1.6 + float(t.mount)) * float(look.bob) * (0.4 + 0.6 * float(t.get("alert", 1.0))) + 4.0 * (1.0 - smoothstep(0.0, 1.0, float(t.get("alert", 1.0))))
-			var k2 := kick * kick
-			var ksz := Vector2(sz.x * (1.0 + 0.03 * k2), sz.y * (1.0 - 0.05 * k2))
-			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			_fx.draw_texture_rect(lt, Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + bob), ksz), false, col)
-			if fl != null and kick > 0.0:
-				_fx.draw_texture_rect(fl, Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + bob), ksz), false, fcol)
-	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-func _draw_turret(t: Dictionary) -> void:
-	# Luna's turret sits in its socket with a soft shadow; it falls in from above
-	# when mounted (drop 0 -> 1) and lands with a flash.
-	if t.drop <= 0.0:
-		return
-	var k: float = t.drop
-	var yo: float = -90.0 * (1.0 - k) * (1.0 - k)
-	var a: float = clampf(k * 4.0, 0.0, 1.0)
-	Backdrop.draw_socket_shadow(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT, 0.7 * k)
-	if SPLIT_LOOK.has(t.type):
-		_draw_split_turret(t, yo, a)
-		return
-	if t.type == "sentry":
-		var bt: Texture2D = _tex["sentry_base"]
-		var bs := bt.get_size() * (SENTRY_BASE_W / bt.get_width())
-		draw_texture_rect(bt, Rect2(t.pos + Vector2(-bs.x * 0.5, -bs.y * 0.5 + yo), bs), false, Color(1, 1, 1, a))
-		Backdrop.draw_socket_lip(self, int(t.mount), FIELD_W, FIELD_H - STRIP_LIFT)   # the foot sits inside the ring
-		var g := _sentry_geo(t)
-		var ht: Texture2D = _tex["sentry_head"]
-		var hs: float = SENTRY_HEAD_H / ht.get_height()
-		var hsz := ht.get_size() * hs
-		draw_set_transform(g.pivot + Vector2(0, yo), g.rot, Vector2(g.face, 1.0))
-		var hr := Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9) + Vector2(0, g.recoil), hsz)
-		draw_texture_rect(ht, hr, false, Color(1, 1, 1, a))
-		if _tex.has("sentry_head_fire") and _fire_k(t) > 0.0:   # barrels hot (Luna's firing head, dev196)
-			draw_texture_rect(_tex["sentry_head_fire"], hr, false, Color(1, 1, 1, a * _fire_k(t)))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		return
-	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
-	# the Swarm Hive from Luna's parts (dev162): the hive with its hatch open, and the lid
-	# drawn over the hole, flipping up and over the back before the drones launch (t.lid)
-	var lidded: bool = t.type == "swarm" and _tex.has("swarm_body_nolid") and _tex.has("swarm_lid")
-	if lidded:
-		tex = _tex["swarm_body_nolid"]
-	var look: Dictionary = TURRET_LOOK[t.type]
-	var sz := tex.get_size() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
-	var bob: float = sin(time_alive * 1.6 + float(t.mount)) * float(look.bob) * (0.4 + 0.6 * float(t.get("alert", 1.0))) + 4.0 * (1.0 - smoothstep(0.0, 1.0, float(t.get("alert", 1.0))))
-	# a shot kicks the turret: it squats a little on its socket and springs back
-	var kick: float = clampf(float(t.fire_t) / float(FIRE_TIME.get(t.type, 0.2)), 0.0, 1.0)
-	kick = kick * kick
-	var sq: float = sin(clampf(float(t.get("squash", 0.0)), 0.0, 1.0) * PI)
-	var ksz := Vector2(sz.x * (1.0 + 0.03 * kick + 0.1 * sq), sz.y * (1.0 - 0.05 * kick - 0.14 * sq))
-	var rect := Rect2(t.pos + Vector2(-ksz.x * float(look.cx), -ksz.y + 6.0 + yo + bob), ksz)
-	draw_texture_rect(tex, rect, false, Color(1, 1, 1, a))
-	if lidded and _tex.has("swarm_head_fire") and _fire_k(t) > 0.0:   # side vents lit as the drones leave (dev196)
-		draw_texture_rect(_tex["swarm_head_fire"], rect, false, Color(1, 1, 1, a * _fire_k(t)))
-	if lidded:
-		# hinge on the far edge of the hatch; closed = the lid lies flat as the hive's top face
-		# (squashed for the three-quarter view), open = flipped up and back past vertical
-		var lk := smoothstep(0.0, 1.0, float(t.get("lid", 0.0)))
-		var sy := lerpf(0.42, -0.85, lk)
-		if absf(sy) > 0.03:
-			var hinge := rect.position + Vector2(rect.size.x * 0.5, rect.size.y * 0.035)
-			var lw := rect.size.x * 0.46
-			draw_set_transform(hinge, 0.0, Vector2(1.0 - 0.12 * lk, sy))
-			draw_texture_rect(_tex["swarm_lid"], Rect2(-lw * 0.5, 0.0, lw, lw), false, Color(1, 1, 1, a))
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-# The field holding the Sentry's head up: a soft glow on the base, a faint column of
-# light, and thin rings rising from base to head. It brightens when the head dips.
-func _draw_sentry_field(t: Dictionary) -> void:
-	if TURRETS_SEATED:
-		return
-	var g := _sentry_geo(t)
-	var lift: float = g.lift
-	if lift <= 0.01:
-		return
-	var cyan := Color(0.18, 0.9, 1.0)
-	var x: float = g.pivot.x
-	var y0: float = g.base_top
-	var y1: float = minf(g.head_bottom, y0 - 1.0)
-	var squeeze: float = clampf((y0 - y1) / SENTRY_GAP, 0.3, 1.5)
-	var hot: float = lift * (1.0 + clampf(float(t.get("hov_y", 0.0)) * 0.25, 0.0, 0.8) + 0.25 * (1.0 - minf(squeeze, 1.0)))
-	_fx.draw_set_transform(Vector2(t.pos.x, y0), 0.0, Vector2(1.0, 0.32))
-	Backdrop.soft_glow(_fx, Vector2.ZERO, 20.0, Color(cyan, 0.5 * hot))
-	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-	_fx.draw_colored_polygon(PackedVector2Array([Vector2(t.pos.x - 13, y0), Vector2(t.pos.x + 13, y0), Vector2(x + 8, y1), Vector2(x - 8, y1)]),
-		Color(cyan, 0.10 * hot))
-	for i in 3:
-		var ph := fposmod(time_alive * 1.4 + float(i) / 3.0 + float(t.mount) * 0.3, 1.0)
-		var y := lerpf(y0, y1, ph)
-		var w := lerpf(13.0, 8.0, ph)
-		_fx.draw_set_transform(Vector2(lerpf(t.pos.x, x, ph), y), 0.0, Vector2(1.0, 0.3))
-		_fx.draw_arc(Vector2.ZERO, w, 0.0, TAU, 24, Color(cyan, sin(ph * PI) * 0.55 * hot), 1.2, true)
-	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-# Where the Sentry's head sits and points. The painted barrels point up-left, so the
-# head is mirrored for targets on the right; `face` eases through the turn so it
-# swings round instead of flipping.
-func _sentry_geo(t: Dictionary) -> Dictionary:
-	var bt: Texture2D = _tex["sentry_base"]
-	var base_h: float = bt.get_height() * (SENTRY_BASE_W / bt.get_width())
-	var lift: float = smoothstep(0.0, 1.0, float(t.get("lift", 0.0))) if not TURRETS_SEATED else 0.0
-	var ph: float = float(t.mount) * 1.7
-	var hover := Vector2(sin(time_alive * 0.9 + ph) * 1.5 * lift, -SENTRY_GAP * lift + (sin(time_alive * 2.3 + ph) * 1.6 + sin(time_alive * 3.7 + ph) * 0.5) * lift + float(t.get("hov_y", 0.0)))
-	var pivot: Vector2 = t.pos + Vector2(0, -base_h * 0.42) + hover
-	var face: float = signf(t.face) * maxf(absf(t.face), 0.15) if t.face != 0.0 else 0.15
-	var art_dir: float = SENTRY_ART_DIR if t.face >= 0.0 else PI - SENTRY_ART_DIR
-	var lean: float = clampf(float(t.get("swing", 0.0)) * 0.06, -0.12, 0.12) + sin(time_alive * 1.3 + ph) * 0.025 * lift
-	var rot: float = clampf(angle_difference(art_dir, t.ang), -1.1, 1.1) + lean   # turns well out to each side
-	var ht: Texture2D = _tex["sentry_head"]
-	var hs: float = SENTRY_HEAD_H / ht.get_height()
-	var recoil: float = 4.0 * float(t.fire_t) / FIRE_TIME.sentry
-	var local := Vector2((0.47 - SENTRY_HEAD_CX) * ht.get_width() * face, (0.04 - 0.9) * ht.get_height()) * hs + Vector2(0, recoil)
-	return {"pivot": pivot, "rot": rot, "face": face, "recoil": recoil, "muzzle": pivot + local.rotated(rot), "lift": lift, "base_top": t.pos.y - base_h * 0.28, "head_bottom": pivot.y + hs * ht.get_height() * 0.1}
-
-# The point a turret's weapon fires from.
-func _turret_tip(t: Dictionary) -> Vector2:
-	if t.type == "sentry":
-		return _sentry_geo(t).muzzle
-	if SPLIT_LOOK.has(t.type):
-		var g := _split_geo(t)
-		if SPLIT_LOOK[t.type].has("muzzle"):
-			# the measured muzzle carried through the head's own transform: the beam leaves the tip
-			var xf := _head_xf(t, g, _split_pose(t))
-			var mz: Vector2 = SPLIT_LOOK[t.type].muzzle
-			return Transform2D(xf.rot, xf.s, 0.0, xf.o) * (xf.r.position + Vector2(mz.x * g.hw, mz.y * g.hh))
-		if SPLIT_LOOK[t.type].has("tip"):
-			return g.centre + Vector2(0, -g.hh * float(SPLIT_LOOK[t.type].tip))
-		return g.centre if t.type != "prism" else g.centre + Vector2(0, -g.hh * 0.1)
-	var look: Dictionary = TURRET_LOOK[t.type]
-	var tex: Texture2D = _tex[Turrets.TURRETS[t.type].art + "_idle"]
-	var h: float = tex.get_height() * minf(float(look.h) / tex.get_height(), float(look.w) / tex.get_width())
-	return t.pos + Vector2(0, 6.0 - h * float(look.tip) + sin(time_alive * 2.2 + float(t.mount)) * float(look.bob))
 
 # ---- death shards (dev147, AAA motion item 26 e): a killed bug breaks into six pieces of
 # its own painted body (regions of the body picture), thrown outward, tumbling under
@@ -4648,16 +3442,6 @@ func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 
 # The additive light layer: Luna's shot and hit sprites (painted on black, so they
 # only add light), turret charge glows and beams.
 func _draw_fx() -> void:
-	# a socket's ring lights up once its turret has landed
-	var lit := [0.0, 0.0, 0.0, 0.0]
-	for t in turrets:
-		# under the Sentry the ring stays dim, so its hovering base and head read as two pieces
-		var glow: float = 0.35 if t.type == "sentry" else 1.0
-		lit[t.mount] = maxf(lit[t.mount], smoothstep(0.6, 1.0, float(t.drop)) * glow)
-	Backdrop.draw_socket_glow(_fx, FIELD_W, FIELD_H - STRIP_LIFT, lit)
-	for t in turrets:
-		if t.type == "sentry" and float(t.drop) >= 1.0:
-			_draw_sentry_field(t)
 	_draw_zaps()
 	_draw_drone_light()
 	for f in fxs:
@@ -4678,14 +3462,6 @@ func _draw_fx() -> void:
 		var th: float = L * tr.get_height() / tr.get_width()
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(tr, Rect2(-L * 0.9, -th * 0.5, L, th), false, Color.WHITE if bl.col == "tracer" else Color(1.0, 0.7, 0.35))
-	# Mine Layer mines: Luna's mine, bobbing as it drifts, its light breathing (dev196)
-	if _fx_tex.has("shot_mines"):
-		var mt: Texture2D = _fx_tex["shot_mines"]
-		for m in mines:
-			var ma: float = minf(1.0, float(m.age) / 0.3)
-			var ms: float = 24.0 * (0.9 + 0.1 * sin(time_alive * 4.0 + float(m.mount)))
-			_fx.draw_set_transform(m.pos + Vector2(0, sin(time_alive * 2.2 + m.pos.x * 0.05) * 2.0), 0.0, Vector2.ONE)
-			_fx.draw_texture_rect(mt, Rect2(-ms * 0.5, -ms * 0.5, ms, ms), false, Color(1, 1, 1, ma))
 	# the pilot's bolts: Luna's energy bolt, its bright head on the bullet (Heavy Bolts:
 	# bigger and brighter)
 	var bt0: Texture2D = _fx_tex["bolt"]
@@ -4732,65 +3508,12 @@ func _draw_fx() -> void:
 		_fx.draw_texture_rect(btx, Rect2(-BL * 0.85, -bth * 0.5, BL, bth), false, tint)
 		if heavy:
 			_fx.draw_texture_rect(btx, Rect2(-BL * 0.6, -bth * 0.22, BL * 0.6, bth * 0.44), false, Color(1, 1, 1, 0.8))
-	# Swarm drones
-	var dt: Texture2D = _fx_tex["drone"]
-	for dr in drones:
-		var da: float = minf(1.0, dr.age / 0.15) * minf(1.0, dr.life / 0.4)
-		_fx.draw_set_transform(dr.pos, dr.vel.angle(), Vector2.ONE)
-		_fx.draw_texture_rect(dt, Rect2(-11, -11 * dt.get_height() / dt.get_width(), 22, 22 * dt.get_height() / dt.get_width()), false, Color(1, 1, 1, da))
-	_draw_turret_lights()
 	# a boss still arriving is untouchable (_can_hurt): a pulsing veil of light says so (dev164)
 	for e in enemies:
 		if _is_boss(e) and not e.get("arrived", false):
 			var pulse := 0.5 + 0.5 * sin(time_alive * 6.0)
 			_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			Backdrop.soft_glow(_fx, e.pos, float(e.r) * 1.7, Color(0.8, 0.55, 1.0, 0.2 + 0.12 * pulse))
-	for t in turrets:
-		if t.drop >= 1.0 and CHARGE_COL.has(t.type):
-			# charge-up: light gathers at the weapon in the last moments before a shot,
-			# holds (softly pulsing) while it waits for a target, and empties when it fires
-			var every: float = float(t.def.every)
-			var kc: float = smoothstep(minf(0.8, every * 0.6), 0.0, float(t.cd)) * (0.85 + 0.15 * sin(time_alive * 6.0 + float(t.mount)))
-			if kc > 0.02:
-				var col: Color = CHARGE_COL[t.type]
-				_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-				Backdrop.soft_glow(_fx, _turret_tip(t), 6.0 + 9.0 * kc, Color(col, 0.55 * kc))
-	for t in turrets:
-		if t.drop < 1.0:
-			continue
-		match String(t.type):
-			"lance":
-				# the tip gathers light while it charges; firing throws a beam to the sky
-				var tip := _turret_tip(t)
-				var kc: float = clampf(t.charge / float(t.def.every), 0.0, 1.0)
-				_fx_sprite("lance_flare", tip, 8.0 + 26.0 * kc * kc, 0.25 + 0.6 * kc)
-				if t.fire_t > 0.0:
-					var kf: float = t.fire_t / FIRE_TIME.lance
-					var bt: Texture2D = _fx_tex["lance_beam"]
-					_fx.draw_set_transform(tip, float(t.ang), Vector2.ONE)
-					_fx.draw_texture_rect(bt, Rect2(0, -14.0 * kf, 900.0, 28.0 * kf), false)
-					_fx_sprite("lance_flare", tip, 70.0 * kf, kf)
-			"gravity":
-				var pulling: float = smoothstep(0.0, 1.0, float(t.get("well_a", 0.0)))
-				var after: float = float(t.fire_t) / FIRE_TIME.gravity
-				var wa: float = maxf(pulling, after)
-				if wa > 0.01:
-					var gt: Texture2D = _fx_tex["gravity_ring"]
-					var gs: float = 120.0 * (0.6 + 0.4 * pulling)
-					_fx.draw_set_transform(_gravity_centre(t), -time_alive * 2.0, Vector2.ONE)
-					_fx.draw_texture_rect(gt, Rect2(-gs * 0.5, -gs * 0.5, gs, gs), false, Color(1, 1, 1, 0.9 * wa))
-			"prism":
-				if float(t.get("orb_t", 0.0)) > 0.0:
-					var kk: float = smoothstep(0.0, 1.0, 1.0 - float(t.orb_t) / 0.25)
-					var p: Vector2 = _turret_tip(t).lerp(Vector2(t.pos.x, BASE_Y - float(t.def.split_h)), kk)
-					_fx_sprite("prism_burst", p, 26.0, 0.9)
-				if t.fire_t > 0.0 and t.has("beams"):
-					var fa: float = smoothstep(0.0, FIRE_TIME.prism, float(t.fire_t))
-					var pt: Texture2D = _fx_tex["prism_beam"]
-					for s in t.beams:
-						var seg: Vector2 = s[1] - s[0]
-						_fx.draw_set_transform(s[0], seg.angle(), Vector2.ONE)
-						_fx.draw_texture_rect(pt, Rect2(0, -8, seg.length(), 16), false, Color(0.8, 0.8, 0.8, fa))
 	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 func _fx_sprite(name: String, pos: Vector2, size: float, alpha: float) -> void:
@@ -4798,78 +3521,6 @@ func _fx_sprite(name: String, pos: Vector2, size: float, alpha: float) -> void:
 	var h: float = size * tex.get_height() / tex.get_width()
 	_fx.draw_set_transform(pos, 0.0, Vector2.ONE)
 	_fx.draw_texture_rect(tex, Rect2(-size * 0.5, -h * 0.5, size, h), false, Color(1, 1, 1, alpha))
-
-# Behind the enemies: the Storm Spire's cloud and the Gravity Anchor's well.
-func _draw_turret_back() -> void:
-	for t in turrets:
-		if t.type == "gravity":
-			_draw_gravity_well(t)
-		if t.type != "storm":
-			continue
-		var def: Dictionary = t.def
-		var c := _storm_centre(t)
-		var r: float = float(def.cloud_r)
-		var a: float = float(t.build) * smoothstep(0.0, 1.0, float(t.get("storm_a", 0.0)))
-		if a < 0.01:
-			continue
-		var col: Color = def.glow
-		# flattened puffs, the middle ones higher, drifting slowly
-		for i in 7:
-			var f: float = float(i) / 6.0
-			var p := c + Vector2((f - 0.5) * r * 1.6, sin(f * PI * 2.0 + time_alive * 0.7) * 5.0 - sin(f * PI) * 12.0)
-			draw_set_transform(p, 0.0, Vector2(1.0, 0.55))
-			draw_circle(Vector2.ZERO, r * (0.24 + 0.14 * sin(f * PI)), Color(col.darkened(0.6), 0.16 * a))
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-		if t.fire_t > 0.0:
-			draw_line(_turret_tip(t), c, Color(col, 0.35), 1.0, true)
-
-# The well grows in while it pulls (three thin arcs turning inward) and fades
-# out after the pulse.
-func _draw_gravity_well(t: Dictionary) -> void:
-	var def: Dictionary = t.def
-	var c := _gravity_centre(t)
-	var pulling: float = smoothstep(0.0, 1.0, float(t.get("well_a", 0.0)))
-	var after: float = float(t.fire_t) / FIRE_TIME.gravity
-	var a: float = maxf(pulling, after)
-	if a < 0.01:
-		return
-	var col: Color = def.glow
-	# a faint tether from the turret shows whose well it is
-	draw_line(_turret_tip(t), c, Color(col, 0.18 * a), 1.0, true)
-
-# In front of the enemies: the Storm Spire's lightning (the rest of the turret
-# light is on the additive layer, _draw_fx).
-func _draw_turret_front() -> void:
-	for t in turrets:
-		if (t.type == "storm" or t.type == "tesla") and t.fire_t > 0.0 and t.bolt.size() > 1:
-			var col: Color = Turrets.TURRETS[t.type].glow
-			var a: float = smoothstep(0.0, float(FIRE_TIME[t.type]), float(t.fire_t))
-			for i in t.bolt.size() - 1:
-				var pts := _zigzag(t.bolt[i], t.bolt[i + 1], int(t.get("bolt_seed", 0)) + i)
-				draw_polyline(pts, Color(col, 0.5 * a), 3.0, true)
-				draw_polyline(pts, Color(0.92, 0.9, 1.0, a), 1.2, true)
-		elif t.type == "beacon" and t.drop >= 1.0:
-			# the beacon's thin red marker beam to the bug it marked, and a pulsing ring on it
-			for e in enemies:
-				if Array(t.get("mark_ids", [])).has(int(e.id)) and float(e.get("mark_t", 0.0)) > 0.0:
-					var a: float = clampf(float(e.mark_t) / 0.4, 0.0, 1.0)
-					var red := Color(1.0, 0.35, 0.35)
-					draw_line(_turret_tip(t), e.pos, Color(red, 0.3 * a), 1.0, true)
-					var r: float = float(e.r) * (1.1 + 0.12 * sin(time_alive * 9.0))
-					draw_arc(e.pos, r, 0.0, TAU, 28, Color(red, 0.75 * a), 1.5, true)
-					for k in 3:
-						var ang: float = time_alive * 2.5 + float(k) * TAU / 3.0
-						draw_line(e.pos + Vector2.from_angle(ang) * (r + 2.0), e.pos + Vector2.from_angle(ang) * (r + 7.0), Color(red, 0.9 * a), 1.5, true)
-
-func _zigzag(a: Vector2, b: Vector2, seed: int) -> PackedVector2Array:
-	var zr := RandomNumberGenerator.new()
-	zr.seed = seed
-	var pts := PackedVector2Array([a])
-	var n := Vector2(-(b - a).y, (b - a).x).normalized()
-	for i in range(1, 6):
-		pts.append(a.lerp(b, float(i) / 6.0) + n * zr.randf_range(-7.0, 7.0))
-	pts.append(b)
-	return pts
 
 # Top bar layout (drawn by _draw_hud on the _hc layer)
 const HUD_H := 70.0                  # bar height (the XP bar runs along its bottom)
@@ -5086,41 +3737,6 @@ func _draw_intro() -> void:
 	_hc.draw_string(title_font, r.position + Vector2(76.0, 20.0), head, HORIZONTAL_ALIGNMENT_LEFT, -1, 10, Color(edge.lightened(0.2), a))
 	_hc.draw_string(hud_font, r.position + Vector2(76.0, 38.0), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 15, Color(1, 1, 1, a))
 	_hc.draw_multiline_string(hud_font, r.position + Vector2(76.0, 54.0), body, HORIZONTAL_ALIGNMENT_LEFT, 236.0, 11, 2, Color(0.75, 0.82, 0.92, a))
-
-# Luna's armoured hatch over a locked socket. On the first run after a mount opens,
-# the hatch tips up (closed -> half -> open, standing behind the socket) with a cyan
-# flash, then folds away, and the turret drops in.
-func _draw_socket_lid(i: int) -> void:
-	var p: Vector2 = _socket(i)
-	var w := 52.0
-	var open: bool = Turrets.mount_open(i, stage_unlocked)
-	if open and not _lid_anim.has(i):
-		return
-	var t: float = float(_lid_anim.get(i, 0.0)) if open else 0.0
-	var closed_a := 1.0 - smoothstep(0.0, 0.3, t)
-	var half_a := smoothstep(0.0, 0.3, t) * (1.0 - smoothstep(0.3, 0.6, t))
-	var open_a := smoothstep(0.3, 0.6, t) * (1.0 - smoothstep(1.0, 1.5, t))
-	_lid_pic("lid_closed", p + Vector2(0, -1), w, closed_a, 0.5)
-	_lid_pic("lid_half", p + Vector2(0, -2), w, half_a, 0.75)
-	if open_a > 0.01:
-		var ot: Texture2D = _tex["lid_open"]
-		var oh := 40.0
-		var ow: float = oh * ot.get_width() / ot.get_height()
-		draw_texture_rect(ot, Rect2(p.x - ow * 0.5, p.y - oh - 2.0, ow, oh), false, Color(1, 1, 1, open_a))
-	if open and t > 0.25 and t < 0.9:
-		var k := (t - 0.25) / 0.65
-		draw_set_transform(p, 0.0, Vector2(1.0, 0.36))
-		draw_arc(Vector2.ZERO, 18.0 + 26.0 * k, 0.0, TAU, 32, Color(0.18, 0.9, 1.0, 0.8 * (1.0 - k)), 2.0, true)
-		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-# a hatch picture, its width `w`, placed so the point `anchor_y` (0..1 down the picture)
-# sits on p
-func _lid_pic(name: String, p: Vector2, w: float, a: float, anchor_y: float) -> void:
-	if a <= 0.01:
-		return
-	var tx: Texture2D = _tex[name]
-	var h: float = w * tx.get_height() / tx.get_width()
-	draw_texture_rect(tx, Rect2(p.x - w * 0.5, p.y - h * anchor_y, w, h), false, Color(1, 1, 1, a))
 
 # ------------------------------------------------------------------ speed and cards view
 
@@ -5345,15 +3961,6 @@ func _horde_wave(k: int) -> Array:
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
 	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode
-
-# A turret head swinging to a new target on a damped spring (dev153): it arrives fast,
-# overshoots a touch and settles, instead of easing in. k = stiffness, d = damping.
-func _spring_ang(t: Dictionary, want: float, delta: float, k: float, d: float) -> void:
-	var v: float = float(t.get("ang_v", 0.0))
-	var diff := angle_difference(float(t.ang), want)
-	v += (diff * k - v * d) * minf(delta, 0.05)
-	t.ang_v = v
-	t.ang = float(t.ang) + v * minf(delta, 0.05)
 
 # A red flash round the screen edge the moment the pilot loses a heart (dev156), fading
 # over a third of a second; drawn on the HUD layer so it sits over the whole field.
@@ -6366,11 +4973,6 @@ func _run_end(won: bool) -> void:
 	_write_save({"run": run})
 
 # ------------------------------------------------------------------ THE BASE YOU BUILD, in a fight (Base, 2026-11-10)
-# The turrets are gone from the fight (TURRETS_ON false keeps their code asleep until it is removed
-# for good). The base never shoots. The buildings on its open slots give their bonuses for the whole
-# fight (_apply_base, once the hero's numbers are set) and show as a small lit icon over each slot
-# until the new base is painted.
-const TURRETS_ON := false
 var _base_slots: Array = ["", "", "", ""]   # the building on each slot ("" = none or the slot is closed)
 var _base_repair := 0.0     # Repair Bay: extra share mended after a wave (shield and hull)
 var _base_heal := 0.0       # Med Bay: share of the hero's health back after a wave
@@ -6379,6 +4981,7 @@ var _base_perks: Array = []   # buildings at level 5 on the base: their perks (B
 var _dome_used := false      # the Shield Generator's emergency shield went up this fight
 
 func _apply_base(sv: Dictionary) -> void:
+	_pods = []
 	_base_perks = []
 	if _mods.has("no_turrets"):   # the Base offline twist (trials): the buildings give nothing this fight
 		_base_slots = ["", "", "", ""]
@@ -6391,6 +4994,8 @@ func _apply_base(sv: Dictionary) -> void:
 		_base_slots[i] = String(b.slots[i]) if (Base.slot_open(i, su) or DevTools.on) else ""
 		_base_open[i] = Base.slot_open(i, su) or DevTools.on
 		_base_levels[i] = Base.level(b, _base_slots[i]) if _base_slots[i] != "" else 0
+		if _base_slots[i] != "":   # the Wrecker goes for a pod with a building in it
+			_pods.append({"mount": i, "pos": Backdrop.pod_pos(i, FIELD_W, BASE_Y), "drop": 1.0, "held_by": -1})
 		if _base_slots[i] != "":
 			_tex["bld_" + String(_base_slots[i])] = UIKit.ic(String(Base.BUILDINGS[_base_slots[i]].icon))
 	shield_max *= 1.0 + float(bs.shield)
@@ -6423,8 +5028,6 @@ func _apply_base(sv: Dictionary) -> void:
 # stages 30 and 60 lost by wave 4 with the hull at zero.
 const NO_TURRET_HP := 0.64
 func _no_turret_hp() -> float:
-	if TURRETS_ON:
-		return 1.0
 	return lerpf(1.0, NO_TURRET_HP, clampf((stage - 5) / 15.0, 0.0, 1.0))
 
 # ------------------------------------------------------------------ THE SUPPORT DRONE (DroneData.SUPPORT, 2026-11-10)
@@ -6514,6 +5117,15 @@ func _draw_move_tip() -> void:
 var _base_levels: Array = [0, 0, 0, 0]
 var _base_open: Array = [false, false, false, false]
 var _pod_ping_t: Array = [-9.0, -9.0, -9.0, -9.0]
+var _pods: Array = []   # {mount, pos, drop, held_by}: the built pods, for the Wrecker to grab (it took turrets once)
+
+func _pod_held(i: int) -> bool:
+	for p in _pods:
+		if int(p.mount) == i and int(p.held_by) >= 0:
+			for e in enemies:
+				if int(e.id) == int(p.held_by):
+					return true
+	return false
 
 func _pod_ping(id: String) -> void:
 	var i := _base_slots.find(id)
@@ -6526,7 +5138,7 @@ func _draw_core_base() -> void:
 		var id: String = _base_slots[i]
 		var pd := {"open": _base_open[i], "level": _base_levels[i], "flash": 1.0 - (time_alive - float(_pod_ping_t[i])) / 0.7}
 		if id != "":
-			pd["col"] = Base.BUILDINGS[id].col
+			pd["col"] = Color(1.0, 0.35, 0.3) if _pod_held(i) else Base.BUILDINGS[id].col
 			pd["tex"] = _tex.get("bld_" + id)
 		pods.append(pd)
 	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0))
