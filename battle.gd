@@ -702,6 +702,10 @@ func _start_stage() -> void:
 	for t in turrets:
 		if _lid_anim.has(t.mount):
 			t.drop_wait = float(t.drop_wait) + 1.2   # wait for the hatch
+	if stage == 1 and not _is_trial() and not _seen.has("tip_move"):   # the first fight ever: say how to play, once
+		_seen.append("tip_move")
+		_write_save({"seen_enemies": _seen})
+		_move_tip = 7.0
 	if run_mode:
 		_run_begin()
 	soldier_pos = Vector2(240, BASE_Y - 200.0)
@@ -953,6 +957,7 @@ func _process(delta: float) -> void:
 	_update_supply(delta)
 	_update_support(delta)
 	_update_streak(delta)
+	_move_tip = maxf(_move_tip - delta, 0.0)
 	_update_ability(delta)
 	_update_wing(delta)
 	_update_bullets(delta)
@@ -4989,6 +4994,7 @@ func _draw_hud() -> void:
 	_draw_ult_btn()
 	_draw_wing_chip()
 	_draw_streak()
+	_draw_move_tip()
 	for e in enemies:
 		if _is_boss(e):
 			_draw_boss_bar(e)
@@ -6464,3 +6470,15 @@ func _draw_support() -> void:
 		draw_line(_sup_p, soldier_pos + Vector2(0, -10), Color(col, 0.35 + 0.2 * sin(time_alive * 8.0)), 1.5, true)
 	if _sup_flash > 0.0:
 		draw_arc(soldier_pos, 34.0 + 16.0 * (1.0 - _sup_flash), 0.0, TAU, 40, Color(col, _sup_flash), 2.5, true)
+
+# THE FIRST FIGHT'S HINT (first-stages check, 2026-11-10): on stage 1, until it has been seen once,
+# two short lines under the hero say how to play, because nothing else does (the tip boxes are off).
+var _move_tip := 0.0
+
+func _draw_move_tip() -> void:
+	if _move_tip <= 0.0:
+		return
+	var a: float = clampf(_move_tip, 0.0, 1.0) * clampf((7.0 - _move_tip) * 2.0, 0.0, 1.0)
+	var y: float = soldier_pos.y + 64.0
+	_hc.draw_string(title_font, Vector2(0, y), "DRAG TO FLY", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 18, Color(1, 1, 1, a))
+	_hc.draw_string(hud_font, Vector2(0, y + 20.0), "He fires straight up. Get under the bugs.", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 12, Color(0.8, 0.86, 0.95, a))

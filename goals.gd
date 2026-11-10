@@ -18,6 +18,14 @@ static func next(save: Dictionary) -> Dictionary:
 	var cap := Heroes.level_cap(h, id)
 	if lv >= cap and Heroes.tier(h, id) < Gates.MAX_STAR and Heroes.why_not_evolve(h, id, save) == "":
 		return {"text": "%s is ready to ASCEND" % hname, "go": ["NavGear", "gear_page", 0]}
+	# a brand-new player is pointed at the fight first, not at the Store (first-stages check, 2026-11-10)
+	var su := int(save.get("stage_unlocked", 1))
+	if su <= 1:
+		return {"text": "Win your first fight", "go": [], "stage": 1}
+	if su <= 3:
+		var early := stage_goal(su)
+		if not early.is_empty():
+			return early
 	if load("res://store.gd").free_waiting(save):
 		return {"text": "A free chest is waiting", "go": ["NavStore", "store_tab", 0]}
 	if lv < cap and int(save.get("coins", 0)) >= Heroes.level_cost(lv):

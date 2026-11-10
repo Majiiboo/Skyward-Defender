@@ -616,7 +616,7 @@ func _check_ascend() -> void:
 
 # the next goal on Home, the daily stage twists, hero abilities (2026-11-10)
 func _check_goals() -> void:
-	_expect(Goals.stage_goal(1).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(3).text == "Clear stage 3: the AUTO pilot", "stage goals: the ability at 2, AUTO at 3 (%s)" % Goals.stage_goal(1).text)
+	_expect(Goals.next({"stage_unlocked": 1}).text == "Win your first fight" and Goals.next({"stage_unlocked": 2}).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(1).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(3).text == "Clear stage 3: the AUTO pilot", "stage goals: the ability at 2, AUTO at 3 (%s)" % Goals.stage_goal(1).text)
 	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: The Base") and String(Goals.stage_goal(4).text).contains("base slot 1"), "stage 5 opens the Base and its first slot (%s)" % Goals.stage_goal(4).text)
 	_expect(String(Goals.stage_goal(9).text).contains(String(StageData.AREAS[1].name)), "stage 10 opens the next planet (%s)" % Goals.stage_goal(9).text)
 	var far := {"coins": 0, "stage_unlocked": 4, "pilot_xp": 0, "store_free": {"chest_u": 9999999999, "chest_e": 9999999999, "pack_daily": 9999999999, "pack_weekly": 9999999999, "pack_monthly": 9999999999}}
