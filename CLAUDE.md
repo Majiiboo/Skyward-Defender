@@ -9,6 +9,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   Rudy picked option C (flat two-tone: navy body + one accent) from the canvas "Nav icons" page and wants
   LUNA to paint them: LUNA-BRIEF-nav-icons.md + art_src/ref/nav_icons_ref.png (copied to Desktop/Luna nav
   icons), LUNA-PROGRAM row 14; files will be nav2_store / _heroes / _battle / _modes / _quests on black.
+  DELIVERED 2026-11-09 (Downloads: nav2_*.webp from Luna, plus 5 Gemini_Generated_Image_*.jpg alternatives
+  Rudy made for a second view, 4 of them on WHITE). Compared + animated demo: claude.ai/artifact/96yTzLebGhRXcLsRL1dcve.
+  Findings: today's NAV_DIM darkens the navy bodies into the bar (both sets vanish) -> closed tabs need a
+  grey-silhouette dim (grayscale + light, ~0.55 alpha); the accent colour splits off cleanly by colour
+  (bright + saturated) so the code can blink / pulse / tilt it. My pick: Luna's set; Gemini's chest (domed)
+  and helmet (one visor stripe) read better small. Waiting on Rudy's choice before wiring.
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
   (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold
