@@ -4189,7 +4189,7 @@ func _refresh_base() -> void:
 		var id := String(b.slots[i])
 		var open: bool = Base.slot_open(i, t_unlocked) or DevTools.on
 		var col: Color = Base.BUILDINGS[id].col if id != "" else UIKit.CYAN
-		var sq := _pick_square(UIKit.ic(String(Base.BUILDINGS[id].icon)) if id != "" else null, ("Stage %d" % Turrets.MOUNT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
+		var sq := _pick_square(Base.pic(id) if id != "" else null, ("Stage %d" % Turrets.MOUNT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
 		_num_badge(sq, col if open else UIKit.SOFT, str(i + 1))
 		var si: int = i
 		sq.pressed.connect(func():
@@ -4223,7 +4223,7 @@ func _refresh_base() -> void:
 		var sub := ""
 		if not own:
 			sub = ("Stage %d" % int(def.from)) if not Base.can_build(data, id) else (UIKit.num(Base.build_cost(id)) if Base.build_cost(id) > 0 else "Free")
-		var sq := _pick_square(UIKit.ic(String(def.icon)), String(def.name), 104.0, id == b_focus, def.col, not own, sub)
+		var sq := _pick_square(Base.pic(id), String(def.name), 104.0, id == b_focus, def.col, not own, sub)
 		if own:
 			_num_badge(sq, def.col, ("Lv.%d" % Base.level(b, id)) if not b.slots.has(id) else ("%d · Lv.%d" % [b.slots.find(id) + 1, Base.level(b, id)]))
 		var pick := id
@@ -4246,7 +4246,7 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 12)
 	var pic := TextureRect.new()
-	pic.texture = UIKit.ic(String(def.icon))
+	pic.texture = Base.pic(id)
 	pic.custom_minimum_size = Vector2(72, 72)
 	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -4334,7 +4334,7 @@ func _on_base_build(id: String) -> void:
 	coins = int(data.get("coins", 0))
 	Sfx.play("buy")
 	Progress.bump("turret_upgrades")
-	_rarity_fx_plain(String(Base.BUILDINGS[id].name), UIKit.ic(String(Base.BUILDINGS[id].icon)), Base.BUILDINGS[id].col, "BUILT", Base.text(id, 1))
+	_rarity_fx_plain(String(Base.BUILDINGS[id].name), Base.pic(id), Base.BUILDINGS[id].col, "BUILT", Base.text(id, 1))
 	_refresh_base()
 
 func _on_base_level(id: String) -> void:

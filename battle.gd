@@ -5020,7 +5020,7 @@ func _apply_base(sv: Dictionary) -> void:
 		if _base_slots[i] != "":   # the Wrecker goes for a pod with a building in it
 			_pods.append({"mount": i, "pos": Backdrop.pod_pos(i, FIELD_W, BASE_Y), "drop": 1.0, "held_by": -1})
 		if _base_slots[i] != "":
-			_tex["bld_" + String(_base_slots[i])] = UIKit.ic(String(Base.BUILDINGS[_base_slots[i]].icon))
+			_tex["bld_" + String(_base_slots[i])] = Base.pic(String(_base_slots[i]))
 	shield_max *= 1.0 + float(bs.shield)
 	shield = shield_max
 	hull_max *= 1.0 + float(bs.hull)
@@ -5278,10 +5278,10 @@ func _draw_pulse() -> void:
 	var ready := _pulse_t <= 0.0
 	if ready:
 		var beat := 0.5 + 0.5 * sin(time_alive * 5.0)
-		draw_arc(eye, 27.0 + 2.0 * beat, 0.0, TAU, 48, Color(1.0, 0.78, 0.27, 0.7 + 0.3 * beat), 2.5, true)
+		draw_arc(eye, 21.0 + 2.0 * beat, 0.0, TAU, 48, Color(1.0, 0.78, 0.27, 0.7 + 0.3 * beat), 2.5, true)
 	else:
-		draw_arc(eye, 27.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
-		draw_arc(eye, 27.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / (PULSE_CD * _pulse_cd_mult)), 48, Color(cyan, 0.85), 2.5, true)
+		draw_arc(eye, 21.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
+		draw_arc(eye, 21.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / (PULSE_CD * _pulse_cd_mult)), 48, Color(cyan, 0.85), 2.5, true)
 	if _pulse_live > 0.0:
 		var k := _pulse_live / PULSE_T
 		var c := Vector2(FIELD_W * 0.5, BASE_Y)
@@ -5290,7 +5290,7 @@ func _draw_pulse() -> void:
 		draw_polyline(pts, Color(cyan, 0.9), 2.0, true)
 		draw_colored_polygon(Backdrop._ell_pts(c, DOME_RX, DOME_RY, PI, TAU), Color(cyan, 0.06 + 0.06 * sin(time_alive * 12.0)))
 	if _pulse_flash > 0.0:
-		draw_arc(eye, 27.0 + 150.0 * (1.0 - _pulse_flash), 0.0, TAU, 64, Color(cyan, _pulse_flash), 3.0, true)
+		draw_arc(eye, 21.0 + 150.0 * (1.0 - _pulse_flash), 0.0, TAU, 64, Color(cyan, _pulse_flash), 3.0, true)
 
 # capture hook (tools/dev/capture.gd CAP_CALL="_dbg_pulse"): the Core Pulse fires now
 func _dbg_pulse() -> void:

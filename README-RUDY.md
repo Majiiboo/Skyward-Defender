@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev245 (version/code=245 and version/name="1.0-dev245" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev249 (version/code=249 and version/name="1.0-dev249" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,40 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev249: Luna's base, building links, the Season Pass, the Research Lab (four updates since dev245)
+
+- LUNA'S NEW BASE IS IN. All sixteen of her pictures were usable. The fight now shows her dome
+  with its breathing light, her pods on her arms, and her nine building pictures inside the pods.
+  A pod changes look with its building's level (plain, plated from level 5, with a halo at
+  level 10). The Base page and the Collection use the building pictures too.
+- BUILDING LINKS. Seven pairs of buildings give an extra bonus when both are fielded:
+  Bulwark (Shield Generator + Hull Plating): hits on the base 10% weaker.
+  Field Hospital (Repair Bay + Med Bay): mending after a wave 50% stronger.
+  War Room (Armory + Radar): crit rate +4%.
+  Arsenal (Armory + Hangar): hero damage +5%.
+  Drone Bay (Hangar + Reactor): drone damage +20%.
+  Capacitor (Reactor + Shield Generator): the Core Pulse recharges 25% faster.
+  Prospector (Refinery + Radar): coins +10%.
+  A gold line joins linked pods in the fight; the Base page shows live links as gold chips and
+  lists each building's partners.
+- THE SEASON PASS (from stage 8; the trophy button on Home). Thirty tiers every 30 days. Every
+  fight and every daily quest pays season XP. Each tier has a free reward; a premium track (800
+  crystals for the season, real money later) adds a second, bigger reward per tier. Unclaimed
+  rewards are lost when the season ends.
+- THE RESEARCH LAB (from stage 12; Heroes > Base > Research, or the goal line on Home). Eight
+  permanent upgrades, five levels each, that run on REAL time (30 minutes up to 12 hours), one at
+  a time, even with the game closed. Crystals finish one at once.
+- BALANCE CHECK with the new powers: the hand-played test won stages 12, 20, 30, 45 and 60 twice
+  each without the hull being touched; AUTO won 11 of 12 (one early loss on stage 30) with the
+  shield dropping as low as 0 to 88%. I also found my test's AUTO runs were wrong before today
+  (the first one of every batch was really a hero standing still), so older "AUTO lost" results
+  were too gloomy.
+
+NOT CHECKED BY ME: nothing has been on a phone. The Season and Research pages were looked at in
+one captured picture each with made-up saves; I did not tap through them by hand (their rules pass
+the automatic checks). Reward sizes, the premium price and research times are first guesses.
+Hull Plating's picture is dark on a dark pod and reads weakly: one for the polish round.
 
 ## dev245: ability upgrades, the Core Pulse, turret code out of the fight (three updates since dev242)
 

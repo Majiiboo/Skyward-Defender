@@ -460,7 +460,7 @@ static func draw_force_field(c: CanvasItem, centre: Vector2, rx: float, ry: floa
 const POD_OFFS := [Vector2(-175, -30), Vector2(-95, -66), Vector2(95, -66), Vector2(175, -30)]
 const POD_R := 23.0
 const CORE_R := 60.0
-const CORE_EYE := Vector2(0, -16)   # the core's light, from the same centre point
+const CORE_EYE := Vector2(0, -10)   # the core s light, from the same centre point (Luna s dome then sits on the bottom edge)
 const BASE_NAVY := Color(0.055, 0.09, 0.157)
 const BASE_EDGE := Color(0.165, 0.24, 0.39)
 
@@ -474,6 +474,9 @@ static func core_eye(width: float, base_y: float) -> Vector2:
 # "flash": 0..1}; an entry without "tex" is an empty slot. power = the shield's share (0 = the
 # shield is down: the core turns amber and the pulses along the arms stop).
 static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y: float, t: float, pods: Array, power: float, links: Array = []) -> void:
+	if has_base_art():   # Luna s pieces are in: draw those (the shapes below stay as the fallback)
+		_draw_core_art(c, width, base_y, t, pods, power, links)
+		return
 	var k := width / 480.0
 	var eye := core_eye(width, base_y)
 	var live := power > 0.0
@@ -549,3 +552,92 @@ static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y:
 # a dark wash under the force field so the core and pods read against a busy planet surface
 static func draw_base_shade(c: CanvasItem, centre: Vector2, rx: float, ry: float) -> void:
 	c.draw_colored_polygon(_ell_pts(centre, rx, ry, PI, TAU), Color(0.02, 0.04, 0.09, 0.5))
+
+# ---- THE CORE BASE in Luna's art (2026-11-10; tools/cut_base2.gd -> base/core, core_light,
+# pod_1..3, arm, bld_<id>). The numbers come from the cutter's print-out: the light's middle sits
+# at CORE_EYE_IN of the core picture, a plain pod fills POD_FILL of the shared pod picture.
+const CORE_W := 156.0                        # the core picture's width on a 480 screen
+const CORE_ASPECT := 0.6583                  # its height / width
+const CORE_EYE_IN := Vector2(0.5001, 0.7578)
+const POD_FILL := 0.8889
+const POD_D := 68.0                          # a plain pod's diameter on a 480 screen
+static var _base_tex := {}
+
+static func base_art(name: String) -> Texture2D:
+	if not _base_tex.has(name):
+		var p := "res://base/%s.png" % name
+		_base_tex[name] = load(p) if ResourceLoader.exists(p) else null
+	return _base_tex[name]
+
+static func has_base_art() -> bool:
+	return base_art("core") != null and base_art("core_light") != null and base_art("pod_1") != null and base_art("arm") != null
+
+static func _draw_core_art(c: CanvasItem, width: float, base_y: float, t: float, pods: Array, power: float, links: Array) -> void:
+	var k := width / 480.0
+	var eye := core_eye(width, base_y)
+	var live := power > 0.0
+	var beat := 0.5 + 0.5 * sin(t * 2.4)
+	# arms: Luna's strut stretched from the core to each pod, its light line in the building's colour
+	var arm := base_art("arm")
+	for i in mini(pods.size(), POD_OFFS.size()):
+		var pd: Dictionary = pods[i]
+		var p := pod_pos(i, width, base_y)
+		var on: bool = bool(pd.get("open", false)) and pd.get("tex") != null
+		var len := eye.distance_to(p)
+		var th := 9.0 * k
+		c.draw_set_transform(eye, (p - eye).angle(), Vector2.ONE)
+		var tint := Color(0.55, 0.6, 0.7, 0.85)
+		if on:
+			tint = Color(pd.col).lerp(Color.WHITE, 0.45)
+		elif not bool(pd.get("open", false)):
+			tint = Color(0.35, 0.4, 0.5, 0.55)
+		c.draw_texture_rect(arm, Rect2(0, -th * 0.5, len, th), false, tint)
+		c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if on and live:
+			var u := fposmod(t * 0.55 + i * 0.27, 1.0)
+			c.draw_circle(eye.lerp(p, u), 2.4 * k, Color(Color(pd.col).lerp(Color.WHITE, 0.4), 0.95 * sin(u * PI)))
+	# links between pods (Base.LINKS): a gold line bowed away from the core
+	for lk in links:
+		if int(lk[0]) < 0 or int(lk[1]) < 0:
+			continue
+		var pa := pod_pos(int(lk[0]), width, base_y)
+		var pb := pod_pos(int(lk[1]), width, base_y)
+		var mid := (pa + pb) * 0.5
+		var ctrl := mid + (mid - eye).normalized() * 26.0 * k
+		var curve := PackedVector2Array()
+		for s in 17:
+			var u2 := s / 16.0
+			curve.append(pa.lerp(ctrl, u2).lerp(ctrl.lerp(pb, u2), u2))
+		c.draw_polyline(curve, Color(1.0, 0.78, 0.27, 0.7 + 0.25 * sin(t * 3.0)), 2.2, true)
+	# the core: body, then its light breathing over it (amber once the shield is gone)
+	var cw := CORE_W * k
+	var ch := cw * CORE_ASPECT
+	var cr := Rect2(eye - Vector2(cw * CORE_EYE_IN.x, ch * CORE_EYE_IN.y), Vector2(cw, ch))
+	c.draw_texture_rect(base_art("core"), cr, false)
+	var lcol := Color(1, 1, 1, 0.7 + 0.3 * beat) if live else Color(2.2, 0.75, 0.35, 0.75 + 0.25 * beat)
+	c.draw_texture_rect(base_art("core_light"), cr, false, lcol)
+	# the pods
+	for i in mini(pods.size(), POD_OFFS.size()):
+		var pd: Dictionary = pods[i]
+		var p := pod_pos(i, width, base_y)
+		var d := POD_D * k / POD_FILL
+		var rect := Rect2(p - Vector2(d, d) * 0.5, Vector2(d, d))
+		if not bool(pd.get("open", false)):   # a slot not opened yet: a dark, faded pod
+			c.draw_texture_rect(base_art("pod_1"), rect, false, Color(0.32, 0.36, 0.45, 0.6))
+			continue
+		if pd.get("tex") == null:   # open, nothing built: a plain pod and a plus
+			c.draw_texture_rect(base_art("pod_1"), rect, false, Color(0.7, 0.75, 0.85))
+			c.draw_line(p - Vector2(6 * k, 0), p + Vector2(6 * k, 0), Color(0.6, 0.68, 0.82), 2.0, true)
+			c.draw_line(p - Vector2(0, 6 * k), p + Vector2(0, 6 * k), Color(0.6, 0.68, 0.82), 2.0, true)
+			continue
+		var col: Color = pd.col
+		var fl: float = clampf(float(pd.get("flash", 0.0)), 0.0, 1.0)
+		var lv: int = int(pd.get("level", 1))
+		var look := "pod_3" if lv >= 10 else ("pod_2" if lv >= 5 else "pod_1")
+		var ptex := base_art(look) if base_art(look) != null else base_art("pod_1")
+		c.draw_texture_rect(ptex, rect, false, col.lerp(Color.WHITE, 0.4 + 0.6 * fl))
+		var half := POD_D * k * 0.31 * (1.0 + 0.12 * fl)
+		var tx: Texture2D = pd.tex
+		c.draw_texture_rect(tx, Rect2(p - Vector2(half, half), Vector2(half, half) * 2.0), false)
+		if fl > 0.0:
+			c.draw_arc(p, POD_D * k * 0.5 + (4.0 + 14.0 * (1.0 - fl)) * k, 0.0, TAU, 40, Color(col, 0.7 * fl), 1.5, true)

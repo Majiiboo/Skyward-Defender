@@ -58,7 +58,7 @@ static func entries(save: Dictionary, cat: String) -> Array:
 			# the buildings of the base since 2026-11-10 (the turrets are gone; the key keeps its old name for saves)
 			var bb := Base.read(save)
 			for id in Base.ORDER:
-				out.append({"id": id, "name": String(Base.BUILDINGS[id].name), "tex": UIKit.ic(String(Base.BUILDINGS[id].icon)), "have": Base.owned(bb, String(id))})
+				out.append({"id": id, "name": String(Base.BUILDINGS[id].name), "tex": Base.pic(String(id)), "have": Base.owned(bb, String(id))})
 		"cards":
 			var seen: Array = save.get("cards_seen", [])
 			for id in Cards.CARDS:

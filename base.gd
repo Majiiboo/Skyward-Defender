@@ -233,3 +233,11 @@ static func links_of(id: String) -> Array:
 		if String(d.a) == id or String(d.b) == id:
 			out.append({"id": l, "with": String(d.b) if String(d.a) == id else String(d.a), "name": String(d.name), "text": String(d.text)})
 	return out
+
+# a building's picture: Luna's render (base/bld_<id>.png, tools/cut_base2.gd), else its icon
+static var _pics := {}
+static func pic(id: String) -> Texture2D:
+	if not _pics.has(id):
+		var p := "res://base/bld_%s.png" % id
+		_pics[id] = load(p) if ResourceLoader.exists(p) else UIKit.ic(String(BUILDINGS[id].icon))
+	return _pics[id]
