@@ -8,7 +8,9 @@ extends SceneTree
 #
 # Settings (environment variables):
 #   SIM_STAGES  "1-10" or "1,2,5"        SIM_RUNS  runs per stage (3)
-#   SIM_PILOT   "afk"   = finger never down: auto-aim only, never moves
+#   SIM_PILOT   "afk"   = finger never down, MANUAL: he stands still and fires straight up
+#               "auto"  = finger never down, AUTO on: the in-game autopilot plays
+#               "human" = a player in MANUAL: flies under bugs, dodges, 0.25 s reactions (the others are older bots)
 #               "dodge" = a player who mostly lets auto-aim work, drags (firing
 #                         straight up) out of the way of shots and divers, and drags
 #                         over to gems that are close when it is safe
@@ -42,6 +44,7 @@ var results := {}              # stage -> Array of run dicts
 var steps := 0
 var r := {}
 var human_move := 0.0
+var human_x := -1.0
 
 func _initialize() -> void:
 	if not OS.get_user_data_dir().to_lower().contains("sim"):
@@ -194,6 +197,7 @@ func _next() -> void:
 		quit(1)
 		return
 	root.add_child(b)
+	b.auto_on = pilot == "auto"   # AUTO only for the "auto" pilot; every other bot plays in MANUAL
 	b.set_process(false)
 	b.set_process_input(false)
 	steps = 0
@@ -226,21 +230,13 @@ func _step() -> bool:
 	if pilot == "dodge" or pilot == "skilled":
 		_dodge()
 	elif pilot == "human":
-		# like "skilled", but decides only every 0.25 s (reaction time) and misses about
-		# one dodge in three; between decisions the finger keeps doing what it was doing
-		if steps % 8 == 0:
-			human_move = 0.0
-			var before: Vector2 = b.soldier_pos
-			if randf() > 0.3:
-				_dodge()
-			else:
-				b.dragging = false
-			human_move = b.soldier_pos.x - before.x
-		elif human_move != 0.0:
-			b.dragging = true
-			b._drag_by(Vector2(human_move, 0))
-		else:
-			b.dragging = false
+		# a player in MANUAL (2026-11-10): finger down, he flies under the bug he wants and fires straight
+		# up, and slides away from shots; decides every 0.25 s and misses about one decision in three
+		if steps % 8 == 0 and randf() > 0.3:
+			_manual_decide()
+		b.dragging = true
+		if human_x >= 0.0:
+			b._drag_by(Vector2(clampf(human_x - b.soldier_pos.x, -SPEED * DT, SPEED * DT), 0))
 	b._process(DT)
 	if b.pilot_hp < hp_before:
 		r.hearts_lost += hp_before - b.pilot_hp   # HP lost (the column keeps its name)
@@ -325,6 +321,32 @@ func _dodge() -> void:
 		b._drag_by((best - p).limit_length(360.0 * DT))
 	else:
 		b.dragging = false
+
+func _manual_decide() -> void:
+	var p: Vector2 = b.soldier_pos
+	var here := _threat_dist(p, p.x)
+	human_x = -1.0
+	if here < 24.0:
+		var best_d := here
+		for i in range(-10, 11):
+			var tx := clampf(p.x + i * 18.0, 30.0, b.FIELD_W - 30.0)
+			var d := _threat_dist(p, tx) - absf(tx - p.x) * 0.02 - absf(tx - b.FIELD_W * 0.5) * 0.01
+			if d > best_d:
+				best_d = d
+				human_x = tx
+		return
+	# the bug to line up on: the lowest one, the near ones first
+	var best_s := -1e9
+	var speed: float = float(b.WEAPONS[b.weapon_id].speed)
+	for e in b.enemies:
+		if e.pos.y < 100.0 or e.pos.y > p.y - 20.0:
+			continue
+		var s: float = e.pos.y - absf(e.pos.x - p.x) * 0.6
+		if s > best_s:
+			var tx: float = clampf(e.pos.x + e.vel.x * ((p.y - e.pos.y) / speed), 30.0, b.FIELD_W - 30.0)
+			if _threat_dist(p, tx) >= 24.0:
+				best_s = s
+				human_x = tx
 
 func _finish() -> void:
 	r.won = b.stage_cleared

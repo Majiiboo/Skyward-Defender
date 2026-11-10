@@ -286,6 +286,9 @@ var gun_sway := 0.0
 var gun_recoil := 0.0
 var gun_raise := 0.0
 var idle_aiming := false
+var auto_on := false               # AUTO: the autopilot flies and aims while no finger is down (save "auto_play")
+var _firing_up := false            # manual: firing straight up this frame (finger down or not)
+var _auto_btn: Button
 var idle_aim_ang := -PI / 2.0
 var aim_goal := -PI / 2.0
 var aim_target_id := -2
@@ -608,6 +611,7 @@ func _start_stage() -> void:
 	weapon_id = gs.weapon
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
+	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
 	if not _speeds().has(game_speed):
 		game_speed = 1.0
 	# a mount opened since the last run: its hatch opens before the turret drops in
@@ -875,6 +879,8 @@ func _process(delta: float) -> void:
 	if _outro_t >= 0.0:
 		_update_outro(delta)
 	else:
+		if auto_on and not dragging:
+			_auto_pilot(delta)
 		_aim_and_fire(delta)
 	_update_drone(delta)
 	_update_range_ring(delta)
@@ -923,7 +929,7 @@ func _spawn_step(delta: float) -> void:
 				break
 
 func _pilot_motion(delta: float) -> void:
-	if dragging or idle_aiming:
+	if dragging or idle_aiming or _firing_up:
 		gun_raise = minf(1.0, gun_raise + delta * 6.0)
 	else:
 		gun_raise = maxf(0.0, gun_raise - delta * 6.0)
@@ -942,7 +948,7 @@ func _pilot_motion(delta: float) -> void:
 	gun_recoil = gun_recoil * exp(-delta * 12.0)
 	if _rig_view:
 		var rig_aim: float = -PI / 2.0 - 0.3          # no target: rifle held up, like Luna's reference
-		if dragging:
+		if dragging or _firing_up:
 			rig_aim = -PI / 2.0 + gun_sway - draw_bank
 		elif idle_aiming:
 			rig_aim = idle_aim_ang
@@ -959,7 +965,7 @@ func _pilot_motion(delta: float) -> void:
 # ------------------------------------------------------------------ aiming and shooting
 
 func _wanted_pose() -> String:
-	return PilotSprite.pose_for(dragging, draw_bank, Vector2(cos(idle_aim_ang), sin(idle_aim_ang)), idle_aiming)
+	return PilotSprite.pose_for(dragging or _firing_up, draw_bank, Vector2(cos(idle_aim_ang), sin(idle_aim_ang)), idle_aiming)
 
 func _current_pose() -> String:
 	return anim.pose()
@@ -1013,16 +1019,48 @@ func _update_outro(delta: float) -> void:
 		_outro_lift = -1.0
 		_end_run(true)
 
+# MANUAL and AUTO (Rudy's queue 32, built 2026-11-10 after the sweep in REVIEW-2026-11-10.md: with
+# the old rule, lifted finger = full auto-aim, a phone lying on the table won stages 1-30).
+#   MANUAL (AUTO off): he fires straight up at full rate, finger down or not. A bolt bends to a bug
+#     that is nearly above him (ASSIST), so lining up feels good on a thumb. Standing still no
+#     longer aims for you: you fly under what you want dead.
+#   AUTO on, finger up: the autopilot aims for him at AUTO_FIRE of the rate and dodges like a
+#     person (_auto_pilot: a quarter second to react, about one dodge in three missed), so a hand on
+#     the screen beats it. A finger down takes over at once; lifting it hands back.
+const AUTO_FROM := 3      # AUTO unlocks once this stage is cleared (the first stages teach flying)
+const AUTO_FIRE := 0.75
+const ASSIST := 0.16      # radians either side of straight up
+
+func _auto_open() -> bool:
+	return stage_unlocked > AUTO_FROM or DevTools.on
+
+# the bug a straight-up bolt should bend to: the one closest to his line of fire, inside ASSIST
+func _assist_target(from: Vector2, up_ang: float, speed: float) -> Dictionary:
+	var best := {}
+	var best_off := ASSIST
+	for e in enemies:
+		if e.pos.y < 100.0 or e.pos.y > from.y - 20.0:
+			continue
+		var lead: Vector2 = e.pos + e.vel * (from.distance_to(e.pos) / speed) * aim_lead_accuracy
+		var a: float = (lead - from).angle()
+		var off: float = absf(angle_difference(up_ang, a))
+		if off < best_off:
+			best_off = off
+			best = {"ang": a, "id": e.id}
+	return best
+
 func _aim_and_fire(delta: float) -> void:
 	idle_aiming = false
+	_firing_up = false
 	var weapon: Dictionary = WEAPONS[weapon_id]
 	var muzzle_base := _muzzle_world()
-	var target := _pick_aim_target(muzzle_base)
+	var auto: bool = auto_on and not dragging
+	var target := _pick_aim_target(muzzle_base) if auto else {}
 	if not target.is_empty():
 		var flight_t: float = muzzle_base.distance_to(target.pos) / float(weapon.speed)
 		var lead_pos: Vector2 = target.pos + target.vel * flight_t * aim_lead_accuracy
 		aim_goal = clampf((lead_pos - muzzle_base).angle(), -PI / 2.0 - 1.2, -PI / 2.0 + 1.2)
-	if not dragging and not target.is_empty():
+	if auto and not target.is_empty():
 		idle_aiming = true
 		idle_aim_ang = _turn_toward(idle_aim_ang, aim_goal, aim_turn_speed * delta)
 	else:
@@ -1041,26 +1079,119 @@ func _aim_and_fire(delta: float) -> void:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
 	if _overdrive and fmod(time_alive, 8.0) < 3.0:
 		interval *= 0.5   # Rapid Pulse overcharged: overdrive window
-	if dragging and fire_timer <= 0.0:
+	if auto:
+		if idle_aiming and fire_timer <= 0.0 and not target.get("doomed", false) and absf(angle_difference(idle_aim_ang, aim_goal)) <= aim_ready_angle:
+			fire_timer = interval * idle_fire_ratio / (idle_power * AUTO_FIRE)
+			_kick(1.0)
+			var shot_ang := idle_aim_ang + rng.randf_range(-aim_error, aim_error)
+			var d2 := Vector2(cos(shot_ang), sin(shot_ang))
+			_fire(muzzle_base + d2 * 4.0, d2, int(target.get("id", -2)))
+			burst_left = burst_count - 1
+			burst_timer = 0.07
+			burst_dir = d2
+			burst_tid = int(target.get("id", -2))
+		return
+	# manual: straight up, finger down or not (a lifted finger only fires while there is something to shoot)
+	_firing_up = dragging or not enemies.is_empty()
+	if _firing_up and fire_timer <= 0.0:
 		fire_timer = interval
 		_kick(1.0)
 		var ang: float = -PI / 2.0 + gun_sway - draw_bank
+		var tid := -2
+		var help := _assist_target(muzzle_base, ang, float(weapon.speed))
+		if not help.is_empty():
+			ang = float(help.ang)
+			tid = int(help.id)
 		var dir := Vector2(cos(ang), sin(ang))
-		_fire(muzzle_base + dir * 4.0, dir)
+		_fire(muzzle_base + dir * 4.0, dir, tid)
 		burst_left = burst_count - 1
 		burst_timer = 0.07
 		burst_dir = dir
-		burst_tid = -2
-	elif idle_aiming and fire_timer <= 0.0 and not target.get("doomed", false) and absf(angle_difference(idle_aim_ang, aim_goal)) <= aim_ready_angle:
-		fire_timer = interval * idle_fire_ratio / idle_power
-		_kick(1.0)
-		var shot_ang := idle_aim_ang + rng.randf_range(-aim_error, aim_error)
-		var d2 := Vector2(cos(shot_ang), sin(shot_ang))
-		_fire(muzzle_base + d2 * 4.0, d2, int(target.get("id", -2)))
-		burst_left = burst_count - 1
-		burst_timer = 0.07
-		burst_dir = d2
-		burst_tid = int(target.get("id", -2))
+		burst_tid = tid
+
+# The autopilot's hands (AUTO on, no finger down). It decides four times a second, misses about one
+# decision in three, slides out of the way of shots and diving bugs, and when nothing is near it
+# drifts to pickups. Never as sharp as a player: that is the point.
+const AI_SPEED := 420.0
+var _ai_t := 0.0
+var _ai_x := -1.0          # where it is sliding to (-1 = staying put)
+var _ai_gem := false
+
+func _ai_threat(p0: Vector2, target_x: float) -> float:
+	var worst := 9999.0
+	for k in 15:
+		var t := 0.05 * k
+		var p := Vector2(move_toward(p0.x, target_x, AI_SPEED * t), p0.y)
+		for eb in enemy_bullets:
+			worst = minf(worst, (eb.pos + eb.vel * t).distance_to(p))
+		for e in enemies:
+			if e.type == "diver" and e.state != "fly":
+				worst = minf(worst, (e.pos + e.vel * t).distance_to(p) - 8.0)
+			elif not _is_boss(e):
+				worst = minf(worst, (e.pos + e.vel * t).distance_to(p) - 6.0)
+	return worst
+
+func _auto_pilot(delta: float) -> void:
+	_ai_t -= delta
+	if _ai_t <= 0.0:
+		_ai_t = 0.25
+		if rng.randf() > 0.3:   # (a missed beat keeps doing what it was doing)
+			var p := soldier_pos
+			var here := _ai_threat(p, p.x)
+			_ai_x = -1.0
+			_ai_gem = false
+			if here < 24.0:
+				var best_d := here
+				for i in range(-10, 11):
+					var tx := clampf(p.x + i * 18.0, 30.0, FIELD_W - 30.0)
+					var d := _ai_threat(p, tx) - absf(tx - p.x) * 0.02 - absf(tx - FIELD_W * 0.5) * 0.01
+					if d > best_d:
+						best_d = d
+						_ai_x = tx
+			elif here > 90.0:
+				var bd := 170.0
+				for g in gems:
+					var dg: float = g.pos.distance_to(p)
+					if dg < bd and g.pos.y < BASE_Y - 90.0:
+						bd = dg
+						_ai_x = g.pos.x
+						_ai_gem = true
+	if _ai_x >= 0.0:
+		var step := (AI_SPEED if not _ai_gem else 220.0) * delta
+		_drag_by(Vector2(clampf(_ai_x - soldier_pos.x, -step, step), 0.0))
+		if absf(_ai_x - soldier_pos.x) < 2.0:
+			_ai_x = -1.0
+
+func _toggle_auto() -> void:
+	if not _auto_open():
+		_float_text(Vector2(FIELD_W - 130, _auto_rect().position.y - 14.0), "AUTO unlocks after stage %d" % AUTO_FROM, Color(0.75, 0.82, 0.92))
+		return
+	auto_on = not auto_on
+	_ai_x = -1.0
+	Sfx.play("tap")
+	_write_save({"auto_play": auto_on})
+	_float_text(Vector2(FIELD_W - 90, _auto_rect().position.y - 14.0), "AUTO ON" if auto_on else "MANUAL", Color(0.31, 0.88, 1.0) if auto_on else Color(1.0, 0.85, 0.4))
+	queue_redraw()
+
+# bottom right, above the base (Rudy): a thumb reaches it without covering the fight
+func _auto_rect() -> Rect2:
+	return Rect2(FIELD_W - 62.0, BASE_Y - 196.0, 50.0, 50.0)
+
+func _draw_auto_btn() -> void:
+	var r := _auto_rect()
+	if _auto_btn:
+		_auto_btn.position = r.position - Vector2(4, 4)
+	var open := _auto_open()
+	var cy := Color(0.31, 0.88, 1.0)
+	_hc.draw_style_box(UIKit.pill(Color(0.055, 0.09, 0.157, 0.86) if not auto_on else Color(0.07, 0.2, 0.3, 0.92), 16, Vector2.ZERO), r)
+	var c := r.get_center()
+	if auto_on:
+		# a ring that turns while the autopilot has him
+		var a0 := time_alive * 2.2
+		_hc.draw_arc(c, 21.0, a0, a0 + PI * 1.3, 24, Color(cy, 0.9 if not dragging else 0.3), 2.0, true)
+	else:
+		_hc.draw_arc(c, 21.0, 0.0, TAU, 32, Color(1, 1, 1, 0.14 if open else 0.07), 1.5, true)
+	_hc.draw_string(title_font, Vector2(r.position.x, c.y + 4.5), "AUTO", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 11, cy if auto_on else Color(1, 1, 1, 0.75 if open else 0.3))
 
 func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = false) -> void:
 	var w: Dictionary = WEAPONS[weapon_id]
@@ -2677,6 +2808,14 @@ func _build_ui() -> void:
 			hb.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 		hb.pressed.connect(spec[1])
 		add_child(hb)
+	_auto_btn = Button.new()   # AUTO / MANUAL (drawn in _draw_auto_btn, which also keeps it in place)
+	_auto_btn.flat = true
+	_auto_btn.focus_mode = Control.FOCUS_NONE
+	_auto_btn.size = Vector2(58, 58)
+	for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+		_auto_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_auto_btn.pressed.connect(_toggle_auto)
+	add_child(_auto_btn)
 	_cards_view = Control.new()
 	_cards_view.visible = false
 	add_child(_cards_view)
@@ -4687,6 +4826,7 @@ func _draw_hud() -> void:
 	Glass.panel(_hc, Glass.box(chip, 8.0), 1.0, Color(Glass.PURPLE, 0.8), Color(0.08, 0.05, 0.16, 0.9))
 	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
 	_draw_card_row(Vector2(chip.end.x + 8.0, chip.position.y))
+	_draw_auto_btn()
 	for e in enemies:
 		if _is_boss(e):
 			_draw_boss_bar(e)

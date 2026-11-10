@@ -176,7 +176,7 @@ static func hp_mult(stage: int, elite: bool) -> float:
 
 # the long-game knobs (16 g): bug health per stage 11-30, per stage after 30, and the Elite
 # factor; the balance simulator can override them (SIM_HP_A, SIM_HP_B, SIM_ELITE)
-static var HP_A: float = _knob("SIM_HP_A", 1.05)
+static var HP_A: float = _knob("SIM_HP_A", 1.06)   # 2026-11-10 (MANUAL / AUTO sweep): 1.05 left even the autopilot untouched; 1.06 scratches AUTO, a manual player stays clean; 1.06 + HP_B 1.04 is a wall at 60
 static var HP_B: float = _knob("SIM_HP_B", 1.035)   # dev198 sweep (stars + talents + turrets 2): 1-60 never threatened at 1.02
 static var ELITE_HP: float = _knob("SIM_ELITE", 1.85)
 
