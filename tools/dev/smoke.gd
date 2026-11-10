@@ -45,6 +45,7 @@ func _initialize() -> void:
 	_check_bossrush()
 	_check_spin()
 	_check_contracts()
+	_check_base_cards()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -223,10 +224,10 @@ func _check_repeat() -> void:
 
 func _check_cards() -> void:
 	for id in Cards.CARDS:
-		if Cards.CARDS[id].has("turret"):
-			_expect(ResourceLoader.exists("res://cards/pic_%s.png" % id) or ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "turret card picture missing: " + id)
-			_expect(Cards.OVERCHARGE.has(id), "turret card overcharge text: " + id)
-			_expect(Turrets.TURRETS.has(String(Cards.CARDS[id].turret)), "turret card for a real turret: " + id)
+		if Cards.CARDS[id].has("building"):   # base cards: a real building, a picture, an overcharge and a step text
+			_expect(ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "base card picture missing: " + id)
+			_expect(Cards.OVERCHARGE.has(id) and Cards.STEPS.has(id), "base card overcharge and step text: " + id)
+			_expect(Base.BUILDINGS.has(String(Cards.CARDS[id].building)) or String(Cards.CARDS[id].building) == "*pulse", "base card for a real building: " + id)
 	# hero cards (dev172): one per hero, only offered while he is on duty, three picks each
 	for id in Heroes.ORDER:
 		var found := ""
@@ -953,3 +954,20 @@ func _check_contracts() -> void:
 	_expect(Contracts.claim(s, "rook", "wins").is_empty(), "not twice: the next mark is 10 wins")
 	_expect(int(Contracts.list(s, "rook")[0].goal) == 10, "the next mark shows")
 	_expect(Contracts.list(s, "frost")[0].progress == 0, "every hero has his own tally")
+
+func _check_base_cards() -> void:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 3
+	var seen := {}
+	for i in 200:
+		for id in Cards.draw({}, 3, rng, 99, false, [], "rook", 0):
+			seen[id] = true
+	for id in seen:
+		_expect(not Cards.CARDS[id].has("building"), "no base card without its building (%s)" % id)
+	seen = {}
+	for i in 300:
+		for id in Cards.draw({}, 3, rng, 99, false, ["armory", "*pulse"], "rook", 0):
+			seen[id] = true
+	_expect(seen.has("hot_rounds") and seen.has("core_overload") and not seen.has("shield_surge"), "with the Armory and the Core Pulse: their cards, not the Shield Generator's")
+	for dead in ["turret_overclock", "sentry_ricochet", "flak_shrapnel"]:
+		_expect(not Cards.CARDS.has(dead), "the turret card %s is gone" % dead)

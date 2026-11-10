@@ -213,6 +213,10 @@ var _base_dr := 0.0               # the base takes this much less damage
 var _burst_pierce := false
 var _gem_shield := false
 var _shield_rate := 0.0            # Shield Recharge card: share of the max shield restored per second
+var _shield_dr := 0.0              # Shield Surge overcharged: hits on the shield this much weaker
+var _radar_heal := false           # Radar Sweep overcharged: a caught runner mends the shield
+var _wave_coins := false           # Rich Seam overcharged: a pile of coins after every wave
+var _pulse_bonus := 0.0            # Core Overload overcharged: the Core Pulse stands this much longer
 var _hull_rate := 0.0              # its overcharge: share of the max hull per second
 # new cards and fusions
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
@@ -454,6 +458,10 @@ func _start_stage() -> void:
 	_dmg_acc = {}
 	_variants_seen = {}
 	_shield_rate = 0.0
+	_shield_dr = 0.0
+	_radar_heal = false
+	_wave_coins = false
+	_pulse_bonus = 0.0
 	_hull_rate = 0.0
 	_chain_mult = 1.0
 	_xp_cut = 1.0
@@ -1857,6 +1865,8 @@ func _hurt_base(amount: float) -> void:
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
 	_buzz(25)
+	if shield > 0.0 and _shield_dr > 0.0:
+		amount *= 1.0 - _shield_dr
 	if shield > 0.0:
 		Sfx.play("shield")
 		shield = maxf(shield - amount, 0.0)
@@ -2657,6 +2667,28 @@ func _pick_card(id: String) -> void:
 		"second_wind": _second_wind = int(card_levels[id])
 		"mirror_shell": _mirror = int(card_levels[id])
 		"shield_recharge": _shield_rate += 0.01
+		# base cards (Cards "building"): more of what the building does
+		"shield_surge":
+			shield_max += 25.0
+			shield = minf(shield + 25.0, shield_max)
+		"nanobots": _hull_rate += 0.004
+		"hot_rounds": damage_mult *= 1.08
+		"stim_pack":
+			pilot_hp_max += 15.0
+			pilot_hp = minf(pilot_hp + 25.0, pilot_hp_max)
+		"plate_up":
+			hull_max += 25.0
+			hull = minf(hull + 25.0, hull_max)
+			_base_dr = clampf(_base_dr + 0.04, 0.0, 0.6)
+		"drone_uplink": _drone_mult *= 1.2
+		"reactor_surge":
+			_ult_cd *= 0.9
+			_ult_t *= 0.9
+		"radar_sweep": _crit_rate += 0.05
+		"rich_seam": _coin_mult += 0.15
+		"core_overload":
+			_pulse_cd_mult *= 0.8
+			_pulse_t *= 0.8
 		# hero cards (Cards "hero"): the build-up over the three picks
 		"rook_twin": _twin_every = [4, 3, 2][clampi(int(card_levels[id]) - 1, 0, 2)]
 		"sparks_weld": _weld_count += 1
@@ -2695,6 +2727,19 @@ func _overcharge(id: String) -> void:
 		"aegis": _aegis_heal = true
 		"chain_spark": _chain_mult = 2.0
 		"shield_recharge": _hull_rate = 0.004
+		# base cards: the third pick adds something new
+		"shield_surge": _shield_dr = 0.15
+		"nanobots": _base_repair = maxf(_base_repair * 2.0, 0.03)
+		"hot_rounds": _crit_dmg += 0.3
+		"stim_pack": _second_wind = maxi(_second_wind, 1)
+		"plate_up":
+			if not _base_perks.has("plating"):
+				_base_perks.append("plating")
+		"drone_uplink": _drone_mult *= 1.4
+		"reactor_surge": _ult_t = 0.0
+		"radar_sweep": _radar_heal = true
+		"rich_seam": _wave_coins = true
+		"core_overload": _pulse_bonus = 2.0
 		"rook_twin": _twin_bonus = true
 		"sparks_weld": _weld_every = 1
 		"frost_freeze": _shatter = true
@@ -2731,7 +2776,10 @@ func _offer() -> Array:
 		var forced := _dbg_offer
 		_dbg_offer = []
 		return forced
-	var picks := Cards.draw(card_levels, 3, rng, run_level, false, [], _hero_id, _talents)
+	var fielded: Array = _base_slots.filter(func(sid): return String(sid) != "")   # base cards need their building (Cards "building")
+	if _pulse_open():
+		fielded.append("*pulse")
+	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents)
 	var ready := Cards.fusions_ready(card_levels)
 	if not ready.is_empty():
 		var f: String = ready[rng.randi() % ready.size()]
@@ -4422,6 +4470,8 @@ func _draw_runner(e: Dictionary, size: float) -> void:
 func _runner_caught(e: Dictionary) -> void:
 	_runners_caught += 1
 	_pod_ping("radar")
+	if _radar_heal and shield < shield_max:
+		shield = minf(shield + shield_max * 0.03, shield_max)
 	_float_text(e.pos + Vector2(0, -22), "CAUGHT!", Color(1.0, 0.85, 0.4), true)
 	var worth: float = (4.0 + 0.4 * stage) * (2.0 if _base_perks.has("radar") else 1.0)   # Radar Lv.5: a caught runner pays double
 	for i in 4:
@@ -4433,6 +4483,11 @@ func _runner_caught(e: Dictionary) -> void:
 func _wave_patch() -> void:
 	_pod_ping("repair_bay")
 	_pod_ping("medbay")
+	if _wave_coins:   # Rich Seam overcharged: the Refinery throws up a pile of coins
+		var from := Backdrop.core_eye(FIELD_W, BASE_Y) + Vector2(0, -DOME_RY)
+		for i in 5:
+			gems.append({"pos": from + Vector2(rng.randf_range(-40, 40), rng.randf_range(-10, 10)), "tier": 0, "coin": true, "life": 16.0,
+				"value": (6.0 + 0.5 * stage) / 5.0, "vel": Vector2(rng.randf_range(-90, 90), rng.randf_range(-160, -70))})
 	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
 	if _base_repair > 0.0 and hull < hull_max:
 		hull = minf(hull + hull_max * _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0), hull_max)
@@ -5282,7 +5337,7 @@ func _use_pulse() -> void:
 	if _pulse_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
 	_pulse_t = PULSE_CD * _pulse_cd_mult
-	_pulse_live = PULSE_T
+	_pulse_live = PULSE_T + _pulse_bonus
 	_pulse_flash = 1.0
 	_buzz(55)
 	_ai_pulse = 1.0
