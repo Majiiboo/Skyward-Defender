@@ -19,7 +19,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   inpainted holes (scratchpad navcmp/parts2.gd: store lid + body + latch, heroes visor mask, battle ticks +
   rings, modes ring mask + an orbiting moon on the ellipse c 0.497 a 0.485 b 0.125 at -21.6 deg, quests clip +
   two ticks), tap move + idle move every 3-5 s; bar styles FROSTED (blur 14 + navy 52% + 1 px top line; my
-  pick, frost.gdshader already does the blur) / GLASS PILL / CLEAR / SOLID. Waiting on his bar pick.
+  pick, frost.gdshader already does the blur) / GLASS PILL / CLEAR / SOLID. RUDY PICKED THE GLASS PILL
+  (floating capsule, 12 px in from the sides and bottom, blur + navy 50%, 1 px light rim). Then he chose
+  to have LUNA redo the icons (he has worked with her longer): LUNA-BRIEF-nav-icons.md REWRITTEN as round 2
+  (nav3_*: 25 files, each icon whole + its moving parts on one 1024 canvas + nav3_store_open + nav3_spark;
+  ref art_src/ref/nav_icons_ref2.png; copied to Desktop/Luna nav icons 2). Gemini's set is the fallback.
+  When nav3 lands: cutter -> icons/nav3/, hub nav on the glass pill with the demo's moves.
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
   (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold

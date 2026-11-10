@@ -1,55 +1,203 @@
-# Luna brief: NAV ICONS (five icons for the bottom bar, a new flat style)
+# Luna brief: NAV ICONS, round 2 (five bottom-bar icons, made to MOVE)
 
 Hi Luna! This brief has everything you need; no earlier brief or message is required.
+Thank you for round 1 (the nav2_* pictures). Rudy wants a second, stronger round. This time
+the icons will be ANIMATED in the game, so besides the finished icons we need the moving pieces
+as separate pictures. Section 6 explains exactly how, step by step.
 
-## What this is for
-The bottom bar of every menu has five tabs: Store, Heroes, Battle, Modes, Quests. The game
-just got a new clean look (flat cards, no gloss), and Rudy feels the current glossy 3D tab
-icons no longer fit it. He picked a NEW STYLE for them: flat, two-tone game icons. You paint
-the final five.
+Reference picture (send with this brief): `art_src/ref/nav_icons_ref2.png`. It has rows A to E;
+this brief points to them. Rudy can also show you a short animated demo of the moves.
 
-Reference picture (a quick code sketch of the idea, NOT the final art; please make yours
-cleaner and nicer): `art_src/ref/nav_icons_ref.png` (Rudy sends it with this brief).
+---
 
-## The style (this is different from your usual 3D renders)
-- FLAT 2D, like a modern mobile game icon. No 3D render, no glossy highlights, no bevels, no
-  shine streaks, no drop shadow, no glow halo around the icon.
-- TWO-TONE: every icon is a dark navy body plus ONE bright accent colour. You may use two
-  shades of the navy (a lighter top part, a darker lower part) to give it shape; that is all
-  the shading it needs.
-  - navy light `#3D5280`, navy dark `#2C3B5E`, navy darkest for small lines `#1A2540`
-  - the accent colours are given per icon below (gold `#FFC845`, cyan `#4FE0FF`, red
-    `#FF5470`, purple `#8B5CF6` with a darker `#6A3FD4`, green `#6FF0B8`).
-- BOLD, SIMPLE SHAPES with rounded corners. The game shows them SMALL (about 36 px tall on
-  a phone), so no thin lines, no tiny details, no text or letters.
-- All five the same size and weight, like one family: each fills about 75% of its square
-  and sits in the centre.
-- Plain pure black background (`#000000`), nothing else in the picture.
+## 1. What the icons are for
+- The bottom bar of every menu has five tabs: **Store, Heroes, Battle, Modes, Quests**.
+- The bar is now a floating **glass pill**: a rounded capsule of see-through dark glass, sitting a
+  little above the bottom of the screen. Behind it you see the game world, blurred: a lava planet,
+  an ice planet, or cards on a menu page. So the icons must read on a dark background AND on a bright,
+  busy one (row A).
+- **Closed tabs:** the game turns the icon into a soft grey shape (no colours, half see-through).
+- **The open tab:** full colour, a little bigger, its name in cyan under it, and it plays its own
+  short move (section 5).
+- **Size on a phone:** about 44 to 52 pixels tall. Tiny! Every shape must be bold.
 
-## The five icons (one picture each, 1024 x 1024, pure black background)
-| File name (exactly) | Tab | What it is | Accent |
-|---|---|---|---|
-| `nav2_store.webp` | Store | a loot chest seen from the front, lid a little lighter than the body, a dark band across the middle | a GOLD latch in the middle of the band |
-| `nav2_heroes.webp` | Heroes | a pilot's helmet, round dome shape, flat bottom (like Rook's helmet seen from the front) | a CYAN visor stripe across the face, a short antenna with a small cyan ball on top |
-| `nav2_battle.webp` | Battle | a target: a round navy disc with a lighter ring inside | a RED inner ring with a red dot in the middle, and four short CYAN tick marks sticking out top, bottom, left and right |
-| `nav2_modes.webp` | Modes | a small planet with a ring around it, tilted | the planet PURPLE (darker purple on its lower part), the ring CYAN |
-| `nav2_quests.webp` | Quests | a clipboard with a list | a GOLD clip on top, two GREEN tick marks with short grey lines beside them |
+## 2. What Rudy liked and what to change
+- Rudy liked a test set he made with another tool (row B). Keep its IDEAS, not its pixels:
+  - chunky, rounded silhouettes;
+  - a chest with a DOMED lid;
+  - a helmet with ONE wide visor stripe;
+  - a target with four bold ticks;
+  - a planet with a bold tilted ring;
+  - a clipboard with a big clip.
+- From your round 1, keep your clean flat colours and your neat edges.
+- Two things to change from round 1:
+  - Your chest read as a briefcase when small: give it a rounded, domed lid.
+  - Your helmet's two eyes made it read as a robot face: give it one visor stripe instead, no face.
+- Goal: **your style, better shapes.** More chunky, more character, still flat.
 
-## What the game does with them
-- Cuts each one out of the black, shrinks it to the bar size.
-- Closed tabs: the code dims them (greyer, half see-through). The open tab: shown in its
-  full colours, a little bigger, with its name in cyan under it. So the colours you paint are
-  the "open" look; you do not need to paint a dim version.
+## 3. The style (all five icons)
+- **Flat 2D game icons.** Solid colour shapes only:
+  - no gradients;
+  - no glossy streaks;
+  - no 3D render look;
+  - no drop shadow;
+  - no glow halo;
+  - no text or letters.
+- **Colours** (row E). Each icon has a navy body in two or three tones plus its bright accent colours:
+  - navy light `#3D5280`, navy mid `#2C3B5E`, navy dark `#1A2540`;
+  - outline `#111830`;
+  - gold `#FFC845`, cyan `#4FE0FF`, red `#FF5470`;
+  - purple `#8B5CF6` with purple dark `#6A3FD4`;
+  - green `#6FF0B8`;
+  - paper `#C9D6EA` (a pale blue-grey, NOT pure white: white was the brightest thing in the bar).
+- **One flat "top light" shape is allowed.** For example, a lighter navy patch on the upper part of
+  a dome. It must be a flat shape with a clean edge, not a soft gradient.
+- **A dark outline round every icon:** `#111830`, about 28 px thick on the 1024 picture, the same
+  on all five. It keeps the icon readable when the glass behind it is bright lava or white ice.
+- **Chunky:**
+  - nothing thinner than about 40 px on the 1024 picture (it shrinks to about 48 px, and thin lines vanish);
+  - big rounded corners;
+  - few details.
+- **One family:** each icon fills about 80% of its square, centred, and all five look equally big and heavy.
+- **The silhouette test (row D):** fill your icon solid grey. Can you still tell at once what it is?
+  If not, change the shape, not the colours.
+- **Background:** plain pure black `#000000`, nothing else in the picture.
 
-## Tips for the image tool (if it helps)
-"flat vector game icon, two-tone, dark navy body with one bright [gold / cyan / red /
-purple / green] accent, bold simple rounded shapes, centred, plain pure black background,
-no text, no gradients, no 3D, no glossy highlights, no shadow"
+## 4. The five icons
+For each icon this lists what it is, the files we need, and the move the game will play. Every file
+is **1024 x 1024**, pure black background, .webp or .png.
 
-## Checklist
-- [ ] Five pictures, 1024 x 1024 each, named exactly `nav2_store`, `nav2_heroes`,
-      `nav2_battle`, `nav2_modes`, `nav2_quests` (.webp or .png).
-- [ ] Flat two-tone: navy body + the one accent colour listed; no gloss, no 3D, no glow.
-- [ ] Bold shapes that still read when tiny; no text.
-- [ ] Centred, about 75% of the square, all five the same size.
-- [ ] Pure black background.
+### STORE: a loot chest
+- **What it is:** front view.
+  - a DOMED lid (a rounded top), lighter navy;
+  - the box under it, darker navy;
+  - a dark strap across the middle where lid and box meet;
+  - ONE gold latch in the middle of the strap. The latch is the only gold.
+- **Files:**
+  | File | What is in it |
+  |---|---|
+  | `nav3_store` | the whole chest, closed |
+  | `nav3_store_body` | only the box (everything below the lid line), with a thin dark gap along its top edge, as if you could see into it |
+  | `nav3_store_lid` | only the domed lid, in its closed position |
+  | `nav3_store_latch` | only the gold latch |
+  | `nav3_store_open` | the whole chest again, OPEN: the lid tipped back so it looks shorter and higher, and flat gold light and two or three coins showing inside. Same chest, same size, same place in the square. Row C has a rough idea |
+- **The move:** the latch flashes, the chest hops, the lid pops open with gold light and sparkles,
+  then it closes with a bounce. Idle: the latch glints now and then.
+
+### HEROES: a pilot's helmet
+- **What it is:** front view, like Rook's helmet made simple.
+  - a rounded dome with a flat bottom;
+  - ONE wide CYAN visor stripe across the face (no eyes, no mouth);
+  - a short antenna on top with a small CYAN ball.
+- **Files:**
+  | File | What is in it |
+  |---|---|
+  | `nav3_heroes` | the whole helmet |
+  | `nav3_heroes_helmet` | the helmet without the visor stripe and without the antenna ball. Where the visor was, paint an empty dark slot (navy dark) |
+  | `nav3_heroes_visor` | only the cyan visor stripe |
+  | `nav3_heroes_ball` | only the antenna ball |
+- **The move:** the helmet drops in and lands with a small squash, a light sweeps across the visor,
+  and the antenna ball blinks. Idle: the visor sweep again.
+
+### BATTLE: a target
+- **What it is:**
+  - a round navy disc with one lighter ring groove;
+  - a RED inner ring with a red dot in the middle;
+  - four short, thick CYAN ticks (top, bottom, left, right) that cross the edge of the disc.
+- **Files:**
+  | File | What is in it |
+  |---|---|
+  | `nav3_battle` | the whole target |
+  | `nav3_battle_disc` | only the navy disc, complete, with nothing red or cyan on it |
+  | `nav3_battle_rings` | only the red ring and the red dot |
+  | `nav3_battle_ticks` | only the four cyan ticks, each in its place |
+- **The move:** the four ticks spin in from outside and lock on, the red rings pulse, and a ring
+  ripples out. Idle: the ticks tighten for a moment.
+
+### MODES: a planet with a ring
+- **What it is:**
+  - a PURPLE planet, with darker purple on its lower part and two or three flat craters or bands;
+  - a bold CYAN ring around it, tilted about 20 degrees (rising to the right).
+  - The top half of the ring goes BEHIND the planet; the bottom half passes IN FRONT of it.
+- **Files:**
+  | File | What is in it |
+  |---|---|
+  | `nav3_modes` | the whole planet with its ring |
+  | `nav3_modes_planet` | only the planet, a complete round ball with no ring on it |
+  | `nav3_modes_ring_back` | only the TOP half of the ring (the part behind the planet), drawn complete, as if the planet were not there |
+  | `nav3_modes_ring_front` | only the BOTTOM half of the ring (the part in front of the planet) |
+  | `nav3_modes_moon` | a small round moon, about one eighth of the planet's width, pale cyan-white, alone in the middle of the picture |
+  | `nav3_modes_surface` (nice to have) | the planet's craters and bands painted as a flat strip, twice as wide as the planet and the same height, whose left and right ends join up seamlessly. The game slides it inside the ball to make the planet turn slowly |
+- **The move:** the planet bobs, a light runs along the ring, and the moon orbits: behind the planet on
+  the top half, in front of it on the bottom half. Idle: the moon keeps orbiting.
+
+### QUESTS: a clipboard
+- **What it is:**
+  - a navy board with pale paper on it (paper `#C9D6EA`, not white);
+  - a big GOLD clip at the top;
+  - three rows, each a small square box with a grey line beside it;
+  - the first two boxes have GREEN ticks, the third box is empty.
+- **Files:**
+  | File | What is in it |
+  |---|---|
+  | `nav3_quests` | the whole clipboard, with two ticks |
+  | `nav3_quests_board` | the board, paper, three empty boxes and grey lines: no clip, no ticks |
+  | `nav3_quests_clip` | only the gold clip |
+  | `nav3_quests_tick_1` | only the green tick of row 1, in its place |
+  | `nav3_quests_tick_2` | only the green tick of row 2, in its place |
+  | `nav3_quests_tick_3` | only a green tick for row 3, sitting in the third box (that box is empty in the whole picture) |
+- **The move:** the clip snaps down and the ticks "write" themselves in one by one. When a quest is
+  ready to claim, the third tick pops in. Idle: the clip snaps.
+
+### One shared extra
+- `nav3_spark`: a small four-pointed star sparkle, gold-white, flat, alone in the middle of the
+  picture. The game scatters copies of it when the chest opens and when a quest is done.
+
+## 5. What the game does (so you know what NOT to paint)
+- The game cuts every picture out of the black, shrinks it, stacks the parts and moves them.
+- The code makes all of these, so you don't need to paint any of them:
+  - the grey look of closed tabs;
+  - the hops, squashes and bounces;
+  - the light sweeps;
+  - the ripple ring;
+  - the moon's path;
+  - the sparkle bursts.
+- The only "action" picture you paint is the open chest (`nav3_store_open`).
+
+## 6. How to make the parts (step by step)
+Rule number one: a part must sit in EXACTLY the same spot and size as in the whole icon. If we put all
+the parts of an icon on top of each other, we must get the whole icon back, pixel on pixel (row C).
+1. Paint the whole icon first (for example `nav3_store`). Get it right and approved in your head before the parts.
+2. Make a copy of that same picture. Do NOT move, resize, crop or re-render it.
+3. In the copy, paint everything black EXCEPT the one part you want (for example, keep only the gold
+   latch). Save it with the part's name (`nav3_store_latch`).
+4. Repeat for every part, always starting from a fresh copy of the whole picture.
+5. Some parts hide something behind them: the planet behind the ring, the visor slot behind the visor,
+   the disc behind the red rings. In those files, paint the hidden area complete, the way it would
+   look without the part on top. If that is hard, leave it: the game can patch small holes itself.
+6. Keep the colour rule: each moving part has a colour that appears nowhere else in that icon. The
+   latch is the only gold, the visor and ball are the only cyan on the helmet, the rings are the only
+   red. That way the game can also find the parts by colour.
+7. For the open chest (`nav3_store_open`), paint a new picture, but keep the box exactly where it is in
+   `nav3_store`. Only the lid moves.
+
+## 7. Tips for the image tool (if it helps)
+> flat vector game icon, chunky rounded shapes, front view, dark navy body in two tones with a dark
+> navy outline, one bright [gold / cyan / red / purple / green] accent, centred, plain pure black
+> background, no text, no gradients, no 3D, no glossy highlights, no shadow, no glow
+
+## 8. Checklist
+- [ ] 25 pictures (26 with the nice-to-have), 1024 x 1024, pure black background, .webp or .png,
+      named exactly:
+  - [ ] Store (5): `nav3_store`, `nav3_store_body`, `nav3_store_lid`, `nav3_store_latch`, `nav3_store_open`
+  - [ ] Heroes (4): `nav3_heroes`, `nav3_heroes_helmet`, `nav3_heroes_visor`, `nav3_heroes_ball`
+  - [ ] Battle (4): `nav3_battle`, `nav3_battle_disc`, `nav3_battle_rings`, `nav3_battle_ticks`
+  - [ ] Modes (5, plus 1 nice to have): `nav3_modes`, `nav3_modes_planet`, `nav3_modes_ring_back`,
+        `nav3_modes_ring_front`, `nav3_modes_moon` (+ `nav3_modes_surface`)
+  - [ ] Quests (6): `nav3_quests`, `nav3_quests_board`, `nav3_quests_clip`, `nav3_quests_tick_1`,
+        `nav3_quests_tick_2`, `nav3_quests_tick_3`
+  - [ ] Shared (1): `nav3_spark`
+- [ ] Flat: navy body + its accent colours from section 3, a dark outline, no gloss, no 3D, no glow, no text.
+- [ ] Chunky shapes, nothing thinner than about 40 px at 1024; all five the same size and weight.
+- [ ] Each icon passes the silhouette test (filled solid grey, it still reads at once).
+- [ ] Every part sits in exactly the same spot as in its whole icon (stacking the parts rebuilds the icon).
