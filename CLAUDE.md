@@ -14,7 +14,12 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   Findings: today's NAV_DIM darkens the navy bodies into the bar (both sets vanish) -> closed tabs need a
   grey-silhouette dim (grayscale + light, ~0.55 alpha); the accent colour splits off cleanly by colour
   (bright + saturated) so the code can blink / pulse / tilt it. My pick: Luna's set; Gemini's chest (domed)
-  and helmet (one visor stripe) read better small. Waiting on Rudy's choice before wiring.
+  and helmet (one visor stripe) read better small. RUDY PICKED THE GEMINI SET (same evening) and wants
+  livelier moves + a see-through bar. Demo v2 (same link): parts cut by colour / at the strap row with
+  inpainted holes (scratchpad navcmp/parts2.gd: store lid + body + latch, heroes visor mask, battle ticks +
+  rings, modes ring mask + an orbiting moon on the ellipse c 0.497 a 0.485 b 0.125 at -21.6 deg, quests clip +
+  two ticks), tap move + idle move every 3-5 s; bar styles FROSTED (blur 14 + navy 52% + 1 px top line; my
+  pick, frost.gdshader already does the blur) / GLASS PILL / CLEAR / SOLID. Waiting on his bar pick.
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
   (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold
