@@ -3317,6 +3317,9 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	return b
 
 func _pick_card(id: String) -> void:
+	var cs := _read_save()   # the collection book (Codex): a card picked for the first time ever goes in
+	if Codex.note_card(cs, id):
+		_write_save({"cards_seen": cs.cards_seen})
 	Sfx.play("card")
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1

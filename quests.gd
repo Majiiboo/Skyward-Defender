@@ -47,6 +47,9 @@ func _build() -> void:
 	top.add_child(_wallet)
 	col.add_child(top)
 	# Home's Daily button can ask for a tab ("quests_tab" meta on the tree root)
+	if get_tree().root.has_meta("book_cat"):   # the Collection category to open on (captures use it)
+		_book_cat = String(Codex.CATS[clampi(int(get_tree().root.get_meta("book_cat")), 0, Codex.CATS.size() - 1)])
+		get_tree().root.remove_meta("book_cat")
 	if get_tree().root.has_meta("quests_tab"):
 		tab = int(get_tree().root.get_meta("quests_tab"))
 		get_tree().root.remove_meta("quests_tab")
@@ -55,8 +58,8 @@ func _build() -> void:
 		hidden = [3]   # no Repeat tab (Rudy, 2026-11-09): repeat quests sit at the end of Career
 		if tab == 3:
 			tab = 1
-	tab = UIKit.tab_shown([0, 1, 2, 3], tab, hidden)
-	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat"], func(i): tab = i; _fill(), tab, [], hidden, [UIKit.ic("tab_daily"), UIKit.ic("tab_career"), UIKit.ic("tab_trophies"), UIKit.ic("tab_repeat")])
+	tab = UIKit.tab_shown([0, 1, 2, 3, 4], tab, hidden)
+	_tabs_row = UIKit.tabs(["Daily", "Career", "Trophies", "Repeat", "Collection"], func(i): tab = i; _fill(), tab, [], hidden, [UIKit.ic("tab_daily"), UIKit.ic("tab_career"), UIKit.ic("tab_trophies"), UIKit.ic("tab_repeat"), UIKit.ic("ic_pack")])
 	col.add_child(_tabs_row)
 	_note = UIKit.label("", 12, UIKit.MUTED)
 	_note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -103,6 +106,9 @@ func _fill() -> void:
 			_note.text = "Goals that come back bigger every time you claim them. Always something to chase."
 			for m in Progress.repeat(d):
 				_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
+		4:   # the collection book (Codex)
+			_note.visible = false
+			_collection()
 	UIKit.reveal(_list)
 
 # ---- the CLEAN Quests look (Rudy, 2026-11-09, mock-up "Round 2 · Clean") ----
@@ -370,3 +376,118 @@ func _go(stat: String) -> void:
 		get_tree().change_scene_to_file("res://gear.tscn")
 	elif Energy.try_play(self, bool(Progress.read().get("selected_elite", false)), int(Progress.read().get("selected_stage", 1))):   # power tokens (stages 1-5 free)
 		get_tree().change_scene_to_file("res://battle.tscn")
+
+# ---- the COLLECTION tab (Codex, 2026-11-10) ----
+# Four pills pick the category (a dot on one with a reward waiting). One card: how many you have,
+# a bar to the next reward, and Claim. Then the entries as small squares: yours in full colour
+# with their name, the rest a dark shape with a question mark.
+var _book_cat := "enemies"
+
+func _collection() -> void:
+	var pills := HBoxContainer.new()
+	pills.add_theme_constant_override("separation", 8)
+	for c in Codex.CATS:
+		var cat := String(c)
+		var b := Button.new()
+		b.text = String(Codex.NAMES[cat])
+		b.custom_minimum_size = Vector2(0, 36)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 13)
+		var on: bool = cat == _book_cat
+		var sb := UIKit.pill(UIKit.CARD_HI if on else Color(UIKit.CARD, 0.6), 18, Vector2(8, 2))
+		for st in ["normal", "hover", "pressed"]:
+			b.add_theme_stylebox_override(st, sb)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		for fc in ["font_color", "font_hover_color", "font_pressed_color"]:
+			b.add_theme_color_override(fc, UIKit.TEXT if on else UIKit.SOFT)
+		b.pressed.connect(func():
+			_book_cat = cat
+			_fill())
+		UIKit.press_fx(b)
+		UIKit.dot(b, Codex.claimable(d, cat))
+		pills.add_child(b)
+	_list.add_child(pills)
+	# the progress card
+	var cnt := Codex.count(d, _book_cat)
+	var goal := Codex.next_goal(d, _book_cat)
+	var can := Codex.claimable(d, _book_cat)
+	var p := UIKit.panel(22)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 14)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.add_theme_constant_override("separation", 8)
+	var num := HBoxContainer.new()
+	num.add_theme_constant_override("separation", 4)
+	num.add_child(UIKit.title(str(int(cnt[0])), 28, UIKit.TEXT))
+	var of := UIKit.title("/ %d" % int(cnt[1]), 20, UIKit.SOFT)
+	of.size_flags_vertical = Control.SIZE_SHRINK_END
+	num.add_child(of)
+	v.add_child(num)
+	var bar := ProgressBar.new()
+	bar.max_value = maxi(int(goal.need) if int(goal.need) > 0 else int(cnt[1]), 1)
+	bar.value = mini(int(cnt[0]), int(bar.max_value))
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 6)
+	bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+	bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.GOLD if can else UIKit.CYAN, 3, Vector2.ZERO))
+	v.add_child(bar)
+	v.add_child(UIKit.label("Complete" if int(goal.need) == 0 else ("Reward ready" if can else "%d more for the next reward" % (int(goal.need) - int(cnt[0]))), 12, UIKit.GOLD if can else UIKit.SOFT))
+	h.add_child(v)
+	if int(goal.need) > 0:
+		var cb := UIKit.gold_button("", 14) if can else UIKit.teal_button("", 14)
+		cb.custom_minimum_size = Vector2(104, 50)
+		cb.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		cb.disabled = not can
+		var ci := UIKit.iconed(UIKit.ic("ic_crystal", "ui_crystal"), "+%d" % int(goal.crystals), 15, UIKit.GOLD_INK if can else UIKit.SOFT, 20.0)
+		ci.set_anchors_preset(Control.PRESET_FULL_RECT)
+		ci.alignment = BoxContainer.ALIGNMENT_CENTER
+		ci.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cb.add_child(ci)
+		cb.pressed.connect(func():
+			d = Progress.read()
+			var got := Codex.claim(d, _book_cat)
+			if got > 0:
+				Progress.write(d)
+				Sfx.play("claim")
+				_toast("+ %d crystals" % got)
+			_fill())
+		h.add_child(cb)
+	p.add_child(h)
+	_list.add_child(p)
+	# the entries
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for e in Codex.entries(d, _book_cat):
+		var cell := PanelContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.custom_minimum_size = Vector2(0, 96)
+		var cs := UIKit.box(Color(UIKit.CARD, 0.94 if e.have else 0.55), Color(1, 1, 1, 0.05), 16)
+		cs.set_content_margin_all(5)
+		cell.add_theme_stylebox_override("panel", cs)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 1)
+		var holder := Control.new()
+		holder.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		var tr := TextureRect.new()
+		tr.texture = e.tex
+		tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		if not e.have:
+			tr.modulate = Color(0.0, 0.0, 0.0, 0.55)   # a dark shape: something to find
+		holder.add_child(tr)
+		if not e.have:
+			var q := UIKit.title("?", 22, Color(1, 1, 1, 0.35), HORIZONTAL_ALIGNMENT_CENTER)
+			q.set_anchors_preset(Control.PRESET_FULL_RECT)
+			q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			holder.add_child(q)
+		cv.add_child(holder)
+		var nl := UIKit.label(String(e.name) if e.have else "???", 9, UIKit.TEXT if e.have else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		nl.clip_text = true
+		cv.add_child(nl)
+		cell.add_child(cv)
+		grid.add_child(cell)
+	_list.add_child(grid)

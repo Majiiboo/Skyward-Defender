@@ -30,6 +30,7 @@ func _initialize() -> void:
 	_check_ascend()
 	_check_goals()
 	_check_daily()
+	_check_codex()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -203,7 +204,7 @@ func _check_repeat() -> void:
 	r = Progress.repeat(d)
 	_expect(r[0].goal == 350 and not r[0].done and absf(float(r[0].progress) - 100.0) < 0.01, "level 3: goal 350, progress from its base")
 	_expect(int(Progress.repeat_reward(Progress.REPEAT[0], 1).coins) == 60 and int(Progress.repeat_reward(Progress.REPEAT[0], 5).coins) == 120, "reward grows with the level")
-	_expect(Progress.attention({"stats": {"kills": 400.0}}).quests_tabs.size() == 4, "four quest tabs for the dots")
+	_expect(Progress.attention({"stats": {"kills": 400.0}}).quests_tabs.size() == 5, "five quest tabs for the dots (the fifth is the Collection)")
 
 func _check_cards() -> void:
 	for id in Cards.CARDS:
@@ -645,3 +646,22 @@ func _check_daily() -> void:
 	_expect(kinds.size() >= 10, "the three twists change from day to day (%d different in 40 days)" % kinds.size())
 	_expect(not Promotion.daily_done(s) and Promotion.daily_won(s) and Promotion.daily_done(s) and not Promotion.daily_won(s), "the reward is once a day")
 	_expect(int(Promotion.daily_reward(s).key_u) == 1 and int(Promotion.daily_reward(s).coins) == 200 + 30 * 9, "the reward: coins by stage, 10 crystals, an Uncommon key")
+
+# the collection book (Codex, 2026-11-10): four categories, a crystal reward per quarter filled
+func _check_codex() -> void:
+	var s := {"crystals": 0, "stage_unlocked": 1}
+	for cat in Codex.CATS:
+		var es := Codex.entries(s, String(cat))
+		_expect(es.size() >= 6, "the %s page has entries (%d)" % [cat, es.size()])
+		for e in es:
+			_expect(e.tex != null and String(e.name) != "", "%s / %s has a picture and a name" % [cat, e.id])
+	_expect(Codex.count(s, "heroes")[0] == 1 and Codex.count(s, "heroes")[1] == Heroes.ORDER.size(), "a fresh save owns one hero of six")
+	_expect(not Codex.claimable(s), "a fresh save has no collection reward waiting")
+	s["hero"] = {"selected": "rook", "owned": ["rook", "sparks"], "levels": {}, "def": {}, "tiers": {}, "shards": {}}
+	_expect(Codex.reached(s, "heroes") == 1 and Codex.claimable(s, "heroes") and Codex.next_goal(s, "heroes").need == 2, "two heroes of six: the first quarter is reached")
+	_expect(Codex.claim(s, "heroes") == 10 and int(s.crystals) == 10 and not Codex.claimable(s, "heroes") and Codex.claim(s, "heroes") == 0, "the reward pays 10 crystals, once")
+	_expect(Codex.next_goal(s, "heroes").need == 3 and Codex.next_goal(s, "heroes").crystals == 15, "next: three heroes for 15 crystals")
+	_expect(Codex.note_card(s, "heavy_bolts") and not Codex.note_card(s, "heavy_bolts") and not Codex.note_card(s, "no_such_card") and Codex.count(s, "cards")[0] == 1, "a card goes into the book the first time it is picked")
+	s["seen_enemies"] = ["scout", "drifter", "spitter", "runner"]
+	_expect(Codex.count(s, "enemies")[0] == 3, "enemies met count; the runner tip is not an entry")
+	_expect(Progress.attention(s).quests_tabs.size() == 5 and Progress.attention(s).quests_tabs[4] == Codex.claimable(s), "the Collection tab carries its own red dot")
