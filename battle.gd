@@ -637,7 +637,7 @@ func _start_stage() -> void:
 	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
 	_ult_cd = float(gs.get("ability_cd", 40.0))   # shorter on the higher rarity steps
 	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
-	_ult_t = 12.0
+	_ult_t = 0.0 if _base_perks.has("reactor") else 12.0   # Reactor Lv.5: the ability is ready from the start
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
 	_wing_t = 25.0
 	_ult_kind = ""
@@ -1784,7 +1784,7 @@ func _update_enemies(delta: float) -> void:
 			_kill(e)
 			continue
 		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
-			_hurt_base(RUNNER_DMG if e.has("runner") else float(def.get("base_dmg", 10.0)))
+			_hurt_base((RUNNER_DMG * (0.5 if _base_perks.has("plating") else 1.0)) if e.has("runner") else float(def.get("base_dmg", 10.0)))
 			if e.type == "diver" or e.type == "dart":
 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
 				shake = maxf(shake, 0.55)
@@ -2675,6 +2675,12 @@ func _hurt_base(amount: float) -> void:
 	if shield > 0.0:
 		Sfx.play("shield")
 		shield = maxf(shield - amount, 0.0)
+		if shield <= 0.0 and _base_perks.has("shield_gen") and not _dome_used:   # Shield Generator Lv.5: it comes back once
+			_dome_used = true
+			shield = shield_max * 0.3
+			_fx_add("nova", Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY * 0.5), 220.0, 0.6, 0.0, 2.2, Color(0.31, 0.88, 1.0))
+			_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 30.0), "EMERGENCY SHIELD", Color(0.5, 0.92, 1.0), true)
+			return
 		if _bastion and shield <= 0.0:
 			_bastion_blast()
 	else:
@@ -2845,7 +2851,7 @@ func _end_run(won: bool) -> void:
 	# stage clear: 2 Alloy (+1 per 10 stages), a Plasma Cell on every 5th stage, all kept
 	# with what was picked up (parts are kept even when the base falls)
 	if won:
-		_parts_got["alloy"] = int(_parts_got.get("alloy", 0)) + 2 + stage / 10
+		_parts_got["alloy"] = int(_parts_got.get("alloy", 0)) + 2 + stage / 10 + (2 if _base_perks.has("refinery") else 0)   # Refinery Lv.5
 		if stage % 5 == 0:
 			_parts_got["cell"] = int(_parts_got.get("cell", 0)) + 1
 	var owned := Parts.read(d)
@@ -5714,7 +5720,7 @@ func _draw_runner(e: Dictionary, size: float) -> void:
 func _runner_caught(e: Dictionary) -> void:
 	_runners_caught += 1
 	_float_text(e.pos + Vector2(0, -22), "CAUGHT!", Color(1.0, 0.85, 0.4), true)
-	var worth: float = 4.0 + 0.4 * stage
+	var worth: float = (4.0 + 0.4 * stage) * (2.0 if _base_perks.has("radar") else 1.0)   # Radar Lv.5: a caught runner pays double
 	for i in 4:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
 			"value": worth / 4.0, "vel": Vector2(rng.randf_range(-70, 70), rng.randf_range(-110, -40))})
@@ -5724,12 +5730,12 @@ func _runner_caught(e: Dictionary) -> void:
 func _wave_patch() -> void:
 	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
 	if _base_repair > 0.0 and hull < hull_max:
-		hull = minf(hull + hull_max * _base_repair, hull_max)
+		hull = minf(hull + hull_max * _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0), hull_max)
 	if _base_heal > 0.0 and pilot_hp < pilot_hp_max:
 		pilot_hp = minf(pilot_hp + pilot_hp_max * _base_heal, pilot_hp_max)
 	if shield >= shield_max or shield_max <= 0.0:
 		return
-	var add: float = shield_max * (WAVE_PATCH + _base_repair)
+	var add: float = shield_max * (WAVE_PATCH + _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0))
 	shield = minf(shield + add, shield_max)
 	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(add), Color(0.4, 0.9, 1.0))
 
@@ -6326,8 +6332,11 @@ var _base_slots: Array = ["", "", "", ""]   # the building on each slot ("" = no
 var _base_repair := 0.0     # Repair Bay: extra share mended after a wave (shield and hull)
 var _base_heal := 0.0       # Med Bay: share of the hero's health back after a wave
 var _warn_mult := 1.0       # Radar: runner lanes and hazards show this much longer
+var _base_perks: Array = []   # buildings at level 5 on the base: their perks (Base.PERKS)
+var _dome_used := false      # the Shield Generator's emergency shield went up this fight
 
 func _apply_base(sv: Dictionary) -> void:
+	_base_perks = []
 	if _mods.has("no_turrets"):   # the Base offline twist (trials): the buildings give nothing this fight
 		_base_slots = ["", "", "", ""]
 		return
@@ -6348,6 +6357,15 @@ func _apply_base(sv: Dictionary) -> void:
 	pilot_hp = pilot_hp_max
 	_base_heal = minf(float(bs.hp) * 0.4, 0.2)
 	_base_repair = float(bs.repair)
+	# the level-5 perks of the buildings in force (Base.perks)
+	_base_perks = Base.perks(sv)
+	_dome_used = false
+	if _base_perks.has("armory"):
+		_crit_rate += 0.05
+	if _base_perks.has("medbay"):
+		_second_wind = maxi(_second_wind, 1)
+	if _base_perks.has("hangar"):
+		_drone_mult *= 1.2
 	_drone_mult *= 1.0 + float(bs.drone)
 	_ult_cd /= 1.0 + float(bs.ability)
 	_warn_mult = 1.0 + float(bs.warn)

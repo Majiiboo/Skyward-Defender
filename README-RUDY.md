@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev236 (version/code=236 and version/name="1.0-dev236" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev239 (version/code=239 and version/name="1.0-dev239" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,31 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev239: one look everywhere, and a perk for every building (three updates since dev236)
+
+- CONSISTENCY PASS. Every pop-up has the same white title. The Workshop, the Shop and the
+  Collection use the same dark sub-tabs. Section headings are in one case. The Stats pop-up lists
+  your base's buildings instead of turrets.
+- PATROL pop-up rebuilt: no stage arrows (it always farms your furthest stage), what is stored as
+  chips, a bar to the 8 hour cap, one gold Collect with its power cost.
+- PILOT RANKS and ELEMENT TRIALS rebuilt as bottom sheets: the ranks as a row of dots with the next
+  trial on one card; the trials as six element squares. The old "Turrets down" twist is now
+  "Base offline" (your buildings give nothing in that fight).
+- BUILDING PERKS. At level 5 every building gains something that changes a fight:
+  Shield Generator: once a fight a broken shield comes back at 30%.
+  Repair Bay: repairs doubled while the hull is below half.
+  Armory: crit rate +5%.
+  Med Bay: once a fight a blow that would down the hero leaves him standing.
+  Hull Plating: runners that get through do half damage.
+  Hangar: your gun drone hits 20% harder.
+  Reactor: every fight starts with the ability ready.
+  Radar: a caught runner pays double.
+  Refinery: 2 more Alloy for every stage cleared.
+  The Base page shows each perk: grey before level 5, gold once you have it.
+
+NOT CHECKED BY ME: nothing here has been on a phone. Eight of the nine perks were run in a real
+stage against level 4; the Hull Plating perk (half damage from runners) I only read in the code.
 
 ## dev236: the overhaul begins: no more turrets, a base you build, a drone squad, new weapons, the Expedition (five updates since dev231)
 

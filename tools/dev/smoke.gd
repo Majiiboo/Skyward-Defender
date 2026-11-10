@@ -37,6 +37,7 @@ func _initialize() -> void:
 	_check_base()
 	_check_support()
 	_check_weapons()
+	_check_perks()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -812,3 +813,12 @@ func _check_weapons() -> void:
 		_expect(not st.is_empty() and String(st.style) != "" and String(st.text) != "", "the %s weapon has a style and a line" % set_id)
 		_expect(B.WEAPONS.has(wk) and B.WEAPONS[wk].has(tricks.get(wk, "?")), "%s carries its trick (%s)" % [wk, tricks.get(wk, "?")])
 	_expect(GearData.weapon_style("ion_helmet").is_empty(), "armour has no weapon style")
+
+# building perks at level 5 (Base.PERKS, 2026-11-10)
+func _check_perks() -> void:
+	for id in Base.ORDER:
+		_expect(Base.perk_text(String(id)) != "", "building %s has a level-5 perk" % id)
+	var s := {"stage_unlocked": 20, "base": {"slots": ["armory", "reactor", "", ""], "levels": {"armory": 5, "reactor": 4, "radar": 9}}}
+	_expect(Base.perks(s) == ["armory"], "a perk needs level 5 AND a place on an open slot (%s)" % str(Base.perks(s)))
+	s["base"]["levels"]["reactor"] = 5
+	_expect(Base.perks(s) == ["armory", "reactor"], "the Reactor reaches level 5: its perk too")

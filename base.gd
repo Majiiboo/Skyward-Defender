@@ -171,3 +171,33 @@ static func migrate(save: Dictionary) -> int:
 	save["coins"] = int(save.get("coins", 0)) + back
 	save["base"] = write(read(save))
 	return back
+
+# LEVEL 5 PERKS (2026-11-10): at PERK_LEVEL every building gains one thing that changes a fight,
+# not only a bigger number, so a level is worth chasing and "which four" is a sharper choice.
+const PERK_LEVEL := 5
+const PERKS := {
+	"shield_gen": "Emergency shield: once a fight, a broken shield comes back at 30%",
+	"repair_bay": "Repairs are doubled while the hull is below half",
+	"armory":     "Crit rate +5%",
+	"medbay":     "Second wind: once a fight, a blow that would down the hero leaves him standing",
+	"plating":    "Runners that get through do half damage",
+	"hangar":     "Your gun drone hits 20% harder",
+	"reactor":    "Every fight starts with the ability ready",
+	"radar":      "A caught runner pays double",
+	"refinery":   "2 more Alloy for every stage cleared",
+}
+
+static func perk_text(id: String) -> String:
+	return String(PERKS.get(id, ""))
+
+static func has_perk(b: Dictionary, id: String) -> bool:
+	return level(b, id) >= PERK_LEVEL
+
+# the perks in force this fight: buildings at PERK_LEVEL standing on open slots
+static func perks(save: Dictionary) -> Array:
+	var out: Array = []
+	var b := read(save)
+	for id in stats(save).on:
+		if has_perk(b, String(id)):
+			out.append(String(id))
+	return out

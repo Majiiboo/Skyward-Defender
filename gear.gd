@@ -4239,6 +4239,11 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 		var nxt := UIKit.label("Next level: " + Base.text(id, lv + 1), 12, GOOD)
 		nxt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nv.add_child(nxt)
+	# its level-5 perk (Base.PERKS): gold once earned, a promise before
+	var has_pk: bool = own and Base.has_perk(b, id)
+	var pk := UIKit.label(("Perk: " if has_pk else "At Lv.%d: " % Base.PERK_LEVEL) + Base.perk_text(id), 12, UIKit.GOLD if has_pk else UIKit.SOFT)
+	pk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nv.add_child(pk)
 	head.add_child(nv)
 	v.add_child(head)
 	if not own:
