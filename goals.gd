@@ -26,12 +26,18 @@ static func next(save: Dictionary) -> Dictionary:
 		var early := stage_goal(su)
 		if not early.is_empty():
 			return early
+	if Research.ready(save):   # a finished project (Research): collect it
+		return {"text": "Research is done: collect it", "go": [], "scene": "res://research_page.tscn"}
+	if Season.claimable(save):
+		return {"text": "Season rewards are waiting", "go": [], "scene": "res://season_page.tscn"}
 	if load("res://store.gd").free_waiting(save):
 		return {"text": "A free chest is waiting", "go": ["NavStore", "store_tab", 0]}
 	if lv < cap and int(save.get("coins", 0)) >= Heroes.level_cost(lv):
 		return {"text": "Level up %s" % hname, "go": ["NavGear", "gear_page", 0]}
 	if Promotion.daily_open(save) and not Promotion.daily_done(save):
 		return {"text": "Today's challenge is waiting", "go": ["NavModes", "", 0]}
+	if Research.idle(save):
+		return {"text": "The lab is free: start a project", "go": [], "scene": "res://research_page.tscn"}
 	var st := stage_goal(int(save.get("stage_unlocked", 1)))
 	if not st.is_empty():
 		return st

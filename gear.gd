@@ -4170,6 +4170,15 @@ func _refresh_base() -> void:
 	for c in box.get_children():
 		box.remove_child(c)
 		c.queue_free()
+	if Research.open(data):   # the Research Lab (Research): its own page
+		var lab := Research.read(data)
+		var lleft := Research.left_s(lab)
+		var ltext := "Research  ·  the lab is free" if lleft < 0 else ("Research  ·  done, collect it" if lleft == 0 else "Research  ·  %s left" % Research.time_text(lleft))
+		var rb := UIKit.teal_button(ltext, 13)
+		rb.custom_minimum_size = Vector2(0, 40)
+		rb.pressed.connect(func(): get_tree().change_scene_to_file("res://research_page.tscn"))
+		box.add_child(rb)
+		UIKit.dot(rb, lleft <= 0)
 	var intro := UIKit.label("The base never shoots. Each building gives one kind of help. Field four.", 12, UIKit.SOFT)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(intro)

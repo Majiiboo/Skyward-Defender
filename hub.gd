@@ -1130,6 +1130,9 @@ func _paint_goal(s: Dictionary) -> void:
 	_goal_btn.visible = not _goal.is_empty()
 
 func _on_goal() -> void:
+	if _goal.has("scene"):   # a page of its own (Research, Season)
+		_smooth_change_scene(String(_goal.scene))
+		return
 	var go: Array = _goal.get("go", [])
 	if go.is_empty():   # a stage to clear: select it (or the furthest one open)
 		if mode != "Normal":

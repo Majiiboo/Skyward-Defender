@@ -41,6 +41,7 @@ func _initialize() -> void:
 	_check_ability_ups()
 	_check_links()
 	_check_season()
+	_check_research()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -872,3 +873,22 @@ func _check_season() -> void:
 		_expect(not Season.reward(t, false, s).is_empty() and not Season.reward(t, true, s).is_empty(), "tier %d pays on both tracks" % t)
 	s["season"]["n"] = Season.number() - 1
 	_expect(Season.tier(s) == 0 and not bool(Season.state(s).premium), "a new season starts fresh")
+
+func _check_research() -> void:
+	var s := {"stage_unlocked": 5, "coins": 100000, "crystals": 1000}
+	_expect(not Research.open(s) and not Research.idle(s), "closed before stage %d" % Research.RESEARCH_FROM)
+	s["stage_unlocked"] = 20
+	_expect(Research.idle(s) and not Research.ready(s), "open and free")
+	_expect(Research.start(s, "ammunition") == "" and int(s.coins) == 100000 - Research.cost(0), "started: the coins are spent")
+	var r := Research.read(s)
+	_expect(Research.left_s(r) > 1700 and Research.left_s(r) <= 1800, "level 1 takes half an hour (%d s left)" % Research.left_s(r))
+	_expect(Research.start(s, "optics") == "The lab is busy", "one project at a time")
+	_expect(Research.collect(s) == "", "nothing to collect while it runs")
+	_expect(Research.rush_cost(r) == 10, "half an hour left = 10 crystals (%d)" % Research.rush_cost(r))
+	_expect(Research.rush(s) == "" and int(s.crystals) == 990 and Research.ready(s), "hurried: ready now")
+	_expect(Research.collect(s) == "ammunition" and Research.level(Research.read(s), "ammunition") == 1 and Research.idle(s), "collected: level 1, the lab is free")
+	_expect(is_equal_approx(float(Research.bonus(s).damage), 0.02), "the fight gets +2% damage")
+	s["research"]["levels"]["ammunition"] = Research.MAX_LEVEL
+	_expect(Research.start(s, "ammunition") == "Finished", "a finished project cannot start again")
+	s["research"] = {"levels": {}, "active": "optics", "done_at": Research.now() - 5}
+	_expect(Research.ready(s), "a project whose time has passed while away is ready")

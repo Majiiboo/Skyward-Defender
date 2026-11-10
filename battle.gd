@@ -566,6 +566,7 @@ func _start_stage() -> void:
 	if _mods.has("turret_boost"):   # the old Turret boost twist is Quick charge now: the ability comes back half again as fast
 		_ult_cd /= 1.5
 	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
+	_apply_research(sv)   # the Research Lab (Research)
 	_ult_t = 0.0 if _base_perks.has("reactor") else 12.0   # Reactor Lv.5: the ability is ready from the start
 	_pulse_setup()   # the Core Pulse, the base s own button
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
@@ -5295,3 +5296,18 @@ func _draw_pulse() -> void:
 func _dbg_pulse() -> void:
 	_pulse_t = 0.0
 	_use_pulse()
+
+# RESEARCH (Research.bonus): the lab's finished levels, on top of everything else
+func _apply_research(sv: Dictionary) -> void:
+	var rb := Research.bonus(sv)
+	shield_max *= 1.0 + float(rb.shield)
+	shield = shield_max
+	hull_max *= 1.0 + float(rb.hull)
+	hull = hull_max
+	damage_mult *= 1.0 + float(rb.damage)
+	pilot_hp_max = roundf(pilot_hp_max * (1.0 + float(rb.hp)))
+	pilot_hp = pilot_hp_max
+	_crit_rate += float(rb.crit)
+	_drone_mult *= 1.0 + float(rb.drone)
+	_ult_cd /= 1.0 + float(rb.ability)
+	_coin_mult *= 1.0 + float(rb.coins)
