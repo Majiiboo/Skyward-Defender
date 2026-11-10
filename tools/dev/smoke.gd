@@ -46,6 +46,7 @@ func _initialize() -> void:
 	_check_spin()
 	_check_contracts()
 	_check_base_cards()
+	_check_welcome()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -971,3 +972,19 @@ func _check_base_cards() -> void:
 	_expect(seen.has("hot_rounds") and seen.has("core_overload") and not seen.has("shield_surge"), "with the Armory and the Core Pulse: their cards, not the Shield Generator's")
 	for dead in ["turret_overclock", "sentry_ricochet", "flak_shrapnel"]:
 		_expect(not Cards.CARDS.has(dead), "the turret card %s is gone" % dead)
+
+func _check_welcome() -> void:
+	var now := int(Time.get_unix_time_from_system())
+	var s := {"stage_unlocked": 20, "coins": 0}
+	_expect(Welcome.check(s).is_empty() and int(s.last_seen) >= now, "the first visit only stamps the time")
+	s["last_seen"] = now - 3600
+	_expect(Welcome.check(s).is_empty(), "an hour away: nothing")
+	s["last_seen"] = now - 6 * 3600
+	var a := Welcome.check(s)
+	_expect(not a.is_empty() and Dictionary(a.gift).is_empty() and int(s.coins) == 0, "six hours away: the sheet, no gift yet")
+	s["last_seen"] = now - 2 * 86400
+	var b := Welcome.check(s)
+	_expect(int(Dictionary(b.gift).get("coins", 0)) == 600 and int(s.coins) == 600, "two days away: two days of gift, granted")
+	_expect(int(Welcome.gift_for(30 * 86400).coins) == 900, "the gift stops at three days")
+	s = {"stage_unlocked": 2, "last_seen": now - 86400}
+	_expect(Welcome.check(s).is_empty(), "not for a player still in the first stages")

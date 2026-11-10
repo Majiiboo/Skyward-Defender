@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev254 (version/code=254 and version/name="1.0-dev254" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev257 (version/code=257 and version/name="1.0-dev257" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,33 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev257: base cards, music, Welcome back (three updates since dev254)
+
+- BASE CARDS. The thirteen old turret power cards could never appear any more, so the card pool
+  had shrunk. They are replaced by ten cards tied to your buildings: a card is only offered while
+  its building stands on the base, so the four you field also shape the cards you see.
+  Shield Surge (Shield Generator), Nanobots (Repair Bay), Hot Rounds (Armory), Stim Pack (Med Bay),
+  Plate Up (Hull Plating), Drone Uplink (Hangar), Reactor Surge (Reactor), Radar Sweep (Radar),
+  Rich Seam (Refinery), and Core Overload (once the Core Pulse is open). As with every card, the
+  third pick adds something new (for example Radar Sweep: a caught runner mends the shield).
+  The cards use Luna's building pictures.
+- MUSIC. The game had none. There are now two loops made by the game's own code: a calm one in
+  the menus and a driving one in a fight, with a Music switch in Settings.
+  IMPORTANT: I cannot hear. Nobody has listened to this music. It is built from plain soft tones
+  on safe chords and sits quietly under the sound effects, but please listen on your phone. If
+  you do not like it, switch it off in Settings and tell me what it should feel like.
+- WELCOME BACK. Open the game after four hours or more away and Home shows one sheet: how long
+  you were gone, a small gift for each day away (300 coins and 5 crystals a day, up to three
+  days), and everything that is waiting: Patrol loot, finished research, the free chest, the free
+  spin, today's challenge, season rewards, quests, the weekly event.
+- A BRIEF FOR LUNA is ready in the folder "Luna magma family" on your Desktop: the enemy family
+  for planet 3 (creatures of rock and lava), 31 pictures, in the same shape as her Scrap Belt set.
+  Send it when you want her to start.
+
+NOT CHECKED BY ME: nothing has been on a phone. The music has never been heard. Every base card
+was picked to its maximum in a real stage and the numbers moved as written. The Welcome back sheet
+was looked at once with a made-up save.
 
 ## dev254: Boss Rush, the Daily Spin, hero contracts, settings, the Elements chart (five updates since dev249)
 

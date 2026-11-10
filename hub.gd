@@ -142,7 +142,18 @@ func _ready() -> void:
 	_setup_view_manager()
 	call_deferred("_animate_nav_in")
 	_on_energy_changed()   # the red dots, now that every button exists
-	get_tree().create_timer(0.7).timeout.connect(_announce_new)   # NEW: a system opened since the last visit (Unlocks)
+	# WELCOME BACK (Welcome): after four hours or more away, one sheet with what is waiting; the
+	# unlock moment waits for the next visit to Home so the two never stack
+	var ws := Progress.read()
+	var back := Welcome.check(ws)
+	Progress.write(ws)
+	if not back.is_empty():
+		get_tree().create_timer(0.6).timeout.connect(func():
+			if is_inside_tree() and _current_view == null and _popup_layer == null:
+				Welcome.show(self, back)
+				_refresh_dots(Progress.read()))
+	else:
+		get_tree().create_timer(0.7).timeout.connect(_announce_new)   # NEW: a system opened since the last visit (Unlocks)
 	call_deferred("_home_tips")   # guided first-time tips (Tips)
 
 func _load_save() -> void:
