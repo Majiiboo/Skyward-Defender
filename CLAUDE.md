@@ -5,9 +5,14 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-09, build dev214)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev214: 0 updates. dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NEXT (Rudy):
-  NEW NAV ICONS: he says Luna's painted nav icons (crate, helmet, crossed guns, atom, tablet) "are
-  completely not the style of the game"; talk options first (a new Luna set in one style vs flat glyphs).
+- UNPUSHED since dev214: 0 updates. dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NAV ICONS:
+  Rudy picked option C (flat two-tone: navy body + one accent) from the canvas "Nav icons" page and wants
+  LUNA to paint them: LUNA-BRIEF-nav-icons.md + art_src/ref/nav_icons_ref.png (copied to Desktop/Luna nav
+  icons), LUNA-PROGRAM row 14; files will be nav2_store / _heroes / _battle / _modes / _quests on black.
+  HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
+  top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
+  (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold
+  gradient, the blue raised Battle tile and names under every tab. Rudy has not answered yet.
   Then: the Level Up screen + Ascend ladder (queue 30), the other Store tabs (Offers / Shop / Crystals /
   Exchange still old layouts in the new colours), the Workshop / Turrets / Drone sub-pages, the battle
   HUD and end screen in the clean style, stage map -> Campaign. Rudy has not seen dev214 on a phone.
