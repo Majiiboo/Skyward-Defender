@@ -22,8 +22,8 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   pick, frost.gdshader already does the blur) / GLASS PILL / CLEAR / SOLID. RUDY PICKED THE GLASS PILL
   (floating capsule, 12 px in from the sides and bottom, blur + navy 50%, 1 px light rim). Then he chose
   to have LUNA redo the icons (he has worked with her longer): LUNA-BRIEF-nav-icons.md REWRITTEN as round 2
-  (nav3_*: 25 files, each icon whole + its moving parts on one 1024 canvas + nav3_store_open + nav3_spark;
-  ref art_src/ref/nav_icons_ref2.png; copied to Desktop/Luna nav icons 2). Gemini's set is the fallback.
+  (nav3_*: 26 files, each icon whole + its moving parts on one 1024 canvas + nav3_store_open + nav3_spark;
+  ref art_src/ref/nav_icons_ref2.png + nav_heroes_sketch.svg; copied to Desktop/Luna nav icons 2). Heroes = a NEW pilot bust (3/4 view, wrap visor, crest, ear light, shoulder pads): Rudy disliked both of Luna's helmets. Gemini's set is the fallback.
   When nav3 lands: cutter -> icons/nav3/, hub nav on the glass pill with the demo's moves.
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card

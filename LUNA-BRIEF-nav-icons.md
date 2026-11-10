@@ -25,14 +25,16 @@ this brief points to them. Rudy can also show you a short animated demo of the m
 - Rudy liked a test set he made with another tool (row B). Keep its IDEAS, not its pixels:
   - chunky, rounded silhouettes;
   - a chest with a DOMED lid;
-  - a helmet with ONE wide visor stripe;
   - a target with four bold ticks;
   - a planet with a bold tilted ring;
   - a clipboard with a big clip.
 - From your round 1, keep your clean flat colours and your neat edges.
 - Two things to change from round 1:
   - Your chest read as a briefcase when small: give it a rounded, domed lid.
-  - Your helmet's two eyes made it read as a robot face: give it one visor stripe instead, no face.
+  - The helmet: Rudy did not like either of your helmets (the round 1 one with two eyes, which read
+    as a robot face, and the glossy one in the game today). So Heroes gets a completely NEW design:
+    a pilot seen from head to shoulders, turned a little to the side (section 4, and my rough
+    sketch in rows B and D).
 - Goal: **your style, better shapes.** More chunky, more character, still flat.
 
 ## 3. The style (all five icons)
@@ -84,20 +86,43 @@ is **1024 x 1024**, pure black background, .webp or .png.
 - **The move:** the latch flashes, the chest hops, the lid pops open with gold light and sparkles,
   then it closes with a bounce. Idle: the latch glints now and then.
 
-### HEROES: a pilot's helmet
-- **What it is:** front view, like Rook's helmet made simple.
-  - a rounded dome with a flat bottom;
-  - ONE wide CYAN visor stripe across the face (no eyes, no mouth);
-  - a short antenna on top with a small CYAN ball.
+### HEROES: a pilot bust (NEW design)
+- **The idea:** not a helmet on its own, but a little PILOT: head and shoulders, like a character
+  portrait or a chess piece. Head + shoulders is the shape everyone reads as "a character", even
+  as a grey blob. My rough sketch is in rows B and D of the picture; please make your own, nicer.
+- **The view:** three-quarter view. The pilot is turned a little to OUR RIGHT, so we see the front of
+  the helmet and a bit of its left side. Not straight on (that gave the robot face), not a full
+  side profile.
+- **From top to bottom:**
+  1. **A crest.** A short, thick fin running over the top of the helmet from the forehead toward the
+     back, like a fighter pilot's or a knight's crest. Navy mid. It gives the head a sporty
+     silhouette that no robot or bell has.
+  2. **The helmet.** A rounded, slightly egg-shaped helmet, a little fuller at the back. Navy light,
+     with one flat lighter "top light" patch if you like.
+  3. **The visor.** A BIG cyan window covering the front of the face and wrapping round toward the
+     right side (like a motorbike or astronaut visor), with rounded corners. It is the biggest
+     bright shape in the icon. Add ONE small flat highlight shape (pale cyan `#C8F7FF`) near its top
+     edge. No eyes, no mouth, nothing drawn on or behind the visor.
+  4. **A side light.** A small round ear disc on the visible side of the helmet (navy dark) with a
+     small cyan light in its middle, like a radio.
+  5. **A chin guard.** A dark navy band under the visor, following the jaw.
+  6. **A collar.** A short dark ring between the helmet and the shoulders.
+  7. **Shoulders.** Broad, chunky armour: two rounded shoulder pads (navy light) on a chest piece
+     (navy mid). The shoulders are wider than the helmet, and the bottom edge is a straight line
+     (the bust is cut off there).
+- **Proportions:** the helmet is about half the icon's height. The shoulders fill the bottom third
+  and the full width. Keep it chunky and chibi, like the game's heroes.
+- **Silhouette check:** in solid grey it must read as "a pilot from the shoulders up" (row D).
 - **Files:**
   | File | What is in it |
   |---|---|
-  | `nav3_heroes` | the whole helmet |
-  | `nav3_heroes_helmet` | the helmet without the visor stripe and without the antenna ball. Where the visor was, paint an empty dark slot (navy dark) |
-  | `nav3_heroes_visor` | only the cyan visor stripe |
-  | `nav3_heroes_ball` | only the antenna ball |
-- **The move:** the helmet drops in and lands with a small squash, a light sweeps across the visor,
-  and the antenna ball blinks. Idle: the visor sweep again.
+  | `nav3_heroes` | the whole pilot bust |
+  | `nav3_heroes_body` | only the shoulders, shoulder pads, chest piece and collar (no head). Paint the collar complete where the head would cover it |
+  | `nav3_heroes_head` | only the head: helmet, crest, ear disc and chin guard. The visor window is painted as an EMPTY dark window (navy dark), and the ear disc's light is left out (navy dark too) |
+  | `nav3_heroes_visor` | only the cyan visor, with its small highlight |
+  | `nav3_heroes_light` | only the small cyan light from the ear disc |
+- **The move:** the pilot pops up from the shoulders and the head turns to look at us for a moment,
+  a light sweeps across the visor, and the ear light blinks. Idle: a small nod and the visor sweep.
 
 ### BATTLE: a target
 - **What it is:**
@@ -172,25 +197,27 @@ the parts of an icon on top of each other, we must get the whole icon back, pixe
 3. In the copy, paint everything black EXCEPT the one part you want (for example, keep only the gold
    latch). Save it with the part's name (`nav3_store_latch`).
 4. Repeat for every part, always starting from a fresh copy of the whole picture.
-5. Some parts hide something behind them: the planet behind the ring, the visor slot behind the visor,
-   the disc behind the red rings. In those files, paint the hidden area complete, the way it would
+5. Some parts hide something behind them: the planet behind the ring, the empty window behind the
+   visor, the collar behind the head, the disc behind the red rings. In those files, paint the hidden area complete, the way it would
    look without the part on top. If that is hard, leave it: the game can patch small holes itself.
 6. Keep the colour rule: each moving part has a colour that appears nowhere else in that icon. The
-   latch is the only gold, the visor and ball are the only cyan on the helmet, the rings are the only
-   red. That way the game can also find the parts by colour.
+   latch is the only gold, the visor and the ear light are the only cyan on the pilot, the rings are
+   the only red. That way the game can also find the parts by colour.
 7. For the open chest (`nav3_store_open`), paint a new picture, but keep the box exactly where it is in
    `nav3_store`. Only the lid moves.
 
 ## 7. Tips for the image tool (if it helps)
-> flat vector game icon, chunky rounded shapes, front view, dark navy body in two tones with a dark
+> flat vector game icon, chunky rounded shapes, front view (for the Heroes pilot bust: three-quarter
+> view, turned slightly right), dark navy body in two tones with a dark
 > navy outline, one bright [gold / cyan / red / purple / green] accent, centred, plain pure black
 > background, no text, no gradients, no 3D, no glossy highlights, no shadow, no glow
 
 ## 8. Checklist
-- [ ] 25 pictures (26 with the nice-to-have), 1024 x 1024, pure black background, .webp or .png,
+- [ ] 26 pictures (27 with the nice-to-have), 1024 x 1024, pure black background, .webp or .png,
       named exactly:
   - [ ] Store (5): `nav3_store`, `nav3_store_body`, `nav3_store_lid`, `nav3_store_latch`, `nav3_store_open`
-  - [ ] Heroes (4): `nav3_heroes`, `nav3_heroes_helmet`, `nav3_heroes_visor`, `nav3_heroes_ball`
+  - [ ] Heroes (5): `nav3_heroes`, `nav3_heroes_body`, `nav3_heroes_head`, `nav3_heroes_visor`,
+        `nav3_heroes_light`
   - [ ] Battle (4): `nav3_battle`, `nav3_battle_disc`, `nav3_battle_rings`, `nav3_battle_ticks`
   - [ ] Modes (5, plus 1 nice to have): `nav3_modes`, `nav3_modes_planet`, `nav3_modes_ring_back`,
         `nav3_modes_ring_front`, `nav3_modes_moon` (+ `nav3_modes_surface`)
