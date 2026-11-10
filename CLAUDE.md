@@ -28,6 +28,10 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   OPEN TAB = a BLUE CAPSULE (Rudy, from Luna's Home renders): a rounded glass tile behind the open icon, ~8 px
   taller than the bar above and below, blue fill ~45%, cyan 1.5 px rim, soft cyan glow, the name in white
   inside it; it SLIDES to the tapped tab with a springy stretch (demo v4). Code-drawn, no Luna art needed.
+  The bar's fill and rim are CUT AWAY under the capsule (no bar lines through it; in Godot: one bar shader,
+  inside the capsule -> capsule look, rim drawn only outside it). Edge variants in demo v5: out top + bottom
+  (8 px each), out top only (11 px up, bottom 5 px inside), on the line (bottom on the bar's bottom edge);
+  Rudy to pick.
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
   (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold
