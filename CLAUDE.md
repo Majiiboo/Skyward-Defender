@@ -5,7 +5,8 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-09, build dev214)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev214: 2 updates. (2) PLAY REACTOR (2026-11-10, Rudy picked option A): play_reactor.gd
+- UNPUSHED since dev214: 3 updates. (3) STORE TABS CLEAN (2026-11-10): store.gd _fill_offers_clean / _fill_shop_clean / _fill_crystals_clean / _fill_exchange_clean on _item_square (name, corner amount, floating picture, one _state_pill: FREE / wait / crystal price, red when short), _reward_row (icons + numbers), Shop split by _sub_tabs (Coins / Keys / Parts / Special, _shop_tab, root meta "shop_tab"), Crystals = Starter wide card + packs three across; the paid-pack lines and Season Pass tile dropped; short of crystals now toasts. Old layouts stay behind UIKit.CLEAN false.
+  (2) PLAY REACTOR (2026-11-10, Rudy picked option A): play_reactor.gd
   PlayReactor (Button 104: 14 gold ring segments r 66 turning 24 s/turn, dark outline + two-tone flat gold disc
   breathing, ink triangle, a cost badge from cost_fn = Energy.cost (green bolt + n, or FREE); press squash,
   launch() = 1.5 turns spin-up + shock ring); hub _play_button CLEAN returns it, disables it after a paid
@@ -65,7 +66,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
   (Standard / Elite + arrows, a thin planet-progress line, a wide SOLID gold PLAY); skip the purple-gold
   gradient, the blue raised Battle tile and names under every tab. Rudy has not answered yet.
-  Then: the Level Up screen + Ascend ladder (queue 30), the other Store tabs (Offers / Shop / Crystals /
+  Then: the Level Up screen + Ascend ladder (queue 30), (Store tabs DONE, update 3; were: Offers / Shop / Crystals /
   Exchange still old layouts in the new colours), the Workshop / Turrets / Drone sub-pages, the battle
   HUD and end screen in the clean style, stage map -> Campaign. Rudy has not seen dev214 on a phone.
   Style pass 2-4 (same build): Modes cards (modes.gd _build_clean / _clean_card, Challenge moved into
