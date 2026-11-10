@@ -28,6 +28,7 @@ func _initialize() -> void:
 	_check_turrets()
 	_check_gates()
 	_check_ascend()
+	_check_goals()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -601,3 +602,26 @@ func _check_ascend() -> void:
 	_expect(Heroes.evolve(h, "frost") and Heroes.tier(h, "frost") == 3 and Heroes.ascends(h, "frost") == 2, "Frost ascends Uncommon -> Rare")
 	h.tiers["nyx"] = 9
 	_expect(Heroes.tier(h, "nyx") == 10 and not Heroes.can_evolve(h, "nyx"), "the ladder ends at Mythic V for everyone")
+
+# the next goal on Home, the daily stage twists, hero abilities (2026-11-10)
+func _check_goals() -> void:
+	_expect(Goals.stage_goal(1).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(3).text == "Clear stage 3: the AUTO pilot", "stage goals: the ability at 2, AUTO at 3 (%s)" % Goals.stage_goal(1).text)
+	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: Turrets") and String(Goals.stage_goal(4).text).contains("turret mount 1"), "stage 5 opens Turrets and mount 1 (%s)" % Goals.stage_goal(4).text)
+	_expect(String(Goals.stage_goal(9).text).contains(String(StageData.AREAS[1].name)), "stage 10 opens the next planet (%s)" % Goals.stage_goal(9).text)
+	var far := {"coins": 0, "stage_unlocked": 4, "pilot_xp": 0, "store_free": {"chest_u": 9999999999, "chest_e": 9999999999, "pack_daily": 9999999999, "pack_weekly": 9999999999, "pack_monthly": 9999999999}}
+	_expect(String(Goals.next(far).text).begins_with("Clear stage 5"), "nothing to do now: the next stage unlock (%s)" % Goals.next(far).text)
+	far["coins"] = 500
+	_expect(Goals.next(far).text == "Level up Rook" and Goals.next(far).go[0] == "NavGear", "coins for a level: Level up Rook")
+	far.erase("store_free")
+	_expect(Goals.next(far).text == "A free chest is waiting", "a free chest comes before a level")
+	# twists: none on planet 1 or on boss stages, a good + bad pair elsewhere, the same all day, different stages differ somewhere
+	_expect(Promotion.stage_twist(5, 100).is_empty() and Promotion.stage_twist(20, 100).is_empty(), "no twist before stage 11 or on a boss stage")
+	var tw := Promotion.stage_twist(12, 100)
+	_expect(tw.size() == 2 and bool(Promotion.MODS[tw[0]].good) and not bool(Promotion.MODS[tw[1]].good) and tw == Promotion.stage_twist(12, 100), "a twist is one advantage + one disadvantage, fixed for the day")
+	var seen := {}
+	for d in 30:
+		seen[str(Promotion.stage_twist(12, 100 + d))] = true
+	_expect(seen.size() >= 6, "the pair changes from day to day (%d different in 30 days)" % seen.size())
+	for id in Heroes.ORDER:
+		_expect(Heroes.ABILITIES.has(id) and String(Heroes.ABILITIES[id].name) != "", "hero %s has an ability" % id)
+	_expect(is_equal_approx(Heroes.ability_cd(1), 40.0) and is_equal_approx(Heroes.ability_cd(5), 32.0) and is_equal_approx(Heroes.ability_cd(10), 22.0), "the ability cooldown: 40 s, 2 s less a step")

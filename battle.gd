@@ -102,6 +102,7 @@ var etrial := {}                  # an element trial (Promotion.take_etrial): {"
 var _etrial_first := false        # this win cleared the step for the first time
 var _etrial_reward := {}          # what it paid (end screen)
 var _mods: Array = []             # the trial advantages and disadvantages in force (Promotion.MODS)
+var _twist := false                # the mods are today's stage twist, not a trial's
 var _bug_speed := 1.0             # Swift bugs
 var _spit_mult := 1.0             # Double spit
 var waves: Array = []
@@ -540,6 +541,10 @@ func _start_stage() -> void:
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
 	# the trial twists (Promotion.MODS): advantages and disadvantages of this fight
 	_mods = Promotion.mods_for(promo, etrial)
+	_twist = false
+	if _mods.is_empty() and not elite and not horde and not _is_trial():
+		_mods = Promotion.stage_twist(stage)   # today's pair on a Standard stage (planet 2 on)
+		_twist = not _mods.is_empty()
 	for m in _mods:
 		_tex["tw_" + String(m)] = Promotion.mod_icon(m)   # the twist icons for the HUD banner, loaded once
 	_bug_speed = 1.25 if _mods.has("swift_bugs") else 1.0
@@ -578,6 +583,8 @@ func _start_stage() -> void:
 	idle_power = gs.auto_fire
 	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if _is_trial() else 1.0)   # trials: cards come faster
 	_coin_mult = gs.coins
+	if _twist:
+		_coin_mult *= Promotion.TWIST_COINS   # a twisted stage pays more
 	_coins_f = 0.0
 	_shield_regen = gs.shield_regen
 	# the shield never regenerates (Rudy, dev108); the Ion 6-piece bonus makes it bigger instead
@@ -2980,6 +2987,8 @@ func _fill_pause() -> void:
 	title.add_theme_font_override("font", title_font)
 	v.add_child(title)
 	v.add_child(UIKit.label(("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper()) if promo >= 0 else ("STAGE %d  ·  %s" % [stage, StageData.stage_name(stage).to_upper()]), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+	if _twist:
+		v.add_child(UIKit.label("TODAY'S TWIST  ·  coins +%d%%" % roundi((Promotion.TWIST_COINS - 1.0) * 100.0), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	for m in _mods:   # the trial twists, one per line with Luna's icon (dev189)
 		v.add_child(Promotion.mods_row([m], 11, 20.0, true, true))
 	v.add_child(UIKit.label("%s  ·  Wave %d of %d  ·  %02d:%02d" % [String(StageData.area(stage).name), mini(wave_index + 1, waves.size()), waves.size(), int(time_alive) / 60, int(time_alive) % 60], 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
@@ -5572,11 +5581,16 @@ func _draw_runner(e: Dictionary, size: float) -> void:
 	if not e.has("runner"):
 		return
 	var gold := Color(1.0, 0.82, 0.3)
+	# long streaks behind it, bright near the bug and fading out
 	for i in 3:
-		var dx: float = (i - 1) * size * 0.26
-		var len: float = size * (1.5 if i == 1 else 1.0)
-		draw_line(e.pos + Vector2(dx, -size * 0.35), e.pos + Vector2(dx, -size * 0.35 - len), Color(gold, 0.55), 2.0, true)
-		draw_line(e.pos + Vector2(dx, -size * 0.35 - len), e.pos + Vector2(dx, -size * 0.35 - len * 1.6), Color(gold, 0.18), 2.0, true)
+		var dx: float = (i - 1) * size * 0.3
+		var top: float = -size * 0.3
+		var length: float = size * (2.6 if i == 1 else 1.7)
+		draw_line(e.pos + Vector2(dx, top), e.pos + Vector2(dx, top - length * 0.5), Color(gold, 0.85), 3.0, true)
+		draw_line(e.pos + Vector2(dx, top - length * 0.5), e.pos + Vector2(dx, top - length), Color(gold, 0.3), 3.0, true)
+	# a chevron in front of it, pointing where it is going
+	var cy: float = size * 0.62 + sin(time_alive * 14.0) * 2.0
+	draw_polyline(PackedVector2Array([e.pos + Vector2(-size * 0.3, cy - size * 0.2), e.pos + Vector2(0, cy), e.pos + Vector2(size * 0.3, cy - size * 0.2)]), gold, 3.0, true)
 
 func _runner_caught(e: Dictionary) -> void:
 	_runners_caught += 1

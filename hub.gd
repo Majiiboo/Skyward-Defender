@@ -85,6 +85,9 @@ var _current_view_name := "NavBattle"
 var _stage_block: Control
 var _action_row: Control
 var _mode_tag: Label
+var _twist_box: HBoxContainer   # today's twist on the selected stage (Promotion.stage_twist)
+var _goal_btn: Button           # the next goal, one line, one tap (Goals.next)
+var _goal := {}
 var _weak_icon: TextureRect   # the element the stage is weak to, beside the tag
 var _stage_btn: Button
 var _std_btn: Button
@@ -580,6 +583,23 @@ func _build_home_clean() -> void:
 	var next := _round_button("NextButton", Icons.get_icon("chev_r"), 34.0, 14)
 	next.pressed.connect(func(): _change_stage(1))
 	ctl.add_child(next)
+	# today's twist on this stage (planet 2 on), then the next goal: one line, one tap
+	_twist_box = HBoxContainer.new()
+	_twist_box.add_theme_constant_override("separation", 10)
+	_twist_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	sb.add_child(_twist_box)
+	_goal_btn = Button.new()
+	_goal_btn.name = "GoalButton"
+	_goal_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_goal_btn.add_theme_font_size_override("font_size", 13)
+	for st in ["normal", "hover", "focus"]:
+		_goal_btn.add_theme_stylebox_override(st, UIKit.pill(Color(UIKit.CARD, 0.85), 16, Vector2(14, 7)))
+	_goal_btn.add_theme_stylebox_override("pressed", UIKit.pill(UIKit.CARD_HI, 16, Vector2(14, 7)))
+	for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+		_goal_btn.add_theme_color_override(c, UIKit.TEXT)
+	_goal_btn.pressed.connect(_on_goal)
+	UIKit.press_fx(_goal_btn)
+	sb.add_child(_goal_btn)
 
 	# the side column, top right: Chest, Patrol, then the rail buttons (Starter, Daily, Gifts)
 	var col := VBoxContainer.new()
@@ -1030,6 +1050,7 @@ func _update_stage_label() -> void:
 	_mode_tag.add_theme_color_override("font_color", PURPLE if is_elite else CYAN)
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5
+	_paint_twist()
 	if UIKit.CLEAN:
 		# no "WEAK TO" words: the element icon after the line says it (Rudy, dev209)
 		_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STAGE", stage, String(StageData.area(stage).name).to_upper()]
@@ -1093,6 +1114,39 @@ func _set_mode(m: String) -> void:
 # the highest stage you may pick in this mode: Elite has its own ladder
 func _top_stage() -> int:
 	return elite_stage_unlocked if mode == "Elite" else stage_unlocked
+
+# the next goal chip under the stage (Goals.next): what to do now, or the next stage that opens something
+func _paint_goal(s: Dictionary) -> void:
+	if _goal_btn == null:
+		return
+	_goal = Goals.next(s)
+	_goal_btn.text = String(_goal.get("text", "")) + "   ›"
+	_goal_btn.visible = not _goal.is_empty()
+
+func _on_goal() -> void:
+	var go: Array = _goal.get("go", [])
+	if go.is_empty():   # a stage to clear: select it (or the furthest one open)
+		if mode != "Normal":
+			_set_mode("Normal")
+		stage = clampi(int(_goal.get("stage", stage)), 1, _top_stage())
+		_write_selection()
+		_update_stage_label()
+		return
+	if String(go[1]) != "":
+		get_tree().root.set_meta(String(go[1]), int(go[2]))
+	_on_nav_tap(String(go[0]), NAV_PATHS[String(go[0])])
+
+func _paint_twist() -> void:
+	if _twist_box == null:
+		return
+	for c in _twist_box.get_children():
+		c.queue_free()
+	var tw: Array = Promotion.stage_twist(stage) if mode == "Normal" else []
+	_twist_box.visible = not tw.is_empty()
+	if tw.is_empty():
+		return
+	_twist_box.add_child(Promotion.mods_row(tw, 11, 18.0))
+	_twist_box.add_child(UIKit.iconed(UIKit.ic("ic_coin", "ui_coin"), "+%d%%" % roundi((Promotion.TWIST_COINS - 1.0) * 100.0), 11, UIKit.GOLD, 16.0))
 
 func _change_stage(d: int) -> void:
 	stage = clampi(stage + d, 1, _top_stage())
@@ -1535,6 +1589,7 @@ func _on_energy_changed() -> void:
 # and the Home buttons (Daily = Quests, Gifts = today's gift, Patrol = something to collect).
 # Called every 2 s with the energy counter and whenever Home comes back.
 func _refresh_dots(s: Dictionary) -> void:
+	_paint_goal(s)
 	var at := Progress.attention(s)
 	UIKit.dot(_nav_btn("NavQuests"), at.quests)
 	UIKit.dot(_nav_btn("NavStore"), at.store)

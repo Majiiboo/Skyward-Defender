@@ -311,3 +311,26 @@ static func mods_row(mods: Array, size_px: int = 11, px: float = 20.0, long: boo
 			var txt := String(MODS[m].name) + ((": " + String(MODS[m].text)) if long else "")
 			h.add_child(UIKit.iconed(mod_icon(m), txt, size_px, GOOD_COL if MODS[m].good else BAD_COL, px))
 	return h
+
+# STAGE TWISTS (2026-11-10): from planet 2 on, a Standard stage carries one advantage and one
+# disadvantage from the trial list, and the pair changes every day, so the same stage is not the
+# same fight twice. Always a pair, so the day never turns a stage into a wall (the sweeps showed
+# how thin the line is); the stage pays TWIST_COINS on the coins picked up. Boss stages (every
+# 5th) keep their own show and have none. Home names today's pair under the stage; the battle
+# banner and the pause menu already list modifiers.
+const TWIST_FROM := 11
+const TWIST_GOOD := ["rapid", "sharpshooter", "fortified", "reinforced", "turret_boost", "overcharge"]
+const TWIST_BAD := ["swift_bugs", "thick_shells", "double_spit", "weak_shield"]   # Turrets down stays a trial thing
+const TWIST_COINS := 1.2
+static var TWISTS := true   # the balance simulator switches them off, so its sweeps do not change with the date
+
+static func day() -> int:
+	return int(Time.get_unix_time_from_system() / 86400.0)
+
+static func stage_twist(stage: int, d: int = -1) -> Array:
+	if not TWISTS or stage < TWIST_FROM or stage % 5 == 0:
+		return []
+	if d < 0:
+		d = day()
+	var h: int = absi(hash(stage * 7919 + d * 104729))
+	return [TWIST_GOOD[h % TWIST_GOOD.size()], TWIST_BAD[(h / 7) % TWIST_BAD.size()]]
