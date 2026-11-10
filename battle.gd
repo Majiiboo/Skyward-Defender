@@ -653,6 +653,7 @@ func _start_stage() -> void:
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
 	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
+	_lefty = bool(sv.get("left_hand", false))   # Settings: left-handed
 	if not _speeds().has(game_speed):
 		game_speed = 1.0
 	# a mount opened since the last run: its hatch opens before the turret drops in
@@ -1231,7 +1232,7 @@ func _toggle_auto() -> void:
 
 # bottom right, above the base (Rudy): a thumb reaches it without covering the fight
 func _auto_rect() -> Rect2:
-	return Rect2(FIELD_W - 62.0, BASE_Y - 196.0, 50.0, 50.0)
+	return Rect2(12.0 if _lefty else FIELD_W - 62.0, BASE_Y - 196.0, 50.0, 50.0)   # left-handed: the two buttons swap sides
 
 func _draw_auto_btn() -> void:
 	var r := _auto_rect()
@@ -1344,8 +1345,8 @@ func _update_bullets(delta: float) -> void:
 				continue   # a boss still arriving: bolts pass through her
 			if b.pos.distance_to(e.pos) < float(b.r) + float(e.r) * 0.5:
 				var dmg: float = float(b.dmg)
-				if _is_boss(e) and e.laying > 1.2:
-					dmg *= 2.0   # weak spot open while she lays
+				if _boss_weak(e):
+					dmg *= WEAK_MULT   # her weak point is open (_boss_weak): a reticle shows it
 				if b.has("fuse"):   # a flak shell that meets a bug on the way up bursts there
 					_burst_at(b, b.pos, float(b.dmg), float(b.splash), e)
 					hit = true
@@ -4207,6 +4208,7 @@ func _draw_enemy(e: Dictionary) -> void:
 	_draw_status(e, size)
 	_draw_variant(e, size)
 	_draw_runner(e, size)
+	_draw_weak(e, size)
 	if e.hp < e.hp_max and not _is_boss(e):
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
@@ -5253,7 +5255,7 @@ func _hp_mult() -> float:
 # boss every 10th wave. The run ends when you fall; the score is the wave count.
 const HORDE_HP_PER_WAVE := 0.04
 const BOSS_WALL := 1.5   # the planet boss (stage 10, 20, ...): a soft wall (16 g, dev198)
-const BOSS_HP := 2.5    # every boss (dev209); a mini-boss keeps MINI_HP of that (2.5 x 0.48 = 1.2, twice the old 0.6)
+const BOSS_HP := 3.4   # was 2.5 until the visible weak point (WEAK_MULT 2.5, open about a third of the time, Rudy 2026-11-10: "then they need more health so you do not eat through them")    # every boss (dev209); a mini-boss keeps MINI_HP of that (2.5 x 0.48 = 1.2, twice the old 0.6)
 const MINI_HP := 0.48
 const WRECKER_HOLD_MAX := 6.0   # the Wrecker lets a turret go after this long whatever happens
 func _horde_wave(k: int) -> Array:
@@ -5841,7 +5843,7 @@ func _draw_wing_chip() -> void:
 
 # bottom left, above the base: the mirror of AUTO
 func _ult_rect() -> Rect2:
-	return Rect2(10.0, BASE_Y - 204.0, 58.0, 58.0)
+	return Rect2(FIELD_W - 68.0 if _lefty else 10.0, BASE_Y - 204.0, 58.0, 58.0)
 
 func _draw_ult_btn() -> void:
 	var r := _ult_rect()
@@ -6194,3 +6196,40 @@ func _supply_pick(i: int) -> void:
 # capture hook (CAP_CALL="_dbg_supply"): the supply choice
 func _dbg_supply() -> void:
 	_open_supply()
+
+# ------------------------------------------------------------------ BOSS WEAK POINT (2026-11-10)
+# Every boss has a window when it is open: the Hive Mother and the Salvage Queen while they lay or
+# release (it was x2 and invisible), the Wrecker while its claw holds a turret. In the window bolts
+# hit WEAK_MULT harder and a gold reticle closes on her with the words, so the player knows to pour
+# it on. (IDEAS-2026-11-10.md 3.)
+const WEAK_MULT := 2.5
+var _lefty := false
+
+func _boss_weak(e: Dictionary) -> bool:
+	if not _is_boss(e) or not e.get("arrived", false):
+		return false
+	return float(e.get("laying", 0.0)) > 1.2 or (e.type == "wrecker" and String(e.get("state", "")) == "hold")
+
+func _draw_weak(e: Dictionary, size: float) -> void:
+	if not _boss_weak(e):
+		return
+	var gold := Color(1.0, 0.82, 0.3)
+	var r: float = size * 0.42
+	var pulse: float = 0.5 + 0.5 * sin(time_alive * 9.0)
+	draw_arc(e.pos, r, 0.0, TAU, 48, Color(gold, 0.55 + 0.4 * pulse), 2.5, true)
+	draw_arc(e.pos, r * (1.25 + 0.12 * pulse), 0.0, TAU, 48, Color(gold, 0.25), 1.5, true)
+	for i in 4:
+		var a := time_alive * 1.2 + i * PI * 0.5
+		var d := Vector2(cos(a), sin(a))
+		draw_line(e.pos + d * r * 0.7, e.pos + d * r * 1.3, gold, 3.0, true)
+	draw_string(title_font, Vector2(e.pos.x - 100.0, e.pos.y - r * 1.3 - 8.0), "WEAK POINT  x%s" % str(WEAK_MULT), HORIZONTAL_ALIGNMENT_CENTER, 200.0, 14, Color(gold, 0.8 + 0.2 * pulse))
+
+# capture hook (CAP_CALL="_dbg_weak"): a boss with her weak point open
+func _dbg_weak() -> void:
+	enemies.clear()
+	wave_queue.clear()
+	_spawn("hive_mother")
+	enemies[0].pos = Vector2(FIELD_W * 0.5, 230.0)
+	enemies[0].arrived = true
+	enemies[0].laying = 3.0
+	enemies[0].hatched = true

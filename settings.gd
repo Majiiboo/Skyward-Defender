@@ -105,6 +105,11 @@ func _fill() -> void:
 		h.add_child(b)
 		p.add_child(h)
 		_page.add_child(p)
+	_page.add_child(_switch("Left-handed", "Swaps the AUTO and ability buttons in a fight", bool(d.get("left_hand", false)), func(v: bool):
+		d = Progress.read()
+		d["left_hand"] = v
+		Progress.write(d)
+		_fill()))
 	_page.add_child(_switch("Show frame counter", "A small fps number in battle, for testing", bool(d.get("show_fps", false)), func(v: bool):
 		d = Progress.read()
 		d["show_fps"] = v
