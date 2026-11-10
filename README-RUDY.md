@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev239 (version/code=239 and version/name="1.0-dev239" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev242 (version/code=242 and version/name="1.0-dev242" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,29 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev242: the new base, core and pods (three updates since dev239)
+
+- THE NEW BASE IN THE FIGHT. The old platform with its four sockets is gone from the fight. In its
+  place: one glowing core at the bottom centre and four round pods on arms around it, under the
+  shield. Each pod shows the building you fielded, in its colour. A pod grows with its building:
+  four plates round it from level 5, a turning halo at level 10. A slot you have not opened yet is
+  a dark pod; an open slot with nothing on it shows a plus.
+  The base reacts: a bead of light runs from the core to every working pod, the core turns amber
+  when the shield is down, and a pod flashes when its building does something (the Repair Bay and
+  Med Bay after a wave, the Radar when a runner is caught, the Shield Generator when the emergency
+  shield goes up).
+  THESE ARE STAND-IN SHAPES drawn by the game. Luna's painted core, pods and building pictures
+  replace them when they arrive; the layout stays.
+- THE BRIEF FOR LUNA is in the folder "Luna base" on your Desktop (LUNA-BRIEF-base-core.md and
+  base_core_ref.svg). Send her both. She makes one picture of the whole base first and sends it to
+  you, so you agree on the look before she paints the other fifteen.
+- FIRST FIGHTS. A brand-new player's Home now says "Win your first fight" instead of pointing at
+  the Store, and the first fight shows a one-time hint on how to fly and shoot.
+
+NOT CHECKED BY ME: nothing here has been on a phone. I looked at the new base in a recorded fight
+on stage 12 only (three slots open, one closed); the flash on each pod I read in the code and did
+not watch happen. Game rules did not change, so I ran no new balance sweep.
 
 ## dev239: one look everywhere, and a perk for every building (three updates since dev236)
 

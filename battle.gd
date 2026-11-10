@@ -2016,7 +2016,7 @@ func _mount_turret(type: String, mount: int = -1, lvl: int = 1, fx: bool = true)
 	return true
 
 func _socket(i: int) -> Vector2:
-	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT)
+	return Backdrop.socket_pos(i, FIELD_W, FIELD_H - STRIP_LIFT) if TURRETS_ON else Backdrop.pod_pos(i, FIELD_W, BASE_Y)
 
 func _turret_dmg(t: Dictionary) -> float:
 	return float(t.def.damage) * _turret_dmg_mult
@@ -2682,6 +2682,7 @@ func _hurt_base(amount: float) -> void:
 		shield = maxf(shield - amount, 0.0)
 		if shield <= 0.0 and _base_perks.has("shield_gen") and not _dome_used:   # Shield Generator Lv.5: it comes back once
 			_dome_used = true
+			_pod_ping("shield_gen")
 			shield = shield_max * 0.3
 			_fx_add("nova", Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY * 0.5), 220.0, 0.6, 0.0, 2.2, Color(0.31, 0.88, 1.0))
 			_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 30.0), "EMERGENCY SHIELD", Color(0.5, 0.92, 1.0), true)
@@ -4054,15 +4055,19 @@ func _draw() -> void:
 	else:
 		Backdrop.draw_sky_palette(self, fsize, _stars, time_alive, sec.sky_top, sec.sky_bot, sec.glow, soldier_pos.x / FIELD_W - 0.5)
 		Backdrop.draw_horizon(self, fsize, BASE_Y, elite, _city, time_alive, sec.rim)
+	if not TURRETS_ON:
+		Backdrop.draw_base_shade(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
-	Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
-	Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
-	for i in Turrets.MOUNTS:
-		_draw_socket_lid(i)
+	if TURRETS_ON:   # the old painted strip with its sockets (asleep)
+		Backdrop.draw_strip(self, FIELD_W, FIELD_H - STRIP_LIFT)
+		Backdrop.draw_base_lights(self, FIELD_W, FIELD_H - STRIP_LIFT, time_alive)
+		for i in Turrets.MOUNTS:
+			_draw_socket_lid(i)
+	else:
+		_draw_core_base()
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
-	_draw_buildings()
 	_draw_lanes()   # a runner is coming down this lane
 	_draw_strikes()   # the planet's hazard about to land
 	# gems
@@ -5725,6 +5730,7 @@ func _draw_runner(e: Dictionary, size: float) -> void:
 
 func _runner_caught(e: Dictionary) -> void:
 	_runners_caught += 1
+	_pod_ping("radar")
 	_float_text(e.pos + Vector2(0, -22), "CAUGHT!", Color(1.0, 0.85, 0.4), true)
 	var worth: float = (4.0 + 0.4 * stage) * (2.0 if _base_perks.has("radar") else 1.0)   # Radar Lv.5: a caught runner pays double
 	for i in 4:
@@ -5734,6 +5740,8 @@ func _runner_caught(e: Dictionary) -> void:
 	hitstop = maxf(hitstop, 0.05)
 
 func _wave_patch() -> void:
+	_pod_ping("repair_bay")
+	_pod_ping("medbay")
 	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
 	if _base_repair > 0.0 and hull < hull_max:
 		hull = minf(hull + hull_max * _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0), hull_max)
@@ -6345,12 +6353,15 @@ func _apply_base(sv: Dictionary) -> void:
 	_base_perks = []
 	if _mods.has("no_turrets"):   # the Base offline twist (trials): the buildings give nothing this fight
 		_base_slots = ["", "", "", ""]
+		_base_open = [false, false, false, false]   # every pod dark
 		return
 	var bs := Base.stats(sv)
 	var b := Base.read(sv)
 	var su := int(sv.get("stage_unlocked", 1))
 	for i in Base.SLOTS:
 		_base_slots[i] = String(b.slots[i]) if (Base.slot_open(i, su) or DevTools.on) else ""
+		_base_open[i] = Base.slot_open(i, su) or DevTools.on
+		_base_levels[i] = Base.level(b, _base_slots[i]) if _base_slots[i] != "" else 0
 		if _base_slots[i] != "":
 			_tex["bld_" + String(_base_slots[i])] = UIKit.ic(String(Base.BUILDINGS[_base_slots[i]].icon))
 	shield_max *= 1.0 + float(bs.shield)
@@ -6376,20 +6387,6 @@ func _apply_base(sv: Dictionary) -> void:
 	_ult_cd /= 1.0 + float(bs.ability)
 	_warn_mult = 1.0 + float(bs.warn)
 	_coin_mult *= 1.0 + float(bs.coins)
-
-# the buildings on the base: a lit icon over each slot, breathing a little
-func _draw_buildings() -> void:
-	for i in Base.SLOTS:
-		var id: String = _base_slots[i]
-		if id == "":
-			continue
-		var col: Color = Base.BUILDINGS[id].col
-		var p := _socket(i) + Vector2(0, -24.0 + sin(time_alive * 2.0 + i) * 2.0)
-		draw_circle(p, 19.0, Color(0.04, 0.07, 0.13, 0.9))
-		draw_arc(p, 19.0, 0.0, TAU, 32, Color(col, 0.75 + 0.2 * sin(time_alive * 3.0 + i)), 2.0, true)
-		var tx: Texture2D = _tex.get("bld_" + id)
-		if tx != null:
-			draw_texture_rect(tx, Rect2(p - Vector2(13, 13), Vector2(26, 26)), false)
 
 # With the turrets gone the hero does all the shooting. The turrets did nothing on the first
 # stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by
@@ -6482,3 +6479,25 @@ func _draw_move_tip() -> void:
 	var y: float = soldier_pos.y + 64.0
 	_hc.draw_string(title_font, Vector2(0, y), "DRAG TO FLY", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 18, Color(1, 1, 1, a))
 	_hc.draw_string(hud_font, Vector2(0, y + 20.0), "He fires straight up. Get under the bugs.", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 12, Color(0.8, 0.86, 0.95, a))
+
+# ---- THE CORE BASE in the fight (Backdrop.draw_core_base; stand-in shapes until Luna's art).
+# A pod flashes when its building does something you can see: _pod_ping(id).
+var _base_levels: Array = [0, 0, 0, 0]
+var _base_open: Array = [false, false, false, false]
+var _pod_ping_t: Array = [-9.0, -9.0, -9.0, -9.0]
+
+func _pod_ping(id: String) -> void:
+	var i := _base_slots.find(id)
+	if i >= 0:
+		_pod_ping_t[i] = time_alive
+
+func _draw_core_base() -> void:
+	var pods: Array = []
+	for i in Base.SLOTS:
+		var id: String = _base_slots[i]
+		var pd := {"open": _base_open[i], "level": _base_levels[i], "flash": 1.0 - (time_alive - float(_pod_ping_t[i])) / 0.7}
+		if id != "":
+			pd["col"] = Base.BUILDINGS[id].col
+			pd["tex"] = _tex.get("bld_" + id)
+		pods.append(pd)
+	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0))

@@ -450,3 +450,89 @@ static func draw_force_field(c: CanvasItem, centre: Vector2, rx: float, ry: floa
 	if hit_t >= 0.0 and hit_t < 0.5:
 		var k := hit_t / 0.5
 		c.draw_polyline(_ell_pts(centre, rx * (1.0 + 0.08 * k), ry * (1.0 + 0.12 * k), PI, TAU), Color(1, 1, 1, (1.0 - k) * 0.5), 3.0, true)
+
+# ---- THE CORE BASE (2026-11-10; Rudy picked "core and pods" over a skyline deck and a carrier hull).
+# One core at the bottom centre, four round pods on arms around it, all under the force field. It
+# takes the painted strip's place in the fight. Everything here is a STAND-IN drawn in code until
+# Luna's pieces land (LUNA-BRIEF-base-core.md: base2_core + _core_light, base2_pod_1..3, base2_arm,
+# nine b_<id> building pictures); the layout numbers stay, the shapes get swapped for her art.
+# Offsets are from the field's centre point (width / 2, base_y), for a 480-wide screen.
+const POD_OFFS := [Vector2(-175, -30), Vector2(-95, -66), Vector2(95, -66), Vector2(175, -30)]
+const POD_R := 23.0
+const CORE_R := 60.0
+const CORE_EYE := Vector2(0, -16)   # the core's light, from the same centre point
+const BASE_NAVY := Color(0.055, 0.09, 0.157)
+const BASE_EDGE := Color(0.165, 0.24, 0.39)
+
+static func pod_pos(i: int, width: float, base_y: float) -> Vector2:
+	return Vector2(width * 0.5, base_y) + POD_OFFS[i] * (width / 480.0)
+
+static func core_eye(width: float, base_y: float) -> Vector2:
+	return Vector2(width * 0.5, base_y) + CORE_EYE * (width / 480.0)
+
+# pods: one entry per slot {"open": bool, "col": Color, "tex": Texture2D or null, "level": int,
+# "flash": 0..1}; an entry without "tex" is an empty slot. power = the shield's share (0 = the
+# shield is down: the core turns amber and the pulses along the arms stop).
+static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y: float, t: float, pods: Array, power: float) -> void:
+	var k := width / 480.0
+	var eye := core_eye(width, base_y)
+	var live := power > 0.0
+	var core_col := CYAN if live else Color(1.0, 0.55, 0.25)
+	# arms first, so the core and the pods sit on their ends
+	for i in mini(pods.size(), POD_OFFS.size()):
+		var pd: Dictionary = pods[i]
+		var p := pod_pos(i, width, base_y)
+		var on: bool = bool(pd.get("open", false)) and pd.get("tex") != null
+		c.draw_line(eye, p, BASE_NAVY, 7.0 * k, true)
+		c.draw_line(eye, p, BASE_EDGE if not on else Color(Color(pd.col), 0.45), 1.5, true)
+		if on and live:   # a bead of light runs from the core out to the pod
+			var u := fposmod(t * 0.55 + i * 0.27, 1.0)
+			c.draw_circle(eye.lerp(p, u), 2.2 * k, Color(Color(pd.col), 0.9 * sin(u * PI)))
+	# the core: a low dome sunk into the bottom edge
+	var dome := _ell_pts(Vector2(width * 0.5, bottom_y), CORE_R * k, CORE_R * k, PI, TAU, 36)
+	c.draw_colored_polygon(dome, BASE_NAVY)
+	c.draw_polyline(dome, BASE_EDGE, 1.5, true)
+	c.draw_arc(Vector2(width * 0.5, bottom_y), CORE_R * k * 0.78, PI * 1.12, PI * 1.38, 12, Color(BASE_EDGE, 0.8), 1.2, true)
+	c.draw_arc(Vector2(width * 0.5, bottom_y), CORE_R * k * 0.78, PI * 1.62, PI * 1.88, 12, Color(BASE_EDGE, 0.8), 1.2, true)
+	var beat := 0.5 + 0.5 * sin(t * 2.4)
+	c.draw_circle(eye, 21.0 * k, Color(0.027, 0.047, 0.094))
+	c.draw_arc(eye, 21.0 * k, 0.0, TAU, 40, Color(core_col, 0.55 + 0.35 * beat), 1.6, true)
+	c.draw_arc(eye, (21.0 + 5.0 * beat) * k, 0.0, TAU, 40, Color(core_col, 0.22 * (1.0 - beat)), 1.0, true)
+	c.draw_circle(eye, (9.0 + 1.6 * beat) * k * (0.55 + 0.45 * clampf(power, 0.0, 1.0) if live else 0.7), core_col)
+	c.draw_circle(eye, 3.6 * k, Color(1, 1, 1, 0.95))
+	# the pods
+	for i in mini(pods.size(), POD_OFFS.size()):
+		var pd: Dictionary = pods[i]
+		var p := pod_pos(i, width, base_y)
+		var r := POD_R * k
+		if not bool(pd.get("open", false)):   # a slot not opened yet: a dim, dashed ring
+			c.draw_circle(p, r, Color(BASE_NAVY, 0.9))
+			for s in 10:
+				c.draw_arc(p, r, TAU * s / 10.0, TAU * (s + 0.55) / 10.0, 5, Color(0.45, 0.55, 0.72, 0.8), 1.3, true)
+			continue
+		c.draw_circle(p, r, BASE_NAVY)
+		if pd.get("tex") == null:   # open, nothing built on it
+			c.draw_arc(p, r, 0.0, TAU, 40, BASE_EDGE, 1.5, true)
+			c.draw_line(p - Vector2(5 * k, 0), p + Vector2(5 * k, 0), BASE_EDGE, 1.5, true)
+			c.draw_line(p - Vector2(0, 5 * k), p + Vector2(0, 5 * k), BASE_EDGE, 1.5, true)
+			continue
+		var col: Color = pd.col
+		var fl: float = clampf(float(pd.get("flash", 0.0)), 0.0, 1.0)
+		var lv: int = int(pd.get("level", 1))
+		c.draw_circle(p, r - 4.0 * k, Color(0.027, 0.047, 0.094))
+		c.draw_arc(p, r, 0.0, TAU, 40, col.lerp(Color.WHITE, fl), 2.0 + 1.5 * fl, true)
+		if lv >= 5:    # four plates round the ring (the pod's second look)
+			for s in 4:
+				var a := TAU * s / 4.0 - PI / 4.0
+				c.draw_arc(p, r + 4.0 * k, a - 0.28, a + 0.28, 8, Color(col, 0.9), 3.0 * k, true)
+		if lv >= 10:   # a halo floating off it (the third look)
+			c.draw_arc(p, r + 9.0 * k, t * 0.6, t * 0.6 + TAU * 0.8, 36, Color(col, 0.55), 1.2, true)
+		if fl > 0.0:
+			c.draw_arc(p, r + (4.0 + 14.0 * (1.0 - fl)) * k, 0.0, TAU, 40, Color(col, 0.7 * fl), 1.5, true)
+		var tx: Texture2D = pd.tex
+		var half := 13.0 * k * (1.0 + 0.12 * fl)
+		c.draw_texture_rect(tx, Rect2(p - Vector2(half, half), Vector2(half, half) * 2.0), false)
+
+# a dark wash under the force field so the core and pods read against a busy planet surface
+static func draw_base_shade(c: CanvasItem, centre: Vector2, rx: float, ry: float) -> void:
+	c.draw_colored_polygon(_ell_pts(centre, rx, ry, PI, TAU), Color(0.02, 0.04, 0.09, 0.5))
