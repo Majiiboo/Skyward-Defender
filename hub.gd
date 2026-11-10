@@ -95,6 +95,11 @@ var _energy_btn: Button     # power tokens (Energy)
 var _tag_timer: SceneTreeTimer = null
 var _frame: HomeFrame = null
 var _nav_layers := {}   # tab name -> {layer name: TextureRect}
+# Luna's animated nav icons (nav_icon.gd, icons/nav3) on the glass pill bar with the blue capsule:
+# on in the clean look once her pictures are cut (tools/cut_nav3.gd)
+const NAV_KIND := {"NavStore": "store", "NavGear": "heroes", "NavBattle": "battle", "NavModes": "modes", "NavQuests": "quests"}
+var _nav3 := false
+var _nav_icons := {}    # tab name -> NavIcon
 
 func _ready() -> void:
 	size = get_viewport_rect().size
@@ -856,16 +861,27 @@ func _fmt(n: int) -> String:
 # ----------------------------------------------------------- nav setup
 
 func _setup_nav() -> void:
+	_nav3 = UIKit.CLEAN and NavIcon.pictures_ready()
 	for tab in NAV_TABS:
 		var nb := _nav_btn(tab)
 		nb.icon = Icons.get_icon(NAV_ICONS[tab])
 		nb.modulate = Color.WHITE if tab == "NavBattle" else NAV_DIM
+		if _nav3:   # Luna's parts, drawn and animated by NavIcon; it greys the closed tabs itself
+			nb.icon = null
+			nb.modulate = Color.WHITE
+			var ic := NavIcon.new()
+			ic.name = "NavIcon"
+			ic.set_anchors_preset(Control.PRESET_FULL_RECT)
+			nb.add_child(ic)
+			ic.setup(NAV_KIND[tab])
+			ic.set_open(tab == "NavBattle")
+			_nav_icons[tab] = ic
 	# The bar's look is drawn by nav_dock.gd; the PanelContainer only keeps padding.
 	var bar_box := StyleBoxEmpty.new()
 	bar_box.content_margin_top = 10
 	bar_box.content_margin_bottom = 14
-	bar_box.content_margin_left = 14
-	bar_box.content_margin_right = 14
+	bar_box.content_margin_left = 20 if _nav3 else 14   # keeps the end tabs' capsule over the pill
+	bar_box.content_margin_right = 20 if _nav3 else 14
 	$NavBar.add_theme_stylebox_override("panel", bar_box)
 	$NavBar/NavVBox.add_theme_constant_override("separation", -8)
 	_nav_empty = StyleBoxEmpty.new()
@@ -882,6 +898,8 @@ func _setup_nav() -> void:
 			nl.text = String(NAV_NAMES[tab]).to_upper()
 			nl.add_theme_font_override("font", UIKit.title_font())
 		_paint_nav_label(tab, tab == "NavBattle")
+		if UIKit.CLEAN:   # start already faded (no flash of every name while the game opens)
+			nl.modulate.a = 1.0 if tab == "NavBattle" else 0.0
 	for tab in NAV_TABS:
 		var btn := _nav_btn(tab)
 		var path := ""
@@ -914,6 +932,15 @@ func _setup_view_manager() -> void:
 	move_child(_frost, _view_container.get_index())
 	_nav_dock = NavDock.new()
 	_nav_dock.name = "NavDock"
+	if UIKit.CLEAN:   # the glass pill: room above for the capsule + its glow, a capsule width
+		_nav_dock.bump_h = 14.0
+		_nav_dock.bump_w = 70.0
+		# a fresh copy of the screen right before the dock, so its blur sees the open page
+		var bb := BackBufferCopy.new()
+		bb.name = "NavBackBuffer"
+		bb.copy_mode = BackBufferCopy.COPY_MODE_VIEWPORT
+		add_child(bb)
+		move_child(bb, $NavBar.get_index())
 	add_child(_nav_dock)
 	move_child(_nav_dock, $NavBar.get_index())
 	_nav_dock.setup($NavBar)
@@ -931,6 +958,10 @@ func _animate_nav_in() -> void:
 		var on: bool = tab == "NavBattle"
 		b.position.y = NAV_LIFT if on else 0.0
 		b.scale = Vector2.ONE * (1.08 if on else 1.0)
+		if _nav3:   # NavIcon does the lift and the size; the Battle icon plays its move on arrival
+			b.position.y = 0.0
+			b.scale = Vector2.ONE
+			(_nav_icons[tab] as NavIcon).set_open(on, on)
 	_nav_dock.snap_to_tab(_nav_btn("NavBattle"), 0)
 	_start_nav_pulse()
 
@@ -1104,12 +1135,18 @@ func _on_nav_tap(tapped: String, path: String) -> void:
 	_stop_nav_pulse()
 	var edge := -1 if tapped == "NavStore" else (1 if tapped == "NavQuests" else 0)
 	var tapped_btn := _nav_btn(tapped)
-	_icon_fx(tapped, tapped_btn)
+	if not _nav3:
+		_icon_fx(tapped, tapped_btn)
 	# The notch glides along the bar; it is part of the bar's own outline.
 	_nav_dock.slide_to_tab(tapped_btn, edge)
 	# Icons: the tapped one lights up and lifts (small bounce), the rest dim and settle.
 	var tw := create_tween().set_parallel(true)
-	for tab in NAV_TABS:
+	if _nav3:   # Luna's icons: the tapped one turns to colour and plays its move, the rest go grey
+		tw.tween_interval(0.3)
+		for tab in NAV_TABS:
+			(_nav_icons[tab] as NavIcon).set_open(tab == tapped, tab == tapped)
+			_paint_nav_label(tab, tab == tapped)
+	for tab in (NAV_TABS if not _nav3 else []):
 		var b := _nav_btn(tab)
 		var on: bool = tab == tapped
 		b.pivot_offset = b.size / 2.0
@@ -1177,6 +1214,8 @@ func _start_nav_pulse(tab: String = "NavBattle") -> void:
 	# Battle; _on_nav_tap kills it first so it cannot fight the
 	# tap tween's scale, and _show_home/_show_view restart it.
 	_stop_nav_pulse()
+	if _nav3:   # NavIcon floats the open icon itself
+		return
 	var _b := _nav_btn(tab)
 	_b.scale = Vector2(1.08, 1.08)
 	_pulse_tween = create_tween()
@@ -1310,8 +1349,9 @@ func _fade_in_overlay() -> void:
 func _paint_nav_label(tab: String, on: bool) -> void:
 	var l := _nav_label(tab)
 	if UIKit.CLEAN:
-		# icons only; the open tab's name fades in under it (cyan for every tab, Battle too)
-		l.add_theme_color_override("font_color", CYAN)
+		# icons only; the open tab's name fades in under it (cyan for every tab, Battle too;
+		# white inside the blue capsule)
+		l.add_theme_color_override("font_color", Color(0.95, 0.98, 1.0) if _nav3 else CYAN)
 		l.create_tween().tween_property(l, "modulate:a", 1.0 if on else 0.0, 0.22)
 		return
 	l.add_theme_color_override("font_color", (GOLD if tab == "NavBattle" else CYAN) if on else MUTED)
@@ -1392,6 +1432,8 @@ const NAV_LAYERS := {
 }
 
 func _build_layered_nav_icons() -> void:
+	if _nav3:   # Luna's round 2 icons replace the layered ones
+		return
 	for tab in NAV_LAYERS:
 		var b := _nav_btn(tab)
 		if b == null:

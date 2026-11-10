@@ -5,7 +5,15 @@ plan (1.0 / 1.x / 2.0) is in ROADMAP.md.
 
 ## Where we are (hand-over, 2026-11-09, build dev214)
 A new session picks up here. Everything is committed and pushed (github.com/Majiiboo/Skyward-Defender).
-- UNPUSHED since dev214: 0 updates. dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NAV ICONS:
+- UNPUSHED since dev214: 1 update. (1) NAV BAR 2.0 (2026-11-10): Luna's nav3 icons in the game on the glass
+  pill + blue capsule. tools/cut_nav3.gd -> icons/nav3/<kind>_<part>.png 192 (one square crop per icon) +
+  modes_moon / spark; nav_icon.gd NavIcon (draws the parts, keyframed open MOVE 1.5 s + IDLE every 3-5 s + float,
+  nav_icon.gdshader grey for closed tabs, moon on the ring ellipse, visor / ring shine bands); nav_glass.gdshader
+  (pill + capsule from rects, 17-tap blur, no pill rim inside the capsule, cyan glow); nav_dock.gd glass mode
+  (bump_h 14, bump_w 70, slide_p springy glide + stretch); hub.gd _nav3 (NavIcon per tab, NavBackBuffer
+  BackBufferCopy before the dock, side margins 20, labels white, no pulse / _icon_fx / layered icons).
+  Not seen on a phone yet. NEXT: Rudy asked for a better PLAY button on Home (the round gold one).
+  dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NAV ICONS:
   Rudy picked option C (flat two-tone: navy body + one accent) from the canvas "Nav icons" page and wants
   LUNA to paint them: LUNA-BRIEF-nav-icons.md + art_src/ref/nav_icons_ref.png (copied to Desktop/Luna nav
   icons), LUNA-PROGRAM row 14; files will be nav2_store / _heroes / _battle / _modes / _quests on black.

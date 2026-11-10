@@ -26,9 +26,27 @@ var _tab: Control
 var _edge := 0
 var _tween: Tween
 
+# The clean look's GLASS PILL + BLUE CAPSULE (Rudy, 2026-11-09; demo claude.ai/artifact/96yTzLebGhRXcLsRL1dcve):
+# nav_glass.gdshader draws both from these rectangles; the capsule slides to the tapped tab with a
+# springy stretch. hub.gd puts a BackBufferCopy right before this node so the blur sees the open page.
+const PILL_SIDE := 12.0        # the pill floats this far in from the screen sides
+const PILL_TOP := 8.0          # ... starts this far below the bar's top (under bump_h)
+const PILL_BOTTOM := 12.0      # ... and ends this far above the screen bottom
+const CAP_OUT := 8.0           # the capsule sticks out this far above and below the pill
+var glass := false             # set by setup when UIKit.CLEAN
+var slide_p := 1.0             # 0..1 through a slide (drives the stretch)
+var _slide_from := 0.0
+var _slide_to := 0.0
+var _mat: ShaderMaterial
+
 func setup(bar: Control) -> void:
 	_bar = bar
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+	glass = UIKit.CLEAN
+	if glass:
+		_mat = ShaderMaterial.new()
+		_mat.shader = load("res://nav_glass.gdshader")
+		material = _mat
 	_follow_bar()
 
 func snap_to_tab(tab: Control, edge: int) -> void:
@@ -36,14 +54,46 @@ func snap_to_tab(tab: Control, edge: int) -> void:
 	_edge = edge
 	_kill_tween()
 	notch_x = _target_x()
+	slide_p = 1.0
 
 func slide_to_tab(tab: Control, edge: int) -> void:
 	_tab = tab
 	_edge = edge
 	_kill_tween()
 	_tween = create_tween()
+	if glass:   # a springy glide (overshoots a little) with a stretch on the way
+		_slide_from = notch_x
+		_slide_to = _target_x()
+		slide_p = 0.0
+		_tween.tween_property(self, "slide_p", 1.0, 0.45)
+		return
 	_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_tween.tween_property(self, "notch_x", _target_x(), slide_time)
+
+static func _back_out(t: float) -> float:   # ease with a small overshoot (like cubic-bezier .3,1.35,.5,1)
+	var c := 1.6
+	var u := t - 1.0
+	return 1.0 + (c + 1.0) * u * u * u + c * u * u
+
+func _glass_rects() -> Array:
+	var pill := Rect2(PILL_SIDE, bump_h + PILL_TOP, size.x - PILL_SIDE * 2.0, size.y - bump_h - PILL_TOP - PILL_BOTTOM)
+	var p := clampf(slide_p, 0.0, 1.0)
+	var sx := NavIcon._k(p, [[0.0, 1.0], [0.35, 1.3], [0.7, 0.94], [1.0, 1.0]])
+	var sy := NavIcon._k(p, [[0.0, 1.0], [0.35, 0.88], [0.7, 1.05], [1.0, 1.0]])
+	var w := bump_w * sx
+	var h := (pill.size.y + CAP_OUT * 2.0) * sy
+	var cx := notch_x + bump_w * 0.5
+	var cy := pill.get_center().y
+	return [pill, Rect2(cx - w * 0.5, cy - h * 0.5, w, h)]
+
+func _update_glass() -> void:
+	var r := _glass_rects()
+	var pill: Rect2 = r[0]
+	var cap: Rect2 = r[1]
+	_mat.set_shader_parameter("vp_size", get_viewport_rect().size)
+	_mat.set_shader_parameter("pill", Vector4(pill.position.x, pill.position.y, pill.size.x, pill.size.y))
+	_mat.set_shader_parameter("cap", Vector4(cap.position.x, cap.position.y, cap.size.x, cap.size.y))
+	_mat.set_shader_parameter("cap_a", 1.0 if _tab != null else 0.0)
 
 func _kill_tween() -> void:
 	if _tween != null and _tween.is_valid():
@@ -52,12 +102,16 @@ func _kill_tween() -> void:
 
 func _process(_delta: float) -> void:
 	_follow_bar()
+	if glass and slide_p < 1.0:
+		notch_x = lerpf(_slide_from, _slide_to, _back_out(slide_p))
 	# Layout can settle after first load (safe areas, tall phones). If we are
 	# not mid-slide, keep the notch glued to the active tab.
 	if _tab != null and (_tween == null or not _tween.is_running()):
 		var x := _target_x()
 		if absf(x - notch_x) > 0.5:
 			notch_x = x
+	if glass:
+		_update_glass()
 
 func _follow_bar() -> void:
 	if _bar == null:
@@ -83,6 +137,10 @@ const INSET := 8.0          # the glass bar floats this far from the screen side
 
 func _draw() -> void:
 	if size.x < 10.0 or size.y < 10.0:
+		return
+	if glass:
+		# the glass pill + blue capsule: one rectangle, nav_glass.gdshader paints it all
+		draw_rect(Rect2(Vector2.ZERO, size), Color.WHITE)
 		return
 	if UIKit.CLEAN:
 		# the clean bar: flat, full width, a faint line on top. No box behind the open tab (Rudy,
