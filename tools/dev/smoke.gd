@@ -29,6 +29,7 @@ func _initialize() -> void:
 	_check_gates()
 	_check_ascend()
 	_check_goals()
+	_check_daily()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -625,3 +626,20 @@ func _check_goals() -> void:
 	for id in Heroes.ORDER:
 		_expect(Heroes.ABILITIES.has(id) and String(Heroes.ABILITIES[id].name) != "", "hero %s has an ability" % id)
 	_expect(is_equal_approx(Heroes.ability_cd(1), 40.0) and is_equal_approx(Heroes.ability_cd(5), 32.0) and is_equal_approx(Heroes.ability_cd(10), 22.0), "the ability cooldown: 40 s, 2 s less a step")
+
+# the Daily Challenge (2026-11-10): three twists that change with the date, one reward a day
+func _check_daily() -> void:
+	var s := {"stage_unlocked": 5, "coins": 0}
+	_expect(not Promotion.daily_open(s), "the Daily Challenge is closed until stage 5 is cleared")
+	s["stage_unlocked"] = 13
+	_expect(Promotion.daily_open(s) and Promotion.daily_stage(s) == 12, "it is fought on your best cleared stage")
+	s["stage_unlocked"] = 11
+	_expect(Promotion.daily_stage(s) == 9, "never on a boss stage (10 cleared -> stage 9)")
+	var kinds := {}
+	for d in 40:
+		var m := Promotion.daily_mods(500 + d)
+		_expect(m.size() == 3 and bool(Promotion.MODS[m[0]].good) and not bool(Promotion.MODS[m[1]].good) and not bool(Promotion.MODS[m[2]].good) and m[1] != m[2], "day %d: one advantage, two different disadvantages (%s)" % [d, str(m)])
+		kinds[str(m)] = true
+	_expect(kinds.size() >= 10, "the three twists change from day to day (%d different in 40 days)" % kinds.size())
+	_expect(not Promotion.daily_done(s) and Promotion.daily_won(s) and Promotion.daily_done(s) and not Promotion.daily_won(s), "the reward is once a day")
+	_expect(int(Promotion.daily_reward(s).key_u) == 1 and int(Promotion.daily_reward(s).coins) == 200 + 30 * 9, "the reward: coins by stage, 10 crystals, an Uncommon key")

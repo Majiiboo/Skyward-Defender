@@ -96,6 +96,8 @@ var elite := false
 var promo := -1                   # the promotion trial being fought (Promotion.RANKS index), -1 = a normal stage
 var _promoted := false            # this win earned the next rank (end screen)
 var horde := false                # HORDE mode (dev172): endless waves, beat your best; save "best_horde"
+var daily := false                # the DAILY CHALLENGE (Promotion.daily_*): three twists, one reward a day
+var _daily_reward := {}           # what today's first win paid (end screen)
 var _horde_best := 0              # the best wave count before this run
 var _horde_new_best := false
 var etrial := {}                  # an element trial (Promotion.take_etrial): {"el", "step"}; {} = none
@@ -410,6 +412,11 @@ func _load() -> void:
 		stage = clampi(int(d.get("stage_unlocked", 1)) - 1, 1, StageData.MAX_STAGE)   # built from your best Standard stage
 		elite = false
 		_horde_best = int(d.get("best_horde", 0))
+	daily = String(d.get("selected_mode", "normal")) == "daily"
+	if daily:
+		_write_save({"selected_mode": "normal"})
+		stage = Promotion.daily_stage(d)
+		elite = false
 	if not etrial.is_empty():
 		stage = int(Promotion.ETRIAL_STAGES[int(etrial.step)])
 	if promo >= 0:
@@ -541,6 +548,8 @@ func _start_stage() -> void:
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
 	# the trial twists (Promotion.MODS): advantages and disadvantages of this fight
 	_mods = Promotion.mods_for(promo, etrial)
+	if daily:
+		_mods = Promotion.daily_mods()
 	_twist = false
 	if _mods.is_empty() and not elite and not horde and not _is_trial():
 		_mods = Promotion.stage_twist(stage)   # today's pair on a Standard stage (planet 2 on)
@@ -2721,6 +2730,12 @@ func _end_run(won: bool) -> void:
 		_etrial_reward = Promotion.etrial_reward(int(etrial.step), _etrial_first, String(etrial.el))
 		Progress.grant(d, _etrial_reward)
 		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
+	# the daily challenge: the first win of the day pays its reward
+	_daily_reward = {}
+	if daily and won and Promotion.daily_won(d):
+		_daily_reward = Promotion.daily_reward(d)
+		Progress.grant(d, _daily_reward)
+		_write_save({"daily_day": int(d.daily_day), "crystals": int(d.get("crystals", 0)), "materials": d.get("materials", {})})
 	# a promotion trial: a win the first time = the next rank, for good (Promotion)
 	_promoted = false
 	if promo >= 0 and won and Promotion.won(d, promo):
@@ -3751,11 +3766,18 @@ func _show_end(won: bool) -> void:
 		title = "NEW BEST!" if _horde_new_best else "HORDE OVER"
 	if not etrial.is_empty():   # an element trial (Promotion)
 		title = "STEP CLEARED" if won else "TRIAL FAILED"
+	if daily:
+		title = "CHALLENGE CLEARED" if won else "CHALLENGE FAILED"
 	if promo >= 0:   # a promotion trial (Promotion)
 		title = "PROMOTED!" if _promoted else ("TRIAL CLEARED" if won else "TRIAL FAILED")
 	var t := UIKit.label(title, 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
 	t.add_theme_font_override("font", title_font)
 	v.add_child(t)
+	if daily:
+		if not _daily_reward.is_empty():
+			v.add_child(UIKit.label("TODAY'S REWARD:  " + Progress.reward_text(_daily_reward), 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		elif won:
+			v.add_child(UIKit.label("Today's reward is already yours", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
 	if promo >= 0:
 		v.add_child(UIKit.label("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper(), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
@@ -4766,7 +4788,7 @@ func _draw_hud() -> void:
 		_hud_title_key = hud_key
 		_hud_num = "%d " % stage
 		_hud_nx = 16.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else StageData.stage_name(stage)))).to_upper()
+		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else StageData.stage_name(stage))))).to_upper()
 	_hc.draw_string(title_font, Vector2(16, 34), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	_hc.draw_string(title_font, Vector2(_hud_nx, 33), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, CARDS_RECT.position.x - 64.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
 	var whole_s := int(time_alive)
@@ -5159,7 +5181,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -5192,7 +5214,7 @@ func _horde_wave(k: int) -> Array:
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
-	return promo >= 0 or not etrial.is_empty()
+	return promo >= 0 or not etrial.is_empty() or daily
 
 # A turret head swinging to a new target on a damped spring (dev153): it arrives fast,
 # overshoots a touch and settles, instead of easing in. k = stiffness, d = damping.

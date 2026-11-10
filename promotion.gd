@@ -334,3 +334,41 @@ static func stage_twist(stage: int, d: int = -1) -> Array:
 		d = day()
 	var h: int = absi(hash(stage * 7919 + d * 104729))
 	return [TWIST_GOOD[h % TWIST_GOOD.size()], TWIST_BAD[(h / 7) % TWIST_BAD.size()]]
+
+# DAILY CHALLENGE (2026-11-10; REVIEW-2026-11-10.md "modes that rotate"): one fight a day worth
+# coming back for. Your best cleared Standard stage with bugs DAILY_HP tougher and THREE twists (one
+# advantage, two disadvantages) that change with the date. The first win of the day pays coins,
+# crystals and an Uncommon key; after that it can be replayed for the coins you pick up. It never
+# gives stars or opens stages (battle `daily`, counted as a trial). Opens once stage DAILY_FROM is
+# cleared. Save "daily_day" = the day it was last won.
+const DAILY_FROM := 5
+const DAILY_HP := 1.15
+
+static func daily_open(save: Dictionary) -> bool:
+	return DevTools.on or int(save.get("stage_unlocked", 1)) > DAILY_FROM
+
+# the stage it is fought on: the furthest one cleared (never a boss stage: those keep their own show)
+static func daily_stage(save: Dictionary) -> int:
+	var s := clampi(int(save.get("stage_unlocked", 1)) - 1, 1, StageData.MAX_STAGE)
+	return s - 1 if s % 5 == 0 and s > 1 else s
+
+static func daily_mods(d: int = -1) -> Array:
+	if d < 0:
+		d = day()
+	var h: int = absi(hash(d * 15485863 + 7))
+	var b1: int = h % TWIST_BAD.size()
+	var b2: int = (b1 + 1 + (h / 11) % (TWIST_BAD.size() - 1)) % TWIST_BAD.size()   # never the same one twice
+	return [TWIST_GOOD[(h / 5) % TWIST_GOOD.size()], TWIST_BAD[b1], TWIST_BAD[b2]]
+
+static func daily_done(save: Dictionary) -> bool:
+	return int(save.get("daily_day", -1)) == day()
+
+static func daily_reward(save: Dictionary) -> Dictionary:
+	return {"coins": 200 + 30 * daily_stage(save), "crystals": 10, "key_u": 1}
+
+# a win: true the first time today (the caller pays the reward); marks the day
+static func daily_won(save: Dictionary) -> bool:
+	if daily_done(save):
+		return false
+	save["daily_day"] = day()
+	return true

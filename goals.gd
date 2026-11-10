@@ -22,6 +22,8 @@ static func next(save: Dictionary) -> Dictionary:
 		return {"text": "A free chest is waiting", "go": ["NavStore", "store_tab", 0]}
 	if lv < cap and int(save.get("coins", 0)) >= Heroes.level_cost(lv):
 		return {"text": "Level up %s" % hname, "go": ["NavGear", "gear_page", 0]}
+	if Promotion.daily_open(save) and not Promotion.daily_done(save):
+		return {"text": "Today's challenge is waiting", "go": ["NavModes", "", 0]}
 	var st := stage_goal(int(save.get("stage_unlocked", 1)))
 	if not st.is_empty():
 		return st

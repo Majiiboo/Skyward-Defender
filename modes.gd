@@ -104,7 +104,7 @@ func _build() -> void:
 # ---- the CLEAN Modes page (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): one wide card per mode,
 # a picture, the name, two small lines (where you are, a hint of what it gives) and one round
 # button; Campaign's is the gold one. Not reached yet = hidden, except the next one as a teaser.
-const CLEAN_ORDER := ["standard", "elite", "promotion", "trials", "horde"]
+const CLEAN_ORDER := ["standard", "daily", "elite", "promotion", "trials", "horde"]
 
 func _build_clean(col: VBoxContainer) -> void:
 	var teased := false
@@ -114,6 +114,7 @@ func _build_clean(col: VBoxContainer) -> void:
 			"elite": reached = Unlocks.open(_save, "elite") and player_level >= 10
 			"promotion", "trials": reached = Unlocks.open(_save, "promotion")
 			"horde": reached = player_level >= 5
+			"daily": reached = Promotion.daily_open(_save)
 		if DevTools.on:
 			reached = true
 		if reached:
@@ -165,6 +166,16 @@ func _clean_card(id: String, locked: bool) -> Button:
 			pic = UIKit.ic("ic_trial")
 			pic_bg = Color(0.09, 0.094, 0.23)
 			action = _etrials
+		"daily":
+			# the Daily Challenge (Promotion.daily_*): three twists, one reward a day
+			var done := Promotion.daily_done(_save)
+			title_txt = "Daily Challenge"
+			line1 = "Stage %d  ·  3 twists" % Promotion.daily_stage(_save)
+			line2 = "Done today: back tomorrow" if done else ("Reward: " + Progress.reward_text(Promotion.daily_reward(_save)))
+			line2_col = UIKit.SOFT if done else UIKit.GOLD
+			pic = UIKit.ic("ic_gift")
+			pic_bg = Color(0.16, 0.13, 0.06)
+			action = func(): _play_daily()
 		"horde":
 			var bw := int(_save.get("best_horde", 0))
 			var hs := int(_save.get("best_horde_score", 0))
@@ -176,7 +187,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 			action = func(): _play_horde()
 	if locked:
 		line1 = "Locked"
-		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5"}.get(id, "Opens as you play")
+		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM}.get(id, "Opens as you play")
 		line2_col = UIKit.SOFT
 	var b := Button.new()
 	b.name = "Mode_" + id
@@ -257,6 +268,11 @@ func _play(elite: bool) -> void:
 	var top: int = StageData.elite_top(sv) if elite else stage_unlocked
 	_save_patch({"selected_elite": elite, "selected_stage": clampi(int(sv.get("selected_stage", 1)), 1, top)})
 	if Energy.try_play(self, elite, int(Progress.read().get("selected_stage", 1))):   # a stage costs power tokens (stages 1-5 free)
+		get_tree().change_scene_to_file("res://battle.tscn")
+
+func _play_daily() -> void:
+	if Energy.try_play(self, false, 99):
+		_save_patch({"selected_mode": "daily"})   # your best stage with today's three twists (battle daily); set only once the fight is paid for
 		get_tree().change_scene_to_file("res://battle.tscn")
 
 func _play_horde() -> void:
