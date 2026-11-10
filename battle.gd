@@ -414,6 +414,12 @@ func _load() -> void:
 		stage = clampi(int(d.get("stage_unlocked", 1)) - 1, 1, StageData.MAX_STAGE)   # built from your best Standard stage
 		elite = false
 		_horde_best = int(d.get("best_horde", 0))
+	run_mode = String(d.get("selected_mode", "normal")) == "run" and not Runs.active(d).is_empty()
+	if run_mode:   # an Expedition fight (Runs): the map page chose the stop
+		_write_save({"selected_mode": "normal"})
+		_run = Runs.active(d)
+		stage = Runs.stage_for(_run, _run_kind())
+		elite = false
 	event_run = String(d.get("selected_mode", "normal")) == "event"
 	if event_run:
 		_write_save({"selected_mode": "normal"})
@@ -458,6 +464,8 @@ func _write_save(patch: Dictionary) -> void:
 
 func _start_stage() -> void:
 	waves = Promotion.waves(promo) if promo >= 0 else (Promotion.etrial_waves(int(etrial.step)) if not etrial.is_empty() else StageData.waves(stage))
+	if run_mode:
+		waves = Runs.trim_waves(waves, _run_kind())
 	if horde:
 		waves = [_horde_wave(0)]
 	wave_index = 0
@@ -690,6 +698,8 @@ func _start_stage() -> void:
 	for t in turrets:
 		if _lid_anim.has(t.mount):
 			t.drop_wait = float(t.drop_wait) + 1.2   # wait for the hatch
+	if run_mode:
+		_run_begin()
 	soldier_pos = Vector2(240, BASE_Y - 200.0)
 	prev_soldier_x = soldier_pos.x
 	prev_soldier_y = soldier_pos.y
@@ -2777,6 +2787,8 @@ func _end_run(won: bool) -> void:
 		_etrial_reward = Promotion.etrial_reward(int(etrial.step), _etrial_first, String(etrial.el))
 		Progress.grant(d, _etrial_reward)
 		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
+	if run_mode:   # an Expedition fight: the run takes the result (Runs.fight_done)
+		_run_end(won)
 	# a weekly event fight: event points, win or lose (Events.points_for)
 	_event_points = 0
 	if event_run:
@@ -3373,7 +3385,8 @@ func _pick_card(id: String) -> void:
 	var cs := _read_save()   # the collection book (Codex): a card picked for the first time ever goes in
 	if Codex.note_card(cs, id):
 		_write_save({"cards_seen": cs.cards_seen})
-	Sfx.play("card")
+	if not _replaying:
+		Sfx.play("card")
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
 		_fuse(id)
@@ -3384,14 +3397,16 @@ func _pick_card(id: String) -> void:
 	card_levels[id] = int(card_levels.get(id, 0)) + 1
 	if over:
 		_overcharge(id)
-		# its own moment (dev199, Rudy's Undead Slayer note): a gold ring off the hero, a shout,
-		# a beat of hit-stop and a shake, so the third pick feels like the event it is
-		_fx_add("nova", soldier_pos, 130.0, 0.6, 0.0, 2.4, Color(1.0, 0.85, 0.4))
-		_burst(soldier_pos, 40.0, Color(1.0, 0.85, 0.4), 18)
-		_float_text(soldier_pos + Vector2(0, -84), "OVERCHARGE!", Color(1.0, 0.85, 0.4), true)
-		hitstop = maxf(hitstop, 0.12)
-		shake = maxf(shake, 0.35)
-		Sfx.play("level", 1.3)
+		if not _replaying:   # (not when a run puts its cards back at the start of a fight)
+			# its own moment (dev199, Rudy's Undead Slayer note): a gold ring off the hero, a shout,
+			# a beat of hit-stop and a shake, so the third pick feels like the event it is
+			_fx_add("nova", soldier_pos, 130.0, 0.6, 0.0, 2.4, Color(1.0, 0.85, 0.4))
+			_burst(soldier_pos, 40.0, Color(1.0, 0.85, 0.4), 18)
+			_float_text(soldier_pos + Vector2(0, -84), "OVERCHARGE!", Color(1.0, 0.85, 0.4), true)
+			hitstop = maxf(hitstop, 0.12)
+			shake = maxf(shake, 0.35)
+		if not _replaying:
+			Sfx.play("level", 1.3)
 	match id:
 		"rapid_pulse": fire_rate_mult *= 1.10
 		"heavy_bolts": damage_mult *= 1.15
@@ -3453,7 +3468,8 @@ func _pick_card(id: String) -> void:
 			_burst(soldier_pos, 60.0, Color(1.0, 0.9, 0.6), 24)
 			_fx_add("nova", soldier_pos, 150.0, 0.7, 0.0, 4.5)   # Luna's white-gold ring sweeps the screen
 			shake = maxf(shake, 0.6)
-	_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
+	if not _replaying:
+		_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
 	_card_panel.visible = false
 	picking = false
 
@@ -3826,6 +3842,8 @@ func _show_end(won: bool) -> void:
 		title = "CHALLENGE CLEARED" if won else "CHALLENGE FAILED"
 	if event_run:
 		title = "EVENT CLEARED" if won else "EVENT LOST"
+	if run_mode:
+		title = ("EXPEDITION WON" if bool(_run.get("won", false)) else "STOP CLEARED") if won else "EXPEDITION OVER"
 	if promo >= 0:   # a promotion trial (Promotion)
 		title = "PROMOTED!" if _promoted else ("TRIAL CLEARED" if won else "TRIAL FAILED")
 	var t := UIKit.label(title, 24, UIKit.GOLD if won else Color(1.0, 0.4, 0.45), HORIZONTAL_ALIGNMENT_CENTER)
@@ -3970,6 +3988,15 @@ func _show_end(won: bool) -> void:
 			stage += 1
 			_start_stage())
 		v.add_child(nxt)
+	if run_mode:   # an Expedition fight ends on the map, never on Next stage / Play again
+		var cont := UIKit.gold_button("Continue" if won and not Runs.over(_run) else "See the run", 17)
+		cont.custom_minimum_size = Vector2(0, 50)
+		cont.pressed.connect(func(): get_tree().change_scene_to_file("res://run_map.tscn"))
+		v.add_child(cont)
+		p.add_child(v)
+		_end_panel.add_child(p)
+		_end_panel.visible = true
+		return
 	var brow := HBoxContainer.new()
 	brow.add_theme_constant_override("separation", 8)
 	var again := UIKit.teal_button("Retry" if not won else "Play again")
@@ -4853,7 +4880,7 @@ func _draw_hud() -> void:
 		_hud_title_key = hud_key
 		_hud_num = "%d " % stage
 		_hud_nx = 16.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else (String(Events.theme().name) if event_run else StageData.stage_name(stage)))))).to_upper()
+		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else (String(Events.theme().name) if event_run else (("EXPEDITION · " + String(Runs.KINDS[_run_kind()].name)) if run_mode else StageData.stage_name(stage))))))).to_upper()
 	_hc.draw_string(title_font, Vector2(16, 34), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
 	_hc.draw_string(title_font, Vector2(_hud_nx, 33), _hud_title, HORIZONTAL_ALIGNMENT_LEFT, CARDS_RECT.position.x - 64.0 - _hud_nx, 13, UIKit.GOLD if _is_trial() else (Color(1.0, 0.6, 0.3) if horde else cyan))
 	var whole_s := int(time_alive)
@@ -5248,7 +5275,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (Events.EVENT_HP if event_run else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -5281,7 +5308,7 @@ func _horde_wave(k: int) -> Array:
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
-	return promo >= 0 or not etrial.is_empty() or daily or event_run
+	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode
 
 # A turret head swinging to a new target on a damped spring (dev153): it arrives fast,
 # overshoots a touch and settles, instead of easing in. k = stiffness, d = damping.
@@ -6233,3 +6260,39 @@ func _dbg_weak() -> void:
 	enemies[0].arrived = true
 	enemies[0].laying = 3.0
 	enemies[0].hatched = true
+
+# ------------------------------------------------------------------ EXPEDITION fights (Runs, 2026-11-10)
+# A fight that belongs to a run (selected_mode "run"; the map page set run.node). It is short
+# (Runs.trim_waves), starts with what the run carries (the cards picked so far, the hero's health,
+# the shield and hull as they were left) and hands the result back to the run when it ends.
+var run_mode := false
+var _run := {}
+var _replaying := false   # cards being put back at the start of a run fight: no sound, no shouts
+
+func _run_kind() -> String:
+	return String(_run.get("node", "fight"))
+
+# after the stage is set up: put the run's state back
+func _run_begin() -> void:
+	var cards: Dictionary = _run.get("cards", {})
+	_replaying = true
+	for id in cards:
+		for i in int(cards[id]):
+			if Cards.CARDS.has(id) or Cards.FUSIONS.has(id):
+				_pick_card(String(id))
+	_replaying = false
+	picking = false
+	if _card_panel:
+		_card_panel.visible = false
+	run_level = 1 + mini(int(_run.get("step", 0)), 6)   # a run is already under way: the first pick is not far off
+	refreshes += int(_run.get("refreshes", 0))
+	pilot_hp = maxf(roundf(pilot_hp_max * clampf(float(_run.get("hp", 1.0)), 0.05, 1.0)), 1.0)
+	shield = shield_max * clampf(float(_run.get("shield", 1.0)), 0.0, 1.0)
+	hull = maxf(hull_max * clampf(float(_run.get("hull", 1.0)), 0.05, 1.0), 1.0)
+
+func _run_end(won: bool) -> void:
+	var d := _read_save()
+	var run: Dictionary = d.get("run", _run)
+	Runs.fight_done(run, won, pilot_hp / maxf(pilot_hp_max, 1.0), shield / maxf(shield_max, 1.0), hull / maxf(hull_max, 1.0), card_levels)
+	_run = run
+	_write_save({"run": run})

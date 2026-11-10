@@ -33,6 +33,7 @@ func _initialize() -> void:
 	_check_codex()
 	_check_wing()
 	_check_events()
+	_check_runs()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -243,10 +244,10 @@ func _check_unlocks() -> void:
 	_expect(Unlocks.fresh(s).is_empty(), "fresh save: nothing to announce")
 	s["stage_unlocked"] = 6
 	_expect(Unlocks.open(s, "turrets") and not Unlocks.open(s, "patrol"), "stage 5 cleared: turrets open, patrol not yet")
-	_expect(Unlocks.fresh(s) == ["ability", "auto", "turrets", "daily", "repeat"], "stage 5 cleared: the ability, AUTO, turrets, the Daily Challenge and repeat quests to announce, table order (%s)" % str(Unlocks.fresh(s)))
+	_expect(Unlocks.fresh(s) == ["ability", "auto", "turrets", "daily", "run", "repeat"], "stage 5 cleared: the ability, AUTO, turrets, the Daily Challenge, the Expedition and repeat quests to announce, table order (%s)" % str(Unlocks.fresh(s)))
 	Unlocks.mark_seen(s, "turrets")
 	Unlocks.mark_seen(s, "repeat")
-	for nid in ["ability", "auto", "daily"]:
+	for nid in ["ability", "auto", "daily", "run"]:
 		Unlocks.mark_seen(s, nid)
 	_expect(Unlocks.fresh(s).is_empty(), "announced once")
 	s["stage_unlocked"] = 7
@@ -714,3 +715,45 @@ func _check_events() -> void:
 	for t in Events.TRACK:
 		_expect(int(t.points) > last, "the track rises (%d)" % int(t.points))
 		last = int(t.points)
+
+# the Expedition (Runs, 2026-11-10): a run of stops, what carries, how it ends, what it pays
+func _check_runs() -> void:
+	var s := {"stage_unlocked": 5, "coins": 0, "crystals": 0}
+	_expect(not Runs.open(s), "the Expedition is closed until stage 5 is cleared")
+	s["stage_unlocked"] = 13
+	_expect(Runs.open(s) and Runs.planets_open(s) == 1, "planet 2 reached, but its expedition waits for a win on planet 1")
+	var run := Runs.new_run(0, 4242)
+	_expect(Runs.nodes(run, 0) == ["fight"] and Runs.nodes(run, Runs.STEPS - 1) == ["boss"], "a run starts with a fight and ends with the boss")
+	for st in range(1, Runs.STEPS - 1):
+		var ks: Array = Runs.nodes(run, st)
+		var uniq := {}
+		for k in ks:
+			uniq[k] = true
+			_expect(Runs.KINDS.has(k), "stop %d: %s is a known kind" % [st, k])
+		_expect(ks.size() >= 2 and ks.size() <= 3 and uniq.size() == ks.size() and ks == Runs.nodes(run, st), "stop %d offers 2 or 3 different things, the same every time it is asked (%s)" % [st, str(ks)])
+	_expect(Runs.stage_for(run, "fight") == 1 and Runs.stage_for(run, "boss") == 10 and Runs.stage_for(Runs.new_run(1, 1), "boss") == 20, "fights climb through the planet; the boss is the planet's boss stage")
+	var w: Array = StageData.waves(10)
+	_expect(Runs.trim_waves(w, "fight").size() == 4 and Runs.trim_waves(w, "boss").size() == 3 and Runs.trim_waves(w, "boss")[-1] == w[-1], "a fight is the first 4 waves, the boss fight the last 3")
+	run["node"] = "fight"
+	Runs.fight_done(run, true, 0.6, 0.5, 0.9, {"heavy_bolts": 2})
+	_expect(int(run.step) == 1 and is_equal_approx(float(run.hp), 0.6) and int(run.cards.heavy_bolts) == 2 and bool(run.alive), "a won fight carries the hero's health and the cards to the next stop")
+	Runs.take_rest(run)
+	_expect(int(run.step) == 2 and is_equal_approx(float(run.hp), 1.0) and is_equal_approx(float(run.shield), 0.8), "a rest mends and moves on")
+	var offers := Runs.cache_offers(run)
+	_expect(offers.size() == 2 and offers[0] != offers[1] and Runs.CACHE.has(offers[0]), "a supply cache offers two different things")
+	Runs.take_cache(s, run, "refresh")
+	_expect(int(run.refreshes) == 2 and int(run.step) == 3, "the spare deck: two refreshes for the rest of the run")
+	run["node"] = "elite"
+	Runs.fight_done(run, false, 0.0, 0.0, 0.0, {})
+	_expect(Runs.over(run) and not bool(run.won) and int(run.cleared) == 3, "a lost fight ends the run")
+	s["run"] = run
+	var got := Runs.collect(s)
+	_expect(int(got.coins) == 360 and int(got.get("key_u", 0)) == 1 and int(s.coins) == 360 and Runs.active(s).is_empty() and Runs.collect(s).is_empty(), "the reward is paid once: coins by stops cleared, a key from three")
+	var win := Runs.new_run(0, 7)
+	win["step"] = Runs.STEPS - 1
+	win["cleared"] = Runs.STEPS - 1
+	win["node"] = "boss"
+	Runs.fight_done(win, true, 0.5, 0.2, 0.7, {})
+	s["run"] = win
+	var prize := Runs.collect(s)
+	_expect(bool(win.won) and int(prize.get("key_e", 0)) == 1 and Runs.wins(s, 0) == 1 and Runs.planets_open(s) == 2, "beating the boss wins the run, pays the prize and opens planet 2's expedition")

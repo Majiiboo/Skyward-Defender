@@ -104,7 +104,7 @@ func _build() -> void:
 # ---- the CLEAN Modes page (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): one wide card per mode,
 # a picture, the name, two small lines (where you are, a hint of what it gives) and one round
 # button; Campaign's is the gold one. Not reached yet = hidden, except the next one as a teaser.
-const CLEAN_ORDER := ["standard", "daily", "event", "elite", "promotion", "trials", "horde"]
+const CLEAN_ORDER := ["standard", "run", "daily", "event", "elite", "promotion", "trials", "horde"]
 
 func _build_clean(col: VBoxContainer) -> void:
 	var teased := false
@@ -115,6 +115,7 @@ func _build_clean(col: VBoxContainer) -> void:
 			"promotion", "trials": reached = Unlocks.open(_save, "promotion")
 			"horde": reached = player_level >= 5
 			"daily": reached = Promotion.daily_open(_save)
+			"run": reached = Runs.open(_save)
 			"event": reached = Events.open(_save)
 		if DevTools.on:
 			reached = true
@@ -188,6 +189,16 @@ func _clean_card(id: String, locked: bool) -> Button:
 			pic = UIKit.ic(String(eth.icon))
 			pic_bg = Color(Color(eth.col).r * 0.2, Color(eth.col).g * 0.2, Color(eth.col).b * 0.25)
 			action = _event_sheet
+		"run":
+			# the Expedition (Runs): a run of stops across a planet; its own page
+			var rr := Runs.active(_save)
+			title_txt = "Expedition"
+			line1 = ("%s  ·  stop %d of %d" % [String(StageData.AREAS[int(rr.planet)].name), int(rr.step) + 1, Runs.STEPS]) if not rr.is_empty() and not Runs.over(rr) else "A run across a planet"
+			line2 = "Reward to collect" if Runs.over(rr) else ("Run under way" if not rr.is_empty() else "Cards and health carry between fights")
+			line2_col = UIKit.GOLD if not rr.is_empty() else UIKit.SOFT
+			pic = UIKit.ic("ic_rank")
+			pic_bg = Color(0.06, 0.16, 0.2)
+			action = func(): get_tree().change_scene_to_file("res://run_map.tscn")
 		"horde":
 			var bw := int(_save.get("best_horde", 0))
 			var hs := int(_save.get("best_horde_score", 0))
@@ -199,7 +210,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 			action = func(): _play_horde()
 	if locked:
 		line1 = "Locked"
-		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM, "event": "Opens after stage %d" % Events.EVENT_FROM}.get(id, "Opens as you play")
+		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM, "event": "Opens after stage %d" % Events.EVENT_FROM, "run": "Opens after stage %d" % Runs.RUN_FROM}.get(id, "Opens as you play")
 		line2_col = UIKit.SOFT
 	var b := Button.new()
 	b.name = "Mode_" + id

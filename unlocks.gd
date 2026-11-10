@@ -20,6 +20,8 @@ const UNLOCKS := {
 		"text": "Your first base mount is open. Put a turret on it and level it with coins."},
 	"daily":     {"stage": 5,  "name": "Daily Challenge", "go": ["NavModes", "", 0], "pic": "ic_gift",
 		"text": "One fight a day on your best stage with three twists. The first win pays coins, crystals and a key."},
+	"run":       {"stage": 5,  "name": "Expedition", "go": ["NavModes", "", 0], "pic": "ic_rank",
+		"text": "A run of eight stops across a planet. Your cards and health carry from fight to fight; the boss waits at the end."},
 	"patrol":    {"stage": 6,  "name": "Patrol",    "go": [], "pic": "res://drone/body_scout.png",
 		"text": "Patrol farms a stage you have cleared while you are away: coins, parts, spare gear."},
 	"workshop":  {"stage": 8,  "name": "Workshop",  "go": ["NavGear", "gear_page", 3], "pic": "ic_cell",
