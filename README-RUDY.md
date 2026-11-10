@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev257 (version/code=257 and version/name="1.0-dev257" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev260 (version/code=260 and version/name="1.0-dev260" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,29 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev260: special waves, today's deals, a What's new sheet (three updates since dev257)
+
+- SPECIAL WAVES (from stage 8). About one wave in four now comes with a twist, named on screen
+  as it starts, so a stage is not ten of the same wave:
+  SWARM: nearly twice the bugs, each half as tough.
+  HEAVY WAVE: fewer bugs, much tougher.
+  RUSH: they come a third faster.
+  GOLD RUSH: clear it and a pile of coins drops.
+  Which waves are special is fixed for each stage, so you can plan a replay. Never the first wave
+  or the boss's.
+- TODAY'S DEALS (Store > Shop > Today, from stage 6). Three offers that change every day, each a
+  third or more off and buyable once: two for crystals, one for coins. Keys, cores, hero shards,
+  coins, season XP, parts.
+- WHAT'S NEW. The first time you open each new build, Home shows a short list of what changed and
+  where to find it. It is also under Settings > About. When you install this build you will see it.
+- BALANCE CHECK after base cards and special waves: the hand-played test and AUTO each won stages
+  8, 20, 30, 45 and 60 twice (20 of 20). The hull was never touched; the hero lost between a
+  third and three quarters of his health on the late stages. So Normal is winnable for both and
+  the pressure is on the hero, not the base. If you want the base in more danger, that is one dial.
+
+NOT CHECKED BY ME: nothing has been on a phone. The special waves were checked by which waves
+come out special on seven stages and by the sweep above; I did not watch one on screen.
 
 ## dev257: base cards, music, Welcome back (three updates since dev254)
 

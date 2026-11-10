@@ -1237,9 +1237,36 @@ func _fill_shop_clean() -> void:
 	if Unlocks.open(d, "workshop"):   # parts once the Workshop is open
 		names.insert(2, "Parts")
 		lists.insert(2, PART_DEALS)
+	var deals_on: bool = Deals.open(d)   # Today: three deals that change every day (Deals)
+	if deals_on:
+		names.insert(0, "Today")
+		lists.insert(0, [])
 	_shop_tab = clampi(_shop_tab, 0, names.size() - 1)
 	_page.add_child(UIKit.sub_tabs(names, _shop_tab, func(i): _shop_tab = i; _fill()))
 	var g := _wide_grid()
+	if deals_on and _shop_tab == 0:
+		var di := 0
+		for deal in Deals.today():
+			var dl: Dictionary = deal
+			var gone: bool = Deals.bought(d).has(String(dl.id))
+			var can: bool = Deals.why_not(d, dl) == ""
+			var cur_icon: Texture2D = UIKit.ic("ic_crystal", "ui_crystal") if String(dl.cur) == "crystals" else UIKit.ic("ic_coin", "ui_coin")
+			var dstate := _state_pill("Bought", "plain", null, UIKit.SOFT) if gone else _state_pill(UIKit.num(int(dl.cost)), "plain", cur_icon, UIKit.TEXT if can else Color(1.0, 0.55, 0.55))
+			var dsq := _item_square(UIKit.ic(String(dl.icon), "ic_gift"), String(dl.name), "-%d%%" % Deals.off_percent(dl), dstate, _small("Was %s" % UIKit.num(int(dl.was))), 206.0, 88.0, di * 0.4, gone)
+			dsq.pressed.connect(func():
+				d = Progress.read()
+				var why := Deals.buy(d, String(dl.id))
+				if why != "":
+					_toast(why)
+					return
+				Progress.write(d)
+				Sfx.play("buy")
+				_toast("Bought: " + String(dl.name))
+				_fill())
+			g.add_child(dsq)
+			di += 1
+		g.add_child(_item_square(UIKit.ic("tab_daily"), "New deals", "", _state_pill("Tomorrow", "plain", null, UIKit.SOFT), _small("Three a day, one of each"), 206.0, 88.0, 1.2, true))
+		return
 	var have := Parts.read(d)
 	var crystals := int(d.get("crystals", 0))
 	var n := 0

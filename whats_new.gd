@@ -10,9 +10,9 @@ const NOTES := [
 	["Buildings, links and base cards", "Heroes > Base: nine buildings, perks at level 5, pairs that link, and power cards tied to what you field."],
 	["Research Lab", "Heroes > Base > Research: slow upgrades that run while the game is closed (from stage 12)."],
 	["Season Pass", "The trophy button on Home: thirty tiers of rewards every 30 days (from stage 8)."],
-	["Boss Rush and more modes", "Modes: Boss Rush (stage 20), the Expedition, the Daily Challenge and the weekly event."],
+	["Boss Rush and special waves", "Modes: Boss Rush (stage 20). In every stage from 8 on, some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush."],
 	["Abilities and contracts", "Heroes: an Ability button with three upgrades. Quests > Career: contracts that pay a hero's shards."],
-	["Daily Spin and Welcome back", "Store > Offers: a free spin a day. Come back after a few hours for a gift and a list of what is waiting."],
+	["Daily Spin, daily deals, Welcome back", "Store > Offers: a free spin a day. Store > Shop > Today: three deals a day. Come back after a few hours for a gift."],
 	["Music and new settings", "Settings: music, volume, vibration, screen shake, damage numbers, auto-advance."],
 ]
 

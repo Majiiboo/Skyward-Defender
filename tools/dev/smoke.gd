@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_check_contracts()
 	_check_base_cards()
 	_check_welcome()
+	_check_deals()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -988,3 +989,19 @@ func _check_welcome() -> void:
 	_expect(int(Welcome.gift_for(30 * 86400).coins) == 900, "the gift stops at three days")
 	s = {"stage_unlocked": 2, "last_seen": now - 86400}
 	_expect(Welcome.check(s).is_empty(), "not for a player still in the first stages")
+
+func _check_deals() -> void:
+	for dday in range(100, 130):
+		var t := Deals.today(dday)
+		_expect(t.size() == 3 and String(t[0].id) != String(t[1].id) and String(t[2].cur) == "coins" and String(t[0].cur) == "crystals", "day %d: two different crystal deals and a coin deal" % dday)
+	for p in Deals.POOL:
+		_expect(int(p.cost) < int(p.was) and Deals.off_percent(p) >= 30, "%s is at least 30%% off" % String(p.id))
+	var s := {"stage_unlocked": 3, "crystals": 1000, "coins": 100000}
+	var first: Dictionary = Deals.today()[0]
+	_expect(Deals.buy(s, String(first.id)) != "", "closed before stage %d" % Deals.DEALS_FROM)
+	s["stage_unlocked"] = 20
+	_expect(Deals.buy(s, String(first.id)) == "" and int(s.crystals) == 1000 - int(first.cost), "bought: the price is paid")
+	_expect(Deals.buy(s, String(first.id)) == "Bought today", "once a day")
+	_expect(Deals.buy(s, "no_such") == "Not on offer today", "only today's three")
+	s["deals"]["day"] = Deals.day() - 1
+	_expect(Deals.bought(s).is_empty(), "a new day: all three back")
