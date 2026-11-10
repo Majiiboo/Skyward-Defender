@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev214 (version/code=214 and version/name="1.0-dev214" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev224 (version/code=224 and version/name="1.0-dev224" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,70 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev224: the fight needs you now, the Ascend ladder, and every screen in the clean look (ten updates since dev214)
+
+WHAT TO TRY FIRST ON YOUR PHONE
+- Play a stage WITHOUT touching AUTO. Lifting your finger no longer aims for you: he fires
+  straight up, and you fly under what you want dead.
+- Then tap AUTO (bottom right) and watch. It should play a little worse than you.
+- Watch for a gold lane lighting up: a runner is about to come down it. Get under it.
+- Press the round button at the bottom left when its ring is full: your hero's ability.
+- Open Heroes, tap LEVEL UP and hold the gold button.
+- Tell me: is it too easy, too hard, do the runners hit too hard or not enough, is AUTO too good.
+  Each of those is one number for me to change.
+
+THE FIGHT
+- MANUAL and AUTO. Manual is the default. The AUTO button opens after stage 3; the autopilot aims
+  and dodges for you at three quarters of the fire rate. A finger on the screen takes over at once.
+  The test bot shows why: before, a phone lying on the table won the first 30 stages. Now nobody
+  playing loses from stage 3 on, AUTO wins but gets hit, and a player by hand does best.
+- RUNNERS (from stage 3). A small bug streaks straight down one lane for the base. A gold lane
+  warns you a second before. Catch it: coins and a big gem. Miss it: it chips the shield.
+- The shield mends a little (6%) after every wave you clear. This changes the old rule that
+  nothing on the base comes back.
+- HERO ABILITIES (after stage 2). One big move each, about every 40 seconds, faster for rarer heroes:
+  Rook Volley, Sparks Overload, Frost Whiteout, Hollow Phase Storm, Nyx Execute, Ember Firestorm.
+- DAILY TWISTS (from stage 11). A Standard stage carries one advantage and one disadvantage that
+  change every day, and pays 20% more coins. Not on boss stages, Elite, Horde or the trials.
+- Bugs are a touch tougher on stages 11 to 30 (about 20% by stage 30).
+- The top bar is redrawn: no frame, bigger buttons with space between them, a wide HP bar, and the
+  cards you hold on their own row. The whole battle is on the same two fonts as the menus.
+
+HEROES
+- THE ASCEND LADDER. Every hero climbs the same rarity ladder: Common, Uncommon, Rare, Epic,
+  Legendary, then Mythic I to V. A rarer hero starts higher (Frost starts Uncommon, Hollow Rare,
+  Nyx and Ember Epic), so a Common hero is never a dead end. The steps unlock things:
+  Uncommon a stronger passive, Rare one more free card refresh every run, Epic he starts each run
+  with his own card, Legendary the evolved look and a passive twice as strong, Mythic V three times.
+- LEVEL UP opens its own sheet: Attack, Health and Defence as now and next, the next perk, the
+  cost. Hold the button to keep levelling. At the level cap the sheet becomes ASCEND and shows what
+  you have and what you need. Ascending plays a full-screen moment.
+- The Evolve button and the shard line are gone from the Hero page (they live in the sheet).
+- On your save: a hero you had already evolved keeps those steps on top of his new start.
+
+HOME
+- Under the stage: today's twist, and one line naming the next thing worth doing (an Ascend that
+  is ready, a free chest, a level you can afford, or the next stage that unlocks something).
+  Tap it and it takes you there.
+- The nav bar is Luna's new animated icons on a glass pill with a sliding blue capsule.
+- The PLAY button is the Reactor you picked (a turning ring of gold segments, the power cost on it).
+
+THE OTHER PAGES
+- Store: Offers, Shop, Crystals and Exchange now match the Chests tab (big flat squares; the Shop
+  is split into Coins, Keys, Parts and Special instead of one long scroll).
+- Turrets and Drone: rebuilt. Upgrades are buttons that carry their cost, so nothing clips onto a
+  second line. Turrets and drones show the rarity names instead of stars and get the Ascend moment.
+- Workshop: weapon copies as squares with the count on a badge; every craft recipe is one square
+  you tap.
+- Stage Map: on the game's fonts.
+
+NOT CHECKED BY ME
+- Nothing here has been on a phone. I checked pictures of every screen on the PC and ran the test
+  bot, which is not a thumb.
+- How a twisted stage plays is not measured (the test bot switches twists off so its numbers do
+  not change with the date).
+- REVIEW-2026-11-10.md in this folder has my full view of the game and the numbers behind it.
 
 ## dev214: the new look (your round-2 "clean" pick, built in four updates)
 
