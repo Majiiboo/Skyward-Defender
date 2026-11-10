@@ -4191,6 +4191,16 @@ func _refresh_base() -> void:
 			_refresh_base())
 		slots.add_child(sq)
 	box.add_child(slots)
+	# the links live right now (Base.links): gold chips; none yet = a quiet hint
+	var live: Array = Base.links(data)
+	var lrow := HFlowContainer.new()
+	lrow.add_theme_constant_override("h_separation", 6)
+	lrow.add_theme_constant_override("v_separation", 6)
+	if live.is_empty():
+		lrow.add_child(UIKit.label("No links yet. Some buildings give a bonus when fielded together.", 11, UIKit.SOFT))
+	for l in live:
+		lrow.add_child(UIKit.chip("Link: " + String(Base.LINKS[l].name), UIKit.GOLD))
+	box.add_child(lrow)
 	box.add_child(_base_card(data, b))
 	# every building
 	var grid := GridContainer.new()
@@ -4257,6 +4267,13 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 	var pk := UIKit.label(("Perk: " if has_pk else "At Lv.%d: " % Base.PERK_LEVEL) + Base.perk_text(id), 12, UIKit.GOLD if has_pk else UIKit.SOFT)
 	pk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	nv.add_child(pk)
+	# who it links with (Base.LINKS): gold when both are fielded
+	var live_l: Array = Base.links(data)
+	for lk in Base.links_of(id):
+		var on_l: bool = live_l.has(String(lk.id))
+		var ll := UIKit.label("%s with %s: %s" % [String(lk.name), String(Base.BUILDINGS[String(lk.with)].name), String(lk.text)], 12, UIKit.GOLD if on_l else UIKit.SOFT)
+		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nv.add_child(ll)
 	head.add_child(nv)
 	v.add_child(head)
 	if not own:

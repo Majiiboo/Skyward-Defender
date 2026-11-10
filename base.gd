@@ -201,3 +201,35 @@ static func perks(save: Dictionary) -> Array:
 		if has_perk(b, String(id)):
 			out.append(String(id))
 	return out
+
+# LINKS (2026-11-10): two buildings that work together. Field both (on open slots, any two) and
+# the link is live: one more bonus on top of what each gives alone. Every building has at least
+# one partner, so "which four" is also "which pairs". The fight draws a gold line between linked pods.
+const LINKS := {
+	"bulwark":    {"a": "shield_gen", "b": "plating",  "name": "Bulwark",        "text": "Hits on the base are 10% weaker"},
+	"hospital":   {"a": "repair_bay", "b": "medbay",   "name": "Field Hospital", "text": "Mending after a wave is 50% stronger, base and hero"},
+	"war_room":   {"a": "armory",     "b": "radar",    "name": "War Room",       "text": "Crit rate +4%"},
+	"arsenal":    {"a": "armory",     "b": "hangar",   "name": "Arsenal",        "text": "Hero damage +5%"},
+	"drone_bay":  {"a": "hangar",     "b": "reactor",  "name": "Drone Bay",      "text": "Drone damage +20%"},
+	"capacitor":  {"a": "reactor",    "b": "shield_gen", "name": "Capacitor",    "text": "The Core Pulse recharges 25% faster"},
+	"prospector": {"a": "refinery",   "b": "radar",    "name": "Prospector",     "text": "Coins from fights +10%"},
+}
+const LINK_ORDER := ["bulwark", "hospital", "war_room", "arsenal", "drone_bay", "capacitor", "prospector"]
+
+# the links live this fight: both buildings standing on open slots
+static func links(save: Dictionary) -> Array:
+	var on: Array = stats(save).on
+	var out: Array = []
+	for l in LINK_ORDER:
+		if on.has(String(LINKS[l].a)) and on.has(String(LINKS[l].b)):
+			out.append(l)
+	return out
+
+# the links a building can form: [{"id", "with", "name", "text"}]
+static func links_of(id: String) -> Array:
+	var out: Array = []
+	for l in LINK_ORDER:
+		var d: Dictionary = LINKS[l]
+		if String(d.a) == id or String(d.b) == id:
+			out.append({"id": l, "with": String(d.b) if String(d.a) == id else String(d.a), "name": String(d.name), "text": String(d.text)})
+	return out

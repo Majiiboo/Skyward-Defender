@@ -473,7 +473,7 @@ static func core_eye(width: float, base_y: float) -> Vector2:
 # pods: one entry per slot {"open": bool, "col": Color, "tex": Texture2D or null, "level": int,
 # "flash": 0..1}; an entry without "tex" is an empty slot. power = the shield's share (0 = the
 # shield is down: the core turns amber and the pulses along the arms stop).
-static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y: float, t: float, pods: Array, power: float) -> void:
+static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y: float, t: float, pods: Array, power: float, links: Array = []) -> void:
 	var k := width / 480.0
 	var eye := core_eye(width, base_y)
 	var live := power > 0.0
@@ -488,6 +488,19 @@ static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y:
 		if on and live:   # a bead of light runs from the core out to the pod
 			var u := fposmod(t * 0.55 + i * 0.27, 1.0)
 			c.draw_circle(eye.lerp(p, u), 2.2 * k, Color(Color(pd.col), 0.9 * sin(u * PI)))
+	# a gold line between two pods whose buildings are linked (Base.LINKS), bowed away from the core
+	for lk in links:
+		if int(lk[0]) < 0 or int(lk[1]) < 0:
+			continue
+		var pa := pod_pos(int(lk[0]), width, base_y)
+		var pb := pod_pos(int(lk[1]), width, base_y)
+		var mid := (pa + pb) * 0.5
+		var ctrl := mid + (mid - eye).normalized() * 26.0 * k
+		var curve := PackedVector2Array()
+		for s in 17:
+			var u := s / 16.0
+			curve.append(pa.lerp(ctrl, u).lerp(ctrl.lerp(pb, u), u))
+		c.draw_polyline(curve, Color(1.0, 0.78, 0.27, 0.7 + 0.25 * sin(t * 3.0)), 2.2, true)
 	# the core: a low dome sunk into the bottom edge
 	var dome := _ell_pts(Vector2(width * 0.5, bottom_y), CORE_R * k, CORE_R * k, PI, TAU, 36)
 	c.draw_colored_polygon(dome, BASE_NAVY)

@@ -4988,6 +4988,8 @@ var _base_perks: Array = []   # buildings at level 5 on the base: their perks (B
 var _dome_used := false      # the Shield Generator's emergency shield went up this fight
 
 func _apply_base(sv: Dictionary) -> void:
+	_base_links = []
+	_pulse_cd_mult = 1.0
 	_pods = []
 	_base_perks = []
 	if _mods.has("no_turrets"):   # the Base offline twist (trials): the buildings give nothing this fight
@@ -5028,6 +5030,19 @@ func _apply_base(sv: Dictionary) -> void:
 	_ult_cd /= 1.0 + float(bs.ability)
 	_warn_mult = 1.0 + float(bs.warn)
 	_coin_mult *= 1.0 + float(bs.coins)
+	# the links between buildings in force (Base.links): a bonus for fielding a pair
+	for l in Base.links(sv):
+		_base_links.append([_base_slots.find(String(Base.LINKS[l].a)), _base_slots.find(String(Base.LINKS[l].b))])
+		match String(l):
+			"bulwark": _base_dr = clampf(_base_dr + 0.10, 0.0, 0.6)
+			"hospital":
+				_base_repair *= 1.5
+				_base_heal *= 1.5
+			"war_room": _crit_rate += 0.04
+			"arsenal": damage_mult *= 1.05
+			"drone_bay": _drone_mult *= 1.2
+			"capacitor": _pulse_cd_mult = 0.75
+			"prospector": _coin_mult *= 1.1
 
 # With the turrets gone the hero does all the shooting. The turrets did nothing on the first
 # stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by
@@ -5125,6 +5140,8 @@ var _base_levels: Array = [0, 0, 0, 0]
 var _base_open: Array = [false, false, false, false]
 var _pod_ping_t: Array = [-9.0, -9.0, -9.0, -9.0]
 var _pods: Array = []   # {mount, pos, drop, held_by}: the built pods, for the Wrecker to grab (it took turrets once)
+var _base_links: Array = []   # [slot, slot] for every live link (Base.links): a gold line between the two pods
+var _pulse_cd_mult := 1.0     # the Capacitor link shortens the Core Pulse s recharge
 
 func _pod_held(i: int) -> bool:
 	for p in _pods:
@@ -5148,7 +5165,7 @@ func _draw_core_base() -> void:
 			pd["col"] = Color(1.0, 0.35, 0.3) if _pod_held(i) else Base.BUILDINGS[id].col
 			pd["tex"] = _tex.get("bld_" + id)
 		pods.append(pd)
-	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0))
+	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0), _base_links)
 
 # ------------------------------------------------------------------ CORE PULSE (2026-11-10)
 # The base's own button (Rudy: "the base as a whole, one can act like a shield"). Tap the core:
@@ -5190,7 +5207,7 @@ func _use_pulse() -> void:
 		return
 	if _pulse_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
-	_pulse_t = PULSE_CD
+	_pulse_t = PULSE_CD * _pulse_cd_mult
 	_pulse_live = PULSE_T
 	_pulse_flash = 1.0
 	_ai_pulse = 1.0
@@ -5250,7 +5267,7 @@ func _draw_pulse() -> void:
 		draw_arc(eye, 27.0 + 2.0 * beat, 0.0, TAU, 48, Color(1.0, 0.78, 0.27, 0.7 + 0.3 * beat), 2.5, true)
 	else:
 		draw_arc(eye, 27.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
-		draw_arc(eye, 27.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / PULSE_CD), 48, Color(cyan, 0.85), 2.5, true)
+		draw_arc(eye, 27.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / (PULSE_CD * _pulse_cd_mult)), 48, Color(cyan, 0.85), 2.5, true)
 	if _pulse_live > 0.0:
 		var k := _pulse_live / PULSE_T
 		var c := Vector2(FIELD_W * 0.5, BASE_Y)

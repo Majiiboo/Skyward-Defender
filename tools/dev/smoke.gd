@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_check_weapons()
 	_check_perks()
 	_check_ability_ups()
+	_check_links()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -839,3 +840,13 @@ func _check_ability_ups() -> void:
 	_expect(int(st.ability_ups) == 2 and int(st.wing_ups) == 2, "the fight is told: the duty hero's two and the wingmate's two")
 	h.ability["frost"] = 3
 	_expect(Heroes.why_not_ability_up(h, "frost") == "All three bought" and Heroes.ability_up_cost(h, "frost") == 0, "nothing after the third")
+
+func _check_links() -> void:
+	for id in Base.ORDER:
+		_expect(not Base.links_of(String(id)).is_empty(), "%s has at least one partner" % id)
+	var s := {"stage_unlocked": 61, "base": {"slots": ["shield_gen", "plating", "armory", "radar"], "levels": {"shield_gen": 1, "plating": 1, "armory": 1, "radar": 1, "refinery": 1}}}
+	_expect(Base.links(s) == ["bulwark", "war_room"], "two pairs fielded: two links (%s)" % str(Base.links(s)))
+	s.base.slots = ["shield_gen", "plating", "armory", "refinery"]
+	_expect(Base.links(s) == ["bulwark"], "a partner off the base: that link is gone")
+	s["stage_unlocked"] = 6
+	_expect(Base.links(s).is_empty(), "the partner on a slot that is not open yet does not count")
