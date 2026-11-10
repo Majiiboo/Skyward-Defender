@@ -36,6 +36,7 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   (preview cutter scratchpad navcmp/cut_nav3.gd: union of the icon's files), store = closed parts <-> the open
   picture, heroes head group nods on a neck pivot (50%, 57%), moon orbits the ring ellipse c (0.495, 0.503)
   a 0.468 b 0.11 at +19.9 deg (front half = lower), quest ticks x1.5 at their centres (34.6%, 38.3 / 58.3 / 78.6%).
+  QUEST TICKS too small (about 6 px in the bar): redo asked (LUNA-BRIEF-nav-quest-ticks.md, Desktop/Luna quest ticks).
   NEXT: build it in Godot (cutter -> icons/nav3/, nav_dock glass pill + capsule shader, the moves).
   HOME MIX (Rudy's Luna Home renders in Downloads, media-generation-home-*.webp x6): my suggested mix =
   top bar in one glass capsule, side buttons in one vertical capsule with tiny names, a slim bottom card
