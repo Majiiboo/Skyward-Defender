@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 590 390 254" width="1170" height="762">
+<rect x="0" y="590" width="390" height="254" fill="#070c18"/>
+<ellipse cx="195" cy="930" rx="340" ry="120" fill="#0d1730" stroke="#1c2c4d"/>
+<circle cx="195" cy="850" r="240" fill="#4fe0ff" opacity=".05"/>
+<circle cx="195" cy="850" r="240" fill="none" stroke="#4fe0ff" stroke-width="1.5" opacity=".85"/>
+<circle cx="195" cy="850" r="161" fill="none" stroke="#2a3d63" stroke-width="1.5" stroke-dasharray="3 7"/>
+<g stroke="#2a3d63" stroke-width="2">
+<line x1="195" y1="830" x2="50" y2="780"/><line x1="195" y1="830" x2="112" y2="712"/><line x1="195" y1="830" x2="278" y2="712"/><line x1="195" y1="830" x2="340" y2="780"/>
+</g>
+<path d="M125 844 A70 70 0 0 1 265 844Z" fill="#0e1728" stroke="#2a3d63" stroke-width="1.5"/>
+<circle cx="195" cy="820" r="26" fill="#070c18" stroke="#4fe0ff" stroke-width="1.5"/>
+<circle cx="195" cy="820" r="13" fill="#4fe0ff"/>
+<circle cx="195" cy="820" r="5" fill="#ffffff"/>
+<g fill="#0e1728" stroke-width="1.5">
+<circle cx="50" cy="780" r="26" stroke="#4fe0ff"/><circle cx="112" cy="712" r="26" stroke="#70f0b8"/><circle cx="278" cy="712" r="26" stroke="#ff9a4d"/><circle cx="340" cy="780" r="26" stroke="#b58cff"/>
+</g>
+<path d="M50 767 L61 772 V780 C61 787 56 792 50 795 C44 792 39 787 39 780 V772Z" fill="#4fe0ff"/>
+<path d="M108 700 H116 V708 H124 V716 H116 V724 H108 V716 H100 V708 H108Z" fill="#70f0b8"/>
+<path d="M278 699 L290 724 H266Z" fill="#ff9a4d"/>
+<path d="M326 788 L340 770 L354 788 L348 788 L340 778 L332 788Z" fill="#b58cff"/>
+<g font-family="Arial, sans-serif" font-size="9" fill="#ffffff" text-anchor="middle">
+<text x="195" y="792">THE CORE (you paint)</text>
+<text x="112" y="676">A POD (you paint one, empty)</text>
+<text x="278" y="676">a building picture sits inside</text>
+<text x="195" y="626">the shield bubble: the game draws it</text>
+<text x="150" y="760">an arm</text>
+</g>
+</svg>
