@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev227 (version/code=227 and version/name="1.0-dev227" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev231 (version/code=231 and version/name="1.0-dev231" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,38 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev231: kill streaks, planet hazards, supply drops, a wingmate and the weekly event (four updates since dev227)
+
+IN THE FIGHT
+- KILL STREAK. Kills in quick succession build a streak (top right). Each point is 1% more coins
+  from the bugs you kill, up to 50%. Getting hit, or going quiet for a couple of seconds, ends it.
+- PLANET HAZARDS (from planet 2). Each planet has its own danger: falling scrap, eruptions, shard
+  rain, lightning, a targeting laser. A circle lights up near the hero, closes, then lands. It
+  hurts the hero if he is still inside, and the bugs inside it too, so you can lead them into it.
+  Today every hazard is the same circle in a different colour.
+- SUPPLY DROPS (from stage 6). At the start of every third wave a crate drifts down. Shoot it open
+  and pick one of two: a shield patch, a card refresh, a medkit, a charged ability, coins, or
+  sometimes a cursed offer (30% more damage for a quarter less hero health).
+
+HEROES
+- WINGMATE. Once you own a second hero, a Wingmate square shows under Loadout. The wingmate lends
+  half his passive and fires his own ability by himself about once a minute. Tap the square to
+  change him.
+
+MODES
+- WEEKLY EVENT (opens after stage 10). A themed week with its own pair of twists: Scrap Rush,
+  Night Hunt, Iron Dome, Overdrive, in turn. Fights pay event points (30 for a clean win, 20 for a
+  rough one, 5 for a loss) that fill a track of ten rewards. The track starts again each week.
+
+WHAT I WOULD LIKE YOU TO TELL ME
+- Do the hazards and runners feel fair or annoying? In my test a stage-30 run ended with the
+  shield at 1%, which is the first time the base has been in danger.
+- Is the wingmate's assist noticeable?
+- IDEAS-2026-11-10.md in this folder lists what else could come; tell me what you like.
+
+NOT CHECKED BY ME: none of this has been tapped by hand or seen on a phone. Each piece was run in a
+real stage without a screen, and the test bot still wins stages 12 and 30.
 
 ## dev227: the Daily Challenge, the unlock moment and the collection book (three updates since dev224)
 
