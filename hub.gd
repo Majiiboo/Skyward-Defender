@@ -1621,78 +1621,71 @@ func _patrol_fill() -> void:
 		c.queue_free()
 	var save := Progress.read()
 	var p := Patrol.tick(save)
-	Progress.write(save)
 	var best := maxi(1, int(save.get("stage_unlocked", 1)) - 1)
+	if int(p.stage) != best:   # no stage arrows (Rudy, dev209): the patrol always works your furthest stage
+		Patrol.set_stage(save, best)
+		p = Patrol.tick(save)
+	Progress.write(save)
 	var cleared := int(save.get("stage_unlocked", 1)) > 1
-	var panel := UIKit.panel(16)
+	# the clean Patrol box (consistency pass, 2026-11-10): what is stored, big; a bar to the cap; one
+	# gold COLLECT with its power cost; the hourly rate small underneath
+	var panel := UIKit.panel(24)
 	var w := minf(size.x - 32.0, 400.0)
 	panel.custom_minimum_size = Vector2(w, 0)
-	panel.position = Vector2((size.x - w) * 0.5, size.y * 0.2)
+	panel.position = Vector2((size.x - w) * 0.5, size.y * 0.22)
 	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 10)
+	v.add_theme_constant_override("separation", 12)
 	v.add_child(UIKit.popup_title("PATROL"))
 	if not cleared:
 		v.add_child(UIKit.label("Clear stage 1 to start a patrol", 13, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
-		# the stage it farms: arrows through the stages you have cleared
-		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", 10)
 		var st: int = int(p.stage)
-		var prev := UIKit.ghost_button("<", 16)
-		prev.custom_minimum_size = Vector2(44, 36)
-		prev.disabled = st <= 1
-		prev.pressed.connect(func(): _patrol_stage(st - 1))
-		row.add_child(prev)
-		var name_l := UIKit.label("Stage %d  ·  %s" % [st, StageData.stage_name(st)], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
-		name_l.custom_minimum_size = Vector2(200, 0)
-		row.add_child(name_l)
-		var nxt := UIKit.ghost_button(">", 16)
-		nxt.custom_minimum_size = Vector2(44, 36)
-		nxt.disabled = st >= best
-		nxt.pressed.connect(func(): _patrol_stage(st + 1))
-		row.add_child(nxt)
-		v.add_child(row)
-		# what an hour brings here
-		v.add_child(UIKit.label("PER HOUR", 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		var pw := Patrol.per_wave(st)
-		var rate := HBoxContainer.new()
-		rate.alignment = BoxContainer.ALIGNMENT_CENTER
-		rate.add_theme_constant_override("separation", 14)
+		v.add_child(UIKit.label("Stage %d  ·  %s" % [st, StageData.stage_name(st)], 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+		# what has built up
+		var got := Patrol.ready(p)
+		var have := HBoxContainer.new()
+		have.alignment = BoxContainer.ALIGNMENT_CENTER
+		have.add_theme_constant_override("separation", 8)
 		for k in ["coins", "alloy", "cell", "core", "gear"]:
-			if pw.has(k):
-				var per_h: float = float(pw[k]) * Patrol.WAVES_PER_HOUR
-				rate.add_child(_patrol_amount(k, ("%d" % roundi(per_h)) if k == "coins" else ("%.2f" if k == "gear" else "%.1f") % per_h))
-		v.add_child(rate)
-		# it slows down the longer it waits (Patrol.speed_at), and has daily limits
-		var spd := Patrol.speed_at(float(p.stored_s))
-		v.add_child(UIKit.label("Full speed 2 h, then slower  ·  now %s" % ("full" if spd >= 1.0 else ("half" if spd >= 0.5 else "quarter")), 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-		# stored so far, as a bar to the 8 hour cap
+			if got.has(k):
+				var chip := PanelContainer.new()
+				chip.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 16, Vector2(12, 6)))
+				chip.add_child(_patrol_amount(k, UIKit.num(int(got[k]))))
+				have.add_child(chip)
+		if got.is_empty():
+			have.add_child(UIKit.label("Nothing yet", 14, UIKit.SOFT))
+		v.add_child(have)
+		# stored time, as a bar to the cap
 		var hrs := float(p.stored_s) / 3600.0
-		var day_h := float(p.day_s) / 3600.0
-		v.add_child(UIKit.label("STORED  %dh %02dm / 8h   ·   TODAY  %dh / 12h" % [int(hrs), int(fmod(hrs, 1.0) * 60.0), int(day_h)], 10, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+		var brow := HBoxContainer.new()
+		brow.add_theme_constant_override("separation", 10)
 		var bar := ProgressBar.new()
 		bar.max_value = Patrol.CAP_S
 		bar.value = float(p.stored_s)
 		bar.show_percentage = false
-		bar.custom_minimum_size = Vector2(0, 8)
-		bar.add_theme_stylebox_override("background", UIKit.box(Color(1, 1, 1, 0.08), Color(1, 1, 1, 0.0), 4))
-		bar.add_theme_stylebox_override("fill", UIKit.box(GOLD if float(p.stored_s) >= Patrol.CAP_S else CYAN, Color(CYAN, 0.0), 4))
-		v.add_child(bar)
-		var got := Patrol.ready(p)
-		var have := HBoxContainer.new()
-		have.alignment = BoxContainer.ALIGNMENT_CENTER
-		have.add_theme_constant_override("separation", 14)
-		for k in ["coins", "alloy", "cell", "core", "gear"]:
-			if got.has(k):
-				have.add_child(_patrol_amount(k, str(got[k])))
-		if got.is_empty():
-			have.add_child(UIKit.label("Nothing yet: a wave every 30 s", 12, MUTED))
-		v.add_child(have)
+		bar.custom_minimum_size = Vector2(0, 6)
+		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+		bar.add_theme_stylebox_override("fill", UIKit.pill(GOLD if float(p.stored_s) >= Patrol.CAP_S else CYAN, 3, Vector2.ZERO))
+		brow.add_child(bar)
+		brow.add_child(UIKit.title("%dh %02dm / 8h" % [int(hrs), int(fmod(hrs, 1.0) * 60.0)], 12, UIKit.SOFT))
+		v.add_child(brow)
 		var left := Patrol.collects_left(p)
-		var claim := UIKit.gold_button(("Collect  ·  %d power  (%d left today)" % [Energy.PATROL_COST, left]) if left > 0 else "Back tomorrow", 15)
-		claim.custom_minimum_size = Vector2(0, 44)
+		var claim := UIKit.gold_button("", 18)
+		claim.custom_minimum_size = Vector2(0, 54)
 		claim.disabled = got.is_empty() or left <= 0
+		var cb := HBoxContainer.new()
+		cb.set_anchors_preset(Control.PRESET_FULL_RECT)
+		cb.alignment = BoxContainer.ALIGNMENT_CENTER
+		cb.add_theme_constant_override("separation", 8)
+		cb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		cb.add_child(UIKit.title("COLLECT" if left > 0 else "BACK TOMORROW", 18, UIKit.GOLD_INK))
+		if left > 0:
+			cb.add_child(UIKit.iconed(load("res://icons/ic_bolt.svg"), str(Energy.PATROL_COST), 15, UIKit.GOLD_INK, 18.0))
+		if claim.disabled:
+			cb.modulate.a = 0.45
+		claim.add_child(cb)
 		claim.pressed.connect(func():
 			var s := Progress.read()
 			if not Energy.try_spend(s, Energy.PATROL_COST):   # collecting costs power tokens
@@ -1707,8 +1700,20 @@ func _patrol_fill() -> void:
 			_on_energy_changed()
 			_patrol_toast("+ " + Progress.reward_text(g)))
 		v.add_child(claim)
+		# the small print: the hourly rate here, and today's limit
+		var pw := Patrol.per_wave(st)
+		var bits: Array = []
+		for k in ["coins", "alloy", "cell", "core"]:
+			if pw.has(k):
+				var per_h: float = float(pw[k]) * Patrol.WAVES_PER_HOUR
+				if per_h < 0.05:
+					continue
+				bits.append(("%d coins" % roundi(per_h)) if k == "coins" else ("%.1f %s" % [per_h, String(Parts.KINDS[k].name)]))
+		var fine := UIKit.label("An hour here: %s  ·  %d collect%s left today" % [", ".join(bits), left, "" if left == 1 else "s"], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		fine.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(fine)
 	var close := UIKit.ghost_button("Close", 14)
-	close.custom_minimum_size = Vector2(0, 38)
+	close.custom_minimum_size = Vector2(0, 40)
 	close.pressed.connect(func(): _patrol_layer.queue_free())
 	v.add_child(close)
 	panel.add_child(v)
