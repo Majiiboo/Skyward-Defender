@@ -20,6 +20,13 @@ A new session picks up here. Everything is committed and pushed (github.com/Maji
   Not seen on a phone yet. PLAY button: Rudy picked A (built as update 2); the four
   directions at claude.ai/artifact/9ZyH2NVPEENFPc9XagXKct (A Reactor ring, B wide Launch bar, C Mission card,
   D Launch core = chevrons rising through the gold disc, my pick).
+  LEVEL UP + ASCEND (queue 30, started 2026-11-10): design mock-up claude.ai/artifact/S9RA3rB68rTmrkZ6GHKyrK.
+  Proposal: the STAR ladder becomes RARITY steps (Gates stars 1-5 = Common / Uncommon / Rare / Epic /
+  Legendary, 6-10 = Mythic I-V; costs, caps, doors and power steps unchanged); start step = today's grade
+  (rook / sparks 1, frost 2, hollow 3, nyx / ember 4) and the grade mult goes; power-ups: Uncommon passive
+  x1.5, Rare +1 free refresh a run, Epic starts each run with his hero card, Legendary evolved look +
+  passive x2, Mythic red aura, Mythic V passive x3. Level Up = its own sheet (stats now -> next, next perk,
+  cost, hold to repeat, ASCEND at the cap). Waiting on Rudy's OK before changing the rules.
   dev214 = THE STYLE PASS, 4 updates (README-RUDY dev214). NAV ICONS:
   Rudy picked option C (flat two-tone: navy body + one accent) from the canvas "Nav icons" page and wants
   LUNA to paint them: LUNA-BRIEF-nav-icons.md + art_src/ref/nav_icons_ref.png (copied to Desktop/Luna nav
