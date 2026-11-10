@@ -14,6 +14,8 @@ const UNLOCKS := {
 	# the battle buttons and modes of 2026-11-10 (battle.gd ABILITY_FROM / AUTO_FROM, Promotion.DAILY_FROM / TWIST_FROM)
 	"ability":   {"stage": 2,  "name": "Hero ability", "go": [], "pic": "el_energy",
 		"text": "The round button at the bottom left of a fight: your hero's big move, about every 40 seconds."},
+	"pulse":     {"stage": 7,  "name": "Core Pulse", "go": [], "pic": "st_def",
+		"text": "Tap the glowing core of your base in a fight: for 4 seconds nothing can hurt the base, and bugs close to it are stunned."},
 	"auto":      {"stage": 3,  "name": "AUTO pilot", "go": [], "pic": "ic_energy",
 		"text": "Tap AUTO in a fight and an autopilot flies and aims for you. Your own hands still beat it."},
 	"turrets":   {"stage": 5,  "name": "The Base",   "go": ["NavGear", "gear_page", 1], "pic": "ic_base",

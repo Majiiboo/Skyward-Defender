@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev242 (version/code=242 and version/name="1.0-dev242" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev245 (version/code=245 and version/name="1.0-dev245" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,30 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev245: ability upgrades, the Core Pulse, turret code out of the fight (three updates since dev242)
+
+- ABILITY UPGRADES. Heroes page: a new Ability square under Stats opens a sheet with the hero's
+  move and three upgrades, bought in order with HIS shards (10, 25, 45). The first two make the
+  move bigger, the third changes what it does (Rook's Volley pierces, Hollow cannot be hurt during
+  Phase Storm, Frost's Whiteout mends the shield...). Shards also pay for Ascend, so it is a choice.
+- THE CORE PULSE (from stage 7): the base's own button. Tap the glowing core at the bottom of a
+  fight: for 4 seconds nothing can hurt the base, bugs close to it are stunned and knocked, enemy
+  shots near it vanish, and 5% of the shield comes back. Then it recharges for 70 seconds (the ring
+  round the core fills, gold when ready). AUTO presses it when the shield is low and a crowd is in.
+- TURRET CODE DELETED from the fight (about 1,400 lines). Nothing you can see changes, except:
+  the WRECKER boss used to grab a turret; it now grabs one of your base pods (the pod turns red)
+  and drains the shield until you shoot it off. The old "Turret boost" daily twist did nothing any
+  more; it is now "Quick charge" (the ability charges 50% faster).
+- Luna's first base picture arrived and was approved; the go-ahead and two notes went back to her.
+
+NOT CHECKED BY ME: nothing has been on a phone. All six abilities were fired with no upgrades and
+with all three in a real stage; the Core Pulse was fired in a real stage; stages 5, 15, 20 and 30
+were each won once by the test player after the deletion. I did not watch the Wrecker grab a pod
+(stage 15 was won, I did not look at that moment), and I ran no full balance sweep: the Core Pulse
+and full ability upgrades make the player stronger, so later stages may now be too easy.
+STILL THERE, UNUSED: the old Turrets page code on the Heroes screen and the turret code of the old
+Home scene. They cannot be reached in the game; they go in the polish round.
 
 ## dev242: the new base, core and pods (three updates since dev239)
 

@@ -565,6 +565,7 @@ func _start_stage() -> void:
 		_ult_cd /= 1.5
 	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
 	_ult_t = 0.0 if _base_perks.has("reactor") else 12.0   # Reactor Lv.5: the ability is ready from the start
+	_pulse_setup()   # the Core Pulse, the base s own button
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
 	_ult_ups = int(gs.get("ability_ups", 0))   # ability upgrades bought (Heroes.ABILITY_UPS)
 	_wing_ups = int(gs.get("wing_ups", 0))
@@ -821,6 +822,7 @@ func _process(delta: float) -> void:
 	_update_streak(delta)
 	_move_tip = maxf(_move_tip - delta, 0.0)
 	_update_ability(delta)
+	_update_pulse(delta)
 	_update_wing(delta)
 	_update_bullets(delta)
 	_update_fire_patches(delta)
@@ -1829,6 +1831,10 @@ func _xp_need() -> float:
 # ------------------------------------------------------------------ damage, effects, end
 
 func _hurt_base(amount: float) -> void:
+	if _pulse_live > 0.0:   # the Core Pulse stands: nothing gets through
+		_pulse_blocked += 1
+		_pulse_flash = maxf(_pulse_flash, 0.35)
+		return
 	amount *= 1.0 - _base_dr   # gear milestones (Chest)
 	hit_t = 0.0
 	_took_damage = true
@@ -2156,7 +2162,7 @@ func _dmg_rows(compact: bool = false) -> Control:
 	var elapsed: float = maxf(time_alive, 1.0)
 	for k in keys.slice(0, 5 if compact else 8):
 		var d: float = float(_dmg_by[k])
-		var name := "Drone" if k == "drone" else (String(Heroes.ROSTER.get(_hero_id, {}).get("name", "Hero")) if k == "hero" else String(k))
+		var name := "Drone" if k == "drone" else (String(Heroes.ROSTER.get(_hero_id, {}).get("name", "Hero")) if k == "hero" else String(k).capitalize())
 		var col: Color = Heroes.element_color(Heroes.element_of(_hero_id)) if k == "hero" else (Color(0.8, 0.6, 1.0) if k == "drone" else UIKit.SOFT)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 6)
@@ -3156,6 +3162,7 @@ func _draw() -> void:
 	Backdrop.draw_base_shade(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY)
 	Backdrop.draw_force_field(self, Vector2(FIELD_W * 0.5, BASE_Y), DOME_RX, DOME_RY, clampf(shield / shield_max, 0.0, 1.0), clampf(hull / hull_max, 0.0, 1.0), time_alive, elite, hit_t)
 	_draw_core_base()
+	_draw_pulse()
 	_draw_lanes()   # a runner is coming down this lane
 	_draw_strikes()   # the planet's hazard about to land
 	# gems
@@ -5142,3 +5149,119 @@ func _draw_core_base() -> void:
 			pd["tex"] = _tex.get("bld_" + id)
 		pods.append(pd)
 	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0))
+
+# ------------------------------------------------------------------ CORE PULSE (2026-11-10)
+# The base's own button (Rudy: "the base as a whole, one can act like a shield"). Tap the core:
+# for PULSE_T seconds nothing can hurt the base, every bug close to it is stunned and takes a
+# knock, enemy shots in the air are wiped, and a little shield comes back. Then it recharges for
+# PULSE_CD seconds (the ring round the core fills). Opens after stage PULSE_FROM. AUTO presses it
+# when the shield is low and a crowd is in. The base still never shoots: this is a wall, not a gun.
+const PULSE_FROM := 7
+const PULSE_T := 4.0
+const PULSE_CD := 70.0
+const PULSE_REACH := 300.0     # bugs this far above the base line or closer are caught
+var _pulse_t := 20.0           # seconds until it is ready
+var _pulse_live := 0.0         # seconds of the wall left
+var _pulse_flash := 0.0
+var _pulse_btn: Button
+var _pulse_blocked := 0        # hits it stopped this fight (shown on nothing yet; for the sim)
+
+func _pulse_open() -> bool:
+	return (stage_unlocked > PULSE_FROM or DevTools.on) and not _mods.has("no_turrets")
+
+func _pulse_setup() -> void:
+	_pulse_t = 20.0
+	_pulse_live = 0.0
+	_pulse_flash = 0.0
+	_pulse_blocked = 0
+	if _pulse_btn == null:
+		_pulse_btn = Button.new()
+		_pulse_btn.flat = true
+		_pulse_btn.focus_mode = Control.FOCUS_NONE
+		_pulse_btn.size = Vector2(72, 60)
+		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+			_pulse_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		_pulse_btn.pressed.connect(_use_pulse)
+		add_child(_pulse_btn)
+
+func _use_pulse() -> void:
+	if not _pulse_open():
+		_float_text(Backdrop.core_eye(FIELD_W, BASE_Y) + Vector2(0, -54), "Unlocks after stage %d" % PULSE_FROM, Color(0.75, 0.82, 0.92))
+		return
+	if _pulse_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
+		return
+	_pulse_t = PULSE_CD
+	_pulse_live = PULSE_T
+	_pulse_flash = 1.0
+	_ai_pulse = 1.0
+	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
+	_float_text(eye + Vector2(0, -DOME_RY - 8.0), "CORE PULSE!", Color(0.6, 0.95, 1.0), true)
+	_fx_add("nova", eye, 320.0, 0.7, 0.0, 2.6, Color(0.31, 0.88, 1.0))
+	shake = maxf(shake, 0.5)
+	hitstop = maxf(hitstop, 0.08)
+	Sfx.play("shield", 0.7)
+	for e in enemies:
+		if e.pos.y < BASE_Y - PULSE_REACH or not _can_hurt(e):
+			continue
+		if _is_boss(e):
+			e.slow = 0.4
+			e.slow_t = 2.5
+		else:
+			e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 2.0)
+			var dmg: float = 0.15 * float(e.hp_max)
+			e.hp -= dmg
+			e.hit_t = HIT_FLINCH_T
+			_count_dmg("base", dmg, e)
+	enemy_bullets = enemy_bullets.filter(func(b): return b.pos.y < BASE_Y - PULSE_REACH)
+	if shield < shield_max:
+		shield = minf(shield + shield_max * 0.05, shield_max)
+	for i in Base.SLOTS:
+		_pod_ping_t[i] = time_alive
+
+var _ai_pulse := 1.0
+func _update_pulse(delta: float) -> void:
+	_pulse_t = maxf(_pulse_t - delta, 0.0)
+	_pulse_live = maxf(_pulse_live - delta, 0.0)
+	_pulse_flash = maxf(_pulse_flash - delta * 1.6, 0.0)
+	if _pulse_btn:
+		_pulse_btn.position = Backdrop.core_eye(FIELD_W, BASE_Y) - Vector2(36, 30)
+		_pulse_btn.visible = _pulse_open()
+	# AUTO: the shield is low and a crowd is close, a second late
+	if auto_on and not dragging and _pulse_t <= 0.0 and _pulse_open() and shield < shield_max * 0.6:
+		var near := 0
+		for e in enemies:
+			near += 1 if e.pos.y > BASE_Y - PULSE_REACH else 0
+		if near >= 4:
+			_ai_pulse -= delta
+			if _ai_pulse <= 0.0:
+				_use_pulse()
+		else:
+			_ai_pulse = 1.0
+
+# over the core: the charge ring, READY, and the wall itself while it stands
+func _draw_pulse() -> void:
+	if not _pulse_open():
+		return
+	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
+	var cyan := Color(0.31, 0.88, 1.0)
+	var ready := _pulse_t <= 0.0
+	if ready:
+		var beat := 0.5 + 0.5 * sin(time_alive * 5.0)
+		draw_arc(eye, 27.0 + 2.0 * beat, 0.0, TAU, 48, Color(1.0, 0.78, 0.27, 0.7 + 0.3 * beat), 2.5, true)
+	else:
+		draw_arc(eye, 27.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
+		draw_arc(eye, 27.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / PULSE_CD), 48, Color(cyan, 0.85), 2.5, true)
+	if _pulse_live > 0.0:
+		var k := _pulse_live / PULSE_T
+		var c := Vector2(FIELD_W * 0.5, BASE_Y)
+		var pts := Backdrop._ell_pts(c, DOME_RX + 4.0, DOME_RY + 4.0, PI, TAU)
+		draw_polyline(pts, Color(1, 1, 1, 0.35 + 0.4 * k), 5.0, true)
+		draw_polyline(pts, Color(cyan, 0.9), 2.0, true)
+		draw_colored_polygon(Backdrop._ell_pts(c, DOME_RX, DOME_RY, PI, TAU), Color(cyan, 0.06 + 0.06 * sin(time_alive * 12.0)))
+	if _pulse_flash > 0.0:
+		draw_arc(eye, 27.0 + 150.0 * (1.0 - _pulse_flash), 0.0, TAU, 64, Color(cyan, _pulse_flash), 3.0, true)
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_pulse"): the Core Pulse fires now
+func _dbg_pulse() -> void:
+	_pulse_t = 0.0
+	_use_pulse()

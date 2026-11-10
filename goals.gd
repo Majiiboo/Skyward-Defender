@@ -8,7 +8,7 @@ extends RefCounted
 
 # what clearing a Standard stage opens, beyond the Unlocks table: the battle buttons (battle.gd
 # ABILITY_FROM / AUTO_FROM / RUNNER_FROM), the daily twists (Promotion.TWIST_FROM), speed x1.5
-const STAGE_OPENS := {2: "your hero's ability", 3: "the AUTO pilot", 10: "game speed x1.5"}
+const STAGE_OPENS := {2: "your hero's ability", 3: "the AUTO pilot", 7: "the Core Pulse", 10: "game speed x1.5"}
 
 static func next(save: Dictionary) -> Dictionary:
 	var h := Heroes.read(save)

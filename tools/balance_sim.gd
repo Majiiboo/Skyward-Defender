@@ -251,6 +251,8 @@ func _step() -> bool:
 		# his ability: on a crowd or a boss, as soon as it is ready
 		if b._ult_t <= 0.0 and b._ability_open() and b.enemies.size() >= 5:
 			b._use_ability()
+		if b._pulse_t <= 0.0 and b._pulse_open() and b.shield < b.shield_max * 0.6 and b.enemies.size() >= 5:
+			b._use_pulse()
 		b.dragging = true
 		if human_x >= 0.0:
 			b._drag_by(Vector2(clampf(human_x - b.soldier_pos.x, -SPEED * DT, SPEED * DT), 0))
