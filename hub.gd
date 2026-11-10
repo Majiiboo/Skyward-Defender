@@ -541,7 +541,19 @@ func _build_home_clean() -> void:
 	_weak_icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_weak_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_weak_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	tag_row.add_child(_weak_icon)
+	# the weakness icon is a button: it opens the Elements chart (ElementsChart)
+	var eb := Button.new()
+	eb.name = "ElementsButton"
+	eb.custom_minimum_size = Vector2(44, 30)
+	for st in ["normal", "hover", "focus", "disabled"]:
+		eb.add_theme_stylebox_override(st, UIKit.pill(Color(UIKit.CARD, 0.75), 12, Vector2.ZERO))
+	eb.add_theme_stylebox_override("pressed", UIKit.pill(UIKit.CARD_HI, 12, Vector2.ZERO))
+	_weak_icon.set_anchors_preset(Control.PRESET_CENTER)
+	_weak_icon.position = Vector2(13, 6)
+	eb.add_child(_weak_icon)
+	eb.pressed.connect(func(): ElementsChart.show(self, stage))
+	UIKit.press_fx(eb)
+	tag_row.add_child(eb)
 	sb.add_child(tag_row)
 	_stage_btn = Button.new()
 	_stage_btn.name = "StageNameButton"
@@ -1852,3 +1864,7 @@ func _announce_new() -> void:
 func _dbg_moment(id: String) -> void:
 	var u: Dictionary = Unlocks.UNLOCKS[id]
 	Moment.show(self, {"title": String(u.name), "text": String(u.text), "tex": Unlocks.pic(id), "go": (func(): pass) if not Array(u.get("go", [])).is_empty() else Callable()})
+
+# capture hook: the Elements chart
+func _dbg_elements() -> void:
+	ElementsChart.show(self, stage)
