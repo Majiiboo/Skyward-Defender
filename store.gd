@@ -1197,9 +1197,17 @@ func _fill_offers_clean() -> void:
 			_fill())
 		g.add_child(b)
 		i += 1
-	var soon := _item_square(UIKit.ic("pack_stage", "starter"), "Stage Pack", "", _state_pill("SOON", "plain", null, UIKit.SOFT), _small("Beat stage 5"), 206.0, 84.0, 0.0, true)
-	soon.pressed.connect(func(): _toast("Coming with the Google Play release"))
-	g.add_child(soon)
+	# the Daily Spin (Spin, spin_sheet.gd): one free turn of the wheel a day
+	var sp_state := _state_pill("FREE", "free") if Spin.free_ready(d) else _state_pill("Back tomorrow" if Spin.left(d) <= 0 else ("%d left" % Spin.left(d) if Spin.open(d) else "Stage %d" % Spin.SPIN_FROM), "plain", null, UIKit.SOFT)
+	var spin_sq := _item_square(UIKit.ic("ic_gift"), "Daily Spin", "", sp_state, _small("Eight prizes on a wheel"), 206.0, 84.0, i * 0.5)
+	spin_sq.pressed.connect(func():
+		if not Spin.open(d):
+			_toast("Opens after stage %d" % Spin.SPIN_FROM)
+			return
+		SpinSheet.show(self, func():
+			d = Progress.read()
+			_fill()))
+	g.add_child(spin_sq)
 
 func _sub_tabs(names: Array, selected: int, on_pick: Callable) -> HBoxContainer:
 	var row := HBoxContainer.new()
@@ -1455,3 +1463,7 @@ func _fade_in_overlay() -> void:
 
 func _tips() -> void:
 	Tips.first(get_tree(), [["calendar", _gift_btn]])
+
+# capture hook: the Daily Spin sheet
+func _dbg_spin() -> void:
+	SpinSheet.show(self)

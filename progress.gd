@@ -365,7 +365,7 @@ static func attention(d: Dictionary) -> Dictionary:
 	if not Unlocks.open(d, "repeat"):
 		q[3] = false
 	q.append(Codex.claimable(d))   # the Collection tab: a category reward is waiting
-	return {"quests": q[0] or q[1] or q[2] or q[3] or q[4], "quests_tabs": q, "store": bool(attend(d).claimable),
+	return {"quests": q[0] or q[1] or q[2] or q[3] or q[4], "quests_tabs": q, "store": bool(attend(d).claimable) or Spin.free_ready(d),
 		"gear": parts_merge or gear_merge or Talents.affordable(d) or Research.ready(d), "gear_ws": [parts_merge, gear_merge], "patrol": patrol}   # a talent node ready to buy (dev197)
 
 # anything waiting to be claimed (for a red dot on Home)

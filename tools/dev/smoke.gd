@@ -43,6 +43,7 @@ func _initialize() -> void:
 	_check_season()
 	_check_research()
 	_check_bossrush()
+	_check_spin()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -167,6 +168,7 @@ func _check_attend() -> void:
 	_expect(at.store and at.gear and at.gear_ws[0] and not at.gear_ws[1] and not at.patrol, "attention: gift + parts merge (%s)" % str(at))
 	s.attend = {"day": 2, "last": Progress.today()}
 	s.parts = {}
+	s["spin"] = {"day": Spin.day(), "used": 1}   # today s free spin is taken (it lights the Store dot too)
 	var g := GearData.read(s)
 	for i in 3:
 		GearData.add_copy(g, "ion_boots", "common")
@@ -908,3 +910,29 @@ func _check_bossrush() -> void:
 	_expect(not bool(again.first) and not bool(again.new_best) and not again.reward.has("crystals"), "slower and already paid: coins only")
 	var faster := BossRush.finish(s, true, 6, 6, 180.0)
 	_expect(bool(faster.new_best) and is_equal_approx(float(BossRush.best(s).t), 180.0), "a faster run is the new best")
+
+func _check_spin() -> void:
+	var s := {"stage_unlocked": 2, "crystals": 40}
+	_expect(not Spin.open(s) and Spin.why_not(s) != "", "closed before stage %d" % Spin.SPIN_FROM)
+	s["stage_unlocked"] = 10
+	_expect(Spin.free_ready(s) and Spin.cost(s) == 0 and Spin.left(s) == 1 + Spin.EXTRA_MAX, "open: the first spin of the day is free")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var pick := Spin.spin(s, rng)
+	_expect(pick >= 0 and pick < Spin.SEGMENTS.size() and not Spin.free_ready(s) and int(s.crystals) >= 40, "a free spin lands on a wedge and costs nothing")
+	var c0 := int(s.crystals)
+	var p2 := Spin.spin(s, rng)
+	var won2 := int(Dictionary(Spin.SEGMENTS[p2].reward).get("crystals", 0))
+	_expect(int(s.crystals) == c0 - Spin.EXTRA_COST + won2, "the next one costs %d crystals" % Spin.EXTRA_COST)
+	s["crystals"] = 0
+	_expect(Spin.spin(s, rng) == -1, "refused without the crystals")
+	s["crystals"] = 1000
+	Spin.spin(s, rng)
+	Spin.spin(s, rng)
+	_expect(Spin.left(s) == 0 and Spin.spin(s, rng) == -1 and Spin.why_not(s) == "Back tomorrow", "four spins a day at most")
+	var sum := 0.0
+	for i in Spin.SEGMENTS.size():
+		sum += Spin.chance(i)
+	_expect(is_equal_approx(sum, 1.0), "the odds add up to 100%")
+	s["spin"]["day"] = Spin.day() - 1
+	_expect(Spin.free_ready(s), "a new day: the free spin is back")
