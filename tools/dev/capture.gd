@@ -40,6 +40,9 @@ var _frames := 0
 func _process(_delta: float) -> bool:
 	# CAP_AUTOPICK=1: in a battle, take the first power card whenever the pick opens, so a
 	# movie of a run plays on by itself (dev168)
+	if OS.get_environment("CAP_AUTOPICK") == "1" and current_scene != null and current_scene.get("_supply_open") == true:
+		current_scene._supply_pick(0)   # a supply drop: take the first offer
+		return false
 	if OS.get_environment("CAP_AUTOPICK") == "1" and current_scene != null and current_scene.get("picking") == true:
 		var offer: Array = current_scene._offer()
 		if not offer.is_empty():

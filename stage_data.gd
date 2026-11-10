@@ -115,6 +115,9 @@ const ENEMIES := {
 		"xp_tier": 3, "coins": 40, "traits": ["boss"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 7.0,
 		"intro": "Lays eggs that hatch Scouts. Hit her while she lays: she is weak then!"},
 	# spore pod from a dying Drifter: drifts down slowly; shoot it or it chips the shield
+	# a supply drop (battle SUPPLIES): not a bug; shoot it open for a choice of two
+	"crate":   {"tex": "", "size": 46.0, "hp": 5.0, "speed": 0.0, "move": "crate",
+		"xp_tier": -1, "coins": 0, "traits": [], "base_dmg": 0.0, "intro": ""},
 	"spore":   {"tex": "", "size": 16.0, "hp": 1.0, "speed": 34.0, "move": "spore",
 		"xp_tier": -1, "coins": 0, "traits": ["swarm"], "base_dmg": 4.0, "intro": ""},
 	# THE SCRAP BELT FAMILY (Luna, dev198; queue 17 b): junk machines the bugs built, planet 2 on.

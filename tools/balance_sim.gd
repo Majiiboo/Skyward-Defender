@@ -220,6 +220,8 @@ func _process(_d: float) -> bool:
 
 func _step() -> bool:
 	steps += 1
+	if b._supply_open:   # a supply drop: the bot takes the first offer
+		b._supply_pick(0)
 	if b.picking:
 		_pick()
 	var hp_before: float = b.pilot_hp

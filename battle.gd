@@ -535,6 +535,9 @@ func _start_stage() -> void:
 	_coin_refreshes = 0
 	_runner_due.clear()
 	_strikes.clear()
+	_crate_due = -1.0
+	_supply_pending = false
+	_supplies_taken = 0
 	_strike_cd = 8.0
 	_streak_break()
 	_streak_best = 0
@@ -697,6 +700,7 @@ func _start_wave() -> void:
 	if wave_index > 0:
 		_wave_patch()   # every cleared wave mends the shield a little
 	_plan_runners()
+	_plan_supply()
 	for entry in waves[wave_index]:
 		for i in int(entry[1]):
 			wave_queue.append(entry[0])
@@ -919,6 +923,7 @@ func _process(delta: float) -> void:
 	_spawn_step(delta)
 	_update_runners(delta)
 	_update_strikes(delta)
+	_update_supply(delta)
 	_update_streak(delta)
 	_update_ability(delta)
 	_update_bullets(delta)
@@ -1460,6 +1465,16 @@ func _update_enemies(delta: float) -> void:
 			if e.t > 0.7:
 				e.state = "fly"
 		match ("runner" if e.has("runner") else String(def.move)):
+			"crate":
+				# a supply drop: drifts down, hangs and sways, then lifts away if nobody opens it
+				if e.t > SUPPLY_STAY:
+					e.pos.y -= 160.0 * delta
+					if e.pos.y < -30.0:
+						e.gone = true
+				elif e.pos.y < FIELD_H * 0.3:
+					e.pos.y += 70.0 * delta
+				else:
+					e.pos.x += sin(e.t * 1.2 + e.ph) * 22.0 * delta
 			"runner":
 				e.pos.y += e.speed * delta   # straight down its lane for the base
 			"straight":
@@ -1725,6 +1740,12 @@ func _update_enemies(delta: float) -> void:
 			if _intro.is_empty():
 				if e.get("arrived", false):   # her bar slides in once she can be hurt (dev164)
 					_boss_bar_in = minf(_boss_bar_in + delta * 3.0, 1.0)
+		if e.type == "crate":
+			if e.hp <= 0.0:
+				_crate_broken(e)
+				continue
+			if e.get("gone", false):
+				continue
 		if e.hp <= 0.0:
 			_kill(e)
 			continue
@@ -4088,6 +4109,9 @@ func _draw() -> void:
 	_fx.queue_redraw()
 
 func _draw_enemy(e: Dictionary) -> void:
+	if e.type == "crate":   # a supply drop
+		_draw_crate(e)
+		return
 	var def: Dictionary = StageData.ENEMIES[e.type]
 	if e.type == "spore":
 		# spore pod (code-drawn until it has art): a glowing purple seed that pulses
@@ -5555,10 +5579,6 @@ func _runners_for(stage_n: int, wave_n: int) -> int:
 
 func _plan_runners() -> void:
 	_runner_due.clear()
-	_strikes.clear()
-	_strike_cd = 8.0
-	_streak_break()
-	_streak_best = 0
 	for i in _runners_for(stage, wave_index):
 		_runner_due.append(rng.randf_range(3.0, 7.0) + 5.0 * i)
 
@@ -5924,3 +5944,184 @@ func _dbg_strike() -> void:
 	_strikes.append({"pos": soldier_pos + Vector2(30, -10), "t": STRIKE_WARN * 0.6})
 	_streak = 12
 	_streak_t = STREAK_HOLD
+
+# ------------------------------------------------------------------ SUPPLY DROPS (2026-11-10)
+# A decision in the middle of a fight (IDEAS-2026-11-10.md 5). From stage SUPPLY_FROM, at the start
+# of every third wave a crate drifts down and hangs in the sky for a few seconds. Shoot it open and
+# the fight stops for a choice of two: a mend, a refresh, a medkit, a charged ability, a bounty,
+# or a CURSED offer (a big bonus with a price). Leave it and it flies off.
+const SUPPLY_FROM := 6
+const SUPPLY_STAY := 11.0
+const SUPPLIES := {
+	"patch":   {"name": "Shield patch", "text": "Shield +30%", "icon": "st_def"},
+	"refresh": {"name": "Spare deck", "text": "+1 card refresh", "icon": "ic_pack"},
+	"medkit":  {"name": "Medkit", "text": "Hero heals 40%", "icon": "st_hp"},
+	"charge":  {"name": "Charge", "text": "Ability ready now, 25% faster this stage", "icon": "ic_energy"},
+	"bounty":  {"name": "Bounty", "text": "A purse of coins", "icon": "ic_coin"},
+	"cursed":  {"name": "Cursed core", "text": "Damage +30%, hero max HP -25%", "icon": "ic_elite", "cursed": true},
+}
+var _crate_due := -1.0
+var _supply_pending := false
+var _supply_open := false
+var _supply_offer: Array = []
+var _supply_panel: Control
+var _crate_tex: Texture2D
+var _supplies_taken := 0
+
+func _plan_supply() -> void:
+	if stage >= SUPPLY_FROM and wave_index > 0 and wave_index % 3 == 2:
+		_crate_due = 4.0
+
+func _update_supply(delta: float) -> void:
+	if _crate_due >= 0.0:
+		_crate_due -= delta
+		if _crate_due < 0.0:
+			var e := _make_enemy("crate", Vector2(rng.randf_range(80.0, FIELD_W - 80.0), 40.0))
+			e.erase("variant")
+			e.shield_hp = 0.0
+			enemies.append(e)
+			_float_text(Vector2(FIELD_W * 0.5, FIELD_H * 0.26), "SUPPLY DROP!", Color(0.4, 0.95, 0.7), true)
+			Sfx.play("card_open")
+	if _supply_pending and not picking:
+		_supply_pending = false
+		_open_supply()
+
+# the crate: Luna's Uncommon chest, swaying, with a thin health line under it
+func _draw_crate(e: Dictionary) -> void:
+	if _crate_tex == null:
+		_crate_tex = UIKit.ic("chest2_u_closed", "ic_chest_u")
+	var s := 54.0
+	var leaving: float = clampf((float(e.t) - SUPPLY_STAY + 1.5) / 1.5, 0.0, 1.0)
+	draw_set_transform(e.pos, sin(e.t * 2.0) * 0.12, Vector2.ONE)
+	draw_circle(Vector2.ZERO, 34.0, Color(0.4, 0.95, 0.7, 0.10 * (1.0 - leaving)))
+	if _crate_tex != null:
+		draw_texture_rect(_crate_tex, Rect2(-s * 0.5, -s * 0.5, s, s), false, Color(1, 1, 1, 1.0 - 0.7 * leaving))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	var k: float = clampf(float(e.hp) / maxf(float(e.hp_max), 0.01), 0.0, 1.0)
+	draw_rect(Rect2(e.pos.x - 22.0, e.pos.y + 32.0, 44.0, 3.0), Color(1, 1, 1, 0.15))
+	draw_rect(Rect2(e.pos.x - 22.0, e.pos.y + 32.0, 44.0 * k, 3.0), Color(0.4, 0.95, 0.7))
+
+func _crate_broken(e: Dictionary) -> void:
+	_burst(e.pos, 30.0, Color(0.4, 0.95, 0.7), 16)
+	_fx_add("nova", e.pos, 70.0, 0.4, 0.0, 1.8, Color(0.4, 0.95, 0.7))
+	Sfx.play("buy")
+	_supply_pending = true
+
+func _supply_roll() -> Array:
+	var pool: Array = ["patch", "refresh", "medkit", "bounty"]
+	if _ability_open():
+		pool.append("charge")
+	if shield >= shield_max:
+		pool.erase("patch")
+	if pilot_hp >= pilot_hp_max:
+		pool.erase("medkit")
+	pool.shuffle()
+	var out: Array = [pool[0], pool[1]]
+	if rng.randf() < 0.35:
+		out[1] = "cursed"
+	return out
+
+func _open_supply() -> void:
+	picking = true
+	_supply_open = true
+	dragging = false
+	_supply_offer = _supply_roll()
+	if _supply_panel == null:
+		_supply_panel = Control.new()
+		add_child(_supply_panel)
+	for c in _supply_panel.get_children():
+		c.queue_free()
+	_supply_panel.visible = true
+	var dim := ColorRect.new()
+	dim.color = Color(0, 0, 0, 0.55)
+	dim.size = Vector2(FIELD_W, FIELD_H)
+	dim.mouse_filter = Control.MOUSE_FILTER_STOP
+	_supply_panel.add_child(dim)
+	var title := UIKit.title("SUPPLY DROP", 24, Color(0.5, 1.0, 0.78), HORIZONTAL_ALIGNMENT_CENTER)
+	title.position = Vector2(0, FIELD_H * 0.5 - 190)
+	title.size = Vector2(FIELD_W, 30)
+	_supply_panel.add_child(title)
+	var sub := UIKit.label("Take one", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	sub.position = Vector2(0, FIELD_H * 0.5 - 158)
+	sub.size = Vector2(FIELD_W, 20)
+	_supply_panel.add_child(sub)
+	var w := 196.0
+	var h := 200.0
+	var gap := 14.0
+	var x0 := FIELD_W * 0.5 - (w * 2.0 + gap) * 0.5
+	for i in _supply_offer.size():
+		var def: Dictionary = SUPPLIES[_supply_offer[i]]
+		var cursed: bool = def.get("cursed", false)
+		var col := Color(1.0, 0.4, 0.45) if cursed else Color(0.4, 0.95, 0.7)
+		var b := Button.new()
+		b.position = Vector2(x0 + i * (w + gap), FIELD_H * 0.5 - 124)
+		b.size = Vector2(w, h)
+		var nb := UIKit.box(Color(0.055, 0.09, 0.157, 0.97), Color(col, 0.7), 22, 1)
+		var pb := UIKit.box(Color(0.094, 0.145, 0.239, 0.97), col, 22, 2)
+		for st in ["normal", "hover"]:
+			b.add_theme_stylebox_override(st, nb)
+		b.add_theme_stylebox_override("pressed", pb)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var v := VBoxContainer.new()
+		v.set_anchors_preset(Control.PRESET_FULL_RECT)
+		v.offset_left = 12.0
+		v.offset_right = -12.0
+		v.offset_top = 14.0
+		v.offset_bottom = -14.0
+		v.alignment = BoxContainer.ALIGNMENT_CENTER
+		v.add_theme_constant_override("separation", 8)
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tr := TextureRect.new()
+		tr.texture = UIKit.ic(String(def.icon))
+		tr.custom_minimum_size = Vector2(0, 64)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		v.add_child(tr)
+		v.add_child(UIKit.title(String(def.name), 18, col.lerp(Color.WHITE, 0.4), HORIZONTAL_ALIGNMENT_CENTER))
+		var tl := UIKit.label(String(def.text), 13, Color(0.85, 0.9, 0.97), HORIZONTAL_ALIGNMENT_CENTER)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(tl)
+		b.add_child(v)
+		var k: int = i
+		b.pressed.connect(func(): _supply_pick(k))
+		_supply_panel.add_child(b)
+		b.pivot_offset = Vector2(w, h) * 0.5
+		b.scale = Vector2(0.85, 0.85)
+		b.modulate.a = 0.0
+		var tw := b.create_tween().set_parallel(true)
+		tw.tween_property(b, "scale", Vector2.ONE, 0.25).set_delay(0.08 * i).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		tw.tween_property(b, "modulate:a", 1.0, 0.18).set_delay(0.08 * i)
+
+func _supply_pick(i: int) -> void:
+	if not _supply_open or i < 0 or i >= _supply_offer.size():
+		return
+	var id: String = _supply_offer[i]
+	_supply_open = false
+	picking = false
+	_supplies_taken += 1
+	if _supply_panel:
+		_supply_panel.visible = false
+	Sfx.play("card")
+	match id:
+		"patch":
+			shield = minf(shield + shield_max * 0.3, shield_max)
+		"refresh":
+			refreshes += 1
+		"medkit":
+			pilot_hp = minf(pilot_hp + pilot_hp_max * 0.4, pilot_hp_max)
+		"charge":
+			_ult_t = 0.0
+			_ult_cd *= 0.75
+		"bounty":
+			_coins_f += 60.0 + 12.0 * stage
+			coins_earned = int(_coins_f)
+		"cursed":
+			damage_mult *= 1.3
+			pilot_hp_max = maxf(roundf(pilot_hp_max * 0.75), 1.0)
+			pilot_hp = minf(pilot_hp, pilot_hp_max)
+	_float_text(soldier_pos + Vector2(0, -60), String(SUPPLIES[id].name), Color(1.0, 0.45, 0.5) if id == "cursed" else Color(0.5, 1.0, 0.78), true)
+
+# capture hook (CAP_CALL="_dbg_supply"): the supply choice
+func _dbg_supply() -> void:
+	_open_supply()
