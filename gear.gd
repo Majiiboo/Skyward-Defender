@@ -1143,6 +1143,9 @@ func _refresh_drone() -> void:
 		lp.add_child(lv)
 		_drone_box.add_child(lp)
 		return
+	if UIKit.CLEAN:
+		_refresh_drone_clean()
+		return
 	var body: Dictionary = DroneData.BODIES[drone.body]
 	var pod: Dictionary = DroneData.PODS[drone.pod]
 	# preview: the drone hovering, turning a little
@@ -1253,7 +1256,11 @@ func _on_drone_star() -> void:
 	coins = int(data.get("coins", 0))
 	Sfx.play("merge")
 	Progress.bump("upgrades")
-	_toast("%s: %s" % [DroneData.BODIES[drone.body].name, Gates.long_text(DroneData.star(drone))])
+	if UIKit.CLEAN:
+		var ds := DroneData.star(drone)
+		_rarity_fx(String(DroneData.BODIES[drone.body].name), load("res://drone/body_%s.png" % drone.body), ds - 1, ds, "Power +%d%%" % roundi((Gates.RED_STEP if Gates.is_red(ds) else Gates.GOLD_STEP) * 100.0), "Level cap %d" % DroneData.level_cap(drone))
+	else:
+		_toast("%s: %s" % [DroneData.BODIES[drone.body].name, Gates.long_text(DroneData.star(drone))])
 	_refresh_drone()
 
 func _save_drone() -> void:
@@ -1460,6 +1467,9 @@ func _t_lvl(id: String) -> int:
 	return int(t_levels.get(id, 1))
 
 func _build_turrets(box: VBoxContainer) -> void:
+	if UIKit.CLEAN:   # the clean page builds itself in _refresh_turrets_clean
+		t_focus = t_loadout[t_mount]
+		return
 	box.add_child(UIKit.header("BASE MOUNTS"))
 	_mount_row = HBoxContainer.new()
 	_mount_row.add_theme_constant_override("separation", 8)
@@ -1522,6 +1532,9 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 	return t
 
 func _refresh_turrets() -> void:
+	if UIKit.CLEAN:
+		_refresh_turrets_clean()
+		return
 	_power_label.text = ""
 	_paint_wallet()
 	for c in _mount_row.get_children():
@@ -1675,6 +1688,8 @@ func _on_track_upgrade(k: String) -> void:
 	_save_turrets()
 	Progress.bump("turret_upgrades")
 	_refresh_turrets()
+	if not _t_tracks_btn.has(k):
+		return
 	var b: Button = _t_tracks_btn[k]
 	b.pivot_offset = b.size * 0.5
 	var tw := b.create_tween()
@@ -1699,7 +1714,11 @@ func _on_turret_star() -> void:
 	_save_turrets()
 	Sfx.play("merge")
 	Progress.bump("turret_upgrades")
-	_toast("%s: %s" % [Turrets.TURRETS[t_focus].name, Gates.long_text(Turrets.star(t, t_focus))])
+	if UIKit.CLEAN:
+		var ts := Turrets.star(t, t_focus)
+		_rarity_fx(String(Turrets.TURRETS[t_focus].name), load("res://turrets/%s_idle.png" % Turrets.TURRETS[t_focus].art), ts - 1, ts, "Power +%d%%" % roundi((Gates.RED_STEP if Gates.is_red(ts) else Gates.GOLD_STEP) * 100.0), "Every track can reach Lv.%d" % Turrets.track_cap(ts))
+	else:
+		_toast("%s: %s" % [Turrets.TURRETS[t_focus].name, Gates.long_text(Turrets.star(t, t_focus))])
 	_refresh_turrets()
 
 # a gold line that rises over the screen when something reaches a milestone
@@ -3401,6 +3420,10 @@ func _lvl_pressed() -> void:
 # old rarity gives way to the new one, and the power-up it unlocked is named. Tap to go on.
 func _ascend_fx(id: String, from_star: int) -> void:
 	var star := Heroes.tier(hero, id)
+	_rarity_fx(String(Heroes.ROSTER[id].name), _hero_portrait(id), from_star, star, Heroes.step_perk(star), "Level cap %d  ·  %s" % [Heroes.level_cap(hero, id), Heroes.passive_text(id, star)])
+
+# the same moment for anything on the rarity ladder (a hero, a turret, a drone body)
+func _rarity_fx(who: String, tex: Texture2D, from_star: int, star: int, perk_text: String, more_text: String) -> void:
 	var col := Gates.step_color(star)
 	var layer := Button.new()
 	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -3429,7 +3452,7 @@ func _ascend_fx(id: String, from_star: int) -> void:
 	if not Perf.lite():
 		rays.create_tween().set_loops().tween_property(rays, "rotation", TAU, 24.0).from(0.0)
 	var face := TextureRect.new()
-	face.texture = _hero_portrait(id)
+	face.texture = tex
 	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # before the size, or the picture's own size wins
 	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	face.size = Vector2(170, 170)
@@ -3445,10 +3468,10 @@ func _ascend_fx(id: String, from_star: int) -> void:
 	col_box.add_theme_constant_override("separation", 8)
 	col_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	layer.add_child(col_box)
-	var was := UIKit.label("%s  ·  %s" % [String(Heroes.ROSTER[id].name), Gates.step_name(from_star)], 14, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var was := UIKit.label("%s  ·  %s" % [who, Gates.step_name(from_star)], 14, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
 	var now_l := UIKit.title(Gates.step_name(star).to_upper(), 40, col.lerp(Color.WHITE, 0.2), HORIZONTAL_ALIGNMENT_CENTER)
-	var perk := UIKit.label(Heroes.step_perk(star), 16, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
-	var more := UIKit.label("Level cap %d  ·  %s" % [Heroes.level_cap(hero, id), Heroes.passive_text(id, star)], 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var perk := UIKit.label(perk_text, 16, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var more := UIKit.label(more_text, 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
 	var tap := UIKit.label("Tap to continue", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
 	var i := 0
 	for l in [was, now_l, perk, more, tap]:
@@ -3473,3 +3496,397 @@ func _ascend_fx(id: String, from_star: int) -> void:
 # capture hook (tools/dev/capture.gd CAP_CALL="_dbg_ascend"): the ASCEND moment for the hero in view
 func _dbg_ascend() -> void:
 	_ascend_fx(_view_id, maxi(Heroes.tier(hero, _view_id) - 1, 1))
+
+# ------------------------------------------------------------------ the CLEAN Turrets + Drone pages (2026-11-10)
+# The same family as the Hero page and the Store: flat squares with a picture and a short name, one
+# card for the thing in focus (picture, name, element + role + rarity chips), upgrades as buttons
+# that carry their cost as a coin and a number (no two-line text to clip), and the rarity ladder of
+# the heroes (Gates.step_name) in place of stars. The rules and handlers are the old ones.
+func _pick_square(tex: Texture2D, name: String, h: float, selected: bool, col: Color, dim: bool, sub: String = "") -> Button:
+	var b := Button.new()
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.custom_minimum_size = Vector2(0, h)
+	var nb := UIKit.box(Color(UIKit.CARD, 0.94), Color(col, 0.95) if selected else Color(1, 1, 1, 0.05), 18, 2 if selected else 1)
+	if selected:
+		nb.bg_color = Color(0.04 + col.r * 0.14, 0.07 + col.g * 0.14, 0.12 + col.b * 0.14, 0.96)
+	nb.set_content_margin_all(0)
+	for st in ["normal", "hover", "pressed", "disabled"]:
+		b.add_theme_stylebox_override(st, nb)
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.offset_left = 6.0
+	v.offset_right = -6.0
+	v.offset_top = 6.0
+	v.offset_bottom = -6.0
+	v.add_theme_constant_override("separation", 1)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var tr := TextureRect.new()
+	tr.texture = tex
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if dim:
+		tr.modulate = Color(0.45, 0.48, 0.6, 0.75)
+	v.add_child(tr)
+	var nl := UIKit.label(name, 10, UIKit.SOFT if dim else UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	nl.clip_text = true
+	v.add_child(nl)
+	if sub != "":
+		var sl := UIKit.label(sub, 10, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.clip_text = true
+		v.add_child(sl)
+	b.add_child(v)
+	UIKit.press_fx(b)
+	return b
+
+func _mat_icon(k: String) -> Texture2D:
+	if k == "coins":
+		return UIKit.ic("ic_coin", "ui_coin")
+	return Materials.icon(k) if Materials.is_material(k) else Parts.icon(k)
+
+# a button with a title and, under it, what it costs as small pictures with numbers
+func _cost_btn(title_text: String, coin_cost: int, needs: Dictionary, note: String, gold: bool, size_px: int = 15) -> Button:
+	var b := UIKit.gold_button("", 12) if gold else UIKit.teal_button("", 12)
+	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	b.custom_minimum_size = Vector2(0, 62)
+	var ink: Color = UIKit.GOLD_INK if gold else UIKit.TEXT
+	var v := VBoxContainer.new()
+	v.set_anchors_preset(Control.PRESET_FULL_RECT)
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 2)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(UIKit.title(title_text, size_px, ink, HORIZONTAL_ALIGNMENT_CENTER))
+	if note != "":
+		v.add_child(UIKit.label(note, 10, Color(ink, 0.7), HORIZONTAL_ALIGNMENT_CENTER))
+	elif coin_cost > 0 or not needs.is_empty():
+		var have := Parts.read(_read())
+		var row := HBoxContainer.new()
+		row.alignment = BoxContainer.ALIGNMENT_CENTER
+		row.add_theme_constant_override("separation", 6)
+		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		if coin_cost > 0:
+			row.add_child(UIKit.iconed(_mat_icon("coins"), UIKit.num(coin_cost), 11, ink if (coins >= coin_cost or gold) else SHORT, 14.0))
+		for k in needs:
+			var ok: bool = int(have.get(k, 0)) >= int(needs[k])
+			row.add_child(UIKit.iconed(_mat_icon(String(k)), str(int(needs[k])), 11, ink if (ok or gold) else SHORT, 14.0))
+		v.add_child(row)
+	b.add_child(v)
+	return b
+
+func _tag_row(el: String, role: String, star: int, extra: String = "") -> HBoxContainer:
+	var tags := HBoxContainer.new()
+	tags.add_theme_constant_override("separation", 8)
+	var ei := TextureRect.new()
+	ei.texture = UIKit.element_icon(el)
+	ei.custom_minimum_size = Vector2(20, 20)
+	ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tags.add_child(ei)
+	if role != "":
+		tags.add_child(UIKit.iconed(UIKit.role_icon(role), role, 12, UIKit.SOFT, 18.0))
+	if star > 0:
+		tags.add_child(UIKit.chip(Gates.step_name(star), Gates.step_color(star)))
+	if extra != "":
+		tags.add_child(UIKit.title(extra, 13, UIKit.TEXT))
+	return tags
+
+# what the next rarity step asks for, as have / need chips
+func _need_row(nd: Dictionary) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 8)
+	var have := Parts.read(_read())
+	for k in Dictionary(nd.get("mats", {})):
+		var kk := String(k)
+		row.add_child(_need_chip(_mat_icon(kk), "%d/%d" % [int(have.get(kk, 0)), int(nd.mats[k])], int(have.get(kk, 0)) >= int(nd.mats[k]) or DevTools.on))
+	if int(nd.get("coins", 0)) > 0:
+		row.add_child(_need_chip(_mat_icon("coins"), UIKit.num(int(nd.coins)), coins >= int(nd.coins) or DevTools.on))
+	return row
+
+# the gold ASCEND button of a turret or a drone body: ready, or the one thing in the way
+func _ascend_btn(why: String, cap_text: String) -> Button:
+	var ready := why == ""
+	var txt := "ASCEND" if ready else ("MAX" if why == "Max stars" else (cap_text if why.begins_with("Lv.") else (why.replace(" first", "") if why.begins_with("Pilot") else "ASCEND")))
+	var b := UIKit.gold_button(txt, 15) if ready else UIKit.ghost_button(txt, 12)
+	b.custom_minimum_size = Vector2(132, 50)
+	b.disabled = not ready
+	UIKit.dot(b, ready)
+	return b
+
+func _refresh_turrets_clean() -> void:
+	_power_label.text = ""
+	_paint_wallet()
+	var box := _turret_box
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+	_t_tracks_btn.clear()
+	# the four mounts on the base
+	var mounts := HBoxContainer.new()
+	mounts.add_theme_constant_override("separation", 8)
+	for i in Turrets.MOUNTS:
+		var id: String = t_loadout[i]
+		var open: bool = Turrets.mount_open(i, t_unlocked)
+		var col: Color = UIKit.RARITY[Turrets.element(id)] if id != "" else UIKit.CYAN
+		var tex: Texture2D = load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art) if id != "" else null
+		var b := _pick_square(tex, ("Stage %d" % Turrets.MOUNT_OPENS_AFTER[i]) if not open else (String(Turrets.TURRETS[id].name) if id != "" else "Empty"), 100.0, i == t_mount, col, not open)
+		_num_badge(b, col if open else UIKit.SOFT, str(i + 1))
+		var mi: int = i
+		b.pressed.connect(func():
+			t_mount = mi
+			if t_loadout[mi] != "":
+				t_focus = t_loadout[mi]
+			_refresh_turrets())
+		mounts.add_child(b)
+	box.add_child(mounts)
+	box.add_child(_turret_card())
+	# every turret: yours bright, the rest dim with their price
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for id in Turrets.TURRETS:
+		var def: Dictionary = Turrets.TURRETS[id]
+		var locked: bool = not Turrets.owned({"owned": t_owned}, id)
+		var col: Color = UIKit.RARITY[Turrets.element(id)]
+		var price := int(def.cost.get("coins", 0))
+		var sub := (UIKit.num(price) if price > 0 else "Unlock") if locked else ("Soon" if not def.ready else "")
+		var b := _pick_square(load("res://turrets/%s_idle.png" % def.art), String(def.name), 104.0, id == t_focus, col, locked or not def.ready, sub)
+		UIKit.corner_icon(b, UIKit.element_icon(Turrets.element(id)), 18.0, true)
+		if t_loadout.has(id):
+			_num_badge(b, col, str(t_loadout.find(id) + 1))   # the mount it stands on
+		var tid: String = id
+		b.pressed.connect(func():
+			t_focus = tid
+			_refresh_turrets())
+		grid.add_child(b)
+	box.add_child(grid)
+	UIKit.reveal(grid, 0.02, 8.0)
+
+# the turret in focus: who it is, its three tracks, Place / Remove and ASCEND (or its price)
+func _turret_card() -> PanelContainer:
+	var p := UIKit.panel(22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	if t_focus == "":
+		var open: bool = Turrets.mount_open(t_mount, t_unlocked)
+		var l := UIKit.label(("Mount %d is empty: pick a turret below" % (t_mount + 1)) if open else ("Mount %d opens after stage %d" % [t_mount + 1, Turrets.MOUNT_OPENS_AFTER[t_mount]]), 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		l.custom_minimum_size = Vector2(0, 60)
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		v.add_child(l)
+		return p
+	var def: Dictionary = Turrets.TURRETS[t_focus]
+	var el := Turrets.element(t_focus)
+	var tr := Turrets.one_tracks(t_tracks, t_focus)
+	var lvl := Turrets.level_of(tr)
+	var locked: bool = not Turrets.owned({"owned": t_owned}, t_focus)
+	var tstar := Turrets.star({"stars": t_stars}, t_focus)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var pic := TextureRect.new()
+	pic.texture = load("res://turrets/%s_idle.png" % def.art)
+	pic.custom_minimum_size = Vector2(84, 84)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(pic)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 5)
+	nv.add_child(UIKit.title(String(def.name), 22, UIKit.TEXT))
+	nv.add_child(_tag_row(el, Turrets.role(t_focus), 0 if locked else tstar, "" if locked else "Lv.%d" % lvl))
+	var dl := UIKit.label(String(def.desc), 12, UIKit.SOFT)
+	dl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nv.add_child(dl)
+	head.add_child(nv)
+	v.add_child(head)
+	if locked:
+		var ub := _cost_btn("UNLOCK", int(def.cost.get("coins", 0)), Turrets.parts_needed(t_focus), "", true, 18)
+		ub.pressed.connect(_on_turret_place)   # (Place buys a turret you do not own; crystals as the fallback)
+		v.add_child(ub)
+		return p
+	if not def.ready:
+		v.add_child(UIKit.label("Coming soon", 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+		return p
+	var tcap := Turrets.track_cap(tstar)
+	var tracks := HBoxContainer.new()
+	tracks.add_theme_constant_override("separation", 8)
+	for k in Turrets.TRACKS:
+		var l: int = int(tr[k])
+		var note := "MAX" if l >= Turrets.MAX_TRACK else ("at its cap" if l >= tcap else "")
+		var needs: Dictionary = Parts.need(l / 2)
+		needs.merge(Materials.turret_need(l, el))
+		var tb := _cost_btn("%s %d" % [String(Turrets.TRACK_NAMES[k]), l], Turrets.track_cost(l), needs, note, false)
+		tb.disabled = note != "" or coins < Turrets.track_cost(l)
+		var key: String = k
+		tb.pressed.connect(func(): _on_track_upgrade(key))
+		tracks.add_child(tb)
+		_t_tracks_btn[k] = tb
+	v.add_child(tracks)
+	var act := HBoxContainer.new()
+	act.add_theme_constant_override("separation", 8)
+	var here: bool = t_loadout[t_mount] == t_focus
+	var mount_open: bool = Turrets.mount_open(t_mount, t_unlocked)
+	var place := UIKit.teal_button("Mount locked" if not mount_open else ("Remove" if here else "Place on %d" % (t_mount + 1)), 14)
+	place.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	place.custom_minimum_size = Vector2(0, 50)
+	place.disabled = not mount_open
+	place.pressed.connect(_on_turret_place)
+	act.add_child(place)
+	var why := Turrets.why_not_star(_read(), {"stars": t_stars, "tracks": t_tracks}, t_focus)
+	var asc := _ascend_btn(why, "Tracks to Lv.%d" % tcap)
+	asc.pressed.connect(_on_turret_star)
+	act.add_child(asc)
+	v.add_child(act)
+	# at the cap: what the next rarity asks for
+	if tstar < Gates.MAX_STAR and Turrets.lowest_track(tr) >= tcap:
+		v.add_child(_need_row(Turrets.star_need({"stars": t_stars}, t_focus)))
+	return p
+
+func _refresh_drone_clean() -> void:
+	var box := _drone_box
+	var body: Dictionary = DroneData.BODIES[drone.body]
+	var pod: Dictionary = DroneData.PODS[drone.pod]
+	var el := DroneData.body_element(drone.body)
+	var col: Color = UIKit.RARITY.get(el, UIKit.CYAN)
+	var lvl: int = int(drone.level)
+	var dstar := DroneData.star(drone)
+	var dcap := DroneData.level_cap(drone)
+	# the card: the drone hovering on the left, who it is and its numbers on the right
+	var p := UIKit.panel(22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var pv := Control.new()
+	pv.custom_minimum_size = Vector2(130, 120)
+	var bt: Texture2D = load("res://drone/body_%s.png" % drone.body)
+	var pt: Texture2D = load("res://drone/pod_%s.png" % DroneData.pod_art(drone.pod))
+	var tm := [0.0]
+	pv.draw.connect(func():
+		var c := pv.size * 0.5 + Vector2(0, sin(tm[0] * 2.0) * 4.0)
+		pv.draw_set_transform(c, sin(tm[0] * 0.8) * 0.2, Vector2.ONE)
+		var bw: float = minf(104.0, 112.0 * bt.get_width() / bt.get_height())   # tall bodies (the Wisp) fit the box
+		var bh: float = bw * bt.get_height() / bt.get_width()
+		var pw := 42.0
+		var ph: float = pw * pt.get_height() / pt.get_width()
+		pv.draw_texture_rect(pt, Rect2(-pw * 0.5, -bh * 0.35 - ph * 0.5, pw, ph), false)
+		pv.draw_texture_rect(bt, Rect2(-bw * 0.5, -bh * 0.5, bw, bh), false)
+		pv.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE))
+	if not Perf.lite():
+		var tw := pv.create_tween().set_loops()
+		tw.tween_method(func(val): tm[0] = val; pv.queue_redraw(), 0.0, TAU * 2.0, 8.0)
+	head.add_child(pv)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 6)
+	nv.add_child(UIKit.title(String(body.name), 22, UIKit.TEXT))
+	nv.add_child(_tag_row(el, "", dstar, "Lv.%d" % lvl))
+	var dmg: float = float(pod.damage) * float(body.dmg) * DroneData.level_mult(lvl) * DroneData.dmg_bonus(lvl)
+	var every: float = float(pod.every) / float(body.rate) / DroneData.rate_bonus(lvl)
+	var chips := HBoxContainer.new()
+	chips.add_theme_constant_override("separation", 8)
+	for chip in [[UIKit.ic("st_atk"), "%.1f" % dmg], [UIKit.ic("st_rate", "st_atk"), "%.2f s" % every]]:
+		var cp := PanelContainer.new()
+		cp.add_theme_stylebox_override("panel", UIKit.pill(UIKit.CARD_HI, 15, Vector2(10, 3)))
+		cp.add_child(UIKit.iconed(chip[0], chip[1], 13, UIKit.TEXT, 18.0))
+		chips.add_child(cp)
+	nv.add_child(chips)
+	var bar_row := HBoxContainer.new()
+	bar_row.add_theme_constant_override("separation", 8)
+	var bar := ProgressBar.new()
+	bar.max_value = maxi(dcap, 1)
+	bar.value = mini(lvl, dcap)
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 6)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+	bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 3, Vector2.ZERO))
+	bar_row.add_child(bar)
+	bar_row.add_child(UIKit.title(str(dcap), 13, UIKit.SOFT))
+	nv.add_child(bar_row)
+	head.add_child(nv)
+	v.add_child(head)
+	# one gold button: LEVEL UP with its cost, or ASCEND at the cap
+	var dwhy := DroneData.why_not_star(_read(), drone)
+	if lvl >= DroneData.MAX_LEVEL and dstar >= Gates.MAX_STAR:
+		var mx := UIKit.ghost_button("MAX", 14)
+		mx.disabled = true
+		v.add_child(mx)
+	elif lvl >= dcap:
+		var asc := _ascend_btn(dwhy, "Lv.%d first" % dcap)
+		asc.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		asc.pressed.connect(_on_drone_star)
+		v.add_child(asc)
+		v.add_child(_need_row(DroneData.star_need(drone)))
+	else:
+		var cost := DroneData.upgrade_cost(lvl)
+		var needs: Dictionary = Parts.need(lvl)
+		needs.merge(Materials.drone_need(lvl))
+		var up := _cost_btn("LEVEL UP", cost, needs, "", true, 18)
+		up.disabled = coins < cost and not DevTools.on
+		up.pressed.connect(func():
+			var c2 := DroneData.upgrade_cost(int(drone.level))
+			if (coins >= c2 or DevTools.on) and int(drone.level) < DroneData.level_cap(drone) and await _pay_upgrade(c2, int(drone.level), Materials.drone_need(int(drone.level))):
+				drone.level = int(drone.level) + 1
+				for m in DroneData.MILESTONES:
+					if int(drone.level) == int(m[0]):
+						_milestone_toast("Drone reached Lv.%d: %s" % [m[0], m[1]])
+				_save_drone()
+				Sfx.play("upgrade")
+				Progress.bump("upgrades")
+				_refresh_drone())
+		v.add_child(up)
+	box.add_child(p)
+	# bodies, then pods: squares, yours bright, the one in use ringed
+	for spec in [["Body", DroneData.BODIES, "body"], ["Weapon pod", DroneData.PODS, "pod"]]:
+		box.add_child(UIKit.header(spec[0]))
+		var grid := GridContainer.new()
+		grid.columns = 3
+		grid.add_theme_constant_override("h_separation", 8)
+		grid.add_theme_constant_override("v_separation", 8)
+		for id in spec[1]:
+			var def: Dictionary = spec[1][id]
+			var is_body: bool = spec[2] == "body"
+			var open: bool = (DroneData.body_open(drone, id, pilot_level) if is_body else (pilot_level >= int(def.unlock) or DevTools.on))
+			var on: bool = drone[spec[2]] == id
+			var sub := ""
+			if not open:
+				sub = (DroneData.cost_text(id) if DroneData.premium(id) else UIKit.num(int(def.cost.get("coins", 0)))) if (is_body and DroneData.is_bought(id)) else "Pilot Lv.%d" % int(def.unlock)
+			var sc: Color = UIKit.RARITY.get(DroneData.body_element(id), UIKit.CYAN) if is_body else UIKit.CYAN
+			var sq := _pick_square(load("res://drone/%s_%s.png" % [spec[2], DroneData.pod_art(id) if not is_body else id]), String(def.name), 98.0, on, sc, not open, sub)
+			if is_body:
+				UIKit.corner_icon(sq, UIKit.element_icon(DroneData.body_element(id)), 18.0, true)
+			var key: String = spec[2]
+			var pick: String = id
+			sq.pressed.connect(func():
+				if not open and key == "body" and DroneData.is_bought(pick):   # buy it (coins + parts, crystals as the fallback)
+					_on_drone_unlock(pick)
+					return
+				if open:
+					drone[key] = pick
+					_save_drone()
+					_refresh_drone())
+			grid.add_child(sq)
+		box.add_child(grid)
+		UIKit.reveal(grid, 0.02, 8.0)
+	_power_label.text = ""
+	_paint_wallet()
+
+# a small number in the top right corner of a square (the mount a turret stands on)
+func _num_badge(parent: Control, col: Color, text: String) -> void:
+	var p := PanelContainer.new()
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_theme_stylebox_override("panel", UIKit.pill(Color(col, 0.9), 8, Vector2(6, 0)))
+	p.add_child(UIKit.title(text, 11, Color(0.04, 0.07, 0.13), HORIZONTAL_ALIGNMENT_CENTER))
+	p.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+	p.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	p.offset_right = -6.0
+	p.offset_top = 6.0
+	parent.add_child(p)
