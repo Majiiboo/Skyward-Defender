@@ -188,6 +188,8 @@ var _mats_got := {}                # materials won on this stage (materials.gd; 
 var _coins_f := 0.0
 var _shield_regen := 1.0
 var _pierce5 := false
+var _pierce_every := 5
+var _chill_bonus := 0.0            # Frost's passive on the higher steps: extra slow
 var _shot_n := 0
 var _stars_got := 0
 var _level_before := 1
@@ -583,6 +585,7 @@ func _start_stage() -> void:
 	_base_dr = clampf(gs.base_dr, 0.0, 0.6)
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
+	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
 	# hero level perks (Heroes.MILESTONES, dev186): a twin every 6th shot, one bug pierced, bursts of 2
 	_perk_twin = float(gs.get("twin_shot", 0.0)) > 0.0
 	if float(gs.get("pierce1", 0.0)) > 0.0:
@@ -597,6 +600,10 @@ func _start_stage() -> void:
 		_rig_view.height = PILOT_HEIGHT * float(gs.get("scale", 1.0))   # bulky or small (his build)
 	if gs.chill:
 		frost_level = maxi(frost_level, 1)
+	_chill_bonus = float(gs.get("chill_bonus", 0.0))
+	# ASCEND, Epic and up: the hero flies in with his own card already at level 1
+	if bool(gs.get("start_card", false)):
+		_start_hero_card()
 	_shot_n = 0
 	weapon_id = gs.weapon
 	PilotSprite.style = gs.thruster
@@ -1074,7 +1081,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * _beacon_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % 5 == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
 			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
@@ -1181,7 +1188,7 @@ func _update_bullets(delta: float) -> void:
 						dmg *= 1.2
 					if b.get("frost", false):
 						e.slow_t = 1.5
-						e.slow = minf(0.15 * frost_level, 0.45)
+						e.slow = minf(0.15 * frost_level + _chill_bonus, 0.5)
 					# hero cards: Deep Freeze slows, Afterburn sets burning
 					if _freeze_level > 0:
 						e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
@@ -5304,3 +5311,18 @@ func _draw_fire_patches() -> void:
 			var y: float = sin(float(i) * 2.3 + float(fp.ph)) * r * 0.16
 			var h: float = r * (0.18 + 0.28 * fmod(float(i) * 0.41 + float(fp.ph), 1.0) + 0.12 * sin(time_alive * (9.0 + float(i)) + float(i) * 1.7)) * a
 			_flame(c + Vector2(x, y), h, r * (0.08 + 0.06 * u), sin(time_alive * 6.0 + float(i) * 1.3) * 4.0, a * (0.7 + 0.3 * u))
+
+# ASCEND (Epic and up): the run starts with the hero's own card at level 1, as if it were the
+# first pick (it shows on the HUD card row and its next levels come up in the picks as usual)
+func _start_hero_card() -> void:
+	var id := Cards.hero_card(_hero_id)
+	if id == "" or int(card_levels.get(id, 0)) > 0:
+		return
+	card_levels[id] = 1
+	match id:
+		"rook_twin": _twin_every = 4
+		"sparks_weld": _weld_count += 1
+		"frost_freeze": _freeze_level += 1
+		"hollow_phase": pierce_level += 1
+		"nyx_mark": _crit_rate += 0.10
+		"ember_burn": _burn_level += 1

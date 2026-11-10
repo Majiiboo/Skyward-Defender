@@ -142,3 +142,16 @@ static func pay(save: Dictionary, kind: String, star: int, element: String) -> S
 # ---- premium
 static func premium(def: Dictionary) -> bool:
 	return bool(def.get("premium", false))
+
+# ---- ASCEND (Rudy's go-ahead, 2026-11-10): the ten steps READ as rarities. Nothing else moves:
+# the costs, caps, doors and power steps above are the same; a step is a star with a name.
+# Heroes use the names today (a rarer hero STARTS higher, Heroes.tier); turrets and drones follow
+# with their page pass.
+const STEP_NAMES := ["Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic I", "Mythic II", "Mythic III", "Mythic IV", "Mythic V"]
+const STEP_KEYS := ["common", "uncommon", "rare", "epic", "legendary"]
+
+static func step_name(star: int) -> String:
+	return String(STEP_NAMES[clamp_star(star) - 1])
+
+static func step_color(star: int) -> Color:
+	return RED_COL if is_red(star) else UIKit.RARITY[STEP_KEYS[clamp_star(star) - 1]]

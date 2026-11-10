@@ -239,3 +239,10 @@ static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator 
 		picks.append(chosen)
 		pool.erase(chosen)
 	return picks
+
+# the hero's own card ("" when he has none)
+static func hero_card(hero: String) -> String:
+	for id in CARDS:
+		if String(CARDS[id].get("hero", "")) == hero:
+			return id
+	return ""

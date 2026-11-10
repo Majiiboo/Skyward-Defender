@@ -27,6 +27,7 @@ func _initialize() -> void:
 	_check_store()
 	_check_turrets()
 	_check_gates()
+	_check_ascend()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -510,7 +511,7 @@ func _check_gates() -> void:
 	_expect(Heroes.premium("ember") and not Heroes.premium("nyx") and Heroes.cost_text("ember") == "Crystals only" and not Heroes.can_afford({"coins": 999999, "parts": {"alloy": 99, "cell": 99, "core": 99}, "materials": {"ess_solar": 9}}, "ember"), "Ember is premium: crystals only")
 	var ps := {"stage_unlocked": 1, "coins": 999999, "crystals": 700, "parts": {"alloy": 99, "cell": 99, "core": 99}, "materials": {"ess_solar": 9}}
 	var ph := Heroes.read(ps)
-	_expect(Heroes.unlock(ps, ph, "ember", false) == "Crystals only" and Heroes.unlock(ps, ph, "ember", true) == "" and Heroes.owned(ph, "ember") and int(ps.crystals) == 50 and Heroes.tier(ph, "ember") == 1, "Ember: coins refused, 650 crystals accepted, arrives at 1 star")
+	_expect(Heroes.unlock(ps, ph, "ember", false) == "Crystals only" and Heroes.unlock(ps, ph, "ember", true) == "" and Heroes.owned(ph, "ember") and int(ps.crystals) == 50 and Heroes.tier(ph, "ember") == 4, "Ember: coins refused, 650 crystals accepted, arrives Epic (her start step)")
 
 # the pilot talent map (Talents, queue 16 e, dev197)
 func _check_talents() -> void:
@@ -565,3 +566,38 @@ func _check_scrap() -> void:
 	_expect(k15.has("rivet") and k15.has("wrecker") and not k15.has("hive_mother") and k15.has("dart") and not kinds.call(14).has("dart"), "stage 15: Rivet Guns, the first Darts, the Wrecker as the mini-boss (got %s)" % str(k15))
 	_expect(k20.has("dart") and k20.has("queen") and k20.has("scout"), "stage 20: Darts, the Queen, the bugs still there (got %s)" % str(k20))
 	_expect(ResourceLoader.exists("res://ui/commander_urgent.png") and ResourceLoader.exists("res://ui/commander_calm.png"), "the commander portraits")
+
+# ASCEND (2026-11-10): the star ladder read as rarities; a rarer hero starts higher; the named
+# steps unlock power-ups (passive x1.5 / x2 / x3, a free refresh, the hero card in hand)
+func _check_ascend() -> void:
+	_expect(Gates.step_name(1) == "Common" and Gates.step_name(5) == "Legendary" and Gates.step_name(6) == "Mythic I" and Gates.step_name(10) == "Mythic V", "step names: Common .. Legendary, Mythic I-V")
+	var s := {"coins": 0, "crystals": 0, "pilot_xp": 0, "hero": {"selected": "rook", "owned": ["rook", "frost", "hollow", "nyx"], "levels": {}, "def": {}, "tiers": {}, "shards": {}}}
+	var h := Heroes.read(s)
+	_expect(Heroes.tier(h, "rook") == 1 and Heroes.tier(h, "frost") == 2 and Heroes.tier(h, "hollow") == 3 and Heroes.tier(h, "nyx") == 4, "start steps: Rook Common, Frost Uncommon, Hollow Rare, Nyx Epic")
+	_expect(Heroes.level_cap(h, "frost") == 20 and Heroes.level_cap(h, "rook") == 10, "a rarer hero starts with a higher level cap")
+	var st := Heroes.stats(s)
+	_expect(is_equal_approx(float(st.gem_xp), 1.15) and int(st.refreshes) == 0 and not bool(st.start_card), "Common Rook: Gem XP +15%, no step power-ups yet")
+	h.tiers["rook"] = 2
+	s["hero"] = Heroes.write(h)
+	_expect(is_equal_approx(float(Heroes.stats(s).gem_xp), 1.225), "Uncommon: passive x1.5 (Gem XP +22%)")
+	h.tiers["rook"] = 3
+	s["hero"] = Heroes.write(h)
+	_expect(int(Heroes.stats(s).refreshes) == 1 and not bool(Heroes.stats(s).start_card), "Rare: +1 free refresh")
+	h.tiers["rook"] = 5
+	s["hero"] = Heroes.write(h)
+	st = Heroes.stats(s)
+	_expect(bool(st.start_card) and is_equal_approx(float(st.gem_xp), 1.3), "Legendary: hero card in hand, passive x2")
+	h.tiers["rook"] = 10
+	s["hero"] = Heroes.write(h)
+	_expect(is_equal_approx(float(Heroes.stats(s).gem_xp), 1.45), "Mythic V: passive x3")
+	h.selected = "hollow"
+	s["hero"] = Heroes.write(h)
+	st = Heroes.stats(s)
+	_expect(int(st.pierce_every) == 4 and int(st.refreshes) == 1, "Hollow starts Rare: every 4th bolt pierces, a free refresh")
+	_expect(Heroes.passive_text("hollow", 3) == "Every 4th bolt pierces" and Heroes.passive_text("frost", 2) == "Shots chill 20%" and Heroes.passive_text("nyx", 10) == "Crit rate +15%", "passive texts by step")
+	_expect(Cards.hero_card("nyx") == "nyx_mark" and Cards.hero_card("nobody") == "", "every hero has his card")
+	# ascending Frost once takes him from Uncommon to Rare, and the save keeps the count of steps
+	h.shards["frost"] = 100
+	_expect(Heroes.evolve(h, "frost") and Heroes.tier(h, "frost") == 3 and Heroes.ascends(h, "frost") == 2, "Frost ascends Uncommon -> Rare")
+	h.tiers["nyx"] = 9
+	_expect(Heroes.tier(h, "nyx") == 10 and not Heroes.can_evolve(h, "nyx"), "the ladder ends at Mythic V for everyone")

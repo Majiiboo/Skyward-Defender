@@ -311,7 +311,7 @@ func _build() -> void:
 	hrow.add_child(_evolve_btn)
 	_level_btn = UIKit.gold_button("Level up", 13)
 	_level_btn.custom_minimum_size = Vector2(104, 42)
-	_level_btn.pressed.connect(_on_level_up)
+	_level_btn.pressed.connect(_on_level_btn)   # clean: opens the LEVEL UP sheet
 	_def_btn = UIKit.teal_button("", 13)
 	_def_btn.visible = false   # (one Level up track since dev186: ATK, HP and DEF rise together)
 	_def_btn.custom_minimum_size = Vector2(92, 42)
@@ -333,6 +333,8 @@ func _build() -> void:
 		_level_btn.add_theme_constant_override("icon_max_width", 22)
 		_level_btn.icon_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		_evolve_btn.custom_minimum_size = Vector2(96, 56)
+		_evolve_btn.visible = false   # ASCEND lives in the LEVEL UP sheet
+		srow.visible = false          # ... and so do the shards and the next perk
 		hrow.alignment = BoxContainer.ALIGNMENT_CENTER
 	_hero_panel.add_child(hv)
 	col.add_child(_hero_panel)
@@ -2048,7 +2050,7 @@ func _paint_roster_clean() -> void:
 		var own: bool = Heroes.owned(hero, id)
 		var duty: bool = id == _hero_id()
 		var looking: bool = id == _view_id and not duty
-		var gc: Color = Heroes.GRADES[Heroes.grade(id) - 1].color
+		var gc: Color = Gates.step_color(Heroes.tier(hero, id))   # his rarity step (ASCEND)
 		var face: Texture2D = _hero_portrait(id)
 		var b := Button.new()
 		b.custom_minimum_size = Vector2(58, 58)
@@ -2194,12 +2196,11 @@ func _paint_hero_clean(id: String, own: bool) -> void:
 	ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	_hero_tags.add_child(ei)
-	if own:
-		var hs := Heroes.tier(hero, id)
-		_hero_tags.add_child(UIKit.title(Gates.text(hs), 16, Color(1.0, 0.35, 0.35) if Gates.is_red(hs) else UIKit.GOLD))
-	var gc: Color = Heroes.GRADES[Heroes.grade(id) - 1].color
-	_hero_tags.add_child(UIKit.chip(Heroes.grade_name(id), gc))
+	# his rarity step (ASCEND): one chip in the step's colour; a locked hero shows where he starts
+	var hs := Heroes.tier(hero, id)
+	_hero_tags.add_child(UIKit.chip(Gates.step_name(hs), Gates.step_color(hs)))
 	_hero_line.visible = not own   # a locked hero: his passive and price stay as text
+	_evolve_btn.visible = false   # ASCEND lives in the LEVEL UP sheet
 	_hero_chips.visible = own
 	_hero_bar.visible = own
 	if not own:
@@ -2209,8 +2210,8 @@ func _paint_hero_clean(id: String, own: bool) -> void:
 	var t := Heroes.tier(hero, id)
 	var gm: float = float(Heroes.GRADES[Heroes.grade(id) - 1].mult)
 	var atk := roundi(((gm * (1.0 + float(Heroes.PER_LEVEL.atk) * (lv - 1)) * Gates.power_mult(t)) - 1.0) * 100.0)
-	var st := Heroes.stats(data) if id == _hero_id() else {}
-	for chip in [[UIKit.ic("st_atk"), "ATK +%d%%" % atk], [UIKit.ic("st_hp"), "HP %d" % roundi(float(st.get("hp", 0.0)))] if not st.is_empty() else []]:
+	var ss := _stat_strs(_hero_preview(id, 0, 0))   # the same numbers the LEVEL UP sheet shows
+	for chip in [[UIKit.ic("st_atk"), "ATK " + String(ss[0])], [UIKit.ic("st_hp"), "HP " + String(ss[1])]]:
 		if chip.is_empty():
 			continue
 		var p := PanelContainer.new()
@@ -2231,16 +2232,13 @@ func _paint_hero_clean(id: String, own: bool) -> void:
 	_hero_bar.add_child(bar)
 	_hero_bar.add_child(UIKit.title(str(cap), 14, UIKit.SOFT))
 	# LEVEL UP with the cost beside the coin, or what is in the way
-	var cost := Heroes.level_cost(lv)
-	if lv >= Heroes.MAX_LEVEL:
-		_level_btn.text = "MAX"
-		_level_btn.icon = null
-	elif lv >= cap:
-		_level_btn.text = "Lv.%d cap: next star" % cap
-		_level_btn.icon = null
-	else:
-		_level_btn.text = "LEVEL UP   %s" % UIKit.num(cost)
-		_level_btn.icon = UIKit.ic("ic_coin", "ui_coin")
+	# one gold button: it opens the LEVEL UP sheet (stats now -> next, the cost, hold to repeat); at
+	# his level cap it reads ASCEND, with a red dot when everything for the next rarity is in hand
+	var can_ascend: bool = lv >= cap and Heroes.why_not_evolve(hero, id, data) == ""
+	_level_btn.icon = null
+	_level_btn.disabled = false
+	_level_btn.text = "MAX" if (lv >= Heroes.MAX_LEVEL and t >= Gates.MAX_STAR) else ("ASCEND" if lv >= cap else "LEVEL UP")
+	UIKit.dot(_level_btn, can_ascend)
 	# the shard line: only the next star's shards (the rest is in Stats / the Evolve button)
 	var need := Heroes.next_tier_cost(hero, id)
 	_stars_l.text = ("%d / %d shards to the next star" % [Heroes.shards(hero, id), need]) if t < Gates.MAX_STAR else "Max stars"
@@ -2281,14 +2279,14 @@ func _side_square(text: String, kind: String) -> Button:
 	UIKit.press_fx(b)
 	return b
 
-func _on_level_up() -> void:
+func _on_level_up() -> bool:
 	var data := _read()
 	var id := _view_id
 	if not Heroes.owned(hero, id):
-		return
+		return false
 	var before := Heroes.level(hero, id)
 	if not Heroes.level_up(data, hero, id):
-		return
+		return false
 	coins = int(data.coins)
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
@@ -2301,6 +2299,7 @@ func _on_level_up() -> void:
 		_plat.flash()
 	_paint_roster()
 	_paint_hero()
+	return true
 
 # the DEF track: each level takes a little more off every hit (Heroes.DEF_PER, capped)
 func _on_def_up() -> void:
@@ -2328,7 +2327,8 @@ func _on_evolve() -> void:
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
 	Sfx.play("merge")
-	_toast("%s: %s" % [Heroes.ROSTER[id].name, Gates.long_text(Heroes.tier(hero, id))])
+	if not UIKit.CLEAN:   # (the clean page shows the ASCEND moment instead)
+		_toast("%s: %s" % [Heroes.ROSTER[id].name, Gates.step_name(Heroes.tier(hero, id))])
 	if _plat:
 		_plat.flash()
 	_paint_roster()
@@ -3040,3 +3040,430 @@ func _craft(r: Dictionary) -> void:
 	var mk := Materials.makes(r, _craft_el)
 	_toast("Crafted: %s" % Materials.name_of(String(mk.keys()[0])))
 	_refresh_ws_craft()
+
+# ------------------------------------------------------------------ LEVEL UP sheet + ASCEND (2026-11-10)
+# Rudy (dev209 playtest + the go-ahead of 2026-11-10): the Hero page shows only the name, rarity,
+# element, ATK and level; LEVEL UP opens this sheet. It slides up like the chest sheet in the Store:
+# the face of the hero, his place on the rarity ladder (ten pips), the level bar, three stats as
+# "now -> next", the next perk, the cost. HOLD the gold button to keep levelling. At the level cap
+# the same sheet turns into ASCEND: the next rarity, what it unlocks, what it asks for (have / need),
+# and a full-screen moment when he steps up.
+var _lv_ui := {}            # the nodes of the sheet while it is open
+var _lvl_layer: Control
+var _lvl_token := 0       # a new number every press: an old hold loop stops
+var _lvl_did := false     # this press levelled him (so releasing on a fresh ASCEND button does nothing)
+const GOOD := Color(0.44, 0.94, 0.72)
+const SHORT := Color(1.0, 0.55, 0.55)
+
+func _on_level_btn() -> void:
+	if UIKit.CLEAN:
+		_level_sheet()
+	else:
+		_on_level_up()
+
+# his battle stats if he were `dlevel` levels and `dstep` rarity steps further on
+func _hero_preview(id: String, dlevel: int, dstep: int) -> Dictionary:
+	var data := _read().duplicate(true)
+	var hh: Dictionary = hero.duplicate(true)
+	hh.selected = id
+	hh.levels[id] = Heroes.level(hero, id) + dlevel
+	hh.tiers[id] = Heroes.ascends(hero, id) + dstep
+	data["hero"] = Heroes.write(hh)
+	return Heroes.stats(data)
+
+func _lvl_row(icon: Texture2D, name: String, a: String, b: String) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.6), 14, Vector2(14, 8)))
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 8)
+	var tr := TextureRect.new()
+	tr.texture = icon
+	tr.custom_minimum_size = Vector2(22, 22)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	h.add_child(tr)
+	var nl := UIKit.label(name, 14, UIKit.SOFT)
+	nl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(nl)
+	h.add_child(UIKit.title(a, 16, UIKit.TEXT))
+	if b != a:
+		h.add_child(UIKit.label("→", 14, UIKit.SOFT))
+		h.add_child(UIKit.title(b, 16, GOOD))
+	p.add_child(h)
+	return p
+
+func _need_chip(icon: Texture2D, text: String, ok: bool) -> PanelContainer:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.6), 14, Vector2(10, 6)))
+	p.add_child(UIKit.iconed(icon, text, 13, GOOD if ok else SHORT, 20.0))
+	return p
+
+func _level_sheet() -> void:
+	var id := _view_id
+	if not Heroes.owned(hero, id):
+		return
+	if is_instance_valid(_lvl_layer):
+		_lvl_layer.queue_free()
+	var layer := Control.new()
+	_lvl_layer = layer
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	dim.modulate.a = 0.0
+	dim.create_tween().tween_property(dim, "modulate:a", 1.0, 0.2)
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slider.add_child(sheet)
+	slider.position.y = 700.0
+	slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 12)
+	sheet.add_child(v)
+	# the head: his face, name, element + rarity, Close
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var face := TextureRect.new()
+	face.texture = _hero_portrait(id)
+	face.custom_minimum_size = Vector2(64, 64)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	face.pivot_offset = Vector2(32, 32)
+	head.add_child(face)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 4)
+	nv.add_child(UIKit.title(String(Heroes.ROSTER[id].name), 24, UIKit.TEXT))
+	var tags := HBoxContainer.new()
+	tags.add_theme_constant_override("separation", 8)
+	var ei := TextureRect.new()
+	ei.texture = UIKit.element_icon(Heroes.element_of(id))
+	ei.custom_minimum_size = Vector2(22, 22)
+	ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tags.add_child(ei)
+	var rar := HBoxContainer.new()
+	tags.add_child(rar)
+	nv.add_child(tags)
+	head.add_child(nv)
+	var x := UIKit.ghost_button("Close", 13)
+	x.custom_minimum_size = Vector2(80, 34)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	# the ladder: ten pips, Common to Mythic V, his step ringed
+	var ladder := Control.new()
+	ladder.custom_minimum_size = Vector2(0, 24)
+	ladder.draw.connect(func():
+		var star := Heroes.tier(hero, id)
+		var gap := ladder.size.x / Gates.MAX_STAR
+		for i in Gates.MAX_STAR:
+			var s := i + 1
+			var c := Vector2(gap * (i + 0.5), 12.0)
+			var col := Gates.step_color(s)
+			if i < Gates.MAX_STAR - 1:
+				ladder.draw_line(c + Vector2(12, 0), c + Vector2(gap - 12, 0), Color(col, 0.7) if s < star else Color(1, 1, 1, 0.12), 2.0, true)
+			if s < star:
+				ladder.draw_circle(c, 5.0, col)
+			elif s == star:
+				ladder.draw_circle(c, 6.5, col)
+				ladder.draw_arc(c, 10.0, 0.0, TAU, 32, Color(col, 0.6), 1.5, true)
+			else:
+				ladder.draw_arc(c, 5.0, 0.0, TAU, 24, Color(col, 0.45), 1.5, true))
+	v.add_child(ladder)
+	# the level bar
+	var lrow := HBoxContainer.new()
+	lrow.add_theme_constant_override("separation", 10)
+	var lv_l := UIKit.title("", 26, UIKit.TEXT)
+	lv_l.custom_minimum_size = Vector2(84, 0)
+	lrow.add_child(lv_l)
+	var bar := ProgressBar.new()
+	bar.show_percentage = false
+	bar.custom_minimum_size = Vector2(0, 8)
+	bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 4, Vector2.ZERO))
+	bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 4, Vector2.ZERO))
+	lrow.add_child(bar)
+	var cap_l := UIKit.title("", 15, UIKit.SOFT)
+	lrow.add_child(cap_l)
+	v.add_child(lrow)
+	var rows := VBoxContainer.new()
+	rows.add_theme_constant_override("separation", 6)
+	v.add_child(rows)
+	# the next perk (a level milestone) or what the next rarity unlocks
+	var perk := PanelContainer.new()
+	var pv := VBoxContainer.new()
+	pv.add_theme_constant_override("separation", 2)
+	var perk_t := UIKit.title("", 16, UIKit.GOLD)
+	var perk_s := UIKit.label("", 13, UIKit.TEXT)
+	perk_s.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pv.add_child(perk_t)
+	pv.add_child(perk_s)
+	perk.add_child(pv)
+	v.add_child(perk)
+	var needs := HBoxContainer.new()
+	needs.alignment = BoxContainer.ALIGNMENT_CENTER
+	needs.add_theme_constant_override("separation", 8)
+	v.add_child(needs)
+	var go := UIKit.gold_button("", 20)
+	go.custom_minimum_size = Vector2(0, 58)
+	# the cost rides inside the button: LEVEL UP, the coin, the number, centred together
+	var gb := HBoxContainer.new()
+	gb.set_anchors_preset(Control.PRESET_FULL_RECT)
+	gb.alignment = BoxContainer.ALIGNMENT_CENTER
+	gb.add_theme_constant_override("separation", 8)
+	gb.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gb.add_child(UIKit.title("LEVEL UP", 20, UIKit.GOLD_INK))
+	var gsp := Control.new()
+	gsp.custom_minimum_size = Vector2(6, 0)
+	gb.add_child(gsp)
+	var gcoin := TextureRect.new()
+	gcoin.texture = UIKit.ic("ic_coin", "ui_coin")
+	gcoin.custom_minimum_size = Vector2(24, 24)
+	gcoin.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	gcoin.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	gcoin.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	gb.add_child(gcoin)
+	var gcost := UIKit.title("", 20, UIKit.GOLD_INK)
+	gb.add_child(gcost)
+	go.add_child(gb)
+	go.button_down.connect(_lvl_press_down)
+	go.button_up.connect(func(): _lvl_token += 1)
+	go.pressed.connect(_lvl_pressed)
+	v.add_child(go)
+	var hint := UIKit.label("", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(hint)
+	_lv_ui = {"id": id, "face": face, "rar": rar, "ladder": ladder, "lv": lv_l, "bar": bar, "cap": cap_l, "rows": rows,
+		"perk": perk, "perk_t": perk_t, "perk_s": perk_s, "needs": needs, "go": go, "go_box": gb, "go_cost": gcost, "hint": hint}
+	_lvl_refresh(false)
+
+func _stat_strs(st: Dictionary) -> Array:
+	return ["+%d%%" % roundi((float(st.damage) - 1.0) * 100.0), str(roundi(float(st.hp))), "%.1f%%" % (float(st.def) * 100.0)]
+
+func _lvl_refresh(pop: bool) -> void:
+	if not is_instance_valid(_lvl_layer) or _lv_ui.is_empty():
+		return
+	var id := String(_lv_ui.id)
+	var data := _read()
+	var lv := Heroes.level(hero, id)
+	var star := Heroes.tier(hero, id)
+	var cap := Heroes.level_cap(hero, id)
+	var maxed := lv >= Heroes.MAX_LEVEL and star >= Gates.MAX_STAR
+	var at_cap := lv >= cap and not maxed
+	for box in [_lv_ui.rar, _lv_ui.rows, _lv_ui.needs]:
+		for c in box.get_children():
+			box.remove_child(c)
+			c.queue_free()
+	_lv_ui.rar.add_child(UIKit.chip(Gates.step_name(star), Gates.step_color(star)))
+	_lv_ui.ladder.queue_redraw()
+	var lv_l: Label = _lv_ui.lv
+	lv_l.text = "Lv.%d" % lv
+	var bar: ProgressBar = _lv_ui.bar
+	bar.max_value = maxi(cap, 1)
+	if pop:
+		bar.create_tween().tween_property(bar, "value", float(mini(lv, cap)), 0.18).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		lv_l.pivot_offset = Vector2(30, 16)
+		lv_l.scale = Vector2(1.28, 1.28)
+		lv_l.create_tween().tween_property(lv_l, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		var face: TextureRect = _lv_ui.face
+		face.scale = Vector2(1.12, 1.12)
+		face.create_tween().tween_property(face, "scale", Vector2.ONE, 0.25).set_trans(Tween.TRANS_SINE)
+	else:
+		bar.value = mini(lv, cap)
+	_lv_ui.cap.text = str(cap)
+	# now -> next: one level on, or (at the cap) one rarity on
+	var now := _stat_strs(_hero_preview(id, 0, 0))
+	var nxt := now if maxed else _stat_strs(_hero_preview(id, 0, 1) if at_cap else _hero_preview(id, 1, 0))
+	var names := ["Attack", "Health", "Defence"]
+	var icons := ["st_atk", "st_hp", "st_def"]
+	for i in 3:
+		_lv_ui.rows.add_child(_lvl_row(UIKit.ic(icons[i], "st_atk"), names[i], now[i], nxt[i]))
+	var go: Button = _lv_ui.go
+	var perk_t: Label = _lv_ui.perk_t
+	var perk_s: Label = _lv_ui.perk_s
+	var hint: Label = _lv_ui.hint
+	_lv_ui.needs.visible = at_cap
+	if maxed:
+		_lv_ui.perk.add_theme_stylebox_override("panel", UIKit.pill(Color(Gates.RED_COL, 0.14), 16, Vector2(14, 10)))
+		perk_t.text = "Fully ascended"
+		perk_t.add_theme_color_override("font_color", Gates.RED_COL)
+		perk_s.text = Heroes.passive_text(id, star)
+		go.text = "MAX"
+		_lv_ui.go_box.visible = false
+		go.disabled = true
+		hint.text = ""
+	elif at_cap:
+		var nc := Gates.step_color(star + 1)
+		_lv_ui.perk.add_theme_stylebox_override("panel", UIKit.pill(Color(nc, 0.14), 16, Vector2(14, 10)))
+		perk_t.text = "%s  →  %s" % [Gates.step_name(star), Gates.step_name(star + 1)]
+		perk_t.add_theme_color_override("font_color", nc.lerp(Color.WHITE, 0.25))
+		var lines: Array = [Heroes.step_perk(star + 1), "Level cap %d → %d" % [cap, Gates.level_cap("hero", star + 1)]]
+		if Heroes.passive_text(id, star) != Heroes.passive_text(id, star + 1):
+			lines.append("%s  →  %s" % [Heroes.passive_text(id, star), Heroes.passive_text(id, star + 1)])
+		perk_s.text = "\n".join(lines)
+		var nd := Heroes.star_need(hero, id)
+		var have := Parts.read(data)
+		if int(nd.shards) > 0:
+			_lv_ui.needs.add_child(_need_chip(UIKit.ic("mat_shard", "ic_shard"), "%d/%d" % [Heroes.shards(hero, id), int(nd.shards)], Heroes.shards(hero, id) >= int(nd.shards) or DevTools.on))
+		for k in nd.mats:
+			var kk := String(k)
+			_lv_ui.needs.add_child(_need_chip(Materials.icon(kk) if Materials.is_material(kk) else Parts.icon(kk), "%d/%d" % [int(have.get(kk, 0)), int(nd.mats[k])], int(have.get(kk, 0)) >= int(nd.mats[k]) or DevTools.on))
+		if int(nd.coins) > 0:
+			_lv_ui.needs.add_child(_need_chip(UIKit.ic("ic_coin", "ui_coin"), UIKit.num(int(nd.coins)), coins >= int(nd.coins) or DevTools.on))
+		var why := Heroes.why_not_evolve(hero, id, data)
+		go.text = "ASCEND"
+		_lv_ui.go_box.visible = false
+		go.disabled = why != ""
+		hint.text = why if (why.begins_with("Pilot") or why == "") else "Collect what is in red"
+	else:
+		_lv_ui.perk.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.6), 16, Vector2(14, 10)))
+		var next_lv := ((lv / Heroes.MILESTONE_EVERY) + 1) * Heroes.MILESTONE_EVERY
+		var ms := Heroes.milestone_at(next_lv)
+		perk_t.text = "Lv.%d perk" % next_lv
+		perk_t.add_theme_color_override("font_color", UIKit.GOLD)
+		perk_s.text = String(ms.get("text", ""))
+		var cost := 0 if DevTools.on else Heroes.level_cost(lv)
+		go.text = ""
+		_lv_ui.go_cost.text = UIKit.num(cost)
+		_lv_ui.go_box.visible = true
+		_lv_ui.go_box.modulate.a = 0.45 if coins < cost else 1.0
+		go.disabled = coins < cost
+		hint.text = "Hold to keep levelling" if coins >= cost else "Not enough coins"
+
+func _lvl_step() -> bool:
+	if not _on_level_up():
+		return false
+	_lvl_did = true
+	_lvl_refresh(true)
+	return true
+
+# LEVEL UP acts the moment the finger lands, then repeats faster and faster while it stays down
+func _lvl_press_down() -> void:
+	_lvl_did = false
+	if _lv_ui.is_empty() or Heroes.level(hero, String(_lv_ui.id)) >= Heroes.level_cap(hero, String(_lv_ui.id)):
+		return   # ASCEND waits for the release (_lvl_pressed)
+	_lvl_token += 1
+	var token := _lvl_token
+	if not _lvl_step():
+		return
+	await get_tree().create_timer(0.4).timeout
+	var wait := 0.13
+	while token == _lvl_token and is_instance_valid(_lvl_layer) and is_instance_valid(_lv_ui.go) and (_lv_ui.go as Button).button_pressed:
+		if not _lvl_step():
+			break
+		await get_tree().create_timer(wait).timeout
+		wait = maxf(wait * 0.9, 0.045)
+
+func _lvl_pressed() -> void:
+	if _lvl_did:   # the press that just levelled him to the cap is not also an ASCEND
+		_lvl_did = false
+		return
+	if _lv_ui.is_empty():
+		return
+	var id := String(_lv_ui.id)
+	if Heroes.level(hero, id) < Heroes.level_cap(hero, id):
+		return
+	var before := Heroes.tier(hero, id)
+	_on_evolve()
+	if Heroes.tier(hero, id) > before:
+		_lvl_refresh(false)
+		_ascend_fx(id, before)
+
+# the ASCEND moment: the page dims, rays in the colour of the new rarity turn behind his face, the
+# old rarity gives way to the new one, and the power-up it unlocked is named. Tap to go on.
+func _ascend_fx(id: String, from_star: int) -> void:
+	var star := Heroes.tier(hero, id)
+	var col := Gates.step_color(star)
+	var layer := Button.new()
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ls := StyleBoxFlat.new()
+	ls.bg_color = Color(0.01, 0.02, 0.05, 0.95)
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+		layer.add_theme_stylebox_override(st, ls)
+	layer.disabled = true   # no skipping the first beat
+	add_child(layer)
+	layer.modulate.a = 0.0
+	layer.create_tween().tween_property(layer, "modulate:a", 1.0, 0.18)
+	var mid := Vector2(size.x * 0.5, size.y * 0.4)
+	var rays := Control.new()
+	rays.position = mid
+	rays.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rays.draw.connect(func():
+		for i in 14:
+			var a := TAU * i / 14.0
+			var w := 0.085 if i % 2 == 0 else 0.05
+			rays.draw_colored_polygon(PackedVector2Array([Vector2.ZERO, Vector2(cos(a - w), sin(a - w)) * 420.0, Vector2(cos(a + w), sin(a + w)) * 420.0]), Color(col, 0.13 if i % 2 == 0 else 0.07))
+		rays.draw_circle(Vector2.ZERO, 96.0, Color(col, 0.16))
+		rays.draw_arc(Vector2.ZERO, 96.0, 0.0, TAU, 64, Color(col, 0.8), 2.0, true))
+	layer.add_child(rays)
+	rays.scale = Vector2(0.2, 0.2)
+	rays.create_tween().tween_property(rays, "scale", Vector2.ONE, 0.5).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	if not Perf.lite():
+		rays.create_tween().set_loops().tween_property(rays, "rotation", TAU, 24.0).from(0.0)
+	var face := TextureRect.new()
+	face.texture = _hero_portrait(id)
+	face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE   # before the size, or the picture's own size wins
+	face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	face.size = Vector2(170, 170)
+	face.position = mid - Vector2(85, 85)
+	face.pivot_offset = Vector2(85, 85)
+	face.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(face)
+	face.scale = Vector2(0.5, 0.5)
+	face.create_tween().tween_property(face, "scale", Vector2.ONE, 0.45).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+	var col_box := VBoxContainer.new()
+	col_box.position = Vector2(24.0, mid.y + 118.0)
+	col_box.size = Vector2(size.x - 48.0, 0.0)
+	col_box.add_theme_constant_override("separation", 8)
+	col_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(col_box)
+	var was := UIKit.label("%s  ·  %s" % [String(Heroes.ROSTER[id].name), Gates.step_name(from_star)], 14, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var now_l := UIKit.title(Gates.step_name(star).to_upper(), 40, col.lerp(Color.WHITE, 0.2), HORIZONTAL_ALIGNMENT_CENTER)
+	var perk := UIKit.label(Heroes.step_perk(star), 16, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	var more := UIKit.label("Level cap %d  ·  %s" % [Heroes.level_cap(hero, id), Heroes.passive_text(id, star)], 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var tap := UIKit.label("Tap to continue", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var i := 0
+	for l in [was, now_l, perk, more, tap]:
+		(l as Label).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		col_box.add_child(l)
+		l.modulate.a = 0.0
+		var tw := (l as Label).create_tween()
+		tw.tween_interval(0.25 + 0.16 * i + (0.5 if l == tap else 0.0))
+		tw.tween_property(l, "modulate:a", 1.0, 0.25)
+		i += 1
+	Sfx.play("level", 1.2)
+	if _plat:
+		_plat.flash()
+	get_tree().create_timer(0.9).timeout.connect(func():
+		if is_instance_valid(layer):
+			layer.disabled = false)
+	layer.pressed.connect(func():
+		var out := layer.create_tween()
+		out.tween_property(layer, "modulate:a", 0.0, 0.2)
+		out.tween_callback(layer.queue_free))
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_ascend"): the ASCEND moment for the hero in view
+func _dbg_ascend() -> void:
+	_ascend_fx(_view_id, maxi(Heroes.tier(hero, _view_id) - 1, 1))

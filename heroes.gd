@@ -36,11 +36,59 @@ const RESIST_MULT := 0.75
 # the star grades (Rudy): a rating, shown as stars; a higher grade is a stronger hero
 const GRADES := [
 	{"name": "Common",    "color": Color(0.72, 0.78, 0.88), "mult": 1.0},
-	{"name": "Uncommon",  "color": Color(0.45, 0.95, 0.5),  "mult": 1.06},
-	{"name": "Epic",      "color": Color(0.75, 0.5, 1.0),   "mult": 1.13},
-	{"name": "Legendary", "color": Color(1.0, 0.8, 0.3),    "mult": 1.2},
-	{"name": "Mythic",    "color": Color(1.0, 0.45, 0.55),  "mult": 1.3},
+	{"name": "Uncommon",  "color": Color(0.45, 0.95, 0.5),  "mult": 1.0},
+	{"name": "Rare",      "color": Color(0.25, 0.75, 1.0),  "mult": 1.0},
+	{"name": "Epic",      "color": Color(0.71, 0.55, 1.0),  "mult": 1.0},
+	{"name": "Legendary", "color": Color(1.0, 0.8, 0.3),    "mult": 1.0},
 ]
+# ASCEND (Rudy's go-ahead, 2026-11-10; mock-up claude.ai/artifact/S9RA3rB68rTmrkZ6GHKyrK): the grade
+# is no longer a fixed rating with its own multiplier. It is the RARITY STEP a hero STARTS on, on
+# the one ladder every hero climbs (Gates: Common, Uncommon, Rare, Epic, Legendary, Mythic I-V), so
+# a Common can reach the top and a rarer hero simply starts ahead. tier() = the steps he has
+# ascended + his start. Each step still raises the level cap by 10 and the power (Gates), and the
+# named steps unlock a hero power-up:
+#   Uncommon   his passive x1.5          Rare       +1 free card refresh every run
+#   Epic       starts every run with his hero card (level 1)
+#   Legendary  the evolved look, passive x2          Mythic I-IV  the red aura, +12% power a step
+#   Mythic V   passive x3
+const STEP_PERKS := {2: "Passive x1.5", 3: "+1 free card refresh every run", 4: "Starts each run with his hero card",
+	5: "Evolved look  ·  passive x2", 6: "Mythic aura", 10: "Passive x3"}
+const PASSIVES := {
+	"rook":   {"stat": "gem_xp",      "base": 0.15, "text": "Gem XP +%d%%"},
+	"sparks": {"stat": "coins",       "base": 0.20, "text": "Coins +%d%%"},
+	"frost":  {"stat": "chill",       "base": 0.15, "text": "Shots chill %d%%"},
+	"hollow": {"stat": "pierce",      "base": 5.0,  "text": "Every %s bolt pierces"},
+	"nyx":    {"stat": "crit_rate",   "base": 0.05, "text": "Crit rate +%d%%"},
+	"ember":  {"stat": "hp_mult",     "base": 0.20, "text": "Max HP +%d%%"},
+}
+const ORDINAL := {2: "2nd", 3: "3rd", 4: "4th", 5: "5th"}
+
+# how much stronger the passive is at this step
+static func passive_mult(star: int) -> float:
+	return 3.0 if star >= Gates.MAX_STAR else (2.0 if star >= Gates.GOLD else (1.5 if star >= 2 else 1.0))
+
+# Hollow's piercing bolt comes round sooner: every 5th, 4th, 3rd, 2nd
+static func pierce_every(star: int) -> int:
+	return 2 if star >= Gates.MAX_STAR else (3 if star >= Gates.GOLD else (4 if star >= 2 else 5))
+
+# Frost's slow: 15%, then +5 / +10 / +20 points
+static func chill_bonus(star: int) -> float:
+	return 0.1 * (passive_mult(star) - 1.0)
+
+# the passive in words at this step ("Gem XP +22%")
+static func passive_text(id: String, star: int) -> String:
+	if not PASSIVES.has(id):
+		return ""
+	var p: Dictionary = PASSIVES[id]
+	if String(p.stat) == "pierce":
+		return String(p.text) % String(ORDINAL[pierce_every(star)])
+	if String(p.stat) == "chill":
+		return String(p.text) % roundi((float(p.base) + chill_bonus(star)) * 100.0)
+	return String(p.text) % roundi(float(p.base) * passive_mult(star) * 100.0)
+
+# what reaching `star` unlocks, in a few words (every step: +10 levels and more power)
+static func step_perk(star: int) -> String:
+	return String(STEP_PERKS.get(star, "Power +%d%%" % roundi((Gates.RED_STEP if Gates.is_red(star) else Gates.GOLD_STEP) * 100.0)))
 
 # "cost" = coins + parts, all needed; "crystals" = the whole price in crystals instead;
 # "stage" (optional) = must have cleared that stage first (a few are gated, most are not);
@@ -180,6 +228,10 @@ static func def_level(h: Dictionary, id: String) -> int:
 
 # the hero's STAR (the save key is still "tiers"; 1-5 gold, 6-10 red)
 static func tier(h: Dictionary, id: String) -> int:
+	return clampi(ascends(h, id) + grade(id) - 1, 1, MAX_TIER)   # his start rarity + the steps he climbed (ASCEND)
+
+# the saved count: 1 = not ascended yet
+static func ascends(h: Dictionary, id: String) -> int:
 	return clampi(int(h.tiers.get(id, 1)), 1, MAX_TIER)
 
 static func star(h: Dictionary, id: String) -> int:
@@ -347,7 +399,7 @@ static func evolve(h: Dictionary, id: String, save: Dictionary = {}) -> bool:
 	if not save.is_empty() and Gates.pay(save, "hero", tier(h, id), element_of(id)) != "":
 		return false
 	h.shards[id] = maxi(shards(h, id) - next_tier_cost(h, id), 0)
-	h.tiers[id] = tier(h, id) + 1
+	h.tiers[id] = ascends(h, id) + 1
 	return true
 
 static func add_shards(h: Dictionary, id: String, n: int) -> void:
@@ -404,10 +456,7 @@ static func stats(save: Dictionary) -> Dictionary:
 		"weapon": "laser_pistol", "thruster": String(GearData.SETS[hero.element].thruster),
 		"hero": id, "element": String(hero.element), "hp": BASE_HP, "hp_mult": 1.0, "def": 0.0, "twin_shot": 0.0, "pierce1": 0.0, "burst2": 0.0,
 		"scale": float(hero.build.scale), "speed": float(hero.build.speed), "tough": float(hero.build.tough)}
-	# the grade: a higher-rated hero starts stronger
-	var gm: float = float(GRADES[grade(id) - 1].mult)
-	st.damage *= gm
-	st.fortress *= gm
+	# (no grade multiplier since ASCEND: a rarer hero starts on a higher step instead)
 	# the hero's level
 	var lv := level(h, id)
 	var steps := lv - 1
@@ -425,18 +474,30 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.hp = BASE_HP * float(hero.build.tough) * (1.0 + HP_PER_LEVEL * steps)
 	st.def = minf(DEF_PER * steps + DEF_PER * 0.5 * (def_level(h, id) - 1), DEF_CAP)   # the level (and any old DEF levels bought before dev186)
 	# his star (Gates: +8% a gold star, +12% a red one)
-	var sm := Gates.power_mult(tier(h, id))
+	var star := tier(h, id)
+	var sm := Gates.power_mult(star)
 	st.damage *= sm
 	st.fortress *= sm
 	st.hp *= sm
-	# the passive
+	# the passive, stronger on the named steps (ASCEND: x1.5 Uncommon, x2 Legendary, x3 Mythic V)
+	var pm := passive_mult(star)
+	st["pierce_every"] = 0
+	st["chill_bonus"] = 0.0
 	match id:
-		"rook": st.gem_xp += 0.15
-		"sparks": st.coins += 0.20
-		"frost": st.chill = true
-		"hollow": st.pierce5 = true
-		"nyx": st.crit_rate += 0.05
-		"ember": st.hp_mult += 0.2
+		"rook": st.gem_xp += 0.15 * pm
+		"sparks": st.coins += 0.20 * pm
+		"frost":
+			st.chill = true
+			st.chill_bonus = chill_bonus(star)
+		"hollow":
+			st.pierce5 = true
+			st.pierce_every = pierce_every(star)
+		"nyx": st.crit_rate += 0.05 * pm
+		"ember": st.hp_mult += 0.2 * pm
+	# the step power-ups: a free refresh from Rare, his hero card in hand from Epic
+	if star >= 3:
+		st.refreshes += 1
+	st["start_card"] = star >= 4
 	# the one gear slot: the weapon (its level, its type)
 	var wid: String = gear.equipped["Weapon"]
 	var wlv := GearData.level(gear, wid)
@@ -467,4 +528,4 @@ static func power(save: Dictionary) -> int:
 	var h := read(save)
 	var id := selected(h)
 	var gear := GearData.read(save)
-	return 40 + 25 * (grade(id) - 1) + 18 * (level(h, id) - 1) + 80 * (tier(h, id) - 1) + 18 * (GearData.level(gear, gear.equipped["Weapon"]) - 1)
+	return 40 + 18 * (level(h, id) - 1) + 80 * (tier(h, id) - 1) + 18 * (GearData.level(gear, gear.equipped["Weapon"]) - 1)
