@@ -36,6 +36,7 @@ func _initialize() -> void:
 	_check_runs()
 	_check_base()
 	_check_support()
+	_check_weapons()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -800,3 +801,14 @@ func _check_support() -> void:
 	for id in DroneData.SUPPORT_ORDER:
 		_expect(ResourceLoader.exists("res://drone/%s.png" % String(DroneData.SUPPORT[id].art)) and DroneData.support_text(String(id), 1) != "", "support %s: a picture and a line" % id)
 	_expect(DroneData.guard_every(10) < DroneData.guard_every(1) and DroneData.medic_rate(10) > DroneData.medic_rate(1) and DroneData.collect_reach(10) > DroneData.collect_reach(1), "a higher Hangar makes every job better")
+
+# weapons that play differently (2026-11-10): each of the six has a style, a line, and its own trick in the table
+func _check_weapons() -> void:
+	var B = load("res://battle.gd")
+	var tricks := {"laser_pistol": "charge", "dual_minis": "spark_every", "pulse_cannon": "splash", "railgun": "rail", "laser_rifle": "range", "frost_rifle": "frost"}
+	for set_id in GearData.SET_ORDER:
+		var wk := String(GearData.SETS[set_id].weapon)
+		var st: Dictionary = GearData.weapon_style("%s_weapon" % set_id)
+		_expect(not st.is_empty() and String(st.style) != "" and String(st.text) != "", "the %s weapon has a style and a line" % set_id)
+		_expect(B.WEAPONS.has(wk) and B.WEAPONS[wk].has(tricks.get(wk, "?")), "%s carries its trick (%s)" % [wk, tricks.get(wk, "?")])
+	_expect(GearData.weapon_style("ion_helmet").is_empty(), "armour has no weapon style")

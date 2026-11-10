@@ -2931,10 +2931,19 @@ func _weapons_screen() -> void:
 	p.position = Vector2((size.x - w) * 0.5, 50.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.label("WEAPONS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.title("Weapons", 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	var eq: String = gear.equipped["Weapon"]
 	var eq_el: String = GearData.ITEMS[eq].set
 	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
+	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
+	var est: Dictionary = GearData.weapon_style(eq)
+	if not est.is_empty():
+		var srow := HBoxContainer.new()
+		srow.alignment = BoxContainer.ALIGNMENT_CENTER
+		srow.add_theme_constant_override("separation", 8)
+		srow.add_child(UIKit.chip(String(est.style), Heroes.element_color(eq_el)))
+		srow.add_child(UIKit.label(String(est.text), 12, UIKit.TEXT))
+		v.add_child(srow)
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
@@ -2945,12 +2954,9 @@ func _weapons_screen() -> void:
 		var open := GearData.set_unlocked(set_id, t_unlocked) or GearData.owned(gear, id)
 		var rn := GearData.rarity_name(GearData.rarity(gear, id))
 		var sub := ("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
-		var t := UIKit.tile(info.name, sub, set_id, "", _pic(id) if open else UIKit.ic("ui_padlock"), Vector2(120, 112))
+		var wst: Dictionary = GearData.weapon_style(id)
+		var t := _pick_square(_pic(id), String(info.name), 118.0, id == eq, UIKit.RARITY[set_id], not open, String(wst.get("style", "")) if open else sub)
 		UIKit.corner_icon(t, UIKit.element_icon(set_id), 20.0)
-		if not open:
-			t.modulate = Color(0.55, 0.55, 0.65, 0.8)
-		if id == eq:
-			UIKit.equipped_badge(t, UIKit.RARITY[set_id])
 		var item: String = id
 		t.pressed.connect(func():
 			if open:
@@ -4310,3 +4316,7 @@ func _on_base_level(id: String) -> void:
 # the unlock moment (moment.gd) for something built here
 func _rarity_fx_plain(who: String, tex: Texture2D, col: Color, chip: String, line: String) -> void:
 	Moment.show(self, {"title": who, "text": line, "tex": tex, "col": col, "chip": chip})
+
+# capture hook (CAP_CALL="_dbg_weapons"): the Weapons screen
+func _dbg_weapons() -> void:
+	_weapons_screen()

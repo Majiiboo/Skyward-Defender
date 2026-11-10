@@ -399,3 +399,20 @@ static func power(gear: Dictionary) -> int:
 	for s in SLOTS:
 		p += 40 + 18 * (level(gear, gear.equipped[s]) - 1)
 	return p
+
+# HOW EACH WEAPON SHOOTS (2026-11-10; battle WEAPONS carries the numbers). One short line each, for
+# the Weapons screen: the weapon is how your hands play, so the six must feel different.
+const WEAPON_STYLE := {
+	"laser_pistol": {"style": "Charged shot", "text": "Every 5th bolt hits three times as hard"},
+	"dual_minis":   {"style": "Arc", "text": "Twin bolts; every 3rd arcs to a second bug"},
+	"pulse_cannon": {"style": "Blast", "text": "Slow shells that explode"},
+	"railgun":      {"style": "Pierce", "text": "A slow bolt through every bug in its line"},
+	"laser_rifle":  {"style": "Fan", "text": "Three short-range bolts: fly close"},
+	"frost_rifle":  {"style": "Stream", "text": "A rapid stream that slows what it hits"},
+}
+
+# the style of an item ("" for anything that is not a weapon)
+static func weapon_style(item_id: String) -> Dictionary:
+	if not ITEMS.has(item_id) or String(ITEMS[item_id].slot) != "Weapon":
+		return {}
+	return WEAPON_STYLE.get(String(SETS[ITEMS[item_id].set].weapon), {})

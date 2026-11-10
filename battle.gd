@@ -46,17 +46,19 @@ const SAVE := "user://skybound_save.json"
 
 # ---- weapons ----
 const WEAPONS := {
-	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 1.0, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0},
+	# WEAPONS THAT PLAY DIFFERENTLY (2026-11-10, step 3 of DESIGN-base-and-helpers.md; texts in GearData.WEAPON_TEXT).
+	# Energy, the all-rounder: every 5th bolt is a CHARGED SHOT (three times the damage)
+	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.72, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
-	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.6, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0},
+	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
-	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.38, "speed": 470.0, "damage": 1.75, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true},
+	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.44, "speed": 430.0, "damage": 1.85, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true, "splash": 62.0},   # Void: slow shells that EXPLODE (the blast hits bugs around the one it struck)
 	# Nightmare set: slow rail bolts that pierce every bug in their line
 	"railgun": {"name": "Railgun", "interval": 0.45, "speed": 640.0, "damage": 1.5, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0, "rail": true},
 	# Solar set: fast, long-range bolts
-	"laser_rifle": {"name": "Laser Rifle", "interval": 0.2, "speed": 720.0, "damage": 0.92, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0},
+	"laser_rifle": {"name": "Sun Rifle", "interval": 0.3, "speed": 620.0, "damage": 0.62, "projectiles": 3, "spread": 0.5, "hit_radius": 20.0, "range": 340.0},   # Fire: a FAN of three short-range bolts: fly close and it hits hardest
 	# Frost set: rapid small bolts
-	"frost_rifle": {"name": "Frost Rifle", "interval": 0.14, "speed": 560.0, "damage": 0.64, "projectiles": 1, "spread": 0.03, "hit_radius": 18.0},
+	"frost_rifle": {"name": "Frost Rifle", "interval": 0.14, "speed": 560.0, "damage": 0.58, "projectiles": 1, "spread": 0.03, "hit_radius": 18.0, "frost": true},   # Ice: a rapid stream that SLOWS what it hits
 }
 var weapon_id := "laser_pistol"
 
@@ -1274,7 +1276,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			off = lerpf(-spread * 0.5, spread * 0.5, float(i) / float(count - 1))
 		_shot_n += 1
 		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
-		var crit: bool = _crit6 and _shot_n % 6 == 0
+		var crit: bool = (_crit6 and _shot_n % 6 == 0) or (int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0)   # the Pistol's charged shot
 		var lucky: bool = rng.randf() < _crit_rate   # a critical hit (crit rate / crit damage)
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
@@ -1283,8 +1285,9 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"dmg": float(w.damage) * damage_mult * _beacon_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and _ult_kind == "phase") or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
-			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
-			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
+			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
+			"frost": frost_level > 0 or bool(w.get("frost", false)), "rail": rail or rail_gun, "lucky": lucky,
+			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
 		if (_twin_every > 0 and _shot_n % _twin_every == 0) or (_perk_twin and _shot_n % 6 == 0):
@@ -1346,6 +1349,10 @@ func _update_bullets(delta: float) -> void:
 		b.pos += b.vel * delta
 		var hit := false
 		# a flak shell bursts in the air once its fuse runs out (dev196)
+		if b.has("ttl"):   # a short-range bolt (the Sun Rifle's fan) fades out
+			b.ttl = float(b.ttl) - delta
+			if float(b.ttl) <= 0.0:
+				continue
 		if b.has("fuse"):
 			b.fuse = float(b.fuse) - delta
 			if float(b.fuse) <= 0.0:
@@ -1389,7 +1396,7 @@ func _update_bullets(delta: float) -> void:
 						dmg *= 1.2
 					if b.get("frost", false):
 						e.slow_t = 1.5
-						e.slow = minf(0.15 * frost_level + _chill_bonus, 0.5)
+						e.slow = minf(0.15 * maxi(frost_level, 1) + _chill_bonus, 0.5)
 					# hero cards: Deep Freeze slows, Afterburn sets burning
 					if _freeze_level > 0:
 						e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
