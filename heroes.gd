@@ -62,6 +62,20 @@ const PASSIVES := {
 	"ember":  {"stat": "hp_mult",     "base": 0.20, "text": "Max HP +%d%%"},
 }
 const ORDINAL := {2: "2nd", 3: "3rd", 4: "4th", 5: "5th"}
+# HERO ABILITIES (2026-11-10): one big move each on a cooldown (battle _use_ability, the button
+# bottom left). The cooldown shortens two seconds per rarity step.
+const ABILITIES := {
+	"rook":   {"name": "Volley",      "text": "4 seconds at two and a half times the fire rate"},
+	"sparks": {"name": "Overload",    "text": "Lightning jumps through the 8 nearest bugs"},
+	"frost":  {"name": "Whiteout",    "text": "Freezes every bug for 3 seconds"},
+	"hollow": {"name": "Phase Storm", "text": "5 seconds of bolts that pass through everything"},
+	"nyx":    {"name": "Execute",     "text": "Weak bugs die, the rest are marked: every hit crits"},
+	"ember":  {"name": "Firestorm",   "text": "Sets every bug on fire"},
+}
+const ABILITY_CD := 40.0
+
+static func ability_cd(star: int) -> float:
+	return maxf(ABILITY_CD - 2.0 * (star - 1), 22.0)
 
 # how much stronger the passive is at this step
 static func passive_mult(star: int) -> float:
@@ -498,6 +512,7 @@ static func stats(save: Dictionary) -> Dictionary:
 	if star >= 3:
 		st.refreshes += 1
 	st["start_card"] = star >= 4
+	st["ability_cd"] = ability_cd(star)
 	# the one gear slot: the weapon (its level, its type)
 	var wid: String = gear.equipped["Weapon"]
 	var wlv := GearData.level(gear, wid)

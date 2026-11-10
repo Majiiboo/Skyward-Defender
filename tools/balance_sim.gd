@@ -234,6 +234,9 @@ func _step() -> bool:
 		# up, and slides away from shots; decides every 0.25 s and misses about one decision in three
 		if steps % 8 == 0 and randf() > 0.3:
 			_manual_decide()
+		# his ability: on a crowd or a boss, as soon as it is ready
+		if b._ult_t <= 0.0 and b._ability_open() and b.enemies.size() >= 5:
+			b._use_ability()
 		b.dragging = true
 		if human_x >= 0.0:
 			b._drag_by(Vector2(clampf(human_x - b.soldier_pos.x, -SPEED * DT, SPEED * DT), 0))
@@ -247,6 +250,7 @@ func _step() -> bool:
 		if r.first_base_wave < 0:
 			r.first_base_wave = b.wave_index + 1
 	r.min_hull = minf(r.min_hull, b.hull)
+	r["min_shield"] = minf(float(r.get("min_shield", 100.0)), 100.0 * b.shield / maxf(b.shield_max, 1.0))
 	if b.game_over or b.stage_cleared:
 		return false
 	return b.time_alive < MAX_T
@@ -368,6 +372,7 @@ func _finish() -> void:
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
+	print("    shield min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), b._runners_caught, r.base_hits])
 	if not results.has(r.stage):
 		results[r.stage] = []
 	results[r.stage].append(r)

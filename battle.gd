@@ -525,6 +525,10 @@ func _start_stage() -> void:
 	stat_turret_dmg = 0.0
 	_dmg_by = {}
 	_coin_refreshes = 0
+	_runner_due.clear()
+	_lanes.clear()
+	_runners_caught = 0
+	_ult_live = 0.0
 	var sv := _read_save()
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
 	_speed_pack = bool(sv.get("speed_pack", false))
@@ -589,6 +593,8 @@ func _start_stage() -> void:
 	refreshes = 1 + int(gs.refreshes)
 	_pierce5 = gs.pierce5
 	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
+	_ult_cd = float(gs.get("ability_cd", 40.0))   # shorter on the higher rarity steps
+	_ult_t = 12.0
 	# hero level perks (Heroes.MILESTONES, dev186): a twin every 6th shot, one bug pierced, bursts of 2
 	_perk_twin = float(gs.get("twin_shot", 0.0)) > 0.0
 	if float(gs.get("pierce1", 0.0)) > 0.0:
@@ -668,6 +674,9 @@ func _start_wave() -> void:
 	if _aegis_heal and wave_index > 0 and pilot_hp < pilot_hp_max:
 		pilot_hp = minf(pilot_hp + 25.0, pilot_hp_max)   # Aegis overcharged: a heal between waves
 		_float_text(soldier_pos + Vector2(0, -40), "+25 HP", Color(1.0, 0.5, 0.6))
+	if wave_index > 0:
+		_wave_patch()   # every cleared wave mends the shield a little
+	_plan_runners()
 	for entry in waves[wave_index]:
 		for i in int(entry[1]):
 			wave_queue.append(entry[0])
@@ -888,6 +897,8 @@ func _process(delta: float) -> void:
 		z.life -= delta
 	zaps = zaps.filter(func(z): return z.life > 0.0)
 	_spawn_step(delta)
+	_update_runners(delta)
+	_update_ability(delta)
 	_update_bullets(delta)
 	_update_fire_patches(delta)
 	_update_enemies(delta)
@@ -899,7 +910,7 @@ func _process(delta: float) -> void:
 	anim.update(_wanted_pose(), delta)
 	if pilot_hp <= 0.0 or hull <= 0.0:
 		_end_run(false)
-	elif wave_queue.is_empty() and enemies.is_empty() and not stage_cleared and _outro_t < 0.0:
+	elif wave_queue.is_empty() and enemies.is_empty() and _lanes.is_empty() and not stage_cleared and _outro_t < 0.0:
 		wave_index += 1
 		if horde or wave_index < waves.size():
 			_vacuum_t = 1.4   # between waves what is left flies to him (gems feed the next cards)
@@ -1077,6 +1088,8 @@ func _aim_and_fire(delta: float) -> void:
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
+	if _ult_live > 0.0:
+		interval *= 0.7 if _hero_id == "hollow" else 0.4   # Phase Storm / Volley (hero abilities)
 	if _overdrive and fmod(time_alive, 8.0) < 3.0:
 		interval *= 0.5   # Rapid Pulse overcharged: overdrive window
 	if auto:
@@ -1212,7 +1225,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * _beacon_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and _hero_id == "hollow") or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
 			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
@@ -1421,7 +1434,9 @@ func _update_enemies(delta: float) -> void:
 			e.vel.y += 90.0 * delta
 			if e.t > 0.7:
 				e.state = "fly"
-		match String(def.move):
+		match ("runner" if e.has("runner") else String(def.move)):
+			"runner":
+				e.pos.y += e.speed * delta   # straight down its lane for the base
 			"straight":
 				if e.state == "hatch":
 					pass
@@ -1689,7 +1704,7 @@ func _update_enemies(delta: float) -> void:
 			_kill(e)
 			continue
 		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
-			_hurt_base(float(def.get("base_dmg", 10.0)))
+			_hurt_base(RUNNER_DMG if e.has("runner") else float(def.get("base_dmg", 10.0)))
 			if e.type == "diver" or e.type == "dart":
 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
 				shake = maxf(shake, 0.55)
@@ -1783,6 +1798,8 @@ func _kill(e: Dictionary) -> void:
 			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
+	if e.has("runner"):
+		_runner_caught(e)
 	_kills_by[e.type] = int(_kills_by.get(e.type, 0)) + 1
 	_burst(e.pos, float(e.r), Color(1.0, 0.8, 0.4), 12 if _is_boss(e) else 7)
 	if _is_boss(e):
@@ -2808,6 +2825,14 @@ func _build_ui() -> void:
 			hb.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 		hb.pressed.connect(spec[1])
 		add_child(hb)
+	_ult_btn = Button.new()   # the hero ability (drawn in _draw_ult_btn)
+	_ult_btn.flat = true
+	_ult_btn.focus_mode = Control.FOCUS_NONE
+	_ult_btn.size = Vector2(64, 64)
+	for st in ["normal", "hover", "pressed", "focus", "hover_pressed"]:
+		_ult_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
+	_ult_btn.pressed.connect(_use_ability)
+	add_child(_ult_btn)
 	_auto_btn = Button.new()   # AUTO / MANUAL (drawn in _draw_auto_btn, which also keeps it in place)
 	_auto_btn.flat = true
 	_auto_btn.focus_mode = Control.FOCUS_NONE
@@ -3896,6 +3921,7 @@ func _draw() -> void:
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
+	_draw_lanes()   # a runner is coming down this lane
 	# gems
 	for g in gems:
 		var c: Color = StageData.GEM_COLORS[g.tier] if not g.get("coin", false) else Color(1.0, 0.82, 0.3)
@@ -4086,6 +4112,7 @@ func _draw_enemy(e: Dictionary) -> void:
 	EnemyRig.tint = Color.WHITE
 	_draw_status(e, size)
 	_draw_variant(e, size)
+	_draw_runner(e, size)
 	if e.hp < e.hp_max and not _is_boss(e):
 		var w := size * 0.9
 		draw_rect(Rect2(e.pos.x - w * 0.5, e.pos.y - size * 0.6, w, 3), Color(1, 1, 1, 0.15))
@@ -4827,6 +4854,7 @@ func _draw_hud() -> void:
 	_hc.draw_string(hud_font, Vector2(chip.position.x, chip.position.y + 13), "LV %d" % run_level, HORIZONTAL_ALIGNMENT_CENTER, chip.size.x, 11, Color(0.9, 0.84, 1.0))
 	_draw_card_row(Vector2(chip.end.x + 8.0, chip.position.y))
 	_draw_auto_btn()
+	_draw_ult_btn()
 	for e in enemies:
 		if _is_boss(e):
 			_draw_boss_bar(e)
@@ -5466,3 +5494,253 @@ func _start_hero_card() -> void:
 		"hollow_phase": pierce_level += 1
 		"nyx_mark": _crit_rate += 0.10
 		"ember_burn": _burn_level += 1
+
+# ------------------------------------------------------------------ RUNNERS + the wave patch (2026-11-10)
+# The sweep in REVIEW-2026-11-10.md: bug health alone is a knife edge (untouched, or a wall). So
+# pressure comes from something to CHASE instead. A RUNNER is a small bug that streaks straight down
+# one lane for the base. A gold lane lights up a second before it comes, so there is time to get
+# under it. Caught: a burst of coins and gem XP. Missed: it chips the shield (RUNNER_DMG, small on
+# purpose). To keep those chips from adding up to a lost stage, every cleared wave patches the
+# shield a little (WAVE_PATCH).
+const RUNNER_FROM := 3          # first stage with runners
+const RUNNER_WARN := 1.1        # seconds the lane shows before the runner
+const RUNNER_SPEED := 165.0
+const RUNNER_HP := 2.4          # stage-1 health (a Scout has 1.6)
+const RUNNER_DMG := 6.0
+const WAVE_PATCH := 0.06        # share of the shield mended after each wave
+var _runner_due: Array = []     # seconds from now, one per runner still to come this wave
+var _lanes: Array = []          # {x, t}: lanes lit, counting down to the runner
+
+func _runners_for(stage_n: int, wave_n: int) -> int:
+	if stage_n < RUNNER_FROM or wave_n < 1:
+		return 0
+	return 1 + (1 if stage_n >= 11 else 0) + (1 if stage_n >= 31 and wave_n >= 3 else 0)
+
+func _plan_runners() -> void:
+	_runner_due.clear()
+	for i in _runners_for(stage, wave_index):
+		_runner_due.append(rng.randf_range(3.0, 7.0) + 5.0 * i)
+
+func _update_runners(delta: float) -> void:
+	for i in _runner_due.size():
+		_runner_due[i] = float(_runner_due[i]) - delta
+	while not _runner_due.is_empty() and float(_runner_due[0]) <= 0.0:
+		_runner_due.pop_front()
+		if wave_queue.is_empty() and enemies.is_empty():
+			continue   # the wave is over: no straggler holds it open
+		_lanes.append({"x": rng.randf_range(50.0, FIELD_W - 50.0), "t": RUNNER_WARN})
+		Sfx.play("spit", 1.5)
+		if not _seen.has("runner"):   # the first one ever: say what the lane means
+			_seen.append("runner")
+			_write_save({"seen_enemies": _seen})
+			_float_text(Vector2(FIELD_W * 0.5, FIELD_H * 0.3), "RUNNER! Catch it in its lane", Color(1.0, 0.85, 0.4), true)
+	var keep: Array = []
+	for l in _lanes:
+		l.t = float(l.t) - delta
+		if float(l.t) > 0.0:
+			keep.append(l)
+			continue
+		var kind: String = "mite" if stage >= 11 and rng.randf() < StageData.machine_share(stage) else "scout"
+		var e := _make_enemy(kind, Vector2(float(l.x), 30.0))
+		e.erase("variant")
+		e.runner = true
+		e.hp = RUNNER_HP * _hp_mult()
+		e.hp_max = e.hp
+		e.speed = RUNNER_SPEED
+		e.shield_hp = 0.0
+		enemies.append(e)
+	_lanes = keep
+
+# the lane (under the bugs): a faint gold strip, dashes running down it, chevrons at the top
+func _draw_lanes() -> void:
+	for l in _lanes:
+		var k: float = 1.0 - float(l.t) / RUNNER_WARN
+		var x: float = float(l.x)
+		var gold := Color(1.0, 0.82, 0.3)
+		draw_rect(Rect2(x - 15.0, HUD_H, 30.0, BASE_Y - 150.0 - HUD_H), Color(gold, 0.05 + 0.06 * k))
+		var off: float = fmod(time_alive * 260.0, 36.0)
+		var y: float = HUD_H + off
+		while y < BASE_Y - 160.0:
+			draw_line(Vector2(x, y), Vector2(x, y + 14.0), Color(gold, 0.3 + 0.4 * k), 2.0)
+			y += 36.0
+		for c in 2:
+			var cy: float = HUD_H + 26.0 + c * 12.0 + sin(time_alive * 10.0) * 2.0
+			draw_polyline(PackedVector2Array([Vector2(x - 9.0, cy - 6.0), Vector2(x, cy + 3.0), Vector2(x + 9.0, cy - 6.0)]), Color(gold, 0.9), 2.5, true)
+
+# on the bug: gold streaks trailing behind it (it is moving down the screen, so they trail up)
+func _draw_runner(e: Dictionary, size: float) -> void:
+	if not e.has("runner"):
+		return
+	var gold := Color(1.0, 0.82, 0.3)
+	for i in 3:
+		var dx: float = (i - 1) * size * 0.26
+		var len: float = size * (1.5 if i == 1 else 1.0)
+		draw_line(e.pos + Vector2(dx, -size * 0.35), e.pos + Vector2(dx, -size * 0.35 - len), Color(gold, 0.55), 2.0, true)
+		draw_line(e.pos + Vector2(dx, -size * 0.35 - len), e.pos + Vector2(dx, -size * 0.35 - len * 1.6), Color(gold, 0.18), 2.0, true)
+
+func _runner_caught(e: Dictionary) -> void:
+	_runners_caught += 1
+	_float_text(e.pos + Vector2(0, -22), "CAUGHT!", Color(1.0, 0.85, 0.4), true)
+	var worth: float = 4.0 + 0.4 * stage
+	for i in 4:
+		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
+			"value": worth / 4.0, "vel": Vector2(rng.randf_range(-70, 70), rng.randf_range(-110, -40))})
+	gems.append({"pos": e.pos, "tier": 2, "life": 16.0, "vel": Vector2(0, -60)})
+	hitstop = maxf(hitstop, 0.05)
+
+func _wave_patch() -> void:
+	if shield >= shield_max or shield_max <= 0.0:
+		return
+	var add: float = shield_max * WAVE_PATCH
+	shield = minf(shield + add, shield_max)
+	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(add), Color(0.4, 0.9, 1.0))
+
+# ------------------------------------------------------------------ HERO ABILITIES (2026-11-10)
+# One big move per hero on a cooldown (the button bottom left, mirror of AUTO): the thing that makes
+# six heroes six ways to play. Open once stage ABILITY_FROM is cleared. The cooldown shortens with
+# his rarity step (Heroes.ability_cd). AUTO presses it too, late and only on a crowd or a boss.
+const ABILITY_FROM := 2
+var _ult_cd := 40.0       # the full cooldown
+var _ult_t := 12.0        # seconds until it is ready (a run starts with a short wait)
+var _ult_live := 0.0      # Rook / Hollow: seconds of the effect left
+var _ult_btn: Button
+var _ult_flash := 0.0
+var _runners_caught := 0
+
+func _ability_open() -> bool:
+	return stage_unlocked > ABILITY_FROM or DevTools.on
+
+func _bolt_dmg() -> float:
+	return float(WEAPONS[weapon_id].damage) * damage_mult
+
+func _ult_hit(e: Dictionary, dmg: float) -> void:
+	if not _can_hurt(e):
+		return
+	dmg *= _elem_mult
+	e.hp -= dmg
+	e.hit_t = HIT_FLINCH_T
+	stat_pilot_dmg += dmg
+	_count_dmg("hero", dmg, e)
+	_show_dmg(e, dmg, true, _elem_mult)
+
+func _update_ability(delta: float) -> void:
+	_ult_t = maxf(_ult_t - delta, 0.0)
+	_ult_live = maxf(_ult_live - delta, 0.0)
+	_ult_flash = maxf(_ult_flash - delta * 2.0, 0.0)
+	# AUTO: it waits for a crowd or a boss, and is a second late
+	if auto_on and not dragging and _ult_t <= 0.0 and _ability_open():
+		var boss := false
+		for e in enemies:
+			boss = boss or (_is_boss(e) and e.get("arrived", false))
+		if boss or enemies.size() >= 6:
+			_ai_ult -= delta
+			if _ai_ult <= 0.0:
+				_use_ability()
+		else:
+			_ai_ult = 1.0
+var _ai_ult := 1.0
+
+func _use_ability() -> void:
+	if not _ability_open():
+		_float_text(Vector2(100.0, _ult_rect().position.y - 14.0), "Unlocks after stage %d" % ABILITY_FROM, Color(0.75, 0.82, 0.92))
+		return
+	if _ult_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
+		return
+	_ult_t = _ult_cd
+	_ai_ult = 1.0
+	_ult_flash = 1.0
+	var col: Color = Heroes.element_color(Heroes.element_of(_hero_id))
+	var ab: Dictionary = Heroes.ABILITIES.get(_hero_id, Heroes.ABILITIES["rook"])
+	_float_text(soldier_pos + Vector2(0, -92), String(ab.name).to_upper() + "!", col.lerp(Color.WHITE, 0.3), true)
+	_fx_add("nova", soldier_pos, 140.0, 0.6, 0.0, 3.2, col)
+	_burst(soldier_pos, 46.0, col, 20)
+	hitstop = maxf(hitstop, 0.1)
+	shake = maxf(shake, 0.4)
+	Sfx.play("level", 0.8)
+	var base := _bolt_dmg()
+	match _hero_id:
+		"sparks":
+			# Overload: lightning jumps through the eight nearest bugs
+			var pool: Array = enemies.filter(func(e): return _can_hurt(e))
+			pool.sort_custom(func(a, b): return a.pos.distance_squared_to(soldier_pos) < b.pos.distance_squared_to(soldier_pos))
+			var from: Vector2 = _muzzle_world()
+			for i in mini(pool.size(), 8):
+				zaps.append({"a": from, "b": pool[i].pos, "life": 0.35, "seed": rng.randf() * 100.0})
+				_ult_hit(pool[i], base * 7.0)
+				from = pool[i].pos
+		"frost":
+			# Whiteout: every bug freezes solid; a boss is slowed instead
+			for e in enemies:
+				if _is_boss(e):
+					e.slow = 0.45
+					e.slow_t = 4.0
+				else:
+					e.freeze_t = 3.0
+				_ult_hit(e, base * 2.0)
+			_fx_add("nova", Vector2(FIELD_W * 0.5, FIELD_H * 0.4), 300.0, 0.7, 0.0, 2.4, Color(0.75, 0.92, 1.0))
+		"nyx":
+			# Execute: the weak die, the rest are marked (marked bugs always crit)
+			for e in enemies:
+				if not _can_hurt(e):
+					continue
+				if not _is_boss(e) and e.hp <= 0.4 * float(e.hp_max):
+					_ult_hit(e, float(e.hp) + 1.0)
+				else:
+					_ult_hit(e, base * 4.0)
+					e.mark_t = 6.0
+		"ember":
+			# Firestorm: everything burns
+			for e in enemies:
+				if e.type == "spore" or e.type == "bolt":
+					_ult_hit(e, float(e.hp) + 1.0)
+					continue
+				e.burn_t = 4.0
+				e.burn_dps = (0.03 if _is_boss(e) else 0.14) * float(e.hp_max)
+			for i in 3:
+				if _fire_patches.size() < 8:
+					_fire_patches.append({"pos": Vector2(FIELD_W * (0.25 + 0.25 * i), FIELD_H * 0.42), "life": 4.0, "max": 4.0, "r": 60.0, "ph": rng.randf() * TAU})
+		"hollow":
+			_ult_live = 5.0   # Phase Storm: five seconds of bolts that pass through everything (see _fire)
+		_:
+			_ult_live = 4.0   # Rook, Volley: four seconds at two and a half times the fire rate (see _aim_and_fire)
+
+# bottom left, above the base: the mirror of AUTO
+func _ult_rect() -> Rect2:
+	return Rect2(10.0, BASE_Y - 204.0, 58.0, 58.0)
+
+func _draw_ult_btn() -> void:
+	var r := _ult_rect()
+	if _ult_btn:
+		_ult_btn.position = r.position - Vector2(3, 3)
+	var open := _ability_open()
+	var col: Color = Heroes.element_color(Heroes.element_of(_hero_id))
+	var c := r.get_center()
+	var ready: bool = open and _ult_t <= 0.0
+	var pulse: float = 0.5 + 0.5 * sin(time_alive * 5.0)
+	_hc.draw_circle(c, 29.0, Color(0.055, 0.09, 0.157, 0.88))
+	if ready:
+		_hc.draw_circle(c, 29.0, Color(col, 0.16 + 0.1 * pulse))
+		_hc.draw_arc(c, 28.0, 0.0, TAU, 48, Color(col, 0.75 + 0.25 * pulse), 2.5, true)
+	else:
+		_hc.draw_arc(c, 28.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
+		if open:   # the ring fills clockwise as it charges
+			var k: float = 1.0 - _ult_t / maxf(_ult_cd, 1.0)
+			_hc.draw_arc(c, 28.0, -PI / 2.0, -PI / 2.0 + TAU * k, 48, Color(col, 0.8), 2.5, true)
+	if _ult_flash > 0.0:
+		_hc.draw_arc(c, 29.0 + 22.0 * (1.0 - _ult_flash), 0.0, TAU, 48, Color(col, _ult_flash), 3.0, true)
+	var icon: Texture2D = _tex_cached(UIKit.ELEMENT_ICON.get(Heroes.element_of(_hero_id), "el_energy"))
+	if icon != null:
+		_hc.draw_texture_rect(icon, Rect2(c - Vector2(17, 17), Vector2(34, 34)), false, Color(1, 1, 1, 1.0 if ready else (0.4 if open else 0.2)))
+	if open and not ready:
+		_hc.draw_string(title_font, Vector2(r.position.x, c.y + 5.0), str(ceili(_ult_t)), HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 15, Color.WHITE)
+
+var _ult_icons := {}
+func _tex_cached(icon_name: String) -> Texture2D:
+	if not _ult_icons.has(icon_name):
+		_ult_icons[icon_name] = UIKit.ic(icon_name)
+	return _ult_icons[icon_name]
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_runner"): a lane lights up now and the ability is ready
+func _dbg_runner() -> void:
+	_lanes.append({"x": 330.0, "t": RUNNER_WARN})
+	_ult_t = 0.0

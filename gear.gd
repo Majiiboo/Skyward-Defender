@@ -3192,6 +3192,10 @@ func _level_sheet() -> void:
 			else:
 				ladder.draw_arc(c, 5.0, 0.0, TAU, 24, Color(col, 0.45), 1.5, true))
 	v.add_child(ladder)
+	# his ability (the battle button bottom left): name, what it does, how often
+	var ab_l := UIKit.label("", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	ab_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(ab_l)
 	# the level bar
 	var lrow := HBoxContainer.new()
 	lrow.add_theme_constant_override("separation", 10)
@@ -3256,7 +3260,7 @@ func _level_sheet() -> void:
 	var hint := UIKit.label("", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
 	v.add_child(hint)
 	_lv_ui = {"id": id, "face": face, "rar": rar, "ladder": ladder, "lv": lv_l, "bar": bar, "cap": cap_l, "rows": rows,
-		"perk": perk, "perk_t": perk_t, "perk_s": perk_s, "needs": needs, "go": go, "go_box": gb, "go_cost": gcost, "hint": hint}
+		"perk": perk, "perk_t": perk_t, "perk_s": perk_s, "needs": needs, "go": go, "go_box": gb, "go_cost": gcost, "hint": hint, "ab": ab_l}
 	_lvl_refresh(false)
 
 func _stat_strs(st: Dictionary) -> Array:
@@ -3278,6 +3282,8 @@ func _lvl_refresh(pop: bool) -> void:
 			c.queue_free()
 	_lv_ui.rar.add_child(UIKit.chip(Gates.step_name(star), Gates.step_color(star)))
 	_lv_ui.ladder.queue_redraw()
+	var abil: Dictionary = Heroes.ABILITIES.get(id, {})
+	_lv_ui.ab.text = "%s: %s  ·  every %d s" % [String(abil.get("name", "")), String(abil.get("text", "")), roundi(Heroes.ability_cd(star))]
 	var lv_l: Label = _lv_ui.lv
 	lv_l.text = "Lv.%d" % lv
 	var bar: ProgressBar = _lv_ui.bar
