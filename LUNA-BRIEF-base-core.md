@@ -47,6 +47,17 @@ closer in), each pod with a small glowing object inside. No shield bubble.
 Please send this ONE picture to Rudy before making the rest. It is only to agree on the look;
 the game does not use it. Everything below should then match it.
 
+**DONE and APPROVED (2026-11-10).** Your `base2_whole` is exactly the look: the smooth navy dome,
+the thin light seam, the white dots along the rim, the cyan core light. Keep all of that for the
+pieces below. Two things to do differently in the separate pieces:
+1. THE POD FACES THE CAMERA FLAT. In `base2_whole` the two low pods are turned to the side. For
+   `base2_pod_1`, `_2`, `_3` the pod must look straight at us, a perfect circle, like the two
+   upper pods but with no tilt at all.
+2. THE BUILDINGS ARE LITTLE 3D OBJECTS, NOT SYMBOLS. The flat plus, triangle and arrow in
+   `base2_whole` came from my sketch and were only placeholders. The nine `b_*` pictures in
+   section 4 are small solid objects (a dish, a crane arm, a rack of cells...) made like the
+   dome: navy body, one colour of light.
+
 ## 1. The core (2 pictures, 1024 x 1024 each, both lined up in the same place)
 | File | What it is |
 |---|---|
