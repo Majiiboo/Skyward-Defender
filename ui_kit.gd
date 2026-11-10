@@ -108,6 +108,8 @@ static func header(text: String) -> Control:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 0)
 	if CLEAN:   # a plain bold title, no bar
+		if text == text.to_upper() and text.length() > 1:   # one case everywhere: "YOUR PARTS" reads "Your parts"
+			text = text.substr(0, 1) + text.substr(1).to_lower()
 		var t := title(text, 17, TEXT)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		row.add_child(t)
@@ -788,3 +790,38 @@ static func equipped_badge(parent: Control, col: Color = CYAN, text: String = "E
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	b.add_child(l)
 	parent.add_child(b)
+
+# ---- one look for every pop-up title and sub-tab row (consistency pass, 2026-11-10) ----
+# A pop-up's title: Oxanium, white, centred, the same on every page (they were a mix of gold
+# Inter capitals and gold Oxanium).
+static func popup_title(text: String) -> Label:
+	return title(text, 20, TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+
+# A row of SUB-TABS under a page's main tab strip: dark pills, the open one lighter. One style for
+# the Workshop (Parts / Gear / Craft), the Shop sections and the Collection categories, so a
+# second white strip never sits under the first. `dots` = red dots by index. tab_dots() works on it.
+static func sub_tabs(names: Array, selected: int, on_pick: Callable, dots: Array = []) -> HBoxContainer:
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var map: Array = []
+	for i in names.size():
+		var b := Button.new()
+		b.text = String(names[i])
+		b.custom_minimum_size = Vector2(0, 36)
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.add_theme_font_size_override("font_size", 13)
+		var on: bool = i == selected
+		var sb := pill(CARD_HI if on else Color(CARD, 0.6), 18, Vector2(8, 2))
+		for st in ["normal", "hover", "pressed", "disabled"]:
+			b.add_theme_stylebox_override(st, sb)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		for c in ["font_color", "font_hover_color", "font_pressed_color"]:
+			b.add_theme_color_override(c, TEXT if on else SOFT)
+		var k: int = i
+		b.pressed.connect(func(): on_pick.call(k))
+		press_fx(b)
+		row.add_child(b)
+		map.append(i)
+	row.set_meta("tab_map", map)
+	tab_dots(row, dots)
+	return row

@@ -3141,7 +3141,7 @@ func _confirm_leave() -> void:
 	p.custom_minimum_size = Vector2(w, 0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label("LEAVE THE STAGE?", 17, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("LEAVE THE STAGE?"))
 	var msg := UIKit.label("You will restart it from wave 1.", 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	msg.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(msg)

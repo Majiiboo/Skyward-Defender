@@ -470,7 +470,7 @@ func _ladder() -> void:
 	p.position = Vector2((size.x - w) * 0.5, 40.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.label("PILOT RANKS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("PILOT RANKS"))
 	v.add_child(UIKit.label("Each trial: one hard stage, bugs %s tougher and more of them; power cards come 25%% faster. Win it once: +%d%% ATK and +%d%% base shield and hull, for good." % [Promotion.hp_range_text(), roundi(Promotion.PER_RANK * 100.0), roundi(Promotion.PER_RANK * 100.0)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	for i in Promotion.RANKS.size():
@@ -610,7 +610,7 @@ func _etrials() -> void:
 	p.position = Vector2((size.x - w) * 0.5, 40.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.label("ELEMENT TRIALS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("ELEMENT TRIALS"))
 	var intro := UIKit.label("One ladder per element, %d steps each, across every planet. Only a hero of that element may fight it. The first clear of a step pays that hero's shards and coins; the last step pays crystals too." % Promotion.ETRIAL_STEPS, 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(intro)

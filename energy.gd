@@ -93,7 +93,7 @@ static func show_short(parent: Control, need: int) -> void:
 	p.position = Vector2((parent.size.x - w) * 0.5, parent.size.y * 0.3)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label("NOT ENOUGH POWER", 17, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("NOT ENOUGH POWER"))
 	v.add_child(UIKit.label("Need %d  ·  you have %d" % [need, have], 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(UIKit.label("+1 every 6 min  ·  next in %s" % clock(next_in(s)), 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var buy := UIKit.teal_button("+%d power  ·  %d crystals" % [REFILL, REFILL_PRICE], 14)

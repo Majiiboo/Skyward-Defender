@@ -1230,7 +1230,7 @@ func _fill_shop_clean() -> void:
 		names.insert(2, "Parts")
 		lists.insert(2, PART_DEALS)
 	_shop_tab = clampi(_shop_tab, 0, names.size() - 1)
-	_page.add_child(_sub_tabs(names, _shop_tab, func(i): _shop_tab = i; _fill()))
+	_page.add_child(UIKit.sub_tabs(names, _shop_tab, func(i): _shop_tab = i; _fill()))
 	var g := _wide_grid()
 	var have := Parts.read(d)
 	var crystals := int(d.get("crystals", 0))
@@ -1332,7 +1332,7 @@ func _code_popup() -> void:
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.3)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label("ENTER CODE", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("ENTER CODE"))
 	var input := LineEdit.new()
 	input.placeholder_text = "CODE"
 	input.custom_minimum_size = Vector2(0, 44)

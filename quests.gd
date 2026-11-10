@@ -101,6 +101,7 @@ func _fill() -> void:
 					_row("%s  ·  Lv.%d" % [m.text, int(m.lv)], m.progress, float(m.goal), m.reward, m.done, false, func(): d = Progress.claim_repeat(m.def.id); Sfx.play("claim"); _fill(), String(m.def.stat))
 		2:
 			_note.text = "Trophies have three tiers: bronze, silver and gold. Each tier pays crystals."
+			_note.visible = not UIKit.CLEAN
 			_trophy_grid()
 		3:
 			_note.text = "Goals that come back bigger every time you claim them. Always something to chase."
@@ -384,29 +385,14 @@ func _go(stat: String) -> void:
 var _book_cat := "enemies"
 
 func _collection() -> void:
-	var pills := HBoxContainer.new()
-	pills.add_theme_constant_override("separation", 8)
+	var cat_names: Array = []
+	var cat_dots: Array = []
 	for c in Codex.CATS:
-		var cat := String(c)
-		var b := Button.new()
-		b.text = String(Codex.NAMES[cat])
-		b.custom_minimum_size = Vector2(0, 36)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.add_theme_font_size_override("font_size", 13)
-		var on: bool = cat == _book_cat
-		var sb := UIKit.pill(UIKit.CARD_HI if on else Color(UIKit.CARD, 0.6), 18, Vector2(8, 2))
-		for st in ["normal", "hover", "pressed"]:
-			b.add_theme_stylebox_override(st, sb)
-		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
-		for fc in ["font_color", "font_hover_color", "font_pressed_color"]:
-			b.add_theme_color_override(fc, UIKit.TEXT if on else UIKit.SOFT)
-		b.pressed.connect(func():
-			_book_cat = cat
-			_fill())
-		UIKit.press_fx(b)
-		UIKit.dot(b, Codex.claimable(d, cat))
-		pills.add_child(b)
-	_list.add_child(pills)
+		cat_names.append(String(Codex.NAMES[c]))
+		cat_dots.append(Codex.claimable(d, String(c)))
+	_list.add_child(UIKit.sub_tabs(cat_names, Codex.CATS.find(_book_cat), func(i: int):   # the shared sub-tab row
+		_book_cat = String(Codex.CATS[i])
+		_fill(), cat_dots))
 	# the progress card
 	var cnt := Codex.count(d, _book_cat)
 	var goal := Codex.next_goal(d, _book_cat)

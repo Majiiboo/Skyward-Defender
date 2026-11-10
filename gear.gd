@@ -599,7 +599,7 @@ func _show_stats() -> void:
 	p.position = Vector2((size.x - pw) * 0.5, 70.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.label("STATS", 18, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("STATS"))
 	v.add_child(UIKit.header(String(Heroes.ROSTER[_hero_id()].name).to_upper()))
 	_stat_rows(v, [
 		["Damage per hit", "%.2f" % hit],
@@ -617,20 +617,14 @@ func _show_stats() -> void:
 		["Hull (fortress HP)", "%d" % roundi(BATTLE.BASE_HULL * float(gs.fortress))],
 		["Damage taken", "-%d%%" % roundi(float(gs.base_dr) * 100.0)],
 	])
-	v.add_child(UIKit.header("TURRETS"))
-	var tdat := Turrets.read(data)
+	# the buildings on the base (Base): what each one is giving
+	v.add_child(UIKit.header("Buildings"))
+	var bsd := Base.read(data)
 	var rows: Array = []
-	for i in Turrets.MOUNTS:
-		var id: String = tdat.loadout[i]
-		if id == "" or not Turrets.mount_open(i, t_unlocked) or not Turrets.owned({"owned": t_owned}, id):
-			continue
-		var tr := Turrets.one_tracks(tdat.tracks, id)
-		var s := Turrets.stats(id, tr)
-		var dmg: float = float(s.damage) * float(gs.turret_dmg)
-		var every: float = float(s.every) / float(gs.turret_rate)
-		rows.append(["%s Lv.%d" % [Turrets.TURRETS[id].name, Turrets.level_of(tr)], "%.1f every %.2f s" % [dmg, every]])
+	for bid in Base.stats(data).on:
+		rows.append(["%s Lv.%d" % [String(Base.BUILDINGS[bid].name), Base.level(bsd, String(bid))], Base.text(String(bid), Base.level(bsd, String(bid)))])
 	if rows.is_empty():
-		rows.append(["No turrets on the base", "-"])
+		rows.append(["No buildings on the base", "-"])
 	_stat_rows(v, rows)
 	v.add_child(UIKit.label("Power cards in a run add to these", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	var close := UIKit.ghost_button("Close", 14)
@@ -668,7 +662,9 @@ func _refresh_workshop(pop: String = "") -> void:
 			_refresh_ws_gear()
 		elif i == 2:
 			_refresh_ws_craft()
-	_ws_tabs_row = UIKit.tabs(["Parts", "Gear", "Craft"], on_tab, _ws_tab)   # CRAFT (materials.gd, dev189)
+	_ws_tabs_row = UIKit.sub_tabs(["Parts", "Gear", "Craft"], _ws_tab, func(i: int):   # sub-tabs in the shared dark-pill style
+		_ws_tab = i
+		_refresh_workshop())
 	_workshop_box.add_child(_ws_tabs_row)
 	_paint_dots()
 	_ws_parts_box = VBoxContainer.new()
@@ -990,10 +986,9 @@ func _filter_box() -> void:
 	p.position = Vector2((size.x - w) * 0.5, 60.0)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.label("FILTER", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("FILTER"))
 	var rows := [
 		["rarity", "RARITY", [["", "Any"]] + GearData.RARITIES.map(func(r): return [r, GearData.rarity_name(r)])],
-		["slot", "SLOT", [["", "Any"]] + GearData.SLOTS.map(func(s): return [s, s])],
 		["set", "SET", [["", "Any"]] + GearData.SET_ORDER.filter(func(s): return GearData.set_unlocked(s, t_unlocked)).map(func(s): return [s, GearData.SETS[s].name])],
 		["sort", "SORT", INV_SORTS.map(func(s): return [s, INV_SORT_NAMES[s]])],
 		["show", "SHOW", [["", "Useful stacks"], ["all", "Everything"]]],
@@ -1085,7 +1080,7 @@ func _loadout_box(i: int) -> void:
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.22)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 8)
-	v.add_child(UIKit.label("KIT IN USE", 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("LOADOUT"))
 	var input := LineEdit.new()
 	input.text = String(s.name)
 	input.max_length = 14
@@ -1809,7 +1804,7 @@ func _confirm(title: String, body: String, yes_text: String, yes_ok: bool) -> bo
 	p.position = Vector2(size.x * 0.5 - 150, size.y * 0.3)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label(title, 16, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title(title))
 	var b := UIKit.label(body, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(b)
@@ -2821,7 +2816,7 @@ func _talents_screen() -> void:
 	back.custom_minimum_size = Vector2(70, 34)
 	back.pressed.connect(layer.queue_free)
 	head.add_child(back)
-	var title := UIKit.label("STAR MAP  ·  %d / %d" % [have, Talents.SIZE], 17, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
+	var title := UIKit.popup_title("STAR MAP  ·  %d / %d" % [have, Talents.SIZE])
 	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(title)
 	var spacer := Control.new()
@@ -2854,7 +2849,7 @@ func _talents_screen() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	var why := Talents.why_not(data)
-	var buy := UIKit.gold_button(("Chart star %d\n%s" % [nxt, Talents.cost_text(nxt)]) if why == "" else (why if nxt <= Talents.SIZE else "Map complete"), 12)
+	var buy := UIKit.gold_button(("CHART STAR %d  ·  %s" % [nxt, Talents.cost_text(nxt)]) if why == "" else (why if nxt <= Talents.SIZE else "Map complete"), 15)
 	buy.custom_minimum_size = Vector2(0, 46)
 	buy.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	buy.disabled = why != ""

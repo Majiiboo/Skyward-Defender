@@ -1372,7 +1372,7 @@ func _side_popup(title: String, body: String, actions: Array = []) -> void:
 	p.position = Vector2((size.x - w) * 0.5, size.y * 0.28)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.title(title, 18, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title(title))
 	var b := UIKit.label(body, 13, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	b.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(b)
@@ -1630,7 +1630,7 @@ func _patrol_fill() -> void:
 	panel.position = Vector2((size.x - w) * 0.5, size.y * 0.2)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
-	v.add_child(UIKit.label("PATROL", 18, GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.popup_title("PATROL"))
 	if not cleared:
 		v.add_child(UIKit.label("Clear stage 1 to start a patrol", 13, MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
