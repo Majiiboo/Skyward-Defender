@@ -34,6 +34,8 @@ const UNLOCKS := {
 		"text": "A second ladder from stage 1 with far tougher bugs and better drops."},
 	"twists":    {"stage": 10, "name": "Daily twists", "go": [], "pic": "tw_rapid",
 		"text": "From here every stage carries one advantage and one disadvantage that change each day, and pays 20% more coins."},
+	"event":     {"stage": 10, "name": "Weekly event", "go": ["NavModes", "", 0], "pic": "ic_gift",
+		"text": "A themed week: its own twists, and a track of ten rewards you fill by fighting in it."},
 	"loadouts":  {"stage": 12, "name": "Loadouts",  "go": ["NavGear", "gear_page", 0],
 		"text": "Save three kits of gear, turrets and drone and switch in one tap."},
 }

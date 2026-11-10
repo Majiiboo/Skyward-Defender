@@ -32,6 +32,7 @@ func _initialize() -> void:
 	_check_daily()
 	_check_codex()
 	_check_wing()
+	_check_events()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -690,3 +691,26 @@ func _check_wing() -> void:
 	_expect(Heroes.wing(h) == "", "the hero on duty cannot be his own wingmate")
 	h["wing"] = "ember"
 	_expect(Heroes.wing(h) == "", "a hero you do not own cannot ride along")
+
+# the weekly event (Events, 2026-11-10): a theme a week, points, a track of ten rewards
+func _check_events() -> void:
+	var s := {"stage_unlocked": 10, "coins": 0, "crystals": 0}
+	_expect(not Events.open(s), "the weekly event is closed until stage 10 is cleared")
+	s["stage_unlocked"] = 13
+	_expect(Events.open(s) and Events.stage(s) == 12, "it is fought on your best cleared stage")
+	for th in Events.THEMES:
+		_expect(Array(th.mods).size() == 2 and bool(Promotion.MODS[th.mods[0]].good) and not bool(Promotion.MODS[th.mods[1]].good) and UIKit.ic(String(th.icon)) != null, "theme %s: one advantage, one disadvantage, a picture" % th.id)
+	_expect(Events.theme(0).id != Events.theme(1).id and Events.theme(0).id == Events.theme(Events.THEMES.size()).id, "the theme changes every week and comes round again")
+	_expect(Events.points_for(true, 1.0, 0.0) == 30 and Events.points_for(true, 0.2, 12.0) == 20 and Events.points_for(false, 0.0, 50.0) == 5, "points: 30 for a clean win, 20 for a rough one, 5 for a loss")
+	_expect(int(Events.state(s).points) == 0 and not Events.claimable(s), "a fresh week: no points, nothing to take")
+	Events.add_points(s, 45)
+	_expect(Events.reached(s) == 2 and Events.claimable(s), "45 points reach the first two rewards")
+	var r1 := Events.claim_next(s)
+	var r2 := Events.claim_next(s)
+	_expect(int(r1.get("coins", 0)) == 500 and int(s.coins) == 500 and int(r2.get("key_u", 0)) == 1 and int(Materials.read(s).key_u) == 1 and Events.claim_next(s).is_empty(), "the rewards are taken in order, once each")
+	s["event"]["week"] = Events.week() - 1
+	_expect(int(Events.state(s).points) == 0 and int(Events.state(s).claimed) == 0, "a new week starts the track again")
+	var last := 0
+	for t in Events.TRACK:
+		_expect(int(t.points) > last, "the track rises (%d)" % int(t.points))
+		last = int(t.points)

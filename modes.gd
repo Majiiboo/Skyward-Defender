@@ -104,7 +104,7 @@ func _build() -> void:
 # ---- the CLEAN Modes page (Rudy, 2026-11-09, mock-up "Round 2 · Clean"): one wide card per mode,
 # a picture, the name, two small lines (where you are, a hint of what it gives) and one round
 # button; Campaign's is the gold one. Not reached yet = hidden, except the next one as a teaser.
-const CLEAN_ORDER := ["standard", "daily", "elite", "promotion", "trials", "horde"]
+const CLEAN_ORDER := ["standard", "daily", "event", "elite", "promotion", "trials", "horde"]
 
 func _build_clean(col: VBoxContainer) -> void:
 	var teased := false
@@ -115,6 +115,7 @@ func _build_clean(col: VBoxContainer) -> void:
 			"promotion", "trials": reached = Unlocks.open(_save, "promotion")
 			"horde": reached = player_level >= 5
 			"daily": reached = Promotion.daily_open(_save)
+			"event": reached = Events.open(_save)
 		if DevTools.on:
 			reached = true
 		if reached:
@@ -176,6 +177,17 @@ func _clean_card(id: String, locked: bool) -> Button:
 			pic = UIKit.ic("ic_gift")
 			pic_bg = Color(0.16, 0.13, 0.06)
 			action = func(): _play_daily()
+		"event":
+			# the weekly event (Events): a themed week with a track of ten rewards
+			var eth := Events.theme()
+			var est := Events.state(_save)
+			title_txt = String(eth.name)
+			line1 = "Weekly event  ·  ends in %s" % Events.left_text()
+			line2 = "Reward ready" if Events.claimable(_save) else "%d / %d points" % [int(est.points), int(Events.TRACK[-1].points)]
+			line2_col = UIKit.GOLD if Events.claimable(_save) else UIKit.SOFT
+			pic = UIKit.ic(String(eth.icon))
+			pic_bg = Color(Color(eth.col).r * 0.2, Color(eth.col).g * 0.2, Color(eth.col).b * 0.25)
+			action = _event_sheet
 		"horde":
 			var bw := int(_save.get("best_horde", 0))
 			var hs := int(_save.get("best_horde_score", 0))
@@ -187,7 +199,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 			action = func(): _play_horde()
 	if locked:
 		line1 = "Locked"
-		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM}.get(id, "Opens as you play")
+		line2 = {"elite": "Opens at pilot Lv.10", "horde": "Opens at pilot Lv.5", "daily": "Opens after stage %d" % Promotion.DAILY_FROM, "event": "Opens after stage %d" % Events.EVENT_FROM}.get(id, "Opens as you play")
 		line2_col = UIKit.SOFT
 	var b := Button.new()
 	b.name = "Mode_" + id
@@ -638,3 +650,143 @@ func _etrials() -> void:
 	v.add_child(close)
 	p.add_child(v)
 	layer.add_child(p)
+
+# ---- the WEEKLY EVENT (Events, 2026-11-10) ----
+# Its card opens a sheet: the week's name and what it does, the two twists, the track of ten
+# rewards (taken ones ticked, the next one gold when its points are in), FIGHT and Claim.
+func _play_event() -> void:
+	if Energy.try_play(self, false, 99):
+		_save_patch({"selected_mode": "event"})   # your best stage under the week's twists (battle event_run)
+		get_tree().change_scene_to_file("res://battle.tscn")
+
+func _event_sheet() -> void:
+	_save = Progress.read()
+	var th := Events.theme()
+	var st := Events.state(_save)
+	var col: Color = th.col
+	var layer := Control.new()
+	layer.name = "EventSheet"
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for s in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(s, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slider.add_child(sheet)
+	slider.position.y = 700.0
+	slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	sheet.add_child(v)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var pic := TextureRect.new()
+	pic.texture = UIKit.ic(String(th.icon))
+	pic.custom_minimum_size = Vector2(56, 56)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(pic)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 2)
+	nv.add_child(UIKit.title(String(th.name), 24, col.lerp(Color.WHITE, 0.35)))
+	nv.add_child(UIKit.label("Ends in %s" % Events.left_text(), 12, UIKit.SOFT))
+	head.add_child(nv)
+	var x := UIKit.ghost_button("Close", 13)
+	x.custom_minimum_size = Vector2(80, 34)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	var tl := UIKit.label(String(th.text), 13, Color(0.85, 0.9, 0.97))
+	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(tl)
+	v.add_child(Promotion.mods_row(Array(th.mods), 12, 20.0))
+	# the points and the track
+	var prow := HBoxContainer.new()
+	prow.add_theme_constant_override("separation", 6)
+	prow.add_child(UIKit.title(str(int(st.points)), 24, UIKit.TEXT))
+	var of := UIKit.title("/ %d points" % int(Events.TRACK[-1].points), 14, UIKit.SOFT)
+	of.size_flags_vertical = Control.SIZE_SHRINK_END
+	prow.add_child(of)
+	v.add_child(prow)
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	for i in Events.TRACK.size():
+		var t: Dictionary = Events.TRACK[i]
+		var taken: bool = i < int(st.claimed)
+		var ready: bool = not taken and int(st.points) >= int(t.points)
+		var cell := PanelContainer.new()
+		cell.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		cell.custom_minimum_size = Vector2(0, 74)
+		var cs := UIKit.box(UIKit.GOLD if ready else UIKit.CARD_HI, Color(col, 0.6) if i == int(st.claimed) and not ready else Color(0, 0, 0, 0), 14, 1)
+		cs.set_content_margin_all(4)
+		cell.add_theme_stylebox_override("panel", cs)
+		var cv := VBoxContainer.new()
+		cv.alignment = BoxContainer.ALIGNMENT_CENTER
+		cv.add_theme_constant_override("separation", 1)
+		var ink: Color = UIKit.GOLD_INK if ready else UIKit.TEXT
+		if taken:
+			cv.add_child(UIKit.title("✓", 20, Color(0.44, 0.94, 0.72), HORIZONTAL_ALIGNMENT_CENTER))
+			cell.modulate.a = 0.55
+		else:
+			var first := true
+			for k in t.reward:
+				var kk := String(k)
+				var icon: Texture2D = UIKit.ic("ic_coin", "ui_coin") if kk == "coins" else (UIKit.ic("ic_crystal", "ui_crystal") if kk == "crystals" else (Materials.icon(kk) if Materials.is_material(kk) else Parts.icon(kk)))
+				var row := UIKit.iconed(icon, UIKit.num(int(t.reward[k])), 11, ink, 18.0 if first else 14.0)
+				row.alignment = BoxContainer.ALIGNMENT_CENTER
+				cv.add_child(row)
+				first = false
+		cv.add_child(UIKit.label(str(int(t.points)), 9, Color(ink, 0.7), HORIZONTAL_ALIGNMENT_CENTER))
+		cell.add_child(cv)
+		grid.add_child(cell)
+	v.add_child(grid)
+	var act := HBoxContainer.new()
+	act.add_theme_constant_override("separation", 8)
+	var fight := UIKit.gold_button("FIGHT  ·  Stage %d" % Events.stage(_save), 18)
+	fight.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fight.custom_minimum_size = Vector2(0, 56)
+	fight.pressed.connect(_play_event)
+	act.add_child(fight)
+	if Events.claimable(_save):
+		var cb := UIKit.teal_button("Claim", 15)
+		cb.custom_minimum_size = Vector2(110, 56)
+		UIKit.dot(cb, true)
+		cb.pressed.connect(func():
+			var sv := Progress.read()
+			var got := Events.claim_next(sv)
+			if not got.is_empty():
+				Progress.write(sv)
+				Sfx.play("claim")
+			layer.queue_free()
+			_event_sheet())
+		act.add_child(cb)
+	v.add_child(act)
+	v.add_child(UIKit.label("A win: %d points, +5 with the hull above half, +5 untouched. A loss: 5." % Events.EVENT_WIN, 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+
+# capture hook (CAP_CALL="_dbg_event"): the weekly event sheet
+func _dbg_event() -> void:
+	_event_sheet()
