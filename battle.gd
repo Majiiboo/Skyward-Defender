@@ -639,6 +639,9 @@ func _start_stage() -> void:
 	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
 	_ult_t = 0.0 if _base_perks.has("reactor") else 12.0   # Reactor Lv.5: the ability is ready from the start
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
+	_ult_ups = int(gs.get("ability_ups", 0))   # ability upgrades bought (Heroes.ABILITY_UPS)
+	_wing_ups = int(gs.get("wing_ups", 0))
+	_live_ups = 0
 	_wing_t = 25.0
 	_ult_kind = ""
 	# hero level perks (Heroes.MILESTONES, dev186): a twin every 6th shot, one bug pierced, bursts of 2
@@ -1287,9 +1290,9 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
-			"dmg": float(w.damage) * damage_mult * _beacon_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
+			"dmg": float(w.damage) * damage_mult * _beacon_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and _ult_kind == "phase") or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
 			"frost": frost_level > 0 or bool(w.get("frost", false)), "rail": rail or rail_gun, "lucky": lucky,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
@@ -2695,6 +2698,8 @@ func _hurt_base(amount: float) -> void:
 
 func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if inv_t > 0.0:
+		return
+	if _ult_live > 0.0 and _ult_kind == "phase" and _live_ups >= 3:   # Out of Phase (Hollow s third upgrade)
 		return
 	if _support_blocks():   # the Guard drone takes this one
 		return
@@ -5816,6 +5821,9 @@ const WING_CD := 55.0
 var _wing_id := ""
 var _wing_t := 25.0
 var _ult_kind := ""       # "volley" or "phase" while _ult_live runs
+var _ult_ups := 0         # the duty hero s ability upgrades (0-3)
+var _wing_ups := 0        # the wingmate s
+var _live_ups := 0        # the upgrades of whoever started the Volley / Phase Storm now running
 
 func _update_wing(delta: float) -> void:
 	if _wing_id == "" or not _ability_open():
@@ -5845,53 +5853,74 @@ func _ability_effect(hid: String, assist: bool) -> void:
 		shake = maxf(shake, 0.4)
 	Sfx.play("level", 0.8 if not assist else 1.1)
 	var base := _bolt_dmg()
+	var ups: int = _wing_ups if assist else _ult_ups   # ability upgrades bought (Heroes.ABILITY_UPS), in order
 	match hid:
 		"sparks":
-			# Overload: lightning jumps through the eight nearest bugs
+			# Overload: lightning jumps through the nearest bugs (8; 12 with upgrade 1; harder with 2; a stun with 3)
 			var pool: Array = enemies.filter(func(e): return _can_hurt(e))
 			pool.sort_custom(func(a, b): return a.pos.distance_squared_to(soldier_pos) < b.pos.distance_squared_to(soldier_pos))
 			var from: Vector2 = _muzzle_world()
-			for i in mini(pool.size(), 8):
+			for i in mini(pool.size(), 12 if ups >= 1 else 8):
 				zaps.append({"a": from, "b": pool[i].pos, "life": 0.35, "seed": rng.randf() * 100.0})
-				_ult_hit(pool[i], base * 7.0)
+				_ult_hit(pool[i], base * (9.0 if ups >= 2 else 7.0))
+				if ups >= 3 and not _is_boss(pool[i]):
+					pool[i].freeze_t = maxf(float(pool[i].get("freeze_t", 0.0)), 1.5)
 				from = pool[i].pos
 		"frost":
-			# Whiteout: every bug freezes solid; a boss is slowed instead
+			# Whiteout: every bug freezes solid; a boss is slowed instead (longer with 1; harder with 2; mends the shield with 3)
+			var hold: float = 4.5 if ups >= 1 else 3.0
 			for e in enemies:
 				if _is_boss(e):
 					e.slow = 0.45
-					e.slow_t = 4.0
+					e.slow_t = hold + 1.0
 				else:
-					e.freeze_t = 3.0
-				_ult_hit(e, base * 2.0)
+					e.freeze_t = hold
+				_ult_hit(e, base * (4.0 if ups >= 2 else 2.0))
+			if ups >= 3 and shield < shield_max:
+				var add: float = minf(shield_max * 0.1, shield_max - shield)
+				shield += add
+				_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(add), Color(0.75, 0.92, 1.0))
 			_fx_add("nova", Vector2(FIELD_W * 0.5, FIELD_H * 0.4), 300.0, 0.7, 0.0, 2.4, Color(0.75, 0.92, 1.0))
 		"nyx":
-			# Execute: the weak die, the rest are marked (marked bugs always crit)
+			# Execute: the weak die, the rest are marked (marked bugs always crit). Upgrades: the
+			# line rises to half health, the mark lasts longer, every bug put down gives a second back.
+			var line: float = 0.5 if ups >= 1 else 0.4
+			var downed := 0
 			for e in enemies:
 				if not _can_hurt(e):
 					continue
-				if not _is_boss(e) and e.type != "crate" and e.hp <= 0.4 * float(e.hp_max):
+				if not _is_boss(e) and e.type != "crate" and e.hp <= line * float(e.hp_max):
 					_ult_hit(e, float(e.hp) + 1.0)
+					downed += 1
 				else:
 					_ult_hit(e, base * 4.0)
-					e.mark_t = 6.0
+					e.mark_t = 10.0 if ups >= 2 else 6.0
+			if ups >= 3 and downed > 0 and not assist:
+				_ult_t = maxf(_ult_t - minf(float(downed), 10.0), 0.0)
 		"ember":
-			# Firestorm: everything burns
+			# Firestorm: everything burns (longer with 1; more burning ground with 2; a blast first with 3)
+			var patches: int = 5 if ups >= 2 else 3
 			for e in enemies:
 				if e.type == "spore" or e.type == "bolt":
 					_ult_hit(e, float(e.hp) + 1.0)
 					continue
-				e.burn_t = 4.0
+				if ups >= 3:
+					_ult_hit(e, base * 3.0)
+				e.burn_t = 6.0 if ups >= 1 else 4.0
 				e.burn_dps = (0.03 if _is_boss(e) else 0.14) * float(e.hp_max)
-			for i in 3:
-				if _fire_patches.size() < 8:
-					_fire_patches.append({"pos": Vector2(FIELD_W * (0.25 + 0.25 * i), FIELD_H * 0.42), "life": 4.0, "max": 4.0, "r": 60.0, "ph": rng.randf() * TAU})
+			for i in patches:
+				if _fire_patches.size() < 10:
+					_fire_patches.append({"pos": Vector2(FIELD_W * (0.5 + (float(i) - (patches - 1) * 0.5) * (0.25 if patches == 3 else 0.18)), FIELD_H * 0.42), "life": 4.0, "max": 4.0, "r": 60.0, "ph": rng.randf() * TAU})
 		"hollow":
-			_ult_live = 5.0   # Phase Storm: five seconds of bolts that pass through everything (see _fire)
+			# Phase Storm: bolts that pass through everything (5 s; 7 with 1; harder bolts with 2; nothing can hurt him with 3)
+			_ult_live = 7.0 if ups >= 1 else 5.0
 			_ult_kind = "phase"
+			_live_ups = ups
 		_:
-			_ult_live = 4.0   # Rook, Volley: four seconds at two and a half times the fire rate (see _aim_and_fire)
+			# Rook, Volley: two and a half times the fire rate (4 s; 6 with 1; harder bolts with 2; they pierce with 3)
+			_ult_live = 6.0 if ups >= 1 else 4.0
 			_ult_kind = "volley"
+			_live_ups = ups
 
 # the wingmate's small ring above the ability button: his element, filling as his assist charges
 func _draw_wing_chip() -> void:

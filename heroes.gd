@@ -185,7 +185,7 @@ static func read(save: Dictionary) -> Dictionary:
 	var h = save.get("hero", null)
 	if typeof(h) != TYPE_DICTIONARY:
 		return migrate(save)
-	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}}
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}, "ability": {}}
 	var ow = h.get("owned", [])
 	if typeof(ow) == TYPE_ARRAY:
 		for id in ow:
@@ -193,7 +193,7 @@ static func read(save: Dictionary) -> Dictionary:
 				out.owned.append(String(id))
 	if ROSTER.has(String(h.get("selected", ""))) and out.owned.has(String(h.selected)):
 		out.selected = String(h.selected)
-	for key in ["levels", "def", "tiers", "shards"]:
+	for key in ["levels", "def", "tiers", "shards", "ability"]:
 		var src = h.get(key, {})
 		if typeof(src) == TYPE_DICTIONARY:
 			for id in src:
@@ -203,12 +203,12 @@ static func read(save: Dictionary) -> Dictionary:
 	return out
 
 static func write(h: Dictionary) -> Dictionary:
-	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "def": h.def, "tiers": h.tiers, "shards": h.shards, "wing": String(h.get("wing", ""))}
+	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "def": h.def, "tiers": h.tiers, "shards": h.shards, "wing": String(h.get("wing", "")), "ability": h.get("ability", {})}
 
 # the hero block an old save gets the first time: spent armour coins -> Rook's level,
 # armour copies -> Rook shards (the weapon keeps everything it had)
 static func migrate(save: Dictionary) -> Dictionary:
-	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}}
+	var out := {"selected": DEFAULT, "owned": [DEFAULT], "levels": {}, "def": {}, "tiers": {}, "shards": {}, "ability": {}}
 	var g := GearData.read(save)
 	var spent := 0
 	var shards := 0
@@ -509,6 +509,8 @@ static func stats(save: Dictionary) -> Dictionary:
 		st.refreshes += 1
 	st["start_card"] = star >= 4
 	st["ability_cd"] = ability_cd(star)
+	st["ability_ups"] = ability_ups(h, id)
+	st["wing_ups"] = ability_ups(h, wid) if wid != "" else 0
 	# the one gear slot: the weapon (its level, its type)
 	var wpn: String = gear.equipped["Weapon"]
 	var wlv := GearData.level(gear, wpn)
@@ -580,3 +582,61 @@ static func power(save: Dictionary) -> int:
 	var id := selected(h)
 	var gear := GearData.read(save)
 	return 40 + 18 * (level(h, id) - 1) + 80 * (tier(h, id) - 1) + 18 * (GearData.level(gear, gear.equipped["Weapon"]) - 1)
+
+# ABILITY UPGRADES (2026-11-10): three per hero, bought IN ORDER with his own shards. The first
+# two make the move bigger, the third changes what it does. Shards also pay for Ascend, so this is
+# a real choice: a stronger button now, or the next rarity step sooner. Save hero.ability {id: n}
+# = how many he has. The battle reads the count (stats "ability_ups"; the wingmate's "wing_ups").
+const ABILITY_UP_COST := [10, 25, 45]
+const ABILITY_UPS := {
+	"rook":   [{"name": "Long Volley",   "text": "Volley lasts 6 seconds"},
+			   {"name": "Heavy Volley",  "text": "Volley bolts hit 30% harder"},
+			   {"name": "Piercing Volley", "text": "Volley bolts pass through bugs"}],
+	"sparks": [{"name": "Wide Overload", "text": "Lightning jumps through 12 bugs"},
+			   {"name": "High Voltage",  "text": "Overload hits about 30% harder"},
+			   {"name": "Short Circuit", "text": "Bugs hit by Overload are stunned for 1.5 seconds"}],
+	"frost":  [{"name": "Deep Freeze",   "text": "Whiteout holds for 4.5 seconds"},
+			   {"name": "Bitter Cold",   "text": "Whiteout hits twice as hard"},
+			   {"name": "Ice Wall",      "text": "Whiteout also mends 10% of the base shield"}],
+	"hollow": [{"name": "Long Storm",    "text": "Phase Storm lasts 7 seconds"},
+			   {"name": "Heavy Storm",   "text": "Phase Storm bolts hit 30% harder"},
+			   {"name": "Out of Phase",  "text": "Nothing can hurt him during Phase Storm"}],
+	"nyx":    [{"name": "Sharper Edge",  "text": "Execute finishes bugs below half health"},
+			   {"name": "Long Mark",     "text": "The mark lasts 10 seconds"},
+			   {"name": "Reaper",        "text": "Every bug Execute puts down takes a second off its cooldown"}],
+	"ember":  [{"name": "Slow Burn",     "text": "Firestorm burns for 6 seconds"},
+			   {"name": "Scorched Sky",  "text": "Firestorm leaves five patches of burning ground"},
+			   {"name": "Backdraft",     "text": "Firestorm opens with a blast that hits every bug"}],
+}
+
+static func ability_ups(h: Dictionary, id: String) -> int:
+	var a = h.get("ability", {})
+	if typeof(a) != TYPE_DICTIONARY:
+		return 0
+	return clampi(int(a.get(id, 0)), 0, 3)
+
+# shards for his next ability upgrade (0 = he has all three)
+static func ability_up_cost(h: Dictionary, id: String) -> int:
+	var n := ability_ups(h, id)
+	return int(ABILITY_UP_COST[n]) if n < 3 else 0
+
+static func why_not_ability_up(h: Dictionary, id: String) -> String:
+	if not owned(h, id):
+		return "Unlock him first"
+	if ability_ups(h, id) >= 3:
+		return "All three bought"
+	if DevTools.on:
+		return ""
+	var short := ability_up_cost(h, id) - shards(h, id)
+	return "" if short <= 0 else "%d more shards" % short
+
+static func ability_up(h: Dictionary, id: String) -> String:
+	var why := why_not_ability_up(h, id)
+	if why != "":
+		return why
+	if not DevTools.on:
+		h.shards[id] = shards(h, id) - ability_up_cost(h, id)
+	if typeof(h.get("ability", null)) != TYPE_DICTIONARY:
+		h["ability"] = {}
+	h.ability[id] = ability_ups(h, id) + 1
+	return ""

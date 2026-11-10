@@ -265,10 +265,15 @@ func _build() -> void:
 		_wing_btn = _side_square("Wingmate", "wing")
 		_wing_btn.pressed.connect(_on_wing)
 		stage.add_child(_wing_btn)
+		# the ability and its three upgrades (Heroes.ABILITY_UPS): a sheet
+		_abl_btn = _side_square("Ability", "ability")
+		_abl_btn.pressed.connect(func(): _ability_sheet())
+		stage.add_child(_abl_btn)
 		stage.resized.connect(func():
 			tal.position = Vector2(stage.size.x - 56.0, 6.0)
 			sts.position = Vector2(stage.size.x - 56.0, 92.0)
 			_kit_btn.position = Vector2(0.0, SLOT_PX + 30.0)
+			_abl_btn.position = Vector2(stage.size.x - 56.0, 178.0)
 			_wing_btn.position = Vector2(0.0, SLOT_PX + 30.0 + 84.0))
 	_paint_suit()
 	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
@@ -500,6 +505,10 @@ func _select(slot: String) -> void:
 	if _wing_btn:
 		_wing_btn.visible = not Heroes.wing_choices(hero).is_empty()
 		_wing_btn.queue_redraw()
+	if _abl_btn:
+		_abl_btn.visible = Unlocks.open(_read(), "ability")
+		_abl_btn.queue_redraw()
+		UIKit.dot(_abl_btn, Heroes.owned(hero, _view_id) and Heroes.ability_ups(hero, _view_id) < 3 and Heroes.why_not_ability_up(hero, _view_id) == "")
 	_power_label.text = "POWER %d" % Heroes.power(_read())
 	if _talent_btn:
 		UIKit.dot(_talent_btn, Talents.affordable(_read()))   # a node is ready to buy (dev197)
@@ -2307,6 +2316,10 @@ func _side_square(text: String, kind: String) -> Button:
 				else:
 					b.draw_line(c + Vector2(-9, 0), c + Vector2(9, 0), UIKit.SOFT, 3.0, true)
 					b.draw_line(c + Vector2(0, -9), c + Vector2(0, 9), UIKit.SOFT, 3.0, true)
+			"ability":
+				b.draw_texture_rect(UIKit.element_icon(Heroes.element_of(_view_id)), Rect2(c - Vector2(15, 18), Vector2(30, 30)), false)
+				for i in 3:   # a pip per upgrade bought
+					b.draw_circle(Vector2(c.x - 9.0 + i * 9.0, c.y + 19.0), 2.6, UIKit.GOLD if i < Heroes.ability_ups(hero, _view_id) else Color(1, 1, 1, 0.18))
 			"loadout":
 				var n := str(Loadouts.active(_read()) + 1)
 				b.draw_string(UIKit.title_font(), Vector2(0, c.y + 9.0), n, HORIZONTAL_ALIGNMENT_CENTER, 56.0, 26, UIKit.CYAN)
@@ -4320,3 +4333,163 @@ func _rarity_fx_plain(who: String, tex: Texture2D, col: Color, chip: String, lin
 # capture hook (CAP_CALL="_dbg_weapons"): the Weapons screen
 func _dbg_weapons() -> void:
 	_weapons_screen()
+
+# ------------------------------------------------------------------ ABILITY UPGRADES (Heroes.ABILITY_UPS, 2026-11-10)
+# The Ability square on the right of the hero opens this sheet: the move, its cooldown, and his
+# three upgrades in order. One gold button: the next upgrade and its price in his shards.
+var _abl_layer: Control = null
+var _abl_btn: Button = null
+
+func _ability_sheet(slide: bool = true) -> void:
+	var id := _view_id
+	if not Heroes.owned(hero, id):
+		_toast("Unlock him first")
+		return
+	if is_instance_valid(_abl_layer):
+		_abl_layer.queue_free()
+	var layer := Control.new()
+	_abl_layer = layer
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	slider.add_child(sheet)
+	if slide:
+		dim.modulate.a = 0.0
+		dim.create_tween().tween_property(dim, "modulate:a", 1.0, 0.2)
+		slider.position.y = 700.0
+		slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	sheet.add_child(v)
+	var el := Heroes.element_of(id)
+	var col := Heroes.element_color(el)
+	var ab: Dictionary = Heroes.ABILITIES.get(id, {})
+	var have := Heroes.ability_ups(hero, id)
+	# the head: the element, the move's name, whose it is and its cooldown, Close
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var ei := TextureRect.new()
+	ei.texture = UIKit.element_icon(el)
+	ei.custom_minimum_size = Vector2(48, 48)
+	ei.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	ei.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(ei)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 2)
+	nv.add_child(UIKit.title(String(ab.get("name", "Ability")), 22, UIKit.TEXT))
+	nv.add_child(UIKit.label("%s  ·  ready every %d s" % [String(Heroes.ROSTER[id].name), roundi(Heroes.ability_cd(Heroes.tier(hero, id)))], 12, UIKit.SOFT))
+	head.add_child(nv)
+	var x := UIKit.ghost_button("Close", 13)
+	x.custom_minimum_size = Vector2(80, 34)
+	x.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	var what := UIKit.label(String(ab.get("text", "")), 13, UIKit.TEXT)
+	what.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(what)
+	# the three upgrades, in order: bought (tick), next (ringed), later (dim)
+	var ups: Array = Heroes.ABILITY_UPS.get(id, [])
+	for i in ups.size():
+		var u: Dictionary = ups[i]
+		var got: bool = i < have
+		var next: bool = i == have
+		var row := PanelContainer.new()
+		row.add_theme_stylebox_override("panel", UIKit.box(Color(UIKit.CARD_HI, 0.6 if (got or next) else 0.3), Color(col, 0.8) if next else Color(1, 1, 1, 0.05), 18, 1))
+		var m := MarginContainer.new()
+		for side in ["left", "right"]:
+			m.add_theme_constant_override("margin_" + side, 12)
+		for side in ["top", "bottom"]:
+			m.add_theme_constant_override("margin_" + side, 9)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 12)
+		var mark := Control.new()
+		mark.custom_minimum_size = Vector2(30, 30)
+		mark.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		var n := i + 1
+		mark.draw.connect(func():
+			var c := Vector2(15, 15)
+			if got:
+				mark.draw_circle(c, 14.0, col)
+				mark.draw_polyline(PackedVector2Array([c + Vector2(-6, 0), c + Vector2(-2, 5), c + Vector2(7, -5)]), UIKit.GOLD_INK, 3.0, true)
+			else:
+				mark.draw_arc(c, 13.0, 0.0, TAU, 32, Color(col, 0.9 if next else 0.35), 2.0, true)
+				mark.draw_string(UIKit.title_font(), Vector2(0, 21.0), str(n), HORIZONTAL_ALIGNMENT_CENTER, 30.0, 15, Color(1, 1, 1, 0.95 if next else 0.4)))
+		h.add_child(mark)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.add_theme_constant_override("separation", 1)
+		tv.add_child(UIKit.title(String(u.name), 15, UIKit.TEXT if (got or next) else UIKit.SOFT))
+		var tl := UIKit.label(String(u.text), 12, UIKit.SOFT if (got or next) else Color(UIKit.SOFT, 0.6))
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tv.add_child(tl)
+		h.add_child(tv)
+		if not got:
+			var price := UIKit.iconed(UIKit.ic("mat_shard", "ic_shard"), str(int(Heroes.ABILITY_UP_COST[i])), 13, UIKit.TEXT if next else UIKit.SOFT, 18.0)
+			price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			h.add_child(price)
+		m.add_child(h)
+		row.add_child(m)
+		v.add_child(row)
+	# what he holds, and the one gold button
+	var foot := HBoxContainer.new()
+	foot.add_theme_constant_override("separation", 12)
+	var held := UIKit.iconed(UIKit.ic("mat_shard", "ic_shard"), "%d shards" % Heroes.shards(hero, id), 13, UIKit.TEXT, 20.0)
+	held.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	held.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	foot.add_child(held)
+	var why := Heroes.why_not_ability_up(hero, id)
+	var go := UIKit.gold_button("UPGRADE" if have < 3 else "ALL THREE BOUGHT", 16)
+	go.custom_minimum_size = Vector2(210, 50)
+	go.disabled = why != ""
+	if why == "":
+		go.pressed.connect(_on_ability_up)
+	foot.add_child(go)
+	v.add_child(foot)
+	if why != "" and have < 3:
+		v.add_child(UIKit.label("%s. Shards also pay for Ascend, so choose." % why, 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	elif have < 3:
+		v.add_child(UIKit.label("Shards also pay for Ascend, so choose.", 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+
+func _on_ability_up() -> void:
+	var id := _view_id
+	var n := Heroes.ability_ups(hero, id)
+	var why := Heroes.ability_up(hero, id)
+	if why != "":
+		_toast(why)
+		return
+	var data := _read()
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	Sfx.play("level")
+	_toast("%s: %s" % [String(Heroes.ABILITIES[id].name), String(Heroes.ABILITY_UPS[id][n].name)])
+	_paint_hero()
+	_ability_sheet(false)
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_ability")
+func _dbg_ability() -> void:
+	_ability_sheet()

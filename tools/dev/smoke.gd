@@ -38,6 +38,7 @@ func _initialize() -> void:
 	_check_support()
 	_check_weapons()
 	_check_perks()
+	_check_ability_ups()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -822,3 +823,19 @@ func _check_perks() -> void:
 	_expect(Base.perks(s) == ["armory"], "a perk needs level 5 AND a place on an open slot (%s)" % str(Base.perks(s)))
 	s["base"]["levels"]["reactor"] = 5
 	_expect(Base.perks(s) == ["armory", "reactor"], "the Reactor reaches level 5: its perk too")
+
+func _check_ability_ups() -> void:
+	var s := {"pilot_xp": 0, "hero": {"selected": "rook", "owned": ["rook", "frost"], "levels": {}, "def": {}, "tiers": {}, "shards": {"rook": 40, "frost": 3}, "wing": "frost", "ability": {"frost": 2}}}
+	var h := Heroes.read(s)
+	for id in Heroes.ROSTER:
+		_expect(Heroes.ABILITY_UPS.has(id) and Array(Heroes.ABILITY_UPS[id]).size() == 3, "%s has three ability upgrades" % id)
+	_expect(Heroes.ability_ups(h, "rook") == 0 and Heroes.ability_up_cost(h, "rook") == 10, "none bought yet; the first costs 10 shards")
+	_expect(Heroes.ability_up(h, "rook") == "" and Heroes.shards(h, "rook") == 30 and Heroes.ability_ups(h, "rook") == 1, "bought: 10 shards gone, one upgrade")
+	_expect(Heroes.ability_up(h, "rook") == "" and Heroes.shards(h, "rook") == 5, "the second costs 25")
+	_expect(Heroes.ability_up(h, "rook") == "40 more shards" and Heroes.ability_ups(h, "rook") == 2, "the third is refused without the shards (%s)" % Heroes.why_not_ability_up(h, "rook"))
+	_expect(Heroes.why_not_ability_up(h, "ember") == "Unlock him first", "not for a hero you do not own")
+	s["hero"] = Heroes.write(h)
+	var st := Heroes.stats(s)
+	_expect(int(st.ability_ups) == 2 and int(st.wing_ups) == 2, "the fight is told: the duty hero's two and the wingmate's two")
+	h.ability["frost"] = 3
+	_expect(Heroes.why_not_ability_up(h, "frost") == "All three bought" and Heroes.ability_up_cost(h, "frost") == 0, "nothing after the third")
