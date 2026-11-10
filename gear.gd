@@ -261,10 +261,15 @@ func _build() -> void:
 				return
 			_on_loadout((Loadouts.active(_read()) + 1) % Loadouts.SLOTS))
 		stage.add_child(_kit_btn)
+		# the wingmate (Heroes.wing): a second owned hero who lends half his passive and fires his ability by himself; tap = the next one, then none
+		_wing_btn = _side_square("Wingmate", "wing")
+		_wing_btn.pressed.connect(_on_wing)
+		stage.add_child(_wing_btn)
 		stage.resized.connect(func():
 			tal.position = Vector2(stage.size.x - 56.0, 6.0)
 			sts.position = Vector2(stage.size.x - 56.0, 92.0)
-			_kit_btn.position = Vector2(0.0, SLOT_PX + 30.0))
+			_kit_btn.position = Vector2(0.0, SLOT_PX + 30.0)
+			_wing_btn.position = Vector2(0.0, SLOT_PX + 30.0 + 84.0))
 	_paint_suit()
 	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
 	_hero_panel = UIKit.panel(10)
@@ -492,6 +497,9 @@ func _select(slot: String) -> void:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
 		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[gear.equipped[selected_slot]].set)))
+	if _wing_btn:
+		_wing_btn.visible = not Heroes.wing_choices(hero).is_empty()
+		_wing_btn.queue_redraw()
 	_power_label.text = "POWER %d" % Heroes.power(_read())
 	if _talent_btn:
 		UIKit.dot(_talent_btn, Talents.affordable(_read()))   # a node is ready to buy (dev197)
@@ -1990,6 +1998,7 @@ var _hero_tags: HBoxContainer    # (clean) element, stars, grade
 var _hero_chips: HBoxContainer   # (clean) ATK and HP as chips
 var _hero_bar: HBoxContainer     # (clean) Lv.N ---- cap
 var _kit_btn: Button             # (clean) the Loadout square
+var _wing_btn: Button            # (clean) the Wingmate square
 var _hero_line: Label
 var _level_btn: Button
 var _stars_l: Label
@@ -2295,6 +2304,14 @@ func _side_square(text: String, kind: String) -> Button:
 					var hgt: float = [10.0, 18.0, 13.0, 22.0][i]
 					var x: float = c.x - 13.0 + i * 8.7
 					b.draw_line(Vector2(x, c.y + 11.0), Vector2(x, c.y + 11.0 - hgt), UIKit.CYAN, 4.0, true)
+			"wing":
+				var wid := Heroes.wing(hero)
+				if wid != "":
+					b.draw_texture_rect(_hero_portrait(wid), Rect2(c - Vector2(22, 22), Vector2(44, 44)), false)
+					b.draw_arc(c, 25.0, 0.0, TAU, 32, Heroes.element_color(Heroes.element_of(wid)), 2.0, true)
+				else:
+					b.draw_line(c + Vector2(-9, 0), c + Vector2(9, 0), UIKit.SOFT, 3.0, true)
+					b.draw_line(c + Vector2(0, -9), c + Vector2(0, 9), UIKit.SOFT, 3.0, true)
 			"loadout":
 				var n := str(Loadouts.active(_read()) + 1)
 				b.draw_string(UIKit.title_font(), Vector2(0, c.y + 9.0), n, HORIZONTAL_ALIGNMENT_CENTER, 56.0, 26, UIKit.CYAN)
@@ -4069,3 +4086,17 @@ func _refresh_ws_craft_clean() -> void:
 		_ws_craft_box.add_child(erow)
 	_ws_craft_box.add_child(grid)
 	UIKit.reveal(grid, 0.02, 8.0)
+
+# the Wingmate square: the next owned hero rides along, then nobody
+func _on_wing() -> void:
+	hero["wing"] = Heroes.wing_next(hero)
+	var data := _read()
+	data["hero"] = Heroes.write(hero)
+	_write_data(data)
+	Sfx.play("tap")
+	var wid := Heroes.wing(hero)
+	if wid == "":
+		_toast("No wingmate")
+	else:
+		_toast("%s flies with you: half of %s, and %s" % [String(Heroes.ROSTER[wid].name), Heroes.passive_text(wid, Heroes.tier(hero, wid)), String(Heroes.ABILITIES[wid].name)])
+	_paint_hero()

@@ -618,6 +618,9 @@ func _start_stage() -> void:
 	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
 	_ult_cd = float(gs.get("ability_cd", 40.0))   # shorter on the higher rarity steps
 	_ult_t = 12.0
+	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
+	_wing_t = 25.0
+	_ult_kind = ""
 	# hero level perks (Heroes.MILESTONES, dev186): a twin every 6th shot, one bug pierced, bursts of 2
 	_perk_twin = float(gs.get("twin_shot", 0.0)) > 0.0
 	if float(gs.get("pierce1", 0.0)) > 0.0:
@@ -926,6 +929,7 @@ func _process(delta: float) -> void:
 	_update_supply(delta)
 	_update_streak(delta)
 	_update_ability(delta)
+	_update_wing(delta)
 	_update_bullets(delta)
 	_update_fire_patches(delta)
 	_update_enemies(delta)
@@ -1116,7 +1120,7 @@ func _aim_and_fire(delta: float) -> void:
 	if burst_count > 1:
 		interval *= 1.0 + 0.35 * (burst_count - 1)
 	if _ult_live > 0.0:
-		interval *= 0.7 if _hero_id == "hollow" else 0.4   # Phase Storm / Volley (hero abilities)
+		interval *= 0.7 if _ult_kind == "phase" else 0.4   # Phase Storm / Volley (hero abilities)
 	if _overdrive and fmod(time_alive, 8.0) < 3.0:
 		interval *= 0.5   # Rapid Pulse overcharged: overdrive window
 	if auto:
@@ -1255,7 +1259,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * _beacon_mult * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and _hero_id == "hollow") or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and _ult_kind == "phase") or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else 0, "pierce_left": pierce_level,
 			"frost": frost_level > 0, "rail": rail or rail_gun, "lucky": lucky,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
@@ -4915,6 +4919,7 @@ func _draw_hud() -> void:
 	_draw_card_row(Vector2(14.0, HUD_H + 24.0))   # its own row under the XP bar
 	_draw_auto_btn()
 	_draw_ult_btn()
+	_draw_wing_chip()
 	_draw_streak()
 	for e in enemies:
 		if _is_boss(e):
@@ -5715,16 +5720,45 @@ func _use_ability() -> void:
 	_ult_t = _ult_cd
 	_ai_ult = 1.0
 	_ult_flash = 1.0
-	var col: Color = Heroes.element_color(Heroes.element_of(_hero_id))
-	var ab: Dictionary = Heroes.ABILITIES.get(_hero_id, Heroes.ABILITIES["rook"])
-	_float_text(soldier_pos + Vector2(0, -92), String(ab.name).to_upper() + "!", col.lerp(Color.WHITE, 0.3), true)
-	_fx_add("nova", soldier_pos, 140.0, 0.6, 0.0, 3.2, col)
+	_ability_effect(_hero_id, false)
+
+# WINGMATE (2026-11-10; IDEAS-2026-11-10.md 6): a second hero you own rides along as support
+# (Heroes.wing). He lends his passive at half strength (Heroes.stats) and fires his own ability by
+# himself every WING_CD seconds when there is a crowd or a boss. It makes a roster worth owning.
+const WING_CD := 55.0
+var _wing_id := ""
+var _wing_t := 25.0
+var _ult_kind := ""       # "volley" or "phase" while _ult_live runs
+
+func _update_wing(delta: float) -> void:
+	if _wing_id == "" or not _ability_open():
+		return
+	_wing_t = maxf(_wing_t - delta, 0.0)
+	if _wing_t > 0.0:
+		return
+	var boss := false
+	for e in enemies:
+		boss = boss or (_is_boss(e) and e.get("arrived", false))
+	if boss or enemies.size() >= 4:
+		_wing_t = WING_CD
+		_ability_effect(_wing_id, true)
+
+# what an ability does (the hero on duty, or the wingmate's assist)
+func _ability_effect(hid: String, assist: bool) -> void:
+	var col: Color = Heroes.element_color(Heroes.element_of(hid))
+	var ab: Dictionary = Heroes.ABILITIES.get(hid, Heroes.ABILITIES["rook"])
+	var shout := String(ab.name).to_upper() + "!"
+	if assist:
+		shout = "%s: %s" % [String(Heroes.ROSTER[hid].name).to_upper(), shout]
+	_float_text(soldier_pos + Vector2(0, -92 if not assist else -116), shout, col.lerp(Color.WHITE, 0.3), true)
+	_fx_add("nova", soldier_pos, 140.0 if not assist else 100.0, 0.6, 0.0, 3.2, col)
 	_burst(soldier_pos, 46.0, col, 20)
-	hitstop = maxf(hitstop, 0.1)
-	shake = maxf(shake, 0.4)
-	Sfx.play("level", 0.8)
+	if not assist:
+		hitstop = maxf(hitstop, 0.1)
+		shake = maxf(shake, 0.4)
+	Sfx.play("level", 0.8 if not assist else 1.1)
 	var base := _bolt_dmg()
-	match _hero_id:
+	match hid:
 		"sparks":
 			# Overload: lightning jumps through the eight nearest bugs
 			var pool: Array = enemies.filter(func(e): return _can_hurt(e))
@@ -5749,7 +5783,7 @@ func _use_ability() -> void:
 			for e in enemies:
 				if not _can_hurt(e):
 					continue
-				if not _is_boss(e) and e.hp <= 0.4 * float(e.hp_max):
+				if not _is_boss(e) and e.type != "crate" and e.hp <= 0.4 * float(e.hp_max):
 					_ult_hit(e, float(e.hp) + 1.0)
 				else:
 					_ult_hit(e, base * 4.0)
@@ -5767,8 +5801,24 @@ func _use_ability() -> void:
 					_fire_patches.append({"pos": Vector2(FIELD_W * (0.25 + 0.25 * i), FIELD_H * 0.42), "life": 4.0, "max": 4.0, "r": 60.0, "ph": rng.randf() * TAU})
 		"hollow":
 			_ult_live = 5.0   # Phase Storm: five seconds of bolts that pass through everything (see _fire)
+			_ult_kind = "phase"
 		_:
 			_ult_live = 4.0   # Rook, Volley: four seconds at two and a half times the fire rate (see _aim_and_fire)
+			_ult_kind = "volley"
+
+# the wingmate's small ring above the ability button: his element, filling as his assist charges
+func _draw_wing_chip() -> void:
+	if _wing_id == "" or not _ability_open():
+		return
+	var r := _ult_rect()
+	var c := Vector2(r.get_center().x, r.position.y - 26.0)
+	var col: Color = Heroes.element_color(Heroes.element_of(_wing_id))
+	_hc.draw_circle(c, 17.0, Color(0.055, 0.09, 0.157, 0.88))
+	_hc.draw_arc(c, 16.0, 0.0, TAU, 32, Color(1, 1, 1, 0.1), 1.5, true)
+	_hc.draw_arc(c, 16.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _wing_t / WING_CD), 32, Color(col, 0.85), 2.0, true)
+	var icon: Texture2D = _tex_cached(UIKit.ELEMENT_ICON.get(Heroes.element_of(_wing_id), "el_energy"))
+	if icon != null:
+		_hc.draw_texture_rect(icon, Rect2(c - Vector2(10, 10), Vector2(20, 20)), false, Color(1, 1, 1, 0.9))
 
 # bottom left, above the base: the mirror of AUTO
 func _ult_rect() -> Rect2:

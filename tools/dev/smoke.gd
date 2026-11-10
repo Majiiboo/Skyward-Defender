@@ -31,6 +31,7 @@ func _initialize() -> void:
 	_check_goals()
 	_check_daily()
 	_check_codex()
+	_check_wing()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -665,3 +666,27 @@ func _check_codex() -> void:
 	s["seen_enemies"] = ["scout", "drifter", "spitter", "runner"]
 	_expect(Codex.count(s, "enemies")[0] == 3, "enemies met count; the runner tip is not an entry")
 	_expect(Progress.attention(s).quests_tabs.size() == 5 and Progress.attention(s).quests_tabs[4] == Codex.claimable(s), "the Collection tab carries its own red dot")
+
+# the wingmate (2026-11-10): a second owned hero lends half his passive
+func _check_wing() -> void:
+	var s := {"pilot_xp": 0, "hero": {"selected": "rook", "owned": ["rook", "nyx", "hollow"], "levels": {}, "def": {}, "tiers": {}, "shards": {}}}
+	var h := Heroes.read(s)
+	_expect(Heroes.wing(h) == "" and Heroes.wing_choices(h) == ["hollow", "nyx"], "no wingmate at first; the owned heroes not on duty can ride along (%s)" % str(Heroes.wing_choices(h)))
+	var base_crit := float(Heroes.stats(s).crit_rate)
+	h["wing"] = Heroes.wing_next(h)
+	_expect(Heroes.wing(h) == "hollow", "tap: the first choice")
+	h["wing"] = Heroes.wing_next(h)
+	s["hero"] = Heroes.write(h)
+	var st := Heroes.stats(s)
+	_expect(String(st.wing) == "nyx" and is_equal_approx(float(st.crit_rate) - base_crit, 0.05 * Heroes.passive_mult(4) * 0.5), "Nyx as wingmate: half her crit passive (+%.3f)" % (float(st.crit_rate) - base_crit))
+	_expect(is_equal_approx(float(st.gem_xp), 1.15), "Rook keeps his own passive whole")
+	h = Heroes.read(s)
+	h["wing"] = Heroes.wing_next(h)
+	_expect(Heroes.wing(h) == "", "tap again after the last one: nobody")
+	h["wing"] = "hollow"
+	s["hero"] = Heroes.write(h)
+	_expect(int(Heroes.stats(s).pierce_every) == Heroes.pierce_every(3) * 2, "Hollow as wingmate: his piercing bolt half as often")
+	h.selected = "hollow"
+	_expect(Heroes.wing(h) == "", "the hero on duty cannot be his own wingmate")
+	h["wing"] = "ember"
+	_expect(Heroes.wing(h) == "", "a hero you do not own cannot ride along")

@@ -199,10 +199,11 @@ static func read(save: Dictionary) -> Dictionary:
 			for id in src:
 				if ROSTER.has(id):
 					out[key][id] = int(src[id])
+	out["wing"] = String(h.get("wing", ""))   # the wingmate (checked when read: Heroes.wing)
 	return out
 
 static func write(h: Dictionary) -> Dictionary:
-	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "def": h.def, "tiers": h.tiers, "shards": h.shards}
+	return {"selected": h.selected, "owned": h.owned, "levels": h.levels, "def": h.def, "tiers": h.tiers, "shards": h.shards, "wing": String(h.get("wing", ""))}
 
 # the hero block an old save gets the first time: spent armour coins -> Rook's level,
 # armour copies -> Rook shards (the weapon keeps everything it had)
@@ -494,30 +495,25 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.fortress *= sm
 	st.hp *= sm
 	# the passive, stronger on the named steps (ASCEND: x1.5 Uncommon, x2 Legendary, x3 Mythic V)
-	var pm := passive_mult(star)
 	st["pierce_every"] = 0
 	st["chill_bonus"] = 0.0
-	match id:
-		"rook": st.gem_xp += 0.15 * pm
-		"sparks": st.coins += 0.20 * pm
-		"frost":
-			st.chill = true
-			st.chill_bonus = chill_bonus(star)
-		"hollow":
-			st.pierce5 = true
-			st.pierce_every = pierce_every(star)
-		"nyx": st.crit_rate += 0.05 * pm
-		"ember": st.hp_mult += 0.2 * pm
+	_apply_passive(st, id, star, 1.0)
+	# the wingmate (2026-11-10): a second owned hero lends his passive at half strength; the battle
+	# fires his ability by itself now and then (battle _update_wing)
+	var wid := wing(h)
+	st["wing"] = wid
+	if wid != "":
+		_apply_passive(st, wid, tier(h, wid), WING_SHARE)
 	# the step power-ups: a free refresh from Rare, his hero card in hand from Epic
 	if star >= 3:
 		st.refreshes += 1
 	st["start_card"] = star >= 4
 	st["ability_cd"] = ability_cd(star)
 	# the one gear slot: the weapon (its level, its type)
-	var wid: String = gear.equipped["Weapon"]
-	var wlv := GearData.level(gear, wid)
+	var wpn: String = gear.equipped["Weapon"]
+	var wlv := GearData.level(gear, wpn)
 	st.damage *= 1.0 + float(GearData.SLOT_STAT["Weapon"].per) * wlv
-	st.weapon = GearData.SETS[GearData.ITEMS[wid].set].weapon
+	st.weapon = GearData.SETS[GearData.ITEMS[wpn].set].weapon
 	st.crit_rate += float(GearData.MILESTONE["Weapon"].per) * GearData.milestones(wlv)
 	# the pilot talent map (Talents, dev197): small permanent bonuses for every hero
 	var tb := Talents.bonus(save)
@@ -537,6 +533,46 @@ static func stats(save: Dictionary) -> Dictionary:
 	st.damage *= Promotion.bonus(pr)
 	st.fortress *= Promotion.bonus(pr)
 	return st
+
+# a hero's passive on the stats, at `share` of its strength (1 = the hero on duty, WING_SHARE = a wingmate)
+const WING_SHARE := 0.5
+
+static func _apply_passive(st: Dictionary, id: String, star: int, share: float) -> void:
+	var pm := passive_mult(star) * share
+	match id:
+		"rook": st.gem_xp += 0.15 * pm
+		"sparks": st.coins += 0.20 * pm
+		"frost":
+			# the battle slows 15% + this bonus; a wingmate's chill is half of what he gives on duty
+			st.chill = true
+			st.chill_bonus = chill_bonus(star) if share >= 1.0 else (0.15 + chill_bonus(star)) * share - 0.15
+		"hollow":
+			st.pierce5 = true
+			var ev := pierce_every(star) * (1 if share >= 1.0 else 2)
+			st.pierce_every = ev if int(st.pierce_every) == 0 else mini(int(st.pierce_every), ev)
+		"nyx": st.crit_rate += 0.05 * pm
+		"ember": st.hp_mult += 0.2 * pm
+
+# the wingmate: an owned hero other than the one on duty ("" = none)
+static func wing(h: Dictionary) -> String:
+	var w := String(h.get("wing", ""))
+	return w if w != "" and ROSTER.has(w) and w != selected(h) and owned(h, w) else ""
+
+# the heroes that can ride along: owned, not on duty
+static func wing_choices(h: Dictionary) -> Array:
+	var out: Array = []
+	for id in ORDER:
+		if owned(h, String(id)) and String(id) != selected(h):
+			out.append(String(id))
+	return out
+
+# tap = the next choice, then none
+static func wing_next(h: Dictionary) -> String:
+	var ch := wing_choices(h)
+	if ch.is_empty():
+		return ""
+	var i := ch.find(wing(h))
+	return String(ch[i + 1]) if i + 1 < ch.size() else ""
 
 # a single number for the Heroes page: grade, level, tier and the weapon, weighted
 static func power(save: Dictionary) -> int:
