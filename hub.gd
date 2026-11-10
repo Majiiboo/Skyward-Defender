@@ -147,7 +147,15 @@ func _ready() -> void:
 	var ws := Progress.read()
 	var back := Welcome.check(ws)
 	Progress.write(ws)
-	if not back.is_empty():
+	# WHAT IS NEW (WhatsNew): once per build, a short list of what changed and where it is
+	var news: bool = back.is_empty() and WhatsNew.due(ws)
+	if news:
+		WhatsNew.mark(ws)
+		Progress.write(ws)
+		get_tree().create_timer(0.6).timeout.connect(func():
+			if is_inside_tree() and _current_view == null and _popup_layer == null:
+				WhatsNew.show(self))
+	elif not back.is_empty():
 		get_tree().create_timer(0.6).timeout.connect(func():
 			if is_inside_tree() and _current_view == null and _popup_layer == null:
 				Welcome.show(self, back)
