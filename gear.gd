@@ -3900,6 +3900,34 @@ func _refresh_drone_clean() -> void:
 			grid.add_child(sq)
 		box.add_child(grid)
 		UIKit.reveal(grid, 0.02, 8.0)
+	# the support drone: a second drone with a job, flown while a Hangar stands on the base
+	box.add_child(UIKit.header("Support drone"))
+	var sdata := _read()
+	if not DroneData.support_open(sdata):
+		var hint := UIKit.label("Put a Hangar on your base and a second drone flies with you: a Guard, a Collector or a Medic.", 12, UIKit.SOFT)
+		hint.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(hint)
+	else:
+		var hl := DroneData.hangar_level(sdata)
+		var sgrid := GridContainer.new()
+		sgrid.columns = 3
+		sgrid.add_theme_constant_override("h_separation", 8)
+		for sid in DroneData.SUPPORT_ORDER:
+			var sdef: Dictionary = DroneData.SUPPORT[sid]
+			var son: bool = String(drone.get("support", "")) == String(sid)
+			var ssq := _pick_square(load("res://drone/%s.png" % String(sdef.art)), String(sdef.name), 98.0, son, sdef.col, false)
+			var spick := String(sid)
+			ssq.pressed.connect(func():
+				drone["support"] = "" if String(drone.get("support", "")) == spick else spick   # tap the one in use to send it home
+				_save_drone()
+				Sfx.play("tap")
+				_refresh_drone())
+			sgrid.add_child(ssq)
+		box.add_child(sgrid)
+		var cur := String(drone.get("support", ""))
+		var sl := UIKit.label(DroneData.support_text(cur, hl) + "  ·  Hangar Lv.%d" % hl if cur != "" else "Pick one. A higher Hangar level makes it better at its job.", 12, UIKit.SOFT)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		box.add_child(sl)
 	_power_label.text = ""
 	_paint_wallet()
 

@@ -682,6 +682,7 @@ func _start_stage() -> void:
 	if plevel < int(DroneData.PODS[_drone.pod].unlock) and not DevTools.on:
 		_drone.pod = "blaster"
 	_drone_on = DroneData.unlocked(plevel)
+	_setup_support(sv)   # the second, support drone (needs a Hangar on the base)
 	_drone_cd = 0.5
 	_drone_beam = {}
 	_took_damage = false
@@ -948,6 +949,7 @@ func _process(delta: float) -> void:
 	_update_runners(delta)
 	_update_strikes(delta)
 	_update_supply(delta)
+	_update_support(delta)
 	_update_streak(delta)
 	_update_ability(delta)
 	_update_wing(delta)
@@ -2675,6 +2677,8 @@ func _hurt_base(amount: float) -> void:
 func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if inv_t > 0.0:
 		return
+	if _support_blocks():   # the Guard drone takes this one
+		return
 	inv_t = 1.0 * _recovery
 	_streak_break()   # a hit ends the kill streak
 	var dmg := amount * (1.0 - _def)   # DEF takes its share off
@@ -4091,6 +4095,7 @@ func _draw() -> void:
 			draw_line(p + Vector2(-r * 1.4 * k, -r * 0.6), p + Vector2(r * 1.4 * k, -r * 0.6), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
 			draw_line(p + Vector2(0, -r * 0.6 - r * 1.4 * k), p + Vector2(0, -r * 0.6 + r * 1.4 * k), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
 	_draw_drone()
+	_draw_support()
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
 	var pose := _current_pose()
@@ -6361,3 +6366,73 @@ func _no_turret_hp() -> float:
 	if TURRETS_ON:
 		return 1.0
 	return lerpf(1.0, NO_TURRET_HP, clampf((stage - 5) / 15.0, 0.0, 1.0))
+
+# ------------------------------------------------------------------ THE SUPPORT DRONE (DroneData.SUPPORT, 2026-11-10)
+# A second drone on the hero's other side that does a job instead of shooting: the Guard blocks a
+# hit on the hero now and then, the Collector brings pickups in, the Medic mends him. It flies only
+# while a Hangar stands on the base; the Hangar's level sets how good it is.
+var _sup := ""
+var _sup_lvl := 1
+var _sup_p := Vector2.ZERO
+var _sup_guard_t := 0.0
+var _sup_flash := 0.0
+
+func _setup_support(sv: Dictionary) -> void:
+	_sup = String(DroneData.read(sv).get("support", "")) if (_drone_on and DroneData.support_open(sv)) else ""
+	_sup_lvl = DroneData.hangar_level(sv)
+	_sup_p = Vector2.ZERO
+	_sup_guard_t = 3.0
+	if _sup != "":
+		_tex["sup"] = load("res://drone/%s.png" % String(DroneData.SUPPORT[_sup].art))
+
+func _update_support(delta: float) -> void:
+	if _sup == "":
+		return
+	_sup_flash = maxf(_sup_flash - delta * 2.5, 0.0)
+	var tgt := soldier_pos + Vector2(54.0, 2.0 + sin(time_alive * 3.0 + 1.6) * 4.0)
+	_sup_p = tgt if _sup_p == Vector2.ZERO else _sup_p.lerp(tgt, minf(1.0, delta * 7.0))
+	match _sup:
+		"shield":
+			_sup_guard_t = maxf(_sup_guard_t - delta, 0.0)
+		"collector":
+			var reach := DroneData.collect_reach(_sup_lvl)
+			for g in gems:
+				if Vector2(g.pos).distance_to(_sup_p) < reach:
+					g.pos = Vector2(g.pos).move_toward(soldier_pos, 320.0 * delta)
+		"medic":
+			if pilot_hp < pilot_hp_max:
+				pilot_hp = minf(pilot_hp + pilot_hp_max * DroneData.medic_rate(_sup_lvl) * delta, pilot_hp_max)
+
+# the Guard takes a hit meant for the hero; true = blocked
+func _support_blocks() -> bool:
+	if _sup != "shield" or _sup_guard_t > 0.0:
+		return false
+	_sup_guard_t = DroneData.guard_every(_sup_lvl)
+	_sup_flash = 1.0
+	inv_t = maxf(inv_t, 0.4)
+	_fx_add("nova", soldier_pos, 60.0, 0.35, 0.0, 1.6, Color(0.31, 0.88, 1.0))
+	_float_text(soldier_pos + Vector2(0, -52), "BLOCKED", Color(0.5, 0.92, 1.0))
+	Sfx.play("shield")
+	return true
+
+func _draw_support() -> void:
+	if _sup == "" or not _tex.has("sup"):
+		return
+	var tx: Texture2D = _tex["sup"]
+	var col: Color = DroneData.SUPPORT[_sup].col
+	var s := 38.0
+	var h: float = s * tx.get_height() / tx.get_width()
+	draw_set_transform(_sup_p, sin(time_alive * 1.3) * 0.08, Vector2.ONE)
+	draw_texture_rect(tx, Rect2(-s * 0.5, -h * 0.5, s, h), false)
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	if _sup == "shield":
+		# its bubble round the hero: bright when a block is ready, a thin arc filling while it recharges
+		var k: float = 1.0 - _sup_guard_t / DroneData.guard_every(_sup_lvl)
+		if _sup_guard_t <= 0.0:
+			draw_arc(soldier_pos, 34.0, 0.0, TAU, 40, Color(col, 0.35 + 0.15 * sin(time_alive * 4.0)), 1.5, true)
+		else:
+			draw_arc(soldier_pos, 34.0, -PI / 2.0, -PI / 2.0 + TAU * k, 40, Color(col, 0.2), 1.5, true)
+	elif _sup == "medic" and pilot_hp < pilot_hp_max:
+		draw_line(_sup_p, soldier_pos + Vector2(0, -10), Color(col, 0.35 + 0.2 * sin(time_alive * 8.0)), 1.5, true)
+	if _sup_flash > 0.0:
+		draw_arc(soldier_pos, 34.0 + 16.0 * (1.0 - _sup_flash), 0.0, TAU, 40, Color(col, _sup_flash), 2.5, true)

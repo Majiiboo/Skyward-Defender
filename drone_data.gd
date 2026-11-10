@@ -66,7 +66,8 @@ static func read(save: Dictionary) -> Dictionary:
 			if BODIES.has(String(id)):
 				stars[String(id)] = Gates.clamp_star(int(sv[id]))
 	return {"body": body if BODIES.has(body) else "scout", "pod": pod if PODS.has(pod) else "blaster", "owned": owned,
-		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL), "stars": stars}
+		"level": clampi(int(d.get("level", 1)), 1, MAX_LEVEL), "stars": stars,
+		"support": String(d.get("support", "")) if SUPPORT.has(String(d.get("support", ""))) else ""}
 
 static func unlocked(pilot_level: int) -> bool:
 	return pilot_level >= UNLOCK_LEVEL or DevTools.on
@@ -207,4 +208,40 @@ static func unlock(save: Dictionary, dr: Dictionary, body: String, with_crystals
 		if why != "":
 			return why
 	dr.owned.append(body)
+	return ""
+
+# THE SUPPORT DRONE (2026-11-10, the drone squad; Rudy: "helpers as drones", "maybe one [building]
+# will give you an extra drone"). A second drone that does a JOB instead of shooting. It flies only
+# while a Hangar stands on the base (Base), and the Hangar's level makes it better at its job.
+# Save drone.support = one of these ids ("" = none).
+const SUPPORT := {
+	"shield":    {"name": "Guard", "art": "body_warden", "col": Color(0.31, 0.88, 1.0)},
+	"collector": {"name": "Collector", "art": "pod_magnet", "col": Color(1.0, 0.78, 0.27)},
+	"medic":     {"name": "Medic", "art": "pod_repair", "col": Color(0.44, 0.94, 0.72)},
+}
+const SUPPORT_ORDER := ["shield", "collector", "medic"]
+
+static func support_open(save: Dictionary) -> bool:
+	return DevTools.on or Array(Base.stats(save).on).has("hangar")
+
+static func hangar_level(save: Dictionary) -> int:
+	return maxi(Base.level(Base.read(save), "hangar"), 1)
+
+# seconds between the hits the Guard blocks
+static func guard_every(lvl: int) -> float:
+	return maxf(10.5 - 0.5 * lvl, 5.0)
+
+# share of the hero's health the Medic gives back each second
+static func medic_rate(lvl: int) -> float:
+	return 0.004 + 0.0006 * lvl
+
+# how far the Collector reaches for pickups
+static func collect_reach(lvl: int) -> float:
+	return 170.0 + 14.0 * lvl
+
+static func support_text(id: String, lvl: int) -> String:
+	match id:
+		"shield": return "Blocks a hit on your hero every %.1f s" % guard_every(lvl)
+		"collector": return "Brings in pickups from %d px away" % roundi(collect_reach(lvl))
+		"medic": return "Heals your hero %.1f%% a second" % (medic_rate(lvl) * 100.0)
 	return ""

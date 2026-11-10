@@ -35,6 +35,7 @@ func _initialize() -> void:
 	_check_events()
 	_check_runs()
 	_check_base()
+	_check_support()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -787,3 +788,15 @@ func _check_base() -> void:
 	var old := {"stage_unlocked": 20, "coins": 100, "turrets": {"loadout": ["sentry", "lance", "", ""], "owned": ["sentry", "lance"], "tracks": {"sentry": {"atk": 3, "rate": 2, "range": 1}}}}
 	var back := Base.migrate(old)
 	_expect(back == 3000 + 60 + 120 + 60 and int(old.coins) == 100 + back and Base.migrate(old) == 0 and old.has("base"), "what was spent on turrets comes back as coins, once (%d)" % back)
+
+# the support drone (DroneData.SUPPORT, 2026-11-10): a second drone with a job, flown by the Hangar
+func _check_support() -> void:
+	var s := {"stage_unlocked": 13, "drone": {"body": "scout", "pod": "blaster", "support": "medic"}}
+	_expect(DroneData.read(s).support == "medic" and not DroneData.support_open(s), "a support drone is chosen, but it needs a Hangar on the base")
+	s["base"] = {"slots": ["hangar", "", "", ""], "levels": {"hangar": 3}}
+	_expect(DroneData.support_open(s) and DroneData.hangar_level(s) == 3, "with a Hangar on an open slot it flies")
+	s["drone"]["support"] = "nonsense"
+	_expect(DroneData.read(s).support == "", "an unknown job is no drone")
+	for id in DroneData.SUPPORT_ORDER:
+		_expect(ResourceLoader.exists("res://drone/%s.png" % String(DroneData.SUPPORT[id].art)) and DroneData.support_text(String(id), 1) != "", "support %s: a picture and a line" % id)
+	_expect(DroneData.guard_every(10) < DroneData.guard_every(1) and DroneData.medic_rate(10) > DroneData.medic_rate(1) and DroneData.collect_reach(10) > DroneData.collect_reach(1), "a higher Hangar makes every job better")
