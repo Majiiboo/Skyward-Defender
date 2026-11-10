@@ -686,7 +686,7 @@ func _refresh_ws_parts(pop: String = "") -> void:
 		c.queue_free()
 	_ws_icons = {}
 	var have := Parts.read(_read())
-	_ws_parts_box.add_child(UIKit.header("YOUR PARTS"))
+	_ws_parts_box.add_child(UIKit.header("Your parts"))
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 8)
 	for k in Parts.ORDER:
@@ -702,7 +702,7 @@ func _refresh_ws_parts(pop: String = "") -> void:
 		p.add_child(v)
 		row.add_child(p)
 	_ws_parts_box.add_child(row)
-	_ws_parts_box.add_child(UIKit.header("MERGE"))
+	_ws_parts_box.add_child(UIKit.header("Merge 3 into 1"))
 	for k in Parts.MERGE:
 		var to: String = Parts.MERGE[k]
 		var n: int = int(have[k]) / Parts.MERGE_COST
@@ -733,7 +733,8 @@ func _refresh_ws_parts(pop: String = "") -> void:
 		h.add_child(all)
 		p.add_child(h)
 		_ws_parts_box.add_child(p)
-	_ws_parts_box.add_child(UIKit.label("Gear copies: the Gear tab  ·  turret modules: coming soon", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	if not UIKit.CLEAN:
+		_ws_parts_box.add_child(UIKit.label("Gear copies: the Gear tab  ·  turret modules: coming soon", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	if pop != "" and _ws_icons.has(pop):
 		var tr: TextureRect = _ws_icons[pop]
 		await get_tree().process_frame
@@ -821,6 +822,9 @@ func _filter_text() -> String:
 func _refresh_ws_gear() -> void:
 	for c in _ws_gear_box.get_children():
 		c.queue_free()
+	if UIKit.CLEAN:
+		_refresh_ws_gear_clean()
+		return
 	gear = GearData.read(_read())
 	var total := 0
 	for id in gear.copies:
@@ -2969,6 +2973,9 @@ func _weapons_screen() -> void:
 func _refresh_ws_craft() -> void:
 	for c in _ws_craft_box.get_children():
 		c.queue_free()
+	if UIKit.CLEAN:
+		_refresh_ws_craft_clean()
+		return
 	var data := _read()
 	var have := Parts.read(data)
 	_ws_craft_box.add_child(UIKit.header("YOUR MATERIALS"))
@@ -3890,3 +3897,175 @@ func _num_badge(parent: Control, col: Color, text: String) -> void:
 	p.offset_right = -6.0
 	p.offset_top = 6.0
 	parent.add_child(p)
+
+# ------------------------------------------------------------------ the CLEAN Workshop (2026-11-10)
+# Gear: the stacks as the same flat squares as the Turrets page (the count on a badge in the rarity
+# colour, a red dot on a stack that can merge), Filter and Quick Merge on one row. Craft: every
+# recipe is one square you tap (picture, what it takes as have / need, the coin price), instead
+# of a long list of cards with a gold button each.
+func _refresh_ws_gear_clean() -> void:
+	gear = GearData.read(_read())
+	var total := 0
+	for id in gear.copies:
+		total += GearData.total_copies(gear, id)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 8)
+	var fb := UIKit.ghost_button("Filter", 13)
+	fb.custom_minimum_size = Vector2(84, 42)
+	fb.pressed.connect(_filter_box)
+	row.add_child(fb)
+	var bits: Array = []
+	if _inv_filter.rarity != "":
+		bits.append(GearData.rarity_name(_inv_filter.rarity))
+	if _inv_filter.set != "":
+		bits.append(GearData.SETS[_inv_filter.set].name)
+	var ft := UIKit.label(("All" if bits.is_empty() else " · ".join(bits)) + "  ·  " + String(INV_SORT_NAMES[_inv_filter.sort]), 12, UIKit.SOFT)
+	ft.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ft.clip_text = true
+	row.add_child(ft)
+	var qn := GearData.quick_merge_count(gear)
+	var qb := UIKit.gold_button("Quick Merge" + ((" %d" % qn) if qn > 0 else ""), 14)
+	_quick_btn = qb
+	qb.custom_minimum_size = Vector2(150, 42)
+	qb.disabled = qn <= 0
+	qb.pressed.connect(_quick_merge)
+	row.add_child(qb)
+	_ws_gear_box.add_child(row)
+	var stacks := _inv_stacks()
+	if stacks.is_empty():
+		var t := UIKit.label("Weapon copies drop when you clear a stage and from Patrol." if total == 0 else "Nothing matches this filter.", 13, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		t.custom_minimum_size = Vector2(0, 80)
+		t.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		_ws_gear_box.add_child(t)
+	var grid := GridContainer.new()
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for s in stacks:
+		var info: Dictionary = GearData.ITEMS[s.id]
+		var rc: Color = GearData.rarity_color(s.rarity)
+		var worn: bool = gear.equipped[info.slot] == s.id and GearData.rarity(gear, s.id) == s.rarity
+		var b := _pick_square(_pic(s.id), String(info.name), 104.0, worn, rc, false)
+		_num_badge(b, rc, "x%d" % int(s.n))
+		UIKit.dot(b, GearData.can_merge(gear, s.id, s.rarity))
+		var stack: Dictionary = s
+		b.pressed.connect(func(): _stack_box(stack))
+		grid.add_child(b)
+	_ws_gear_box.add_child(grid)
+	UIKit.reveal(grid, 0.02, 8.0)
+	_power_label.text = ""
+	_paint_wallet()
+
+func _refresh_ws_craft_clean() -> void:
+	var data := _read()
+	var have := Parts.read(data)
+	# what you hold, as small chips
+	var flow := HFlowContainer.new()
+	flow.add_theme_constant_override("h_separation", 6)
+	flow.add_theme_constant_override("v_separation", 6)
+	for k in Materials.ORDER:
+		if int(have.get(k, 0)) <= 0:
+			continue
+		var cp := PanelContainer.new()
+		cp.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD, 0.9), 14, Vector2(10, 4)))
+		cp.tooltip_text = Materials.name_of(k)
+		cp.add_child(UIKit.iconed(Materials.icon(k), str(int(have[k])), 12, UIKit.TEXT, 20.0))
+		flow.add_child(cp)
+	if flow.get_child_count() > 0:
+		_ws_craft_box.add_child(flow)
+	# the essence recipe makes the element you pick here
+	var erow := HBoxContainer.new()
+	erow.add_theme_constant_override("separation", 6)
+	erow.alignment = BoxContainer.ALIGNMENT_CENTER
+	erow.add_child(UIKit.label("Essence", 12, UIKit.SOFT))
+	for el in Heroes.ELEMENTS:
+		var eb := Button.new()
+		eb.custom_minimum_size = Vector2(44, 38)
+		eb.icon = UIKit.element_icon(String(el))
+		eb.expand_icon = true
+		eb.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var on: bool = String(el) == _craft_el
+		var es := UIKit.pill(UIKit.CARD_HI if on else Color(UIKit.CARD, 0.6), 14, Vector2(6, 4))
+		for st in ["normal", "hover", "pressed"]:
+			eb.add_theme_stylebox_override(st, es)
+		eb.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		eb.modulate = Color(1, 1, 1, 1.0 if on else 0.5)
+		var elid := String(el)
+		eb.pressed.connect(func():
+			_craft_el = elid
+			_refresh_ws_craft())
+		erow.add_child(eb)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 10)
+	grid.add_theme_constant_override("v_separation", 10)
+	var has_pick := false
+	for r in Materials.RECIPES:
+		var rec: Dictionary = r
+		has_pick = has_pick or bool(rec.get("pick", false))
+		var mk := Materials.makes(rec, _craft_el)
+		var mk_id := String(mk.keys()[0])
+		var ok: bool = Materials.can_craft(data, rec)
+		var b := Button.new()
+		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		b.custom_minimum_size = Vector2(0, 168)
+		var nb := UIKit.glass(22.0)
+		for st in ["normal", "hover", "disabled"]:
+			b.add_theme_stylebox_override(st, nb)
+		var pb := UIKit.glass(22.0)
+		pb.bg_color = UIKit.CARD_HI
+		b.add_theme_stylebox_override("pressed", pb)
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var v := VBoxContainer.new()
+		v.set_anchors_preset(Control.PRESET_FULL_RECT)
+		v.offset_left = 10.0
+		v.offset_right = -10.0
+		v.offset_top = 8.0
+		v.offset_bottom = -10.0
+		v.add_theme_constant_override("separation", 5)
+		v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var top := HBoxContainer.new()
+		top.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var nm := UIKit.label(Materials.name_of(mk_id), 13, UIKit.TEXT if ok else UIKit.SOFT)
+		nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nm.clip_text = true
+		top.add_child(nm)
+		top.add_child(UIKit.title("x%d" % int(mk[mk_id]), 14, UIKit.CYAN))
+		v.add_child(top)
+		var pic := _part_icon(mk_id, 54)
+		pic.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		if not ok:
+			pic.modulate = Color(0.6, 0.62, 0.72, 0.85)
+		v.add_child(pic)
+		var nrow := HBoxContainer.new()
+		nrow.alignment = BoxContainer.ALIGNMENT_CENTER
+		nrow.add_theme_constant_override("separation", 10)
+		nrow.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		for k in rec.needs:
+			var hv := int(have.get(k, 0))
+			var nd := int(rec.needs[k])
+			nrow.add_child(UIKit.iconed(_part_tex(String(k)), "%d/%d" % [hv, nd], 12, GOOD if hv >= nd else SHORT, 18.0))
+		v.add_child(nrow)
+		var cc := int(rec.get("coins", 0))
+		var state := PanelContainer.new()
+		state.custom_minimum_size = Vector2(0, 34)
+		state.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if ok else UIKit.CARD_HI, 12, Vector2(6, 0)))
+		var sl := UIKit.iconed(UIKit.ic("ic_coin", "ui_coin"), UIKit.num(cc), 14, UIKit.GOLD_INK if ok else (UIKit.TEXT if coins >= cc else SHORT), 18.0)
+		sl.alignment = BoxContainer.ALIGNMENT_CENTER
+		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		state.add_child(sl)
+		v.add_child(state)
+		b.add_child(v)
+		UIKit.press_fx(b)
+		b.pressed.connect(func():
+			if not Materials.can_craft(_read(), rec):
+				_toast("Short of what is in red")
+				return
+			_craft(rec))
+		grid.add_child(b)
+	if has_pick:
+		_ws_craft_box.add_child(erow)
+	_ws_craft_box.add_child(grid)
+	UIKit.reveal(grid, 0.02, 8.0)
