@@ -179,6 +179,17 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 			ttr[t] = {"atk": tl, "rate": tl, "range": tl}
 			tst[t] = star
 	d["turrets"] = {"loadout": lo, "tracks": ttr, "stars": tst}
+	# the base (Base, 2026-11-10, in place of turrets): a typical player fields what the stage has opened, levelled with the campaign
+	var bl := clampi(1 + stage / 7, 1, Base.MAX_LEVEL)
+	var bslots: Array = ["", "", "", ""]
+	var blv := {}
+	var bi := 0
+	for bid in ["shield_gen", "armory", "medbay", "repair_bay"]:
+		if bi < 4 and stage > int(Base.BUILDINGS[bid].from):
+			bslots[bi] = bid
+			blv[bid] = bl
+			bi += 1
+	d["base"] = {"slots": bslots, "levels": blv}
 	r_kit = "hero Lv.%d %d-star DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, star, dl, glv, n, tl]
 var r_kit := ""
 

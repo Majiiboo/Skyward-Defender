@@ -42,7 +42,7 @@ static func stage_goal(stage_unlocked: int) -> Dictionary:
 			opens[int(u.stage)] = String(u.name)
 	for i in Turrets.MOUNT_OPENS_AFTER.size():
 		var ms := int(Turrets.MOUNT_OPENS_AFTER[i])
-		opens[ms] = (String(opens[ms]) + " + turret mount %d" % (i + 1)) if opens.has(ms) else "turret mount %d" % (i + 1)
+		opens[ms] = (String(opens[ms]) + " + base slot %d" % (i + 1)) if opens.has(ms) else "base slot %d" % (i + 1)
 	for a in range(1, StageData.AREAS.size()):   # a new planet after every 10th stage
 		var ps := a * 10
 		opens[ps] = (String(StageData.AREAS[a].name) + (" + " + String(opens[ps]) if opens.has(ps) else ""))

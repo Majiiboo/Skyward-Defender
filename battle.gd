@@ -634,6 +634,7 @@ func _start_stage() -> void:
 	_pierce5 = gs.pierce5
 	_pierce_every = int(gs.get("pierce_every", 5))   # Hollow's piercing bolt comes sooner on the higher steps (ASCEND)
 	_ult_cd = float(gs.get("ability_cd", 40.0))   # shorter on the higher rarity steps
+	_apply_base(sv)   # the buildings on the base (Base): shield, hull, repair, hero, ability, drone, warnings, coins
 	_ult_t = 12.0
 	_wing_id = String(gs.get("wing", ""))   # the wingmate (Heroes.wing)
 	_wing_t = 25.0
@@ -693,7 +694,7 @@ func _start_stage() -> void:
 	# a turret stands on the base only if its mount is open (stages) and you OWN it (bought, dev172)
 	var tdat := Turrets.read(sv)
 	for i in turret_loadout.size():
-		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]) and not _mods.has("no_turrets"):
+		if turret_loadout[i] != "" and Turrets.mount_open(i, stage_unlocked) and Turrets.owned(tdat, turret_loadout[i]) and not _mods.has("no_turrets") and TURRETS_ON:
 			_mount_turret(turret_loadout[i], i, int(turret_levels.get(turret_loadout[i], 1)), false)
 	for t in turrets:
 		if _lid_anim.has(t.mount):
@@ -1091,7 +1092,7 @@ func _update_outro(delta: float) -> void:
 #     the screen beats it. A finger down takes over at once; lifting it hands back.
 const AUTO_FROM := 3      # AUTO unlocks once this stage is cleared (the first stages teach flying)
 const AUTO_FIRE := 0.75
-const ASSIST := 0.16      # radians either side of straight up
+const ASSIST := 0.26      # radians either side of straight up (0.16 until the turrets went: alone, the manual bot lost stage 30 that AUTO won)
 
 func _auto_open() -> bool:
 	return stage_unlocked > AUTO_FROM or DevTools.on
@@ -4039,6 +4040,7 @@ func _draw() -> void:
 	for t in turrets:
 		_draw_turret(t)
 	_draw_turret_back()
+	_draw_buildings()
 	_draw_lanes()   # a runner is coming down this lane
 	_draw_strikes()   # the planet's hazard about to land
 	# gems
@@ -5275,7 +5277,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -5642,7 +5644,7 @@ func _update_runners(delta: float) -> void:
 		_runner_due.pop_front()
 		if wave_queue.is_empty() and enemies.is_empty():
 			continue   # the wave is over: no straggler holds it open
-		_lanes.append({"x": rng.randf_range(50.0, FIELD_W - 50.0), "t": RUNNER_WARN})
+		_lanes.append({"x": rng.randf_range(50.0, FIELD_W - 50.0), "t": RUNNER_WARN * _warn_mult})
 		Sfx.play("spit", 1.5)
 		if not _seen.has("runner"):   # the first one ever: say what the lane means
 			_seen.append("runner")
@@ -5668,7 +5670,7 @@ func _update_runners(delta: float) -> void:
 # the lane (under the bugs): a faint gold strip, dashes running down it, chevrons at the top
 func _draw_lanes() -> void:
 	for l in _lanes:
-		var k: float = 1.0 - float(l.t) / RUNNER_WARN
+		var k: float = 1.0 - float(l.t) / (RUNNER_WARN * _warn_mult)
 		var x: float = float(l.x)
 		var gold := Color(1.0, 0.82, 0.3)
 		draw_rect(Rect2(x - 15.0, HUD_H, 30.0, BASE_Y - 150.0 - HUD_H), Color(gold, 0.05 + 0.06 * k))
@@ -5708,9 +5710,14 @@ func _runner_caught(e: Dictionary) -> void:
 	hitstop = maxf(hitstop, 0.05)
 
 func _wave_patch() -> void:
+	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
+	if _base_repair > 0.0 and hull < hull_max:
+		hull = minf(hull + hull_max * _base_repair, hull_max)
+	if _base_heal > 0.0 and pilot_hp < pilot_hp_max:
+		pilot_hp = minf(pilot_hp + pilot_hp_max * _base_heal, pilot_hp_max)
 	if shield >= shield_max or shield_max <= 0.0:
 		return
-	var add: float = shield_max * WAVE_PATCH
+	var add: float = shield_max * (WAVE_PATCH + _base_repair)
 	shield = minf(shield + add, shield_max)
 	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(add), Color(0.4, 0.9, 1.0))
 
@@ -5906,7 +5913,7 @@ func _tex_cached(icon_name: String) -> Texture2D:
 
 # capture hook (tools/dev/capture.gd CAP_CALL="_dbg_runner"): a lane lights up now and the ability is ready
 func _dbg_runner() -> void:
-	_lanes.append({"x": 330.0, "t": RUNNER_WARN})
+	_lanes.append({"x": 330.0, "t": RUNNER_WARN * _warn_mult})
 	_ult_t = 0.0
 
 # capture hooks (tools/dev/capture.gd CAP_CALL): the end screens with some play behind them
@@ -5997,7 +6004,7 @@ func _update_strikes(delta: float) -> void:
 	if _strike_cd <= 0.0:
 		_strike_cd = maxf(14.0 - area, 8.0) + rng.randf_range(-1.0, 2.0)   # first sweep at 11 - 1.2 x area and 12 + 2 x area damage: the autopilot died at stages 12 and 60
 		var p := Vector2(clampf(soldier_pos.x + rng.randf_range(-70.0, 70.0), 50.0, FIELD_W - 50.0), clampf(soldier_pos.y + rng.randf_range(-40.0, 20.0), 140.0, BASE_Y - 60.0))
-		_strikes.append({"pos": p, "t": STRIKE_WARN})
+		_strikes.append({"pos": p, "t": STRIKE_WARN * _warn_mult})
 		Sfx.play("spit", 0.7)
 		if not _seen.has("hazard_%d" % area):   # the first one on this planet: say what the circle means
 			_seen.append("hazard_%d" % area)
@@ -6029,7 +6036,7 @@ func _draw_strikes() -> void:
 		return
 	var col: Color = _hazard().get("col", Color.WHITE)
 	for s in _strikes:
-		var k: float = 1.0 - float(s.t) / STRIKE_WARN
+		var k: float = 1.0 - float(s.t) / (STRIKE_WARN * _warn_mult)
 		draw_circle(s.pos, STRIKE_R, Color(col, 0.07 + 0.12 * k))
 		draw_arc(s.pos, STRIKE_R, 0.0, TAU, 48, Color(col, 0.5 + 0.5 * k), 2.0, true)
 		draw_arc(s.pos, STRIKE_R * (2.2 - 1.2 * k), 0.0, TAU, 48, Color(col, 0.25 + 0.5 * k), 2.0, true)
@@ -6296,3 +6303,61 @@ func _run_end(won: bool) -> void:
 	Runs.fight_done(run, won, pilot_hp / maxf(pilot_hp_max, 1.0), shield / maxf(shield_max, 1.0), hull / maxf(hull_max, 1.0), card_levels)
 	_run = run
 	_write_save({"run": run})
+
+# ------------------------------------------------------------------ THE BASE YOU BUILD, in a fight (Base, 2026-11-10)
+# The turrets are gone from the fight (TURRETS_ON false keeps their code asleep until it is removed
+# for good). The base never shoots. The buildings on its open slots give their bonuses for the whole
+# fight (_apply_base, once the hero's numbers are set) and show as a small lit icon over each slot
+# until the new base is painted.
+const TURRETS_ON := false
+var _base_slots: Array = ["", "", "", ""]   # the building on each slot ("" = none or the slot is closed)
+var _base_repair := 0.0     # Repair Bay: extra share mended after a wave (shield and hull)
+var _base_heal := 0.0       # Med Bay: share of the hero's health back after a wave
+var _warn_mult := 1.0       # Radar: runner lanes and hazards show this much longer
+
+func _apply_base(sv: Dictionary) -> void:
+	var bs := Base.stats(sv)
+	var b := Base.read(sv)
+	var su := int(sv.get("stage_unlocked", 1))
+	for i in Base.SLOTS:
+		_base_slots[i] = String(b.slots[i]) if (Base.slot_open(i, su) or DevTools.on) else ""
+		if _base_slots[i] != "":
+			_tex["bld_" + String(_base_slots[i])] = UIKit.ic(String(Base.BUILDINGS[_base_slots[i]].icon))
+	shield_max *= 1.0 + float(bs.shield)
+	shield = shield_max
+	hull_max *= 1.0 + float(bs.hull)
+	hull = hull_max
+	_base_dr = clampf(_base_dr + float(bs.hull) * 0.2, 0.0, 0.6)   # Hull Plating also takes the edge off each hit
+	damage_mult *= 1.0 + float(bs.damage)
+	pilot_hp_max = roundf(pilot_hp_max * (1.0 + float(bs.hp)))
+	pilot_hp = pilot_hp_max
+	_base_heal = minf(float(bs.hp) * 0.4, 0.2)
+	_base_repair = float(bs.repair)
+	_drone_mult *= 1.0 + float(bs.drone)
+	_ult_cd /= 1.0 + float(bs.ability)
+	_warn_mult = 1.0 + float(bs.warn)
+	_coin_mult *= 1.0 + float(bs.coins)
+
+# the buildings on the base: a lit icon over each slot, breathing a little
+func _draw_buildings() -> void:
+	for i in Base.SLOTS:
+		var id: String = _base_slots[i]
+		if id == "":
+			continue
+		var col: Color = Base.BUILDINGS[id].col
+		var p := _socket(i) + Vector2(0, -24.0 + sin(time_alive * 2.0 + i) * 2.0)
+		draw_circle(p, 19.0, Color(0.04, 0.07, 0.13, 0.9))
+		draw_arc(p, 19.0, 0.0, TAU, 32, Color(col, 0.75 + 0.2 * sin(time_alive * 3.0 + i)), 2.0, true)
+		var tx: Texture2D = _tex.get("bld_" + id)
+		if tx != null:
+			draw_texture_rect(tx, Rect2(p - Vector2(13, 13), Vector2(26, 26)), false)
+
+# With the turrets gone the hero does all the shooting. The turrets did nothing on the first
+# stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by
+# that share: nothing to stage 5, sliding to NO_TURRET_HP by stage 20. First sweep without this:
+# stages 30 and 60 lost by wave 4 with the hull at zero.
+const NO_TURRET_HP := 0.64
+func _no_turret_hp() -> float:
+	if TURRETS_ON:
+		return 1.0
+	return lerpf(1.0, NO_TURRET_HP, clampf((stage - 5) / 15.0, 0.0, 1.0))

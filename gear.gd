@@ -156,7 +156,7 @@ func _build() -> void:
 	col.add_child(top)
 	# Pilot / Turrets switch
 	# pages the player has not reached yet are not built (Unlocks: turrets, drone, workshop)
-	_tabs_row = UIKit.tabs(["Hero", "Turrets", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages(), [UIKit.ic("tab_hero"), UIKit.ic("tab_turrets"), UIKit.ic("tab_drone"), UIKit.ic("tab_workshop")])
+	_tabs_row = UIKit.tabs(["Hero", "Base", "Drone", "Workshop"], _show_page, _start_page, [], _hidden_pages(), [UIKit.ic("tab_hero"), UIKit.ic("ic_base"), UIKit.ic("tab_drone"), UIKit.ic("tab_workshop")])
 	col.add_child(_tabs_row)
 	_paint_dots()
 	_workshop_box = VBoxContainer.new()
@@ -1545,7 +1545,7 @@ func _turret_tile(id: String, subtitle: String, badge: String, size: Vector2, di
 
 func _refresh_turrets() -> void:
 	if UIKit.CLEAN:
-		_refresh_turrets_clean()
+		_refresh_base()   # the base you build took the turrets' place (Base, 2026-11-10)
 		return
 	_power_label.text = ""
 	_paint_wallet()
@@ -4100,3 +4100,185 @@ func _on_wing() -> void:
 	else:
 		_toast("%s flies with you: half of %s, and %s" % [String(Heroes.ROSTER[wid].name), Heroes.passive_text(wid, Heroes.tier(hero, wid)), String(Heroes.ABILITIES[wid].name)])
 	_paint_hero()
+
+# ------------------------------------------------------------------ the BASE page (Base, 2026-11-10)
+# It takes the Turrets tab's place (Rudy: scrap the turrets; the base is defensive and gives
+# power-ups; pick four buildings; each has its own level). The four slots across the top, one card
+# for the building in focus (what it gives now and at the next level, BUILD or LEVEL UP, Place /
+# Remove), then every building: yours bright, the rest dim with their price or the stage that opens
+# them. The first visit pays back what was spent on turrets (Base.migrate).
+var b_slot := 0
+var b_focus := ""
+
+func _refresh_base() -> void:
+	_power_label.text = ""
+	var data := _read()
+	var back := Base.migrate(data)
+	if back > 0 or not data.has("base"):
+		data["base"] = Base.write(Base.read(data))
+		_write_data(data)
+		coins = int(data.get("coins", 0))
+		if back > 0:
+			_milestone_toast("Turrets retired: %s coins back for your base" % UIKit.num(back))
+	_paint_wallet()
+	var b := Base.read(data)
+	if b_focus == "" or not Base.BUILDINGS.has(b_focus):
+		b_focus = String(b.slots[b_slot]) if String(b.slots[b_slot]) != "" else "shield_gen"
+	var box := _turret_box
+	for c in box.get_children():
+		box.remove_child(c)
+		c.queue_free()
+	var intro := UIKit.label("The base never shoots. Each building gives one kind of help. Field four.", 12, UIKit.SOFT)
+	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(intro)
+	# the four slots
+	var slots := HBoxContainer.new()
+	slots.add_theme_constant_override("separation", 8)
+	for i in Base.SLOTS:
+		var id := String(b.slots[i])
+		var open: bool = Base.slot_open(i, t_unlocked) or DevTools.on
+		var col: Color = Base.BUILDINGS[id].col if id != "" else UIKit.CYAN
+		var sq := _pick_square(UIKit.ic(String(Base.BUILDINGS[id].icon)) if id != "" else null, ("Stage %d" % Turrets.MOUNT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
+		_num_badge(sq, col if open else UIKit.SOFT, str(i + 1))
+		var si: int = i
+		sq.pressed.connect(func():
+			b_slot = si
+			var here := String(Base.read(_read()).slots[si])
+			if here != "":
+				b_focus = here
+			_refresh_base())
+		slots.add_child(sq)
+	box.add_child(slots)
+	box.add_child(_base_card(data, b))
+	# every building
+	var grid := GridContainer.new()
+	grid.columns = 3
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 8)
+	for bid in Base.ORDER:
+		var id := String(bid)
+		var def: Dictionary = Base.BUILDINGS[id]
+		var own: bool = Base.owned(b, id)
+		var sub := ""
+		if not own:
+			sub = ("Stage %d" % int(def.from)) if not Base.can_build(data, id) else (UIKit.num(Base.build_cost(id)) if Base.build_cost(id) > 0 else "Free")
+		var sq := _pick_square(UIKit.ic(String(def.icon)), String(def.name), 104.0, id == b_focus, def.col, not own, sub)
+		if own:
+			_num_badge(sq, def.col, ("Lv.%d" % Base.level(b, id)) if not b.slots.has(id) else ("%d · Lv.%d" % [b.slots.find(id) + 1, Base.level(b, id)]))
+		var pick := id
+		sq.pressed.connect(func():
+			b_focus = pick
+			_refresh_base())
+		grid.add_child(sq)
+	box.add_child(grid)
+	UIKit.reveal(grid, 0.02, 8.0)
+
+func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
+	var p := UIKit.panel(22)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	p.add_child(v)
+	var id := b_focus
+	var def: Dictionary = Base.BUILDINGS[id]
+	var own: bool = Base.owned(b, id)
+	var lv := Base.level(b, id)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 12)
+	var pic := TextureRect.new()
+	pic.texture = UIKit.ic(String(def.icon))
+	pic.custom_minimum_size = Vector2(72, 72)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	if not own:
+		pic.modulate = Color(0.6, 0.62, 0.72, 0.85)
+	head.add_child(pic)
+	var nv := VBoxContainer.new()
+	nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nv.alignment = BoxContainer.ALIGNMENT_CENTER
+	nv.add_theme_constant_override("separation", 5)
+	nv.add_child(UIKit.title(String(def.name), 22, UIKit.TEXT))
+	var tags := HBoxContainer.new()
+	tags.add_theme_constant_override("separation", 8)
+	tags.add_child(UIKit.chip(String(def.kind), def.col))
+	if own:
+		tags.add_child(UIKit.title("Lv.%d" % lv, 13, UIKit.TEXT))
+	nv.add_child(tags)
+	var now := UIKit.label(Base.text(id, maxi(lv, 1)), 13, UIKit.TEXT)
+	now.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nv.add_child(now)
+	if own and lv < Base.MAX_LEVEL:
+		var nxt := UIKit.label("Next level: " + Base.text(id, lv + 1), 12, GOOD)
+		nxt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nv.add_child(nxt)
+	head.add_child(nv)
+	v.add_child(head)
+	if not own:
+		if not Base.can_build(data, id):
+			var lock := UIKit.ghost_button("Clear stage %d to build it" % int(def.from), 13)
+			lock.disabled = true
+			v.add_child(lock)
+		else:
+			var bb := _cost_btn("BUILD", Base.build_cost(id), {}, "", true, 18)
+			bb.disabled = coins < Base.build_cost(id) and not DevTools.on
+			bb.pressed.connect(func(): _on_base_build(id))
+			v.add_child(bb)
+		return p
+	var act := HBoxContainer.new()
+	act.add_theme_constant_override("separation", 8)
+	var why := Base.why_not_level(data, b, id)
+	var up := _cost_btn("LEVEL UP", Base.level_cost(lv), Base.level_parts(lv), "MAX" if lv >= Base.MAX_LEVEL else "", true, 17)
+	up.disabled = why != ""
+	up.pressed.connect(func(): _on_base_level(id))
+	act.add_child(up)
+	var here: bool = String(b.slots[b_slot]) == id
+	var open: bool = Base.slot_open(b_slot, t_unlocked) or DevTools.on
+	var place := UIKit.teal_button("Slot locked" if not open else ("Remove" if here else "Place on %d" % (b_slot + 1)), 14)
+	place.custom_minimum_size = Vector2(132, 62)
+	place.disabled = not open
+	place.pressed.connect(func():
+		var d2 := _read()
+		var b2 := Base.read(d2)
+		Base.place(b2, b_slot, "" if String(b2.slots[b_slot]) == id else id)
+		d2["base"] = Base.write(b2)
+		_write_data(d2)
+		Sfx.play("tap")
+		_refresh_base())
+	act.add_child(place)
+	v.add_child(act)
+	return p
+
+func _on_base_build(id: String) -> void:
+	var data := _read()
+	var b := Base.read(data)
+	var why := Base.build(data, b, id)
+	if why != "":
+		_toast(why)
+		return
+	if not b.slots.has(id) and String(b.slots[b_slot]) == "" and (Base.slot_open(b_slot, t_unlocked) or DevTools.on):
+		Base.place(b, b_slot, id)   # a new building goes straight onto the slot you are looking at, if it is free
+	data["base"] = Base.write(b)
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	Sfx.play("buy")
+	Progress.bump("turret_upgrades")
+	_rarity_fx_plain(String(Base.BUILDINGS[id].name), UIKit.ic(String(Base.BUILDINGS[id].icon)), Base.BUILDINGS[id].col, "BUILT", Base.text(id, 1))
+	_refresh_base()
+
+func _on_base_level(id: String) -> void:
+	var data := _read()
+	var b := Base.read(data)
+	var why := Base.level_up(data, b, id)
+	if why != "":
+		_toast(why)
+		return
+	data["base"] = Base.write(b)
+	_write_data(data)
+	coins = int(data.get("coins", 0))
+	Sfx.play("upgrade")
+	Progress.bump("turret_upgrades")
+	_milestone_toast("%s Lv.%d: %s" % [String(Base.BUILDINGS[id].name), Base.level(b, id), Base.text(id, Base.level(b, id))])
+	_refresh_base()
+
+# the unlock moment (moment.gd) for something built here
+func _rarity_fx_plain(who: String, tex: Texture2D, col: Color, chip: String, line: String) -> void:
+	Moment.show(self, {"title": who, "text": line, "tex": tex, "col": col, "chip": chip})

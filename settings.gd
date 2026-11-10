@@ -61,7 +61,7 @@ func _fill() -> void:
 	dv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	dv.add_theme_constant_override("separation", 1)
 	dv.add_child(UIKit.title("DEV MODE  ·  UNLOCK EVERYTHING", 15, Color(1.0, 0.75, 0.3) if DevTools.on else UIKit.TEXT))
-	dv.add_child(UIKit.label("Every hero, turret, drone, weapon, mode and trial open; upgrades and unlocks free; no power cost. Your real progress stays as it is.", 11, UIKit.MUTED))
+	dv.add_child(UIKit.label("Every hero, building, drone, weapon, mode and trial open; upgrades and unlocks free; no power cost. Your real progress stays as it is.", 11, UIKit.MUTED))
 	dv.get_child(1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dh.add_child(dv)
 	dh.add_child(_toggle(DevTools.on, func():

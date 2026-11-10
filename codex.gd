@@ -10,7 +10,7 @@ extends RefCounted
 # Save "codex_claimed": {category: rewards taken (0-4)}.
 
 const CATS := ["enemies", "heroes", "turrets", "cards"]
-const NAMES := {"enemies": "Enemies", "heroes": "Heroes", "turrets": "Turrets", "cards": "Cards"}
+const NAMES := {"enemies": "Enemies", "heroes": "Heroes", "turrets": "Base", "cards": "Cards"}
 const STEPS := [0.25, 0.5, 0.75, 1.0]      # the share of a category that pays
 const CRYSTALS := [10, 15, 25, 50]
 
@@ -55,10 +55,10 @@ static func entries(save: Dictionary, cat: String) -> Array:
 			for id in Heroes.ORDER:
 				out.append({"id": id, "name": String(Heroes.ROSTER[id].name), "tex": hero_tex(String(id)), "have": Heroes.owned(h, String(id))})
 		"turrets":
-			var t := Turrets.read(save)
-			for id in Turrets.TURRETS:
-				var def: Dictionary = Turrets.TURRETS[id]
-				out.append({"id": id, "name": String(def.name), "tex": _tex("res://turrets/%s_idle.png" % String(def.art)), "have": Turrets.owned(t, id)})
+			# the buildings of the base since 2026-11-10 (the turrets are gone; the key keeps its old name for saves)
+			var bb := Base.read(save)
+			for id in Base.ORDER:
+				out.append({"id": id, "name": String(Base.BUILDINGS[id].name), "tex": UIKit.ic(String(Base.BUILDINGS[id].icon)), "have": Base.owned(bb, String(id))})
 		"cards":
 			var seen: Array = save.get("cards_seen", [])
 			for id in Cards.CARDS:

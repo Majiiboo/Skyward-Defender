@@ -34,6 +34,7 @@ func _initialize() -> void:
 	_check_wing()
 	_check_events()
 	_check_runs()
+	_check_base()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -613,7 +614,7 @@ func _check_ascend() -> void:
 # the next goal on Home, the daily stage twists, hero abilities (2026-11-10)
 func _check_goals() -> void:
 	_expect(Goals.stage_goal(1).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(3).text == "Clear stage 3: the AUTO pilot", "stage goals: the ability at 2, AUTO at 3 (%s)" % Goals.stage_goal(1).text)
-	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: Turrets") and String(Goals.stage_goal(4).text).contains("turret mount 1"), "stage 5 opens Turrets and mount 1 (%s)" % Goals.stage_goal(4).text)
+	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: The Base") and String(Goals.stage_goal(4).text).contains("base slot 1"), "stage 5 opens the Base and its first slot (%s)" % Goals.stage_goal(4).text)
 	_expect(String(Goals.stage_goal(9).text).contains(String(StageData.AREAS[1].name)), "stage 10 opens the next planet (%s)" % Goals.stage_goal(9).text)
 	var far := {"coins": 0, "stage_unlocked": 4, "pilot_xp": 0, "store_free": {"chest_u": 9999999999, "chest_e": 9999999999, "pack_daily": 9999999999, "pack_weekly": 9999999999, "pack_monthly": 9999999999}}
 	_expect(String(Goals.next(far).text).begins_with("Clear stage 5"), "nothing to do now: the next stage unlock (%s)" % Goals.next(far).text)
@@ -757,3 +758,32 @@ func _check_runs() -> void:
 	s["run"] = win
 	var prize := Runs.collect(s)
 	_expect(bool(win.won) and int(prize.get("key_e", 0)) == 1 and Runs.wins(s, 0) == 1 and Runs.planets_open(s) == 2, "beating the boss wins the run, pays the prize and opens planet 2's expedition")
+
+# the base you build (Base, 2026-11-10): buildings in place of turrets, four slots, a level each
+func _check_base() -> void:
+	var s := {"stage_unlocked": 20, "coins": 5000, "parts": {"alloy": 50, "cell": 20, "core": 5}}
+	var b := Base.read(s)
+	_expect(b.slots[0] == "shield_gen" and Base.level(b, "shield_gen") == 1 and not Base.owned(b, "armory"), "everyone starts with the Shield Generator on slot 1")
+	for id in Base.ORDER:
+		_expect(Base.BUILDINGS.has(id) and UIKit.ic(String(Base.BUILDINGS[id].icon)) != null and Base.text(String(id), 1) != "", "building %s: a picture and a line" % id)
+	_expect(is_equal_approx(float(Base.stats(s).shield), 0.08) and Base.stats(s).on == ["shield_gen"], "a Lv.1 generator: shield +8%")
+	_expect(Base.build(s, b, "refinery") == "Clear stage 25 first" and Base.build(s, b, "armory") == "" and int(s.coins) == 3500 and Base.owned(b, "armory"), "the Armory costs 1500 coins; the Refinery waits for stage 25")
+	_expect(Base.build(s, b, "armory") == "Already built", "a building is built once")
+	s["base"] = Base.write(b)
+	_expect(is_equal_approx(float(Base.stats(s).damage), 0.0), "a building off the base gives nothing")
+	Base.place(b, 1, "armory")
+	s["base"] = Base.write(b)
+	_expect(is_equal_approx(float(Base.stats(s).damage), 0.03), "placed on an open slot it counts")
+	var c0 := int(s.coins)
+	_expect(Base.level_up(s, b, "armory") == "" and Base.level(b, "armory") == 2 and int(s.coins) == c0 - Base.level_cost(1), "a level costs coins (and parts later)")
+	s["base"] = Base.write(b)
+	_expect(is_equal_approx(float(Base.stats(s).damage), 0.06), "Lv.2 Armory: hero damage +6%")
+	Base.place(b, 0, "armory")
+	_expect(b.slots[0] == "armory" and b.slots[1] == "", "a building stands on one slot at a time")
+	s["stage_unlocked"] = 3
+	s["base"] = Base.write(b)
+	_expect(Base.stats(s).on.is_empty(), "a closed slot gives nothing")
+	# the turrets' coins come back once
+	var old := {"stage_unlocked": 20, "coins": 100, "turrets": {"loadout": ["sentry", "lance", "", ""], "owned": ["sentry", "lance"], "tracks": {"sentry": {"atk": 3, "rate": 2, "range": 1}}}}
+	var back := Base.migrate(old)
+	_expect(back == 3000 + 60 + 120 + 60 and int(old.coins) == 100 + back and Base.migrate(old) == 0 and old.has("base"), "what was spent on turrets comes back as coins, once (%d)" % back)

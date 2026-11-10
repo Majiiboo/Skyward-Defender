@@ -97,3 +97,18 @@ each one playable on its own:
 Should the Point defence building still shoot (a small automatic gun, the last trace of the
 turrets), or should the base be purely defensive, with all the shooting left to the hero and his
 helpers? I lean to purely defensive: it makes the split between the three kinds of help cleanest.
+
+## What was decided and built (the same day)
+
+Rudy's answers: the base stays purely DEFENSIVE; buildings give power-ups (the base's defence,
+repair, the hero's defence or attack, the drone, maybe an extra drone); you field four and each has
+its own level; the turret art is scrapped; a NEW home base is wanted at the bottom of the fight (the
+current platform looks dated), to be designed together.
+
+Built as step 1: base.gd (nine buildings: Shield Generator, Repair Bay, Armory, Med Bay, Hull
+Plating, Hangar, Reactor, Radar, Refinery), the Base page in place of the Turrets tab, the fight
+without turrets (bug health lowered by the share the turrets used to deal), coins spent on turrets
+refunded once. Buildings show as icons until the new base is painted.
+
+Still to do: the drone squad (step 2: the Hangar then gives an extra drone), weapons that play
+differently (step 3), the new base art with Luna, and deleting the sleeping turret code.

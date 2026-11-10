@@ -25,7 +25,7 @@ const DAILY_POOL := [
 	{"id": "d_boss1", "text": "Defeat a boss or mini-boss", "stat": "bosses_any", "goal": 1, "reward": {"coins": 150, "crystals": 5}},
 	# Gear page tasks (dev140; their Go buttons open the right Gear tab): gear.gd calls bump()
 	{"id": "d_upgrade2", "text": "Upgrade gear 2 times", "stat": "upgrades", "goal": 2, "reward": {"coins": 80, "pilot_xp": 60}},
-	{"id": "d_turret1", "text": "Upgrade a turret track", "stat": "turret_upgrades", "goal": 1, "reward": {"coins": 80, "pilot_xp": 60}},
+	{"id": "d_turret1", "text": "Build or level a base building", "stat": "turret_upgrades", "goal": 1, "reward": {"coins": 80, "pilot_xp": 60}},
 	{"id": "d_merge1", "text": "Merge in the Workshop", "stat": "merges", "goal": 1, "reward": {"coins": 60, "crystals": 3}},
 ]
 const DAILY_COUNT := 5
