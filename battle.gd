@@ -34,6 +34,18 @@ const WEAPONS := {
 	"frost_rifle": {"name": "Frost Rifle", "interval": 0.14, "speed": 560.0, "damage": 0.58, "projectiles": 1, "spread": 0.03, "hit_radius": 18.0, "frost": true},   # Ice: a rapid stream that SLOWS what it hits
 }
 var weapon_id := "laser_pistol"
+var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20
+var _wpn := {}
+var _wpn_key := ""
+
+# the weapon in hand: its WEAPONS row with its form's changes laid over it (cached)
+func _weapon() -> Dictionary:
+	var key := "%s/%d" % [weapon_id, weapon_form]
+	if key != _wpn_key:
+		_wpn = Dictionary(WEAPONS[weapon_id]).duplicate()
+		_wpn.merge(GearData.form_mods(weapon_id, weapon_form), true)
+		_wpn_key = key
+	return _wpn
 
 # ---- auto-aim feel ----
 var aim_turn_speed := 10.0
@@ -614,6 +626,7 @@ func _start_stage() -> void:
 		_start_hero_card()
 	_shot_n = 0
 	weapon_id = gs.weapon
+	weapon_form = int(gs.get("weapon_form", 1))
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
 	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
@@ -1029,7 +1042,7 @@ func _assist_target(from: Vector2, up_ang: float, speed: float) -> Dictionary:
 func _aim_and_fire(delta: float) -> void:
 	idle_aiming = false
 	_firing_up = false
-	var weapon: Dictionary = WEAPONS[weapon_id]
+	var weapon: Dictionary = _weapon()
 	var muzzle_base := _muzzle_world()
 	var auto: bool = auto_on and not dragging
 	var target := _pick_aim_target(muzzle_base) if auto else {}
@@ -1176,7 +1189,7 @@ func _draw_auto_btn() -> void:
 	_hc.draw_string(title_font, Vector2(r.position.x, c.y + 4.5), "AUTO", HORIZONTAL_ALIGNMENT_CENTER, r.size.x, 11, cy if auto_on else Color(1, 1, 1, 0.75 if open else 0.3))
 
 func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = false) -> void:
-	var w: Dictionary = WEAPONS[weapon_id]
+	var w: Dictionary = _weapon()
 	Sfx.play("shot", rng.randf_range(0.95, 1.05))
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
@@ -1187,16 +1200,19 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		_shot_n += 1
 		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
 		var crit: bool = (_crit6 and _shot_n % 6 == 0) or (int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0)   # the Pistol's charged shot
+		var w_charged: bool = int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0 and not (_crit6 and _shot_n % 6 == 0)   # the weapon's own charged bolt
 		var lucky: bool = rng.randf() < _crit_rate   # a critical hit (crit rate / crit damage)
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
-			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * (3.0 if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
+			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * ((float(w.get("charge_mult", 3.0)) if w_charged else 3.0) if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
 			"frost": frost_level > 0 or bool(w.get("frost", false)), "rail": rail or rail_gun, "lucky": lucky,
+			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
+			"freeze": int(w.get("freeze_every", 0)) > 0 and _shot_n % int(w.freeze_every) == 0,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
@@ -1278,7 +1294,9 @@ func _update_bullets(delta: float) -> void:
 					dmg *= 1.2
 				if b.get("frost", false):
 					e.slow_t = 1.5
-					e.slow = minf(0.15 * maxi(frost_level, 1) + _chill_bonus, 0.5)
+					e.slow = minf(maxf(0.15 * maxi(frost_level, 1), float(b.get("fslow", 0.0))) + _chill_bonus, 0.5)
+					if b.get("freeze", false) and not _is_boss(e):   # the Frost Rifle's third shape: Ice lock
+						e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 0.9)
 				# hero cards: Deep Freeze slows, Afterburn sets burning
 				if _freeze_level > 0:
 					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
@@ -1303,7 +1321,7 @@ func _update_bullets(delta: float) -> void:
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
-							o.hp -= (dmg * 0.6) if _can_hurt(o) else 0.0
+							o.hp -= (dmg * float(b.get("splash_share", 0.6))) if _can_hurt(o) else 0.0
 					_fx_add("nova", b.pos, float(b.splash) * 0.6, 0.3, 0.0, 1.8, Color(0.8, 0.5, 1.0))
 				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
 					_chain(e, int(b.weld), dmg * 0.6)

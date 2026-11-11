@@ -416,3 +416,51 @@ static func weapon_style(item_id: String) -> Dictionary:
 	if not ITEMS.has(item_id) or String(ITEMS[item_id].slot) != "Weapon":
 		return {}
 	return WEAPON_STYLE.get(String(SETS[ITEMS[item_id].set].weapon), {})
+
+# WEAPON EVOLUTIONS (2026-11-10): a weapon changes SHAPE twice as it levels, at FORM_LEVELS. Form I
+# is the weapon as it was; II and III each change how it fires ("mods" are laid over the weapon's
+# row in battle WEAPONS, read by battle _weapon()). Lv.10 is the Common cap, Lv.20 the Rare cap, so
+# form III also asks for merged copies.
+const FORM_LEVELS := [1, 10, 20]
+const FORM_NAMES := ["I", "II", "III"]
+const WEAPON_FORMS := {
+	"laser_pistol": [
+		{"name": "Quick charge", "text": "Every 4th bolt is charged", "mods": {"charge": 4}},
+		{"name": "Lance shot", "text": "Charged bolts fly through every bug", "mods": {"charge": 4, "charge_pierce": true}}],
+	"dual_minis": [
+		{"name": "Live wire", "text": "Every 2nd bolt arcs", "mods": {"spark_every": 2}},
+		{"name": "Triple", "text": "Three bolts side by side", "mods": {"spark_every": 2, "projectiles": 3, "damage": 0.42, "spread": 0.12}}],
+	"pulse_cannon": [
+		{"name": "Wide blast", "text": "The blast reaches a third further", "mods": {"splash": 82.0}},
+		{"name": "Full blast", "text": "The blast hits as hard as the shell", "mods": {"splash": 82.0, "splash_share": 0.95}}],
+	"railgun": [
+		{"name": "Wide bore", "text": "A faster, fatter bolt", "mods": {"hit_radius": 28.0, "speed": 780.0}},
+		{"name": "Overload", "text": "Every 4th bolt hits 60% harder", "mods": {"hit_radius": 28.0, "speed": 780.0, "charge": 4, "charge_mult": 1.6}}],
+	"laser_rifle": [
+		{"name": "Wide fan", "text": "A fan of four", "mods": {"projectiles": 4, "damage": 0.52, "spread": 0.62}},
+		{"name": "Sunburst", "text": "A fan of five that reaches further", "mods": {"projectiles": 5, "damage": 0.46, "spread": 0.72, "range": 420.0}}],
+	"frost_rifle": [
+		{"name": "Deep chill", "text": "Slows twice as much", "mods": {"frost_slow": 0.3}},
+		{"name": "Ice lock", "text": "Every 12th bolt freezes a bug solid", "mods": {"frost_slow": 0.3, "freeze_every": 12}}],
+}
+
+# 1, 2 or 3 by the weapon's level
+static func weapon_form(lv: int) -> int:
+	var f := 1
+	for i in FORM_LEVELS.size():
+		if lv >= int(FORM_LEVELS[i]):
+			f = i + 1
+	return f
+
+# what form `f` changes on weapon kind `wk` ({} for form I)
+static func form_mods(wk: String, f: int) -> Dictionary:
+	if f <= 1 or not WEAPON_FORMS.has(wk):
+		return {}
+	return WEAPON_FORMS[wk][clampi(f, 2, 3) - 2].mods
+
+# {name, text} of form 2 or 3 of an item's weapon ({} otherwise)
+static func form_info(item_id: String, f: int) -> Dictionary:
+	if f <= 1 or f > 3 or not ITEMS.has(item_id) or String(ITEMS[item_id].slot) != "Weapon":
+		return {}
+	var wk := String(SETS[ITEMS[item_id].set].weapon)
+	return WEAPON_FORMS[wk][f - 2] if WEAPON_FORMS.has(wk) else {}

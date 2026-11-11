@@ -824,6 +824,16 @@ func _check_weapons() -> void:
 		_expect(not st.is_empty() and String(st.style) != "" and String(st.text) != "", "the %s weapon has a style and a line" % set_id)
 		_expect(B.WEAPONS.has(wk) and B.WEAPONS[wk].has(tricks.get(wk, "?")), "%s carries its trick (%s)" % [wk, tricks.get(wk, "?")])
 	_expect(GearData.weapon_style("ion_helmet").is_empty(), "armour has no weapon style")
+	# weapon evolutions: two more shapes each, by level
+	_expect(GearData.weapon_form(1) == 1 and GearData.weapon_form(9) == 1 and GearData.weapon_form(10) == 2 and GearData.weapon_form(19) == 2 and GearData.weapon_form(20) == 3 and GearData.weapon_form(30) == 3, "weapon shapes change at Lv.10 and Lv.20")
+	for set_id in GearData.SET_ORDER:
+		var wk2 := String(GearData.SETS[set_id].weapon)
+		_expect(GearData.form_mods(wk2, 1).is_empty(), "%s form I changes nothing" % wk2)
+		for f in [2, 3]:
+			var fi: Dictionary = GearData.form_info("%s_weapon" % set_id, f)
+			_expect(String(fi.get("name", "")) != "" and String(fi.get("text", "")) != "" and not GearData.form_mods(wk2, f).is_empty(), "%s form %d has a name, a line and a change" % [wk2, f])
+	var ws := {"stage_unlocked": 30, "gear": {"equipped": {"Weapon": "ion_weapon"}, "levels": {"ion_weapon": 20}}}
+	_expect(int(Heroes.stats(ws).get("weapon_form", 0)) == 3, "a Lv.20 weapon goes into the fight in form III (%s)" % str(Heroes.stats(ws).get("weapon_form", 0)))
 
 # building perks at level 5 (Base.PERKS, 2026-11-10)
 func _check_perks() -> void:

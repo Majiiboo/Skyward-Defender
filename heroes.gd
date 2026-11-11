@@ -516,6 +516,7 @@ static func stats(save: Dictionary) -> Dictionary:
 	var wlv := GearData.level(gear, wpn)
 	st.damage *= 1.0 + float(GearData.SLOT_STAT["Weapon"].per) * wlv
 	st.weapon = GearData.SETS[GearData.ITEMS[wpn].set].weapon
+	st["weapon_form"] = GearData.weapon_form(wlv)   # its shape: II from Lv.10, III from Lv.20
 	st.crit_rate += float(GearData.MILESTONE["Weapon"].per) * GearData.milestones(wlv)
 	# the pilot talent map (Talents, dev197): small permanent bonuses for every hero
 	var tb := Talents.bonus(save)

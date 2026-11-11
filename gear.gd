@@ -2950,8 +2950,27 @@ func _weapons_screen() -> void:
 		srow.alignment = BoxContainer.ALIGNMENT_CENTER
 		srow.add_theme_constant_override("separation", 8)
 		srow.add_child(UIKit.chip(String(est.style), Heroes.element_color(eq_el)))
-		srow.add_child(UIKit.label(String(est.text), 12, UIKit.TEXT))
+		var now_fi: Dictionary = GearData.form_info(eq, GearData.weapon_form(_lvl(eq)))   # form II / III: say what it does NOW
+		srow.add_child(UIKit.label(String(now_fi.get("text", est.text)), 12, UIKit.TEXT))
 		v.add_child(srow)
+	# its three shapes (GearData.WEAPON_FORMS): the one it is in lit, the next with its level
+	var form_now := GearData.weapon_form(_lvl(eq))
+	var frow := HBoxContainer.new()
+	frow.alignment = BoxContainer.ALIGNMENT_CENTER
+	frow.add_theme_constant_override("separation", 6)
+	for f in [1, 2, 3]:
+		var fname: String = String(est.get("style", "")) if f == 1 else String(GearData.form_info(eq, f).get("name", ""))
+		var fc := UIKit.chip("%s  %s" % [GearData.FORM_NAMES[f - 1], fname], UIKit.GOLD if f == form_now else (Heroes.element_color(eq_el) if f < form_now else UIKit.SOFT))
+		fc.modulate.a = 1.0 if f <= form_now else 0.6
+		frow.add_child(fc)
+	v.add_child(frow)
+	if form_now < 3:
+		var nf: Dictionary = GearData.form_info(eq, form_now + 1)
+		var nl := UIKit.label("Next shape at Lv.%d: %s" % [int(GearData.FORM_LEVELS[form_now]), String(nf.get("text", ""))], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(nl)
+	elif form_now == 3:
+		v.add_child(UIKit.label(String(GearData.form_info(eq, 3).get("text", "")), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
@@ -2984,9 +3003,17 @@ func _weapons_screen() -> void:
 	ub.custom_minimum_size = Vector2(110, 46)
 	ub.disabled = _upgrade_btn.disabled
 	ub.pressed.connect(func():
+		var item_was: String = gear.equipped["Weapon"]
+		var form_was := GearData.weapon_form(_lvl(item_was))
 		await _on_upgrade_pressed()
 		layer.queue_free()
-		_weapons_screen())
+		_weapons_screen()
+		var form_is := GearData.weapon_form(_lvl(item_was))
+		if form_is > form_was:   # it changed shape: say so, full screen
+			var fi: Dictionary = GearData.form_info(item_was, form_is)
+			Moment.show(self, {"title": "%s %s" % [String(GearData.ITEMS[item_was].name), GearData.FORM_NAMES[form_is - 1]],
+				"text": "%s: %s." % [String(fi.get("name", "")), String(fi.get("text", ""))], "tex": _pic(item_was),
+				"col": Heroes.element_color(String(GearData.ITEMS[item_was].set)), "chip": "EVOLVED", "go_text": "GOT IT"}))
 	urow.add_child(ub)
 	v.add_child(urow)
 	v.add_child(UIKit.label("Spare copies merge in the Workshop.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
