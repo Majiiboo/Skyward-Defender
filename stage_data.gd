@@ -12,9 +12,9 @@ extends RefCounted
 const AREAS := [
 	{"name": "Hive World", "boss": "Hive Mother",
 		"brief": "Pilot, the swarms come from this planet. Hold the base, thin the swarm, and find the Hive Mother."},
-	{"name": "Scrap Belt", "boss": "Hive Mother",
+	{"name": "Scrap Belt", "boss": "Salvage Queen",
 		"brief": "A ring of wrecked ships. The bugs nest in the junk: watch for anything that moves in the debris."},
-	{"name": "Magma World", "boss": "Hive Mother",
+	{"name": "Magma World", "boss": "Caldera Queen",
 		"brief": "The crust is cracking. Heat haze, ash and bugs that thrive in it. Keep your shield up."},
 	{"name": "Crystal World", "boss": "Hive Mother",
 		"brief": "Frozen seas and crystal spires. Beautiful, and full of things that want you gone."},
@@ -146,8 +146,35 @@ const ENEMIES := {
 		"xp_tier": 3, "coins": 40, "traits": ["boss", "armoured"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 7.0,
 		"spawns": "mite", "launches": "dart",
 		"intro": "Her hold opens to drop Mites. Hit her while it is open: she is weak then!"},
+	# THE MAGMA WORLD FAMILY (Luna, 2026-11-10): creatures of black rock and lava, planet 3 on.
+	# Each takes a role the game already knows (EnemyRig.MACHINES draws them from enemies/magma/).
+	"cinder":  {"tex": "", "family": "magma", "name": "Cinder Fly", "size": 34.0, "hp": 1.7, "speed": 70.0, "move": "flit",
+		"xp_tier": 0, "coins": 1, "traits": ["swarm", "fast"], "base_dmg": 10.0,
+		"intro": "A lump of rock on wings of lava-glass. The fastest swarm yet: keep firing!"},
+	"crust":   {"tex": "", "family": "magma", "name": "Crust Back", "size": 48.0, "hp": 6.0, "speed": 40.0, "move": "scurve",
+		"xp_tier": 0, "coins": 2, "traits": ["armoured"], "base_dmg": 15.0, "spores": 3, "spawns_on_death": "coal",
+		"intro": "Slow and thick-shelled. Bursts into three Hot Coals when it dies: shoot those too!"},
+	"spitfire": {"tex": "", "family": "magma", "name": "Spitfire", "size": 40.0, "hp": 4.4, "speed": 40.0, "move": "hover",
+		"xp_tier": 0, "coins": 2, "traits": ["shooter"], "fire_every": 3.8, "base_dmg": 14.0, "shot": "lava",
+		"intro": "Spits lava, faster than goo. The sac on its back swells before it spits: move!"},
+	"comet":   {"tex": "", "family": "magma", "name": "Comet", "size": 42.0, "hp": 3.4, "speed": 60.0, "move": "dive",
+		"xp_tier": 1, "coins": 2, "traits": ["fast"], "base_dmg": 15.0, "dive_mult": 2.5,
+		"intro": "A shard of white-hot rock. Locks on, then falls on your base. Shoot it first!"},
+	"coal":    {"tex": "", "family": "magma", "name": "Hot Coal", "size": 16.0, "hp": 1.3, "speed": 38.0, "move": "spore",
+		"xp_tier": -1, "coins": 0, "traits": ["swarm"], "base_dmg": 5.0, "intro": ""},
+	# the mini-boss: a furnace crab whose mouth opens to pour Hot Coals down on the base
+	"smelter": {"tex": "", "family": "magma", "name": "Smelter", "size": 100.0, "hp": 60.0, "speed": 24.0, "move": "boss",
+		"xp_tier": 2, "coins": 26, "traits": ["boss", "armoured"], "lay_every": 5.5, "base_dmg": 0.0, "launch_every": 8.0,
+		"spawns": "coal", "launches": "comet",
+		"intro": "Its furnace mouth opens to pour Hot Coals on your base. Hit it while it pours: it is weak then!"},
+	# the boss: a living volcano whose crater opens to throw Cinder Flies; angry, she hurls Comets
+	"caldera": {"tex": "", "family": "magma", "name": "Caldera Queen", "size": 124.0, "hp": 68.0, "speed": 22.0, "move": "boss",
+		"xp_tier": 3, "coins": 44, "traits": ["boss", "armoured"], "lay_every": 6.0, "base_dmg": 0.0, "launch_every": 6.5,
+		"spawns": "cinder", "launches": "comet",
+		"intro": "Her crater erupts with Cinder Flies. Hit her while it is open: she is weak then!"},
 }
 const SCRAP := ["mite", "hulk", "rivet", "dart", "bolt", "wrecker", "queen"]
+const MAGMA := ["cinder", "crust", "spitfire", "comet", "coal", "smelter", "caldera"]
 
 static func is_boss(id: String) -> bool:
 	return ENEMIES.has(id) and Array(ENEMIES[id].traits).has("boss")
@@ -157,6 +184,8 @@ static func is_boss(id: String) -> bool:
 static func boss_id(stage: int, mini: bool) -> String:
 	if area_index(stage) == 1:
 		return "wrecker" if mini else "queen"
+	if area_index(stage) == 2:   # the Magma World
+		return "smelter" if mini else "caldera"
 	return "hive_mother"
 
 const GEM_XP := [2, 4, 7, 12]
@@ -235,16 +264,28 @@ static func waves(stage: int) -> Array:
 		# over planet 2 (a third of the bugs at stage 11, 60% by stage 20) and staying near half
 		# from planet 3 on (families stack); the Rivet Gun from stage 13, the Dart from stage 15
 		var share := machine_share(stage)
+		var mshare := magma_share(stage)   # THE MAGMA WORLD (2026-11-10): from stage 21 a third family takes its share of each role
 		if share > 0.0:
 			var mixed: Array = []
 			for spec in wave:
 				var id: String = spec[0]
 				var total: int = int(spec[1])
 				var m: String = MACHINE_FOR.get(id, "")
+				var g: String = MAGMA_FOR.get(id, "") if mshare > 0.0 else ""
+				if g == "spitfire" and stage < 23 or g == "comet" and stage < 25:
+					g = ""
+				var gk: int = roundi(total * mshare) if g != "" else 0
+				if gk > 0:
+					mixed.append([g, gk])
+					total -= gk
+					spec = [id, total]
+				if total <= 0:
+					continue
 				if m == "" or (m == "rivet" and stage < 13) or (m == "dart" and stage < 15):
 					mixed.append(spec)
 					continue
-				var k: int = roundi(total * share)
+				var k: int = roundi(total * share / maxf(1.0 - mshare, 0.2)) if gk > 0 else roundi(total * share)
+				k = mini(k, total)
 				if total - k > 0:
 					mixed.append([id, total - k])
 				if k > 0:
@@ -255,11 +296,21 @@ static func waves(stage: int) -> Array:
 		# from planet 3 (stage 22): a young boss turns up halfway through, every other stage; the
 		# Queen and the Hive Mother take turns
 		if stage >= 22 and stage % 2 == 0 and stage % 5 != 0 and w == n / 2:
-			wave.append(["queen" if stage % 4 == 0 else "hive_mother", 1])
+			wave.append(["queen" if stage % 4 == 0 else ("caldera" if stage > 30 and stage % 6 == 2 else "hive_mother"), 1])
 		out.append(wave)
 	return out
 
 const MACHINE_FOR := {"scout": "mite", "drifter": "hulk", "spitter": "rivet", "diver": "dart"}
+const MAGMA_FOR := {"scout": "cinder", "drifter": "crust", "spitter": "spitfire", "diver": "comet"}
+
+# the share of each wave that is Magma creatures (0 before planet 3): a third at stage 21, over
+# half by stage 30, a third from planet 4 on (three families share the sky)
+static func magma_share(stage: int) -> float:
+	if stage <= 20:
+		return 0.0
+	if stage <= 30:
+		return lerpf(0.3, 0.55, float(stage - 21) / 9.0)
+	return 0.33
 
 # the share of each wave that is Scrap machines (0 before planet 2)
 static func machine_share(stage: int) -> float:
@@ -267,4 +318,4 @@ static func machine_share(stage: int) -> float:
 		return 0.0
 	if stage <= 20:
 		return lerpf(0.34, 0.6, float(stage - 11) / 9.0)
-	return 0.45
+	return 0.25 if stage <= 30 else 0.33   # from planet 3 the Magma family takes room (was 0.45)

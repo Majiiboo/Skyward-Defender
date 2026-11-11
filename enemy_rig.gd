@@ -203,21 +203,35 @@ const MACHINES := {
 	"bolt":    {"whole": Vector2(128, 125)},
 	"wrecker": {"whole": Vector2(288, 400), "rotors": [Vector2(0.27, 0.16), Vector2(0.73, 0.16)], "arm": Vector2(0.5, 0.60), "claw": Vector2(0.5, 0.88)},
 	"queen":   {"whole": Vector2(480, 479), "arms": [Vector2(0.31, 0.44), Vector2(0.69, 0.44)], "hold": Vector2(0.5, 0.19), "muzzle": Vector2(0.5, 0.92)},
+	# THE MAGMA WORLD family (Luna, 2026-11-10; tools/cut_magma.gd prints the anchors): rock and lava.
+	# "dir" = the folder under enemies/. The Smelter is its whole picture with the open mouth laid over.
+	"cinder":   {"dir": "magma", "whole": Vector2(256, 165), "wings": [Vector2(0.25, 0.5), Vector2(0.75, 0.5)], "muzzle": Vector2(0.5, 0.9)},
+	"crust":    {"dir": "magma", "whole": Vector2(256, 253), "plates": [Vector2(0.252, 0.517), Vector2(0.746, 0.517)]},
+	"spitfire": {"dir": "magma", "whole": Vector2(223, 256), "pod": Vector2(0.5, 0.248), "muzzle": Vector2(0.5, 0.95)},
+	"comet":    {"dir": "magma", "whole": Vector2(86, 256), "flame": Vector2(0.5, 0.08)},
+	"coal":     {"dir": "magma", "whole": Vector2(126, 128)},
+	"smelter":  {"dir": "magma", "whole": Vector2(400, 374), "mouth": Vector2(0.52, 0.81), "muzzle": Vector2(0.52, 0.9)},
+	"caldera":  {"dir": "magma", "whole": Vector2(480, 419), "arms": [Vector2(0.19, 0.2), Vector2(0.81, 0.2)], "hold": Vector2(0.49, 0.30), "muzzle": Vector2(0.5, 0.92)},
 }
 static var _mex := {}
 
 static func is_machine(kind: String) -> bool:
 	return MACHINES.has(kind)
 
+# the folder a piece lives in: by the creature its name starts with (scrap unless it says otherwise)
+static func _mdir(name: String) -> String:
+	var kind := name.get_slice("_", 0)
+	return String(MACHINES[kind].get("dir", "scrap")) if MACHINES.has(kind) else "scrap"
+
 static func _mhas(name: String) -> bool:
 	if not _mex.has(name):
-		_mex[name] = ResourceLoader.exists("res://enemies/scrap/%s.png" % name)
+		_mex[name] = ResourceLoader.exists("res://enemies/%s/%s.png" % [_mdir(name), name])
 	return _mex[name]
 
 static func _m(name: String) -> Texture2D:
-	var key := "scrap/" + name
+	var key := _mdir(name) + "/" + name
 	if not _tex.has(key):
-		_tex[key] = load("res://enemies/scrap/%s.png" % name)
+		_tex[key] = load("res://enemies/%s/%s.png" % [_mdir(name), name])
 	return _tex[key]
 
 # a point on the whole picture (0..1) -> world, for a machine drawn at `size` with `tilt`
@@ -243,8 +257,17 @@ static func draw_machine(c: CanvasItem, kind: String, pos: Vector2, size: float,
 		return pos + ((a - Vector2(0.5, 0.5)) * wsz).rotated(tilt)
 	if not _mhas(kind + "_body"):
 		# no pieces: the whole picture (the Junk Bolt tumbles)
-		var spin: float = t * 2.4 + phase if kind == "bolt" else 0.0
+		var spin: float = t * 2.4 + phase if (kind == "bolt" or kind == "coal") else 0.0
+		if kind == "smelter":   # the crab rocks a little on its claws
+			spin = sin(t * 1.6 + phase) * 0.035
 		_draw_tex(c, _m(kind + "_whole"), pos, s, tilt + spin, Vector2(0.5, 0.5), false, alpha, pre, bright)
+		if kind == "smelter":
+			# the furnace mouth: always a breathing glow; it gapes white-hot while it pours (lay > 0)
+			var m_at: Vector2 = pos + ((Vector2(spec.mouth) - Vector2(0.5, 0.5)) * wsz).rotated(tilt + spin)
+			var open: float = smoothstep(3.0, 2.4, lay) * smoothstep(0.0, 0.4, lay) if lay > 0.0 else 0.0
+			if open > 0.01 and _mhas("smelter_mouth_open"):
+				_draw_tex(c, _m("smelter_mouth_open"), m_at, s * (0.36 + 0.1 * open), tilt + spin, Vector2(0.5, 0.5), false, alpha * open, pre, 1.0)
+				c.draw_circle(m_at, 26.0 * s * (1.0 + 0.2 * sin(t * 9.0)), Color(1.0, 0.6, 0.2, 0.22 * open * alpha))
 		return
 	# pieces BEHIND the body
 	match kind:
@@ -262,14 +285,28 @@ static func draw_machine(c: CanvasItem, kind: String, pos: Vector2, size: float,
 				var tx: Texture2D = _m(kind + ("_panel_l" if i == 0 else "_panel_r"))
 				_draw_tex(c, tx, at.call(p), s, tilt + sin(t * 2.0 + phase + float(i) * PI) * 0.05, Vector2(0.5, 0.42), false, alpha, pre, bright)
 				i += 1
-		"dart":
+		"dart", "comet":
 			# the tail flame: flickers and stretches with the engine
-			var fl: Texture2D = _m("dart_flame")
+			var fl: Texture2D = _m(kind + "_flame")
 			var k: float = 0.85 + 0.25 * absf(sin(t * 23.0 + phase)) + 0.3 * stretch
 			c.draw_set_transform_matrix(pre * Transform2D(tilt, Vector2(1.0, k), 0.0, at.call(spec.flame)))
-			var fs := fl.get_size() * s
+			var fs := fl.get_size() * s * (0.7 if kind == "comet" else 1.0)
 			c.draw_texture_rect(fl, Rect2(-fs.x * 0.5, -fs.y * 0.86, fs.x, fs.y), false, Color(1, 1, 1, alpha * 0.95))
 			c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		"cinder":
+			# two wings of lava-glass hinged at the body, beating fast (one picture, mirrored)
+			var wt: Texture2D = _m("cinder_wing")
+			var beat: float = sin(t * 30.0 + phase) * 0.45
+			_draw_tex(c, wt, at.call(spec.wings[0]), s, tilt + beat, Vector2(0.95, 0.5), false, alpha, pre, bright)
+			_draw_tex(c, wt, at.call(spec.wings[1]), s, tilt - beat, Vector2(0.95, 0.5), true, alpha, pre, bright)
+		"caldera":
+			# her two arms of rock hang from the shoulders and swing; they open wide while she erupts
+			var ci := 0
+			for a in spec.arms:
+				var ctx: Texture2D = _m("caldera_arm_l" if ci == 0 else "caldera_arm_r")
+				var csw: float = sin(t * 1.1 + phase + float(ci) * 1.7) * 0.12 + (0.3 if lay > 1.8 else 0.0) * (1.0 if ci == 0 else -1.0)
+				_draw_tex(c, ctx, at.call(a), s, tilt + csw, Vector2(0.5, 0.06), false, alpha, pre, bright)
+				ci += 1
 		"queen":
 			# the two claw arms hinged at the shoulders, swinging out and in
 			var i := 0
@@ -282,6 +319,24 @@ static func draw_machine(c: CanvasItem, kind: String, pos: Vector2, size: float,
 	_draw_tex(c, _m(kind + "_body"), pos, s, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
 	# pieces IN FRONT of the body
 	match kind:
+		"crust":
+			# the two shell plates lie on its back and breathe apart, showing the lava between them
+			var gap: float = (0.5 + 0.5 * sin(t * 2.2 + phase)) * 0.03
+			_draw_tex(c, _m("crust_plate_l"), at.call(Vector2(spec.plates[0]) - Vector2(gap, 0.0)), s, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
+			_draw_tex(c, _m("crust_plate_r"), at.call(Vector2(spec.plates[1]) + Vector2(gap, 0.0)), s, tilt, Vector2(0.5, 0.5), false, alpha, pre, bright)
+		"spitfire":
+			# the lava sac on its back: small and dim, swelling bright before it spits
+			var sk: float = clampf(sac, 0.0, 1.0)
+			var sac_at: Vector2 = at.call(spec.pod)
+			_draw_tex(c, _m("spitfire_sac_empty"), sac_at, s, tilt, Vector2(0.5, 0.5), false, alpha * (1.0 - sk), pre, bright)
+			_draw_tex(c, _m("spitfire_sac_full"), sac_at, s * (0.62 + 0.38 * sk), tilt, Vector2(0.5, 0.5), false, alpha * sk, pre, bright)
+		"caldera":
+			# her crater opens while she throws Cinder Flies (lay > 0), white-hot inside
+			if lay > 0.0 and _mhas("caldera_vent_open"):
+				var vopen: float = smoothstep(3.0, 2.4, lay) * smoothstep(0.0, 0.4, lay)
+				_draw_tex(c, _m("caldera_vent_open"), at.call(spec.hold), s * 0.92, tilt, Vector2(0.5, 0.5), false, alpha * vopen, pre, 1.0)
+				if vopen > 0.5:
+					c.draw_circle(at.call(spec.hold), 30.0 * s * (1.0 + 0.2 * sin(t * 9.0)), Color(1.0, 0.55, 0.15, 0.22 * vopen * alpha))
 		"rivet":
 			if sac >= 0.0 and _mhas("rivet_pod_full"):
 				var pod_at: Vector2 = at.call(spec.pod)

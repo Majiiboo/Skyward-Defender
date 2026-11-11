@@ -37,7 +37,7 @@ static func card_tex(id: String) -> Texture2D:
 static func enemy_tex(id: String) -> Texture2D:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var p := _tex(String(def.get("tex", "")))
-	return p if p != null else _tex("res://enemies/scrap/%s_whole.png" % id)
+	return p if p != null else _tex("res://enemies/%s/%s_whole.png" % [String(def.get("family", "scrap")), id])
 
 # [{id, name, tex, have}] in a fixed order
 static func entries(save: Dictionary, cat: String) -> Array:

@@ -52,6 +52,7 @@ func _initialize() -> void:
 	_check_works()
 	_check_talents()
 	_check_scrap()
+	_check_magma()
 	_check_etrials()
 	_check_mods()
 	print("SMOKE %s  (%d failures)" % ["OK" if fails == 0 else "FAILED", fails])
@@ -573,8 +574,8 @@ func _check_scrap() -> void:
 	for id in ["mite", "hulk", "rivet", "dart", "queen"]:
 		_expect(ResourceLoader.exists("res://enemies/parts/%s_chunk_0.png" % id), "machine %s: death chunks" % id)
 	_expect(StageData.is_boss("queen") and StageData.is_boss("wrecker") and StageData.is_boss("hive_mother") and not StageData.is_boss("mite"), "bosses by trait")
-	_expect(StageData.boss_id(15, true) == "wrecker" and StageData.boss_id(20, false) == "queen" and StageData.boss_id(10, false) == "hive_mother" and StageData.boss_id(25, true) == "hive_mother", "planet 2: the Wrecker at 15, the Queen at 20; the Hive Mother elsewhere")
-	_expect(is_zero_approx(StageData.machine_share(10)) and StageData.machine_share(11) > 0.3 and StageData.machine_share(20) > 0.55 and is_equal_approx(StageData.machine_share(40), 0.45), "machine share: none before planet 2, growing over it, near half after")
+	_expect(StageData.boss_id(15, true) == "wrecker" and StageData.boss_id(20, false) == "queen" and StageData.boss_id(10, false) == "hive_mother" and StageData.boss_id(35, true) == "hive_mother", "planet 2: the Wrecker at 15, the Queen at 20; the Hive Mother on planets without a family yet")
+	_expect(is_zero_approx(StageData.machine_share(10)) and StageData.machine_share(11) > 0.3 and StageData.machine_share(20) > 0.55 and is_equal_approx(StageData.machine_share(40), 0.33), "machine share: none before planet 2, growing over it, a third once three families share the sky")
 	var kinds := func(stage: int) -> Array:
 		var out: Array = []
 		for w in StageData.waves(stage):
@@ -916,7 +917,7 @@ func _check_bossrush() -> void:
 	var s := {"stage_unlocked": 12}
 	_expect(not BossRush.open(s), "closed before stage %d" % BossRush.RUSH_FROM)
 	s["stage_unlocked"] = 31
-	_expect(BossRush.open(s) and BossRush.bosses(s) == ["hive_mother", "hive_mother", "wrecker", "queen", "hive_mother", "hive_mother"], "30 stages cleared: six bosses in campaign order (%s)" % str(BossRush.bosses(s)))
+	_expect(BossRush.open(s) and BossRush.bosses(s) == ["hive_mother", "hive_mother", "wrecker", "queen", "smelter", "caldera"], "30 stages cleared: six bosses in campaign order (%s)" % str(BossRush.bosses(s)))
 	_expect(BossRush.waves(s).size() == 6, "one wave a boss")
 	var lost := BossRush.finish(s, false, 2, 6, 80.0)
 	_expect(int(lost.reward.coins) == 200 and not bool(lost.new_best) and int(BossRush.best(s).n) == 0, "a loss pays for the bosses down, no record")
@@ -1062,3 +1063,38 @@ func _check_works() -> void:
 	_expect(Runs.boost(r2, "guns") == Runs.UPGRADE_MAX, "an upgrade stops at %d" % Runs.UPGRADE_MAX)
 	_expect(not Runs.works_offers(r2).has("guns"), "and is no longer offered")
 	_expect(Runs.step_hp(Runs.new_run(0, 1)) > 1.0, "a run starts tougher than the campaign")
+
+# THE MAGMA WORLD family (Luna, 2026-11-10): planet 3
+func _check_magma() -> void:
+	for id in StageData.MAGMA:
+		_expect(StageData.ENEMIES.has(id) and String(StageData.ENEMIES[id].get("family", "")) == "magma", "magma %s in the enemy table" % id)
+		_expect(ResourceLoader.exists("res://enemies/magma/%s_whole.png" % id) and EnemyRig.is_machine(id), "magma %s: whole picture + rig entry" % id)
+		_expect(Codex.enemy_tex(id) != null, "magma %s has a Collection picture" % id)
+	for id in ["cinder", "crust", "spitfire", "comet", "smelter", "caldera"]:
+		_expect(ResourceLoader.exists("res://enemies/parts/%s_chunk_0.png" % id), "magma %s: death chunks" % id)
+	for p in ["cinder_body", "cinder_wing", "crust_body", "crust_plate_l", "crust_plate_r", "spitfire_body", "spitfire_sac_full", "spitfire_sac_empty", "comet_body", "comet_flame", "smelter_mouth_open", "caldera_body", "caldera_arm_l", "caldera_arm_r", "caldera_vent_open"]:
+		_expect(ResourceLoader.exists("res://enemies/magma/%s.png" % p), "magma piece %s" % p)
+	_expect(StageData.boss_id(25, true) == "smelter" and StageData.boss_id(30, false) == "caldera" and StageData.is_boss("smelter") and StageData.is_boss("caldera"), "planet 3: the Smelter at 25, the Caldera Queen at 30")
+	_expect(is_zero_approx(StageData.magma_share(20)) and StageData.magma_share(21) > 0.25 and StageData.magma_share(30) > 0.5, "magma share: none before planet 3, growing over it")
+	var count := func(stage: int) -> Dictionary:
+		var out := {}
+		for w in StageData.waves(stage):
+			for spec in w:
+				out[spec[0]] = int(out.get(spec[0], 0)) + int(spec[1])
+		return out
+	var c20: Dictionary = count.call(20)
+	var c21: Dictionary = count.call(21)
+	var c25: Dictionary = count.call(25)
+	var c30: Dictionary = count.call(30)
+	var c45: Dictionary = count.call(45)
+	_expect(not c20.has("cinder"), "stage 20: no Magma creatures yet")
+	_expect(c21.has("cinder") and c21.has("crust") and c21.has("scout") and c21.has("mite") and not c21.has("spitfire") and not c21.has("comet"), "stage 21: Cinder Flies and Crust Backs beside bugs and machines (got %s)" % str(c21.keys()))
+	_expect(c25.has("spitfire") and c25.has("comet") and c25.has("smelter") and not c25.has("hive_mother"), "stage 25: Spitfires, the first Comets, the Smelter (got %s)" % str(c25.keys()))
+	_expect(c30.has("caldera") and int(c30.get("cinder", 0)) > int(c30.get("scout", 0)), "stage 30: the Caldera Queen, more Cinder Flies than Scouts (got %s)" % str(c30))
+	_expect(c45.has("cinder") and c45.has("mite") and c45.has("scout"), "stage 45: three families in the sky")
+	var tot := func(c: Dictionary) -> int:
+		var n := 0
+		for k in c:
+			n += int(c[k])
+		return n
+	print("  stage 25 mix: %s (%d)   stage 30 mix: %s (%d)" % [str(c25), tot.call(c25), str(c30), tot.call(c30)])

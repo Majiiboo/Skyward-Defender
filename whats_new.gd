@@ -6,13 +6,13 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
+	["The Magma World has its own creatures", "From stage 21: Cinder Flies, Crust Backs, Spitfires and Comets of black rock and lava. The Smelter guards stage 25 and the Caldera Queen stage 30."],
+	["Expedition: build the base as you go", "Modes > Expedition: stops 3 and 6 are Field works, where you bolt an upgrade onto the base for the rest of the run. Runs are harder."],
 	["Campaign", "Modes > Campaign: the trail of every stage, with the commander's story messages and a star chest at 10, 20 and 30 stars on each planet."],
 	["Weapon evolutions", "Heroes > the weapon: every weapon changes shape at Lv.10 and Lv.20, and each shape fires differently."],
-	["A new base", "A glowing core and four pods replace the old platform. Tap the core in a fight for the Core Pulse (from stage 7)."],
-	["Buildings, links and base cards", "Heroes > Base: nine buildings, perks at level 5, pairs that link, and power cards tied to what you field."],
+	["A new base", "A glowing core and four pods. Tap the core in a fight for the Core Pulse (stage 7). Heroes > Base: nine buildings, perks at level 5, pairs that link, and their own power cards."],
 	["Research Lab and Season Pass", "Heroes > Base > Research: slow upgrades that run while the game is closed (stage 12). The trophy button on Home: thirty tiers of rewards every 30 days (stage 8)."],
-	["Boss Rush and special waves", "Modes: Boss Rush (stage 20). In every stage from 8 on, some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush."],
-	["Abilities and contracts", "Heroes: an Ability button with three upgrades. Quests > Career: contracts that pay a hero's shards."],
+	["Boss Rush, special waves, abilities", "Modes: Boss Rush (stage 20). From stage 8 some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush. Heroes: an Ability button with three upgrades."],
 	["Daily Spin, daily deals, music", "Store > Offers: a free spin a day. Store > Shop > Today: three deals a day. Settings: music, volume, vibration, screen shake."],
 ]
 

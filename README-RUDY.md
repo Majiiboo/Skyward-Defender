@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev262 (version/code=262 and version/name="1.0-dev262" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev264 (version/code=264 and version/name="1.0-dev264" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,40 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev264: the Magma World family and a deeper Expedition (two updates since dev262)
+
+- THE MAGMA WORLD HAS ITS OWN CREATURES (Luna's 31 renders, all used). From stage 21 planet 3 is
+  no longer bugs and machines only:
+  CINDER FLY: a lump of rock on wings of lava-glass. The fastest swarm yet.
+  CRUST BACK: slow and thick-shelled. Bursts into three Hot Coals when it dies.
+  SPITFIRE (from stage 23): the lava sac on its back swells, then it spits lava at you.
+  COMET (from stage 25): a white-hot shard that locks on and falls on the base.
+  THE SMELTER, the mini-boss of stage 25: a furnace crab. Its mouth opens to pour Hot Coals on
+  the base; it is weak while it pours.
+  THE CALDERA QUEEN, the boss of stage 30: a living volcano. Her crater erupts with Cinder Flies
+  (she is weak while it is open); angry, she hurls Comets.
+  Families stack as you asked: on planet 3 the Magma creatures grow from a third to over half
+  of each wave beside the bugs and machines; from planet 4 on the three families share the sky
+  in thirds. They are also in Boss Rush, the Collection, the Home background and the Expedition.
+  Two things Luna did differently from the brief, both handled: the Smelter's separate body and
+  claws came at another size than its whole picture (the whole picture is used with the open
+  mouth laid over it, so its claws do not move on their own); the Crust Back came head up (flipped).
+- EXPEDITION: BUILD THE BASE AS YOU GO. Stops 3 and 6 of every run offer a FIELD WORKS: three
+  upgrades, bolt one onto the base for the rest of the run (Bulwark: shield +20%; Armour belt:
+  hull +20%; Gun racks: hero damage +10%; Field medic: hero health +15%; Capacitor: Core Pulse
+  and ability sooner; Salvage rig: coins +25%; each up to three times). Taking it means skipping
+  that stop's fight. Runs are also harder: the bugs start 10% tougher and gain 17% a stop.
+- BALANCE CHECK after the Magma family: the hand-played test and AUTO each won stages 21, 25, 30
+  and 45 twice (16 of 16). For the first time in these tests THE BASE WAS IN DANGER: the hull
+  dropped to a third at stage 25 and to almost nothing in one stage-30 run (still a win). The
+  Comets and Hot Coals get through. That is the pressure you wanted on the base; if stage 30
+  feels unfair on the phone, tell me and I ease the Caldera Queen.
+
+NOT CHECKED BY ME: nothing has been on a phone. I looked at every Magma creature drawn by the
+game (both bosses open and closed) and at a recorded stage-25 fight; I did not watch the Smelter
+or the Caldera Queen fight on screen (the test pilots fought them unseen). The Expedition was
+played by the test pilot on planet 1 only.
 
 ## dev262: the Campaign and weapon evolutions (two updates since dev260)
 

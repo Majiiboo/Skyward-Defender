@@ -701,7 +701,7 @@ func _start_wave() -> void:
 			wave_queue.append(entry[0])
 	wave_queue.shuffle()
 	# the boss always comes last
-	for bid in ["hive_mother", "queen", "wrecker"]:
+	for bid in ["hive_mother", "queen", "wrecker", "caldera", "smelter"]:
 		if not wave_queue.has(bid):
 			continue
 		wave_queue.erase(bid)
@@ -1459,7 +1459,7 @@ func _update_enemies(delta: float) -> void:
 					# a goo glob leaves the mouth of the sac on the art; a Rivet Gun fires a faster rivet
 					var mouth := _muzzle_of(e, float(def.size) * 1.35, float(e.get("tilt_s", 0.0)))
 					var shot: String = String(def.get("shot", "goo"))
-					var shot_v: float = 200.0 if shot == "rivet" else 135.0
+					var shot_v: float = 200.0 if shot == "rivet" else (150.0 if shot == "lava" else 135.0)
 					var dir: Vector2 = (aim_at - mouth).normalized()
 					enemy_bullets.append({"pos": mouth + dir * 4.0, "vel": dir * shot_v, "kind": shot, "ph": rng.randf() * TAU})
 					# from stage 25 a Spitter sometimes spits two globs in a small V
@@ -1604,14 +1604,15 @@ func _update_enemies(delta: float) -> void:
 							next_enemy_id += 1
 							live.append(s)
 						else:
-							var m := _make_enemy(brood, e.pos + Vector2(float(k - 1) * 30.0, -54.0))
+							var pours: bool = String(StageData.ENEMIES[brood].move) == "spore"   # the Smelter pours Hot Coals from its mouth, downward
+							var m := _make_enemy(brood, e.pos + (Vector2(float(k - 1) * 26.0, 46.0) if pours else Vector2(float(k - 1) * 30.0, -54.0)))
 							m.state = "hatch"
-							m.vel = Vector2(float(k - 1) * 50.0, -60.0)
+							m.vel = Vector2(float(k - 1) * 60.0, 30.0) if pours else Vector2(float(k - 1) * 50.0, -60.0)
 							live.append(m)
-					var bcol := Color(0.3, 0.9, 1.0) if brood != "scout" else Color(0.71, 0.55, 1.0)
+					var bcol := (Color(1.0, 0.55, 0.15) if StageData.MAGMA.has(brood) else Color(0.3, 0.9, 1.0)) if brood != "scout" else Color(0.71, 0.55, 1.0)
 					_burst(e.pos + Vector2(0, -58), 40.0, bcol, 22)   # the sacs on her back burst / the hold doors fly open
 					_fx_add("nova", e.pos + Vector2(0, -58), 60.0, 0.5, 0.0, 1.8, Color(bcol, 0.9))
-					_float_text(e.pos + Vector2(0, -110), "RELEASING!" if brood != "scout" else "HATCHING!", bcol.lightened(0.3), true)
+					_float_text(e.pos + Vector2(0, -110), ("POURING!" if brood == "coal" else ("ERUPTING!" if brood == "cinder" else "RELEASING!")) if brood != "scout" else "HATCHING!", bcol.lightened(0.3), true)
 					shake = maxf(shake, 0.35)
 		# frozen solid: it does not move (or shoot) until the ice breaks
 		if float(e.get("freeze_t", 0.0)) > 0.0:
@@ -1687,7 +1688,7 @@ func _update_enemies(delta: float) -> void:
 			continue
 		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
 			_hurt_base((RUNNER_DMG * (0.5 if _base_perks.has("plating") else 1.0)) if e.has("runner") else float(def.get("base_dmg", 10.0)))
-			if e.type == "diver" or e.type == "dart":
+			if _is_diver(e):
 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
 				shake = maxf(shake, 0.55)
 			else:
@@ -1739,8 +1740,12 @@ func _muzzle_of(e: Dictionary, size: float, tilt: float) -> Vector2:
 		return EnemyRig.machine_anchor(String(e.type), "muzzle", e.pos, size, tilt)
 	return EnemyRig.anchor("spitter", "muzzle", e.pos, size, tilt)
 
+# the kamikazes: the Diver, the Dart, the Comet
+func _is_diver(e: Dictionary) -> bool:
+	return String(StageData.ENEMIES[e.type].move) == "dive"
+
 func _lunging(e: Dictionary) -> bool:
-	return (e.type == "diver" or e.type == "dart") and (e.state == "dive" or e.state == "aim")
+	return _is_diver(e) and (e.state == "dive" or e.state == "aim")
 
 # The tilt an enemy wants this frame; drawing uses e.tilt_s, which eases toward it.
 func _enemy_tilt(e: Dictionary) -> float:
@@ -1780,7 +1785,7 @@ func _kill(e: Dictionary) -> void:
 			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
-	if e.type != "spore" and e.type != "bolt":
+	if String(def.move) != "spore":
 		_streak_add()   # the kill streak (more coins from the bugs you kill while it runs)
 	if e.has("runner"):
 		_runner_caught(e)
@@ -3399,6 +3404,13 @@ func _draw() -> void:
 		var heat: float = clampf((fire_rate_mult - 1.0) / 0.5, 0.0, 1.0)
 		draw_circle(_muzzle_world(), 3.0 + 4.0 * heat, Color(1.0, 0.75, 0.5, 0.25 + 0.35 * heat))
 	for eb in enemy_bullets:
+		if eb.get("kind", "") == "lava":
+			# a Spitfire's lava glob (2026-11-10): a white-hot drop with an orange skin and a short trail
+			var ld: Vector2 = eb.vel.normalized()
+			draw_line(eb.pos - ld * 16.0, eb.pos, Color(1.0, 0.45, 0.1, 0.35), 6.0, true)
+			draw_circle(eb.pos, 6.5 + 0.8 * sin(time_alive * 16.0 + float(eb.ph)), Color(1.0, 0.42, 0.1, 0.85))
+			draw_circle(eb.pos + ld * 1.5, 3.4, Color(1.0, 0.92, 0.6))
+			continue
 		if eb.get("kind", "") == "rivet":
 			# a Rivet Gun's rivet (dev198): a short steel dart with a cyan tail, flying straight
 			var rd: Vector2 = eb.vel.normalized()
@@ -3447,7 +3459,7 @@ func _draw_enemy(e: Dictionary) -> void:
 		draw_circle(e.pos, pr, Color(0.42, 0.16, 0.62))
 		draw_circle(e.pos + Vector2(-pr * 0.3, -pr * 0.3), pr * 0.45, Color(0.85, 0.6, 1.0, 0.8))
 		return
-	if (e.type == "diver" or e.type == "dart") and (e.state == "aim" or e.state == "dive") and e.has("target"):
+	if _is_diver(e) and (e.state == "aim" or e.state == "dive") and e.has("target"):
 		# the lock-on: a red dashed line to where it will hit, brightening until it dives
 		var la: float = clampf(float(e.get("t_state", 0.0)) / 0.6, 0.0, 1.0) if e.state == "aim" else 0.35
 		var tgt: Vector2 = e.target
@@ -3474,15 +3486,15 @@ func _draw_enemy(e: Dictionary) -> void:
 	var a: float = clampf((e.pos.y - 60.0) / 50.0, 0.15, 1.0)   # fades in as it enters
 	EnemyRig.tint = _status_tint(e)   # icy blue when slowed or frozen, red-orange when burning (dev209)
 	var sac_k := -1.0   # the Spitter's sac / the Rivet Gun's pod: fills over the cycle, empties on the shot
-	if e.type == "spitter" or e.type == "rivet":
+	if e.type == "spitter" or e.type == "rivet" or e.type == "spitfire":
 		# the sac swells before it spits and settles right after, on smooth ramps
 		var every: float = float(def.fire_every)
-		var scol := Color(0.3, 0.9, 1.0) if e.type == "rivet" else Color(0.8, 0.4, 1.0)
+		var scol := Color(0.3, 0.9, 1.0) if e.type == "rivet" else (Color(1.0, 0.55, 0.15) if e.type == "spitfire" else Color(0.8, 0.4, 1.0))
 		sac_k = 1.0 - smoothstep(0.15, every * 0.8, float(e.fire_t))
 		var swell: float = maxf(smoothstep(0.8, 0.2, e.fire_t), smoothstep(every - 0.3, every, e.fire_t))
 		if swell > 0.01:
 			var pulse: float = 0.5 + 0.5 * sin(e.t * 8.0)
-			var sac_at: Vector2 = EnemyRig.machine_anchor("rivet", "pod", e.pos, size, ang) if e.type == "rivet" else EnemyRig.anchor("spitter", "sac", e.pos, size, ang)
+			var sac_at: Vector2 = EnemyRig.machine_anchor(String(e.type), "pod", e.pos, size, ang) if EnemyRig.is_machine(String(e.type)) else EnemyRig.anchor("spitter", "sac", e.pos, size, ang)
 			draw_circle(sac_at, size * 0.16 * (1.0 + 0.4 * pulse * swell), Color(scol, 0.25 * swell))
 		# the spit telegraph (dev168, Archero-style fairness): a third of a second before a
 		# glob, the sac flashes and a ring closes on the mouth, so you can see it coming and move
@@ -3527,7 +3539,7 @@ var _shards: Array = []
 var _shard_atlas := {}   # enemy type -> [Texture2D]: Luna's chunk pieces (enemies/parts/<bug>_chunk_N.png, dev160), else six cuts of the body
 
 func _spawn_shards(e: Dictionary, def: Dictionary) -> void:
-	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart", "queen"].has(String(e.type)) or _shards.size() > 90:
+	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart", "queen", "cinder", "crust", "spitfire", "comet", "smelter", "caldera"].has(String(e.type)) or _shards.size() > 90:
 		return
 	if not _shard_atlas.has(e.type):
 		var list: Array = []
@@ -3864,7 +3876,7 @@ func _draw_boss_bar(e: Dictionary) -> void:
 	var edge := Color(1, 1, 1, a).lerp(Color(col, a), 1.0 - _boss_flash)
 	_hc.draw_polyline(frame, Color(edge, (0.6 + 0.4 * _boss_flash) * a), 1.0 + _boss_flash, true)
 	var bname: String = String(StageData.ENEMIES[e.type].get("name", String(e.type).replace("_", " "))).to_upper()
-	if e.get("mini", false) and e.type != "wrecker":
+	if e.get("mini", false) and e.type != "wrecker" and e.type != "smelter":
 		bname = "YOUNG " + bname   # a mid-stage or zone-A young boss (the Wrecker is its own thing)
 	_hc.draw_string(title_font, Vector2(r.position.x, by - 7), bname, HORIZONTAL_ALIGNMENT_LEFT, bw - 40, 11, Color(1, 0.85, 0.9, a))
 	_hc.draw_string(title_font, Vector2(r.end.x - 40, by - 7), "x%d" % cur, HORIZONTAL_ALIGNMENT_RIGHT, 40, 12 + int(4.0 * _boss_flash), Color(col.lightened(0.3), a))
@@ -4164,7 +4176,7 @@ const AURA_R := 120.0
 var _variants_seen := {}   # variant -> true once its card showed this run
 
 func _roll_variant(e: Dictionary) -> void:
-	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart"].has(String(e.type)) or e.has("hatchling"):
+	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart", "cinder", "crust", "spitfire", "comet"].has(String(e.type)) or e.has("hatchling"):
 		return
 	var pool: Array = []
 	for v in VARIANTS:
@@ -4460,6 +4472,8 @@ func _update_runners(delta: float) -> void:
 			keep.append(l)
 			continue
 		var kind: String = "mite" if stage >= 11 and rng.randf() < StageData.machine_share(stage) else "scout"
+		if stage >= 21 and rng.randf() < StageData.magma_share(stage):
+			kind = "cinder"   # on the Magma World the runners are Cinder Flies as often as not
 		var e := _make_enemy(kind, Vector2(float(l.x), 30.0))
 		e.erase("variant")
 		e.runner = true
@@ -4679,7 +4693,7 @@ func _ability_effect(hid: String, assist: bool) -> void:
 			# Firestorm: everything burns (longer with 1; more burning ground with 2; a blast first with 3)
 			var patches: int = 5 if ups >= 2 else 3
 			for e in enemies:
-				if e.type == "spore" or e.type == "bolt":
+				if String(StageData.ENEMIES[e.type].move) == "spore":
 					_ult_hit(e, float(e.hp) + 1.0)
 					continue
 				if ups >= 3:
