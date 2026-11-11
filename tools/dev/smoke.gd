@@ -49,6 +49,7 @@ func _initialize() -> void:
 	_check_welcome()
 	_check_deals()
 	_check_campaign()
+	_check_works()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -1044,3 +1045,20 @@ func _check_campaign() -> void:
 	_expect(int(s.crystals) == 30 and int(s.coins) == 1200, "and the wallet has it (%s coins, %s crystals)" % [str(s.coins), str(s.crystals)])
 	_expect(Campaign.claim(s, 0).is_empty() and Campaign.next_mark(s, 0) == 30 and not Campaign.chest_ready(s, 0), "the third waits for 30 stars")
 	_expect(int(Campaign.chest_reward(5, 2).coins) > int(Campaign.chest_reward(0, 2).coins), "later planets pay more")
+
+# Field works: the base built up during an Expedition (Runs.UPGRADES)
+func _check_works() -> void:
+	for sd in [3, 77, 1234, 99999]:
+		var run := Runs.new_run(0, sd)
+		_expect(Runs.nodes(run, Runs.WORKS_STEP).has("works"), "seed %d: stop %d offers a Field works (%s)" % [sd, Runs.WORKS_STEP + 1, str(Runs.nodes(run, Runs.WORKS_STEP))])
+		run["step"] = Runs.WORKS_STEP
+		var offers := Runs.works_offers(run)
+		_expect(offers.size() == 3 and offers == Runs.works_offers(run), "three offers, the same each time asked")
+		Runs.take_works(run, String(offers[0]))
+		_expect(Runs.boost(run, String(offers[0])) == 1 and int(run.step) == Runs.WORKS_STEP + 1, "taking one builds it and moves on")
+	var r2 := Runs.new_run(0, 5)
+	for i in 5:
+		Runs.take_works(r2, "guns")
+	_expect(Runs.boost(r2, "guns") == Runs.UPGRADE_MAX, "an upgrade stops at %d" % Runs.UPGRADE_MAX)
+	_expect(not Runs.works_offers(r2).has("guns"), "and is no longer offered")
+	_expect(Runs.step_hp(Runs.new_run(0, 1)) > 1.0, "a run starts tougher than the campaign")

@@ -148,6 +148,17 @@ func _fill_run(run: Dictionary) -> void:
 		ncards += int(run.cards[id])
 	carry.add_child(_chip(UIKit.ic("ic_pack"), str(ncards)))
 	_col.add_child(carry)
+	# what was built onto the base during this run (Field works)
+	var bo := Runs.boosts(run)
+	if not bo.is_empty():
+		var brow := HFlowContainer.new()
+		brow.add_theme_constant_override("h_separation", 6)
+		brow.add_theme_constant_override("v_separation", 6)
+		for id in bo:
+			if Runs.UPGRADES.has(id):
+				var n := Runs.boost(run, String(id))
+				brow.add_child(_chip(UIKit.ic(String(Runs.UPGRADES[id].icon)), String(Runs.UPGRADES[id].name) + ("  x%d" % n if n > 1 else ""), Color(0.62, 0.84, 1.0)))
+		_col.add_child(brow)
 	# the stops, the boss at the top, where you are marked
 	for s in range(Runs.STEPS - 1, -1, -1):
 		var kinds: Array = Runs.nodes(run, s)
@@ -242,6 +253,9 @@ func _take(kind: String) -> void:
 		Sfx.play("claim")
 		_fill()
 		return
+	if kind == "works":
+		_works_popup(run)
+		return
 	_cache_popup(run)
 
 # a supply cache: two offers, take one
@@ -332,3 +346,74 @@ func _dbg_cache() -> void:
 	var run := Runs.active(Progress.read())
 	if not run.is_empty():
 		_cache_popup(run)
+
+# a Field works stop: three upgrades for the base, take one (it stays for the rest of the run)
+func _works_popup(run: Dictionary) -> void:
+	var layer := ColorRect.new()
+	layer.color = Color(0.01, 0.024, 0.055, 0.8)
+	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var offers := Runs.works_offers(run)
+	var top := size.y * 0.5 - 60.0 * offers.size() - 40.0
+	var title := UIKit.title("FIELD WORKS", 24, Color(0.62, 0.84, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	title.position = Vector2(0, top - 46.0)
+	title.size = Vector2(size.x, 30)
+	layer.add_child(title)
+	var sub := UIKit.label("Build one onto the base. It stays for the rest of this run.", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	sub.position = Vector2(0, top - 14.0)
+	sub.size = Vector2(size.x, 18)
+	layer.add_child(sub)
+	for i in offers.size():
+		var id := String(offers[i])
+		var def: Dictionary = Runs.UPGRADES[id]
+		var have := Runs.boost(run, id)
+		var b := Button.new()
+		b.position = Vector2(14.0, top + 16.0 + i * 108.0)
+		b.size = Vector2(size.x - 28.0, 96.0)
+		for st in ["normal", "hover"]:
+			b.add_theme_stylebox_override(st, UIKit.box(Color(UIKit.CARD, 0.97), Color(0.55, 0.8, 1.0, 0.55), 22, 1))
+		b.add_theme_stylebox_override("pressed", UIKit.box(UIKit.CARD_HI, Color(0.55, 0.8, 1.0), 22, 2))
+		b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		var h := HBoxContainer.new()
+		h.set_anchors_preset(Control.PRESET_FULL_RECT)
+		h.offset_left = 16.0
+		h.offset_right = -16.0
+		h.add_theme_constant_override("separation", 14)
+		h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tr := TextureRect.new()
+		tr.texture = UIKit.ic(String(def.icon))
+		tr.custom_minimum_size = Vector2(52, 52)
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		h.add_child(tr)
+		var tv := VBoxContainer.new()
+		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		tv.alignment = BoxContainer.ALIGNMENT_CENTER
+		tv.add_theme_constant_override("separation", 2)
+		tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tv.add_child(UIKit.title(String(def.name), 18, UIKit.TEXT))
+		tv.add_child(UIKit.label(String(def.text), 13, UIKit.SOFT))
+		h.add_child(tv)
+		var lv := UIKit.title("%d / %d" % [have + 1, Runs.UPGRADE_MAX], 14, UIKit.GOLD)
+		lv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(lv)
+		b.add_child(h)
+		b.pressed.connect(func():
+			d = Progress.read()
+			var r := Runs.active(d)
+			if not r.is_empty():
+				Runs.take_works(r, id)
+				d["run"] = r
+				Progress.write(d)
+				Sfx.play("upgrade")
+			layer.queue_free()
+			_fill())
+		UIKit.press_fx(b)
+		layer.add_child(b)
+
+func _dbg_works() -> void:
+	var run := Runs.active(Progress.read())
+	if not run.is_empty():
+		_works_popup(run)

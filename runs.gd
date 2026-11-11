@@ -17,6 +17,7 @@ const KINDS := {
 	"elite":  {"name": "Elite fight", "text": "Tougher bugs, a card refresh if you win", "icon": "ic_elite", "col": Color(0.71, 0.55, 1.0)},
 	"rest":   {"name": "Rest", "text": "Hero +40% health, shield and hull +30%", "icon": "st_hp", "col": Color(0.44, 0.94, 0.72)},
 	"supply": {"name": "Supply cache", "text": "Take one of two", "icon": "ic_pack", "col": Color(1.0, 0.78, 0.27)},
+	"works":  {"name": "Field works", "text": "Build an upgrade onto the base", "icon": "ic_base", "col": Color(0.55, 0.8, 1.0)},
 	"boss":   {"name": "Boss", "text": "The planet's boss", "icon": "ic_rank", "col": Color(1.0, 0.4, 0.45)},
 }
 const WAVES := {"fight": 4, "elite": 5, "boss": 3}
@@ -28,6 +29,48 @@ const CACHE := {
 	"refresh": {"name": "Spare deck", "text": "+2 card refreshes for the rest of the run", "icon": "ic_pack"},
 	"coins":   {"name": "Bounty", "text": "A purse of coins", "icon": "ic_coin"},
 }
+
+# FIELD WORKS (2026-11-10): the base is built up DURING a run. A Field works stop offers three
+# of these; the one you take is bolted on for the rest of the run (run.boosts {id: n}, each up
+# to UPGRADE_MAX times) and applied by battle _run_begin. Every run offers one at stops 3 and 6.
+const UPGRADE_MAX := 3
+const UPGRADES := {
+	"bulwark":   {"name": "Bulwark", "text": "Shield +20%", "icon": "st_def", "per": 0.2},
+	"armour":    {"name": "Armour belt", "text": "Hull +20%, base hits -8%", "icon": "ic_base", "per": 0.2},
+	"guns":      {"name": "Gun racks", "text": "Hero damage +10%", "icon": "st_atk", "per": 0.1},
+	"medic":     {"name": "Field medic", "text": "Hero health +15%", "icon": "st_hp", "per": 0.15},
+	"capacitor": {"name": "Capacitor", "text": "Core Pulse and ability 15% sooner", "icon": "ic_energy", "per": 0.15},
+	"salvage":   {"name": "Salvage rig", "text": "Coins +25%", "icon": "ic_coin", "per": 0.25},
+}
+
+static func boosts(run: Dictionary) -> Dictionary:
+	var b = run.get("boosts", {})
+	return b if typeof(b) == TYPE_DICTIONARY else {}
+
+static func boost(run: Dictionary, id: String) -> int:
+	return clampi(int(boosts(run).get(id, 0)), 0, UPGRADE_MAX)
+
+# the three a Field works stop offers (fixed by the seed and the stop; maxed ones are left out)
+static func works_offers(run: Dictionary) -> Array:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = int(run.get("seed", 1)) * 53 + int(run.get("step", 0)) * 1543
+	var pool: Array = []
+	for id in UPGRADES:
+		if boost(run, String(id)) < UPGRADE_MAX:
+			pool.append(id)
+	var out: Array = []
+	while out.size() < 3 and not pool.is_empty():
+		var k: int = rng.randi() % pool.size()
+		out.append(pool[k])
+		pool.remove_at(k)
+	return out
+
+static func take_works(run: Dictionary, id: String) -> void:
+	if UPGRADES.has(id) and boost(run, id) < UPGRADE_MAX:
+		var b := boosts(run)
+		b[id] = boost(run, id) + 1
+		run["boosts"] = b
+	_advance(run)
 
 static func open(save: Dictionary) -> bool:
 	return DevTools.on or int(save.get("stage_unlocked", 1)) > RUN_FROM
@@ -47,7 +90,7 @@ static func wins(save: Dictionary, planet: int) -> int:
 	return int(won.get(str(planet), 0)) if typeof(won) == TYPE_DICTIONARY else 0
 
 static func new_run(planet: int, run_seed: int) -> Dictionary:
-	return {"planet": planet, "seed": run_seed, "step": 0, "hp": 1.0, "shield": 1.0, "hull": 1.0, "cards": {},
+	return {"planet": planet, "seed": run_seed, "step": 0, "hp": 1.0, "shield": 1.0, "hull": 1.0, "cards": {}, "boosts": {},
 		"refreshes": 0, "alive": true, "won": false, "cleared": 0, "node": "", "claimed": false}
 
 static func active(save: Dictionary) -> Dictionary:
@@ -63,7 +106,8 @@ static func nodes(run: Dictionary, step: int) -> Array:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = int(run.get("seed", 1)) * 7919 + step * 104729
 	if step == STEPS - 2:
-		return ["rest", "elite"] if rng.randf() < 0.5 else ["rest", "supply"]   # a breath before the boss
+		var r := rng.randf()   # a breath before the boss
+		return ["rest", "elite"] if r < 0.5 else ["rest", "supply"]
 	var pool: Array = ["fight", "fight", "fight", "elite", "rest", "supply"]
 	var out: Array = ["fight"] if rng.randf() < 0.6 else ["elite"]   # there is always something to fight
 	var want := 2 + (1 if rng.randf() < 0.5 else 0)
@@ -73,6 +117,11 @@ static func nodes(run: Dictionary, step: int) -> Array:
 		var k: String = pool[rng.randi() % pool.size()]
 		if not out.has(k):
 			out.append(k)
+	if (step == WORKS_STEP or step == WORKS_STEP + 3) and not out.has("works"):   # every run passes two Field works
+		if out.size() >= 3:
+			out[2] = "works"
+		else:
+			out.append("works")
 	return out
 
 static func is_fight(kind: String) -> bool:
@@ -89,9 +138,11 @@ static func stage_for(run: Dictionary, kind: String) -> int:
 	return clampi(s, 1, StageData.MAX_STAGE)
 
 # the bugs toughen as the run goes on, because your cards do too: +STEP_HP a stop
-const STEP_HP := 0.16
+const STEP_HP := 0.17
+const RUN_HP := 1.1          # and a run's bugs start tougher than the campaign's: it was too gentle (2026-11-10)
+const WORKS_STEP := 2        # this stop and the one three later (0-based) always offer a Field works
 static func step_hp(run: Dictionary) -> float:
-	return 1.0 + STEP_HP * int(run.get("step", 0))
+	return RUN_HP * (1.0 + STEP_HP * int(run.get("step", 0)))
 
 # a run's fights are short: the first waves of the stage; the boss fight is its last waves
 static func trim_waves(waves: Array, kind: String) -> Array:

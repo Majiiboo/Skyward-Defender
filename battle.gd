@@ -5132,6 +5132,15 @@ func _run_begin() -> void:
 		_card_panel.visible = false
 	run_level = 1 + mini(int(_run.get("step", 0)), 6)   # a run is already under way: the first pick is not far off
 	refreshes += int(_run.get("refreshes", 0))
+	# FIELD WORKS: what was bolted onto the base during this run (Runs.UPGRADES)
+	shield_max *= 1.0 + 0.2 * Runs.boost(_run, "bulwark")
+	hull_max *= 1.0 + 0.2 * Runs.boost(_run, "armour")
+	_base_dr = clampf(_base_dr + 0.08 * Runs.boost(_run, "armour"), 0.0, 0.6)
+	damage_mult *= 1.0 + 0.1 * Runs.boost(_run, "guns")
+	pilot_hp_max = roundf(pilot_hp_max * (1.0 + 0.15 * Runs.boost(_run, "medic")))
+	_pulse_cd_mult *= pow(0.85, Runs.boost(_run, "capacitor"))
+	_ult_cd *= pow(0.85, Runs.boost(_run, "capacitor"))
+	_coin_mult *= 1.0 + 0.25 * Runs.boost(_run, "salvage")
 	pilot_hp = maxf(roundf(pilot_hp_max * clampf(float(_run.get("hp", 1.0)), 0.05, 1.0)), 1.0)
 	shield = shield_max * clampf(float(_run.get("shield", 1.0)), 0.0, 1.0)
 	hull = maxf(hull_max * clampf(float(_run.get("hull", 1.0)), 0.05, 1.0), 1.0)
