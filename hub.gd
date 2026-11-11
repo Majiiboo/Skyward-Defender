@@ -1842,6 +1842,7 @@ func _open_home_chest(tier: String, how: String) -> void:
 		_side_popup("CHEST", String(reward.why))
 		return
 	reward.erase("pity")
+	reward.erase("items")
 	Progress.write(sv)
 	_load_save()
 	_coin_btn.text = _fmt(coins)

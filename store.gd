@@ -30,12 +30,15 @@ const DAY_S := 86400
 const KEY_CHESTS := {
 	"u": {"name": "Uncommon Chest", "color": "rare", "key": "key_u", "crystals": 40, "free": true, "icon": "ic_chest_u", "pity": 10,
 		"pity_text": "an Epic item", "pity_reward": {"core": 1, "ess": 1, "gear": "epic"},
-		"rolls": [[45, {"coins": 600}], [22, {"alloy": 6}], [15, {"cell": 2}], [12, {"barrel": 1, "rotor": 1}], [6, {"crystals": 25}]]},
+		"rolls": [[45, {"coins": 600}], [22, {"alloy": 6}], [15, {"cell": 2}], [12, {"barrel": 1, "rotor": 1}], [6, {"crystals": 25}]],
+		"extra_n": 2, "extras": [{"coins": 150}, {"coins": 250}, {"alloy": 2}, {"barrel": 1}, {"rotor": 1}]},
 	"e": {"name": "Epic Chest", "color": "epic", "key": "key_e", "crystals": 120, "free": true, "icon": "ic_chest_e", "pity": 10,
 		"pity_text": "a Legendary item", "pity_reward": {"core": 3, "ess": 3, "gear": "legendary", "crystals": 150},
-		"rolls": [[32, {"coins": 2500}], [24, {"cell": 5}], [16, {"core": 1}], [16, {"ess": 1}], [12, {"crystals": 80}]]},
+		"rolls": [[32, {"coins": 2500}], [24, {"cell": 5}], [16, {"core": 1}], [16, {"ess": 1}], [12, {"crystals": 80}]],
+		"extra_n": 3, "extras": [{"coins": 600}, {"coins": 900}, {"alloy": 5}, {"cell": 1}, {"rotor": 2}, {"barrel": 2}]},
 	"l": {"name": "Legendary Chest", "color": "legendary", "key": "", "crystals": 300, "free": false, "icon": "ic_chest_l", "pity": 0,
-		"rolls": [[38, {"coins": 6000, "core": 2}], [30, {"ess": 3}], [22, {"gear": "legendary"}], [10, {"crystals": 400}]]},
+		"rolls": [[38, {"coins": 6000, "core": 2}], [30, {"ess": 3}], [22, {"gear": "legendary"}], [10, {"crystals": 400}]],
+		"extra_n": 4, "extras": [{"coins": 1500}, {"coins": 2200}, {"cell": 3}, {"core": 1}, {"lens": 1}, {"alloy": 10}]},
 }
 const CHEST_ORDER := ["u", "e", "l"]
 # the packs: the free part is claimable every `every` seconds; the paid part waits for billing
@@ -190,7 +193,29 @@ static func chest_open_in(save: Dictionary, tier: String, how: String, rng: Rand
 				picked = rr[1]
 				break
 		reward = resolve(save, picked, r)
+	# A SET of items (2026-11-10, Rudy: a chest should show a list of what you got): the main roll
+	# plus a few small extras; "items" lists them in the order the reveal shows them (ChestReveal),
+	# the extras first, the main item last. The main item wears the chest's rarity, a pity item one above.
+	var items: Array = []
+	var extras: Array = c.get("extras", [])
+	for i in (int(c.get("extra_n", 0)) if not extras.is_empty() else 0):
+		var ex: Dictionary = extras[r.randi() % extras.size()]
+		for k in ex:
+			items.append({"k": k, "n": int(ex[k]), "rarity": "common"})
+	var main_r: String = {"u": "uncommon", "e": "epic", "l": "legendary"}.get(tier, "uncommon")
+	if pity:
+		main_r = "epic" if tier == "u" else "legendary"
+	for k in reward:
+		if k == "gear":
+			for piece in reward.gear:
+				items.append({"k": "gear", "n": 1, "rarity": String(piece.get("rarity", main_r)), "gear": piece})
+		else:
+			items.append({"k": k, "n": int(reward[k]), "rarity": main_r})
+	for it in items:
+		if String(it.k) != "gear" and String(it.rarity) == "common":
+			reward[it.k] = int(reward.get(it.k, 0)) + int(it.n)
 	Progress.grant(save, reward)
+	reward["items"] = items
 	if pity:
 		reward["pity"] = true
 	return reward
@@ -771,6 +796,7 @@ func _open_many(tier: String, how: String, n: int) -> void:
 			return
 		d["crystals"] = int(d.get("crystals", 0)) + int(c.crystals)   # the tenth is on the house
 	var total := {}
+	var all_items: Array = []
 	var pity := false
 	var opened := 0
 	for i in n:
@@ -782,8 +808,9 @@ func _open_many(tier: String, how: String, n: int) -> void:
 			break
 		opened += 1
 		pity = pity or bool(r.get("pity", false))
+		all_items.append_array(Array(r.get("items", [])))
 		for k in r:
-			if k == "pity":
+			if k == "pity" or k == "items":
 				continue
 			if k == "gear":
 				total["gear"] = Array(total.get("gear", [])) + Array(r.gear)
@@ -794,6 +821,7 @@ func _open_many(tier: String, how: String, n: int) -> void:
 	Progress.bump("chests", opened)
 	if pity:
 		total["pity"] = true
+	total["items"] = all_items
 	_chest_fx(total, tier)
 	_fill()
 
@@ -1419,6 +1447,9 @@ func _code_popup() -> void:
 # the chest opens in the middle of the screen: lid up, light out, then the reward (the pity
 # item says so in gold)
 func _chest_fx(reward: Dictionary, tier: String = "") -> void:
+	# the full-screen reveal (ChestReveal, 2026-11-10): rays, the shake, the lid, the items one by one
+	ChestReveal.show(self, tier, reward)
+	return
 	var dim := ColorRect.new()
 	dim.color = Color(0, 0.01, 0.04, 0.7)
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
@@ -1504,3 +1535,10 @@ func _tips() -> void:
 # capture hook: the Daily Spin sheet
 func _dbg_spin() -> void:
 	SpinSheet.show(self)
+
+# capture hook: open a chest for crystals and show the reveal
+func _dbg_chest(t) -> void:
+	d = Progress.read()
+	var r := chest_open_in(d, String(t), "crystals")
+	if not r.has("why"):
+		ChestReveal.show(self, String(t), r)
