@@ -60,6 +60,7 @@ func _build() -> void:
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
+	UIKit.smooth_scroll(scroll)   # a drag scrolls from anywhere (Rudy, dev265)
 	var root := MarginContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for m in ["margin_left", "margin_right"]:

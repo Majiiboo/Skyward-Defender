@@ -1237,9 +1237,11 @@ func _set_home_visible(visible: bool) -> void:
 		_frost.visible = false
 	if visible:
 		$AFK.process_mode = Node.PROCESS_MODE_INHERIT
+		$AFK.visible = true
 	else:
 		_hide_panels()
 		$AFK.process_mode = Node.PROCESS_MODE_DISABLED
+		$AFK.visible = false   # a page covers it with its own wallpaper: do not draw the battle underneath (heat, Rudy dev265)
 
 func _on_nav_tap(tapped: String, path: String) -> void:
 	if _transitioning: return

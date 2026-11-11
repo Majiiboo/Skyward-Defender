@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev265 (version/code=265 and version/name="1.0-dev265" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev270 (version/code=270 and version/name="1.0-dev270" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,69 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev270: your dev265 playtest notes, first batch (five updates since dev265)
+
+Everything below is from the notes you sent while playing dev265.
+
+- HOLD TO FIRE. In MANUAL he fires only while your finger is down; lift it and he stops. AUTO is
+  unchanged. The first-fight tip now says "HOLD TO FIRE, DRAG TO FLY".
+- THE HIVE MOTHER FIGHTS BACK. Between broods she now shoots, in turn: a FAN of goo, a quick BURST
+  aimed at you, and (the full boss, not the young one) a slow green POISON glob: a lighter hit
+  that then eats at the hero for four seconds (never the last point of health). Her mouth lights
+  up about half a second before each attack, green before poison. Angry, she attacks sooner and
+  with more. Her shots CANNOT be shot down like a Spitter's: you have to move.
+- AUTO FLIES. With AUTO on he used to stand still unless something was about to hit him. He now
+  flies under the lowest bug when the way is safe.
+- THE STORE, REBUILT. Three tabs instead of five:
+  STORE: one scrolling page. The daily gift, then the three chests as WIDE cards (picture on the
+  left; name, your keys, "Opened 3 of 10, then an Epic item", and one button under: FREE, a key,
+  or the crystal price). Tap the card for x10 and the odds. Below: coins, crystals, supplies.
+  OFFERS: Daily (the daily pack, the Daily Spin, today's three deals), Weekly, Monthly, and STAGE:
+  every fifth stage you clear opens a bundle. Home shows it once when you come back from the
+  fight; if you pass, it waits in Offers > Stage for as long as you like. Priced in crystals for
+  now (real money needs Google Play).
+  EVENT: the event store. Every point in the weekly event also pays an event token; tokens are
+  kept from week to week and traded here for keys, cores, shards, crystals and coins, each with
+  a weekly limit.
+  The 2x2 hovering squares are gone, and the key is drawn at its own size so it is sharp.
+- CHESTS OPEN WITH A SHOW. A chest now gives a SET of items (the main item plus two to four
+  smaller ones). Full screen: rays in the chest's colour, the chest shakes (longer for a better
+  chest), the lid lifts with a flash, and the items come out as cards one by one. An Epic or
+  Legendary item arrives FACE DOWN, trembles and glows, then flips. Tap to continue.
+- SPACE MUSIC. Both loops rewritten. Menu: a deep drone, wide open chords, a far-off beacon,
+  single high notes with long echoes, a slow wavering voice. Battle: a pumping synth bass, a fast
+  repeating sequence, a soaring voice over it, risers and falling sweeps.
+- MENUS.
+  The blue box on the bottom bar: its glide now starts after the page has loaded (the page load
+  was landing in the middle of the bounce), and the bounce is one soft settle.
+  Chests no longer stutter: they breathe in size instead of bobbing a few pixels.
+  Red dots sit inside the rounded pill, not on its edge.
+  Text: the game font is bolder everywhere and nothing is smaller than 12. What's new has big
+  text and scrolls.
+  Quests: the list scrolls from anywhere (a drag that started on a card used to be swallowed).
+  Claiming no longer rebuilds the page: the row settles in place, the coins or crystals fly up to
+  your total and the total counts up.
+  Collection: bosses have their own page.
+
+NOT CHECKED BY ME, and it matters this time:
+- THE MUSIC: I still cannot hear. I changed what a space theme is made of on paper. Please listen.
+- Nothing has been on a phone: the scroll fix, the nav glide and the chest stutter are exactly
+  the kind of thing only a phone shows. I watched the chest opening as a recording and looked at
+  every Store tab, the Quests page and What's new in still pictures.
+- The test pilots won stages 5, 10 and 20 three times each with the new Hive Mother, but they
+  dodge almost everything; a real player will get hit. The stage 5 young one is the gentle one.
+- The scroll fix is on Quests, the Store, Modes, Season, Research and the Expedition. If another page sticks, tell me which.
+- Text is bolder and has a floor of 12, not bigger across the board: a full size pass goes page
+  by page so nothing spills out of its box.
+
+- THE PHONE RUNS HOT (your last note). One fix is in: with a menu page open, the Home battle
+  behind it was still being drawn every frame under the page; it is now switched off until you
+  are back on Home. That is the only waste I could find by reading; the rest needs numbers from
+  your phone. Two things would tell me where the heat comes from:
+  1. Settings > Performance > Battery saver (30 frames a second, lighter effects). Does it still
+     get hot? If not, the cause is how much is drawn per frame, and I trim effects.
+  2. Settings > Show frame counter, then tell me the number you see in a fight.
 
 ## dev265: hints (one update since dev264)
 

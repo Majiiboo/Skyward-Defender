@@ -23,6 +23,7 @@ func _ready() -> void:
 	var scroll := ScrollContainer.new()
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	root.add_child(scroll)
+	UIKit.smooth_scroll(scroll)   # a drag scrolls from anywhere (Rudy, dev265)
 	_col = VBoxContainer.new()
 	_col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_col.add_theme_constant_override("separation", 10)

@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["The Magma World has its own creatures", "From stage 21: Cinder Flies, Crust Backs, Spitfires and Comets of black rock and lava. The Smelter guards stage 25 and the Caldera Queen stage 30."],
-	["Expedition: build the base as you go", "Modes > Expedition: stops 3 and 6 are Field works, where you bolt an upgrade onto the base for the rest of the run. Runs are harder."],
-	["Campaign", "Modes > Campaign: the trail of every stage, with the commander's story messages and a star chest at 10, 20 and 30 stars on each planet."],
-	["Weapon evolutions", "Heroes > the weapon: every weapon changes shape at Lv.10 and Lv.20, and each shape fires differently."],
-	["A new base", "A glowing core and four pods. Tap the core in a fight for the Core Pulse (stage 7). Heroes > Base: nine buildings, perks at level 5, pairs that link, and their own power cards."],
-	["Boss Rush, special waves, abilities", "Modes: Boss Rush (stage 20). From stage 8 some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush. Heroes: an Ability button with three upgrades."],
-	["Research, Season Pass, daily rewards", "Heroes > Base > Research (stage 12). The trophy on Home: a 30-day Season Pass (stage 8). Store: a free spin and three deals a day."],
-	["Music, settings and hints", "Settings: music, volume, vibration, screen shake. A one-line hint shows the first time a new screen opens; switch them off in Settings."],
+	["Hold to fire", "In MANUAL he now fires only while your finger is down. Lift it and he stops. AUTO still aims and fires for you."],
+	["The Hive Mother fights back", "She shoots between broods: a fan of goo, a quick burst, and a slow green poison glob. Her mouth lights up first. Her shots cannot be shot down: move."],
+	["A new Store", "Three tabs. Store: chests as big cards, coins, crystals, supplies. Offers: daily, weekly, monthly and one for every fifth stage you clear. Event: trade event tokens."],
+	["Chests open with a show", "Every chest gives a set of items, shown one by one. An Epic or Legendary item arrives face down, glows, then flips."],
+	["Space music", "New menu and battle music with a space theme. Settings > Music turns it off."],
+	["AUTO flies", "With AUTO on he now flies under the nearest bug instead of standing still."],
+	["Smoother menus", "Bigger, bolder text. Lists scroll from anywhere. Quest rewards fly to your total. Bosses have their own page in the Collection."],
+	["The Magma World has its own creatures", "From stage 21: Cinder Flies, Crust Backs, Spitfires and Comets. The Smelter guards stage 25 and the Caldera Queen stage 30."],
 ]
 
 static func due(save: Dictionary) -> bool:
