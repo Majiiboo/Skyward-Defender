@@ -669,6 +669,17 @@ func _mystery(icon: String, rarity: String) -> Control:
 
 func _tips() -> void:
 	Tips.first(get_tree(), [["promotion", _promo_btn]])
+	var hs := Progress.read()   # the small one-line hints (Hints): the newest mode that is open and unexplained
+	var hl: Array = []
+	if Promotion.daily_open(hs):
+		hl.append("daily")
+	if Runs.open(hs):
+		hl.append("run")
+	if Events.open(hs):
+		hl.append("event")
+	if BossRush.open(hs):
+		hl.append("bossrush")
+	Hints.show(self, hl)
 
 # ELEMENT TRIALS (Rudy, dev172): one ladder per element inside Promotion; only a hero of that
 # element may fight it. Six rows: element, the hero it needs, steps cleared, and Fight.

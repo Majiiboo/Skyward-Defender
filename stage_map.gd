@@ -71,6 +71,8 @@ func _ready() -> void:
 	_scroll.scroll_vertical = int(_node_pos(selected).y - _scroll.size.y * 0.55)
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
+	if not elite and Campaign.unread(Progress.read()).is_empty():   # not on top of a story message
+		Hints.show(self, ["campaign"])
 	# the newest story note nobody has read opens by itself, once
 	if not elite:
 		var nr := Campaign.unread(Progress.read())

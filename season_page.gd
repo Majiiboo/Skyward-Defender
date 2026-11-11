@@ -31,6 +31,7 @@ func _ready() -> void:
 	outer.add_child(_scroll)
 	_fill()
 	UIKit.enter(self)
+	Hints.show(self, ["season"])
 
 func _ricon(k: String) -> Texture2D:
 	match k:

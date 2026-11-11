@@ -50,6 +50,7 @@ func _initialize() -> void:
 	_check_deals()
 	_check_campaign()
 	_check_works()
+	_check_hints()
 	_check_talents()
 	_check_scrap()
 	_check_magma()
@@ -1098,3 +1099,17 @@ func _check_magma() -> void:
 			n += int(c[k])
 		return n
 	print("  stage 25 mix: %s (%d)   stage 30 mix: %s (%d)" % [str(c25), tot.call(c25), str(c30), tot.call(c30)])
+
+# Hints: the small one-line first-time pointers
+func _check_hints() -> void:
+	for id in Hints.HINTS:
+		var h: Dictionary = Hints.HINTS[id]
+		_expect(String(h.title) != "" and String(h.title).length() <= 22 and String(h.text).length() >= 20 and String(h.text).length() <= 100, "hint %s: a short name and one line (%d chars)" % [id, String(h.text).length()])
+	var s := {}
+	_expect(Hints.next(s, ["nope", "base", "research"]) == "base", "the first known unseen hint comes up")
+	Hints.mark(s, "base")
+	_expect(Hints.next(s, ["base", "research"]) == "research" and Hints.seen(s, "base"), "a hint shows once")
+	Hints.mark(s, "research")
+	_expect(Hints.next(s, ["base", "research"]) == "", "nothing left: nothing shows")
+	s["hints_on"] = false
+	_expect(Hints.next(s, ["spin"]) == "", "switched off in Settings: none")

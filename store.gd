@@ -1490,6 +1490,13 @@ func _fade_in_overlay() -> void:
 
 func _tips() -> void:
 	Tips.first(get_tree(), [["calendar", _gift_btn]])
+	var hs := Progress.read()   # the small one-line hints (Hints)
+	var hl: Array = []
+	if Spin.open(hs):
+		hl.append("spin")
+	if Deals.open(hs):
+		hl.append("deals")
+	Hints.show(self, hl)
 
 # capture hook: the Daily Spin sheet
 func _dbg_spin() -> void:

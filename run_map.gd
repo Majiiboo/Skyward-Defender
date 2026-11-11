@@ -29,6 +29,8 @@ func _ready() -> void:
 	scroll.add_child(_col)
 	_fill()
 	UIKit.enter(self)
+	if not Runs.active(d).is_empty():
+		Hints.show(self, ["works"])
 
 func _fill() -> void:
 	for c in _col.get_children():

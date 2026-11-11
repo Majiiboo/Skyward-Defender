@@ -360,6 +360,9 @@ func _on_back_pressed() -> void:
 # the page rises and fades in over the world (UIKit.enter, dev157); no more black cut
 func _fade_in_overlay() -> void:
 	UIKit.enter(self)
+	var hl: Array = ["contracts"] if Contracts.open(Progress.read()) else []
+	hl.append("codex")
+	Hints.show(self, hl)
 
 # A trophy medal drawn in thin lines: a star in a ring, in the tier's colour (dim when
 # no tier is reached yet). Luna can paint real trophy art later (LUNA-BRIEF).

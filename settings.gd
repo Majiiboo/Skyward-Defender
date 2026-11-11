@@ -165,19 +165,25 @@ func _fill() -> void:
 		_fill()))
 	# ---- game
 	_page.add_child(UIKit.header("GAME"))
+	_page.add_child(_switch("Hints", "One line the first time a new screen opens", Hints.on(d), func(v: bool):
+		d = Progress.read()
+		d["hints_on"] = v
+		Progress.write(d)
+		_fill()))
 	var tp := UIKit.panel(12)
 	var th := HBoxContainer.new()
 	th.add_theme_constant_override("separation", 10)
 	var tv := VBoxContainer.new()
 	tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	tv.add_theme_constant_override("separation", 1)
-	tv.add_child(UIKit.label("Show the tips again", 15, Color(0.85, 0.9, 1.0)))
-	tv.add_child(UIKit.label("The first-time pointers on every screen", 11, UIKit.MUTED))
+	tv.add_child(UIKit.label("Show the hints again", 15, Color(0.85, 0.9, 1.0)))
+	tv.add_child(UIKit.label("Every hint shows once more", 11, UIKit.MUTED))
 	th.add_child(tv)
 	var tb := UIKit.teal_button("Reset", 13)
 	tb.custom_minimum_size = Vector2(70, 34)
 	tb.pressed.connect(func():
 		Tips.reset()
+		Hints.reset()
 		tb.text = "Done"
 		tb.disabled = true)
 	th.add_child(tb)

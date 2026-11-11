@@ -1986,6 +1986,23 @@ func _page_tips(i: int) -> void:
 			if _ws_tab == 1 and _quick_btn and is_instance_valid(_quick_btn):
 				list.append(["quick_merge", _quick_btn])
 	Tips.first(get_tree(), list)
+	# the small one-line hints (Hints, 2026-11-10): one a visit, only for what is open
+	var sv := Progress.read()
+	var hl: Array = []
+	match i:
+		0:
+			if _abl_btn != null and is_instance_valid(_abl_btn) and _abl_btn.visible:
+				hl.append("ability")
+			if _wing_btn != null and is_instance_valid(_wing_btn) and _wing_btn.visible:
+				hl.append("wingmate")
+		1:
+			hl.append("base")
+			if Research.open(sv):
+				hl.append("research")
+		2:
+			if DroneData.support_open(sv):
+				hl.append("support")
+	Hints.show(self, hl)
 
 # ------------------------------------------------------------------ heroes (dev172)
 # The Pilot tab became the HERO page (DESIGN-heroes.md): a roster of complete characters
@@ -2940,6 +2957,7 @@ func _weapons_screen() -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(UIKit.title("Weapons", 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	Hints.show(self, ["weapon"])
 	var eq: String = gear.equipped["Weapon"]
 	var eq_el: String = GearData.ITEMS[eq].set
 	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))

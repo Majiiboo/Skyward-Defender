@@ -28,6 +28,7 @@ func _ready() -> void:
 	scroll.add_child(_col)
 	_fill()
 	UIKit.enter(self)
+	Hints.show(self, ["research"])
 
 func _process(delta: float) -> void:
 	_tick += delta
