@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev264 (version/code=264 and version/name="1.0-dev264" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev265 (version/code=265 and version/name="1.0-dev265" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,32 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev265: hints (one update since dev264)
+
+- HINTS: the first-time tips, redone small. After dev166 you switched the old tips off (huge
+  boxes, a spotlight on random areas, one popping up the moment the game opened). The new ones
+  are one small card at the bottom of a page: a gold name and one line. A hint never dims the
+  screen, never blocks a tap, never appears on Home, leaves on a tap or by itself after 9
+  seconds, and shows once. One per visit to a page, and only for something you have unlocked.
+  Seventeen of them, only for what a player would not guess: Ability upgrades, Wingmate, Weapon
+  shapes, Your base, Research Lab, Support drone, Daily Spin, Today's deals, Daily Challenge,
+  Expedition, Weekly event, Boss Rush, Hero contracts, Collection, Season Pass, Campaign stars
+  and chests, Field works.
+  Settings > Game: a Hints switch, and "Show the hints again".
+
+WHAT TO LOOK AT ON THE PHONE (everything since dev214 is new to you):
+  1. The music (Settings > Music turns it off): nobody has heard it.
+  2. Does the base feel in danger? Planet 3 (stages 21-30) is where the tests say it does.
+  3. The Magma creatures from stage 21, the Smelter at 25, the Caldera Queen at 30.
+  4. Modes > Campaign: the trail, the commander's messages, the star chests.
+  5. Frost and fire on the bugs, and the variants (steel bands, hex shell, chevrons, cross).
+  6. Heroes > the weapon: the three shapes. Heroes > Base. The Core Pulse (tap the core).
+  7. Whether the hints help or annoy.
+  Developer mode (Settings, top) opens everything if you want to jump to a later stage.
+
+NOT CHECKED BY ME: nothing has been on a phone. I looked at five pages with their hint showing;
+I did not watch one slide in or time out, and did not see the other twelve on screen.
 
 ## dev264: the Magma World family and a deeper Expedition (two updates since dev262)
 

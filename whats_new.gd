@@ -11,9 +11,9 @@ const NOTES := [
 	["Campaign", "Modes > Campaign: the trail of every stage, with the commander's story messages and a star chest at 10, 20 and 30 stars on each planet."],
 	["Weapon evolutions", "Heroes > the weapon: every weapon changes shape at Lv.10 and Lv.20, and each shape fires differently."],
 	["A new base", "A glowing core and four pods. Tap the core in a fight for the Core Pulse (stage 7). Heroes > Base: nine buildings, perks at level 5, pairs that link, and their own power cards."],
-	["Research Lab and Season Pass", "Heroes > Base > Research: slow upgrades that run while the game is closed (stage 12). The trophy button on Home: thirty tiers of rewards every 30 days (stage 8)."],
 	["Boss Rush, special waves, abilities", "Modes: Boss Rush (stage 20). From stage 8 some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush. Heroes: an Ability button with three upgrades."],
-	["Daily Spin, daily deals, music", "Store > Offers: a free spin a day. Store > Shop > Today: three deals a day. Settings: music, volume, vibration, screen shake."],
+	["Research, Season Pass, daily rewards", "Heroes > Base > Research (stage 12). The trophy on Home: a 30-day Season Pass (stage 8). Store: a free spin and three deals a day."],
+	["Music, settings and hints", "Settings: music, volume, vibration, screen shake. A one-line hint shows the first time a new screen opens; switch them off in Settings."],
 ]
 
 static func due(save: Dictionary) -> bool:
