@@ -30,6 +30,9 @@ static func next(save: Dictionary) -> Dictionary:
 		return {"text": "Research is done: collect it", "go": [], "scene": "res://research_page.tscn"}
 	if Season.claimable(save):
 		return {"text": "Season rewards are waiting", "go": [], "scene": "res://season_page.tscn"}
+	for ca in StageData.AREAS.size():   # a planet's star chest (Campaign)
+		if Campaign.chest_ready(save, ca):
+			return {"text": "A star chest is waiting in the Campaign", "go": [], "scene": "res://stage_map.tscn"}
 	if load("res://store.gd").free_waiting(save):
 		return {"text": "A free chest is waiting", "go": ["NavStore", "store_tab", 0]}
 	if lv < cap and int(save.get("coins", 0)) >= Heroes.level_cost(lv):

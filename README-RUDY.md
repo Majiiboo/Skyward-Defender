@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev260 (version/code=260 and version/name="1.0-dev260" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev262 (version/code=262 and version/name="1.0-dev262" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,43 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev262: the Campaign and weapon evolutions (two updates since dev260)
+
+- THE CAMPAIGN (Modes > Campaign, or tap the stage name on Home). The Stage Map is now the
+  Campaign, in the same clean look as the other pages, and it is gone from the Menu and Settings.
+  The trail of all sixty stages is the same, with three things added:
+  STORY. The commander sends three short messages per planet: when you arrive, after its fifth
+  stage and after its boss. They sit on the trail as small speech-bubble buttons (gold until
+  read), and a new one opens by itself the next time you visit. Eighteen messages tell one
+  connected story from the Hive World to the Sentinel World.
+  STAR CHESTS. Every planet holds 30 stars (three a stage). 10, 20 and 30 stars each open a
+  chest (coins, crystals, keys; bigger on later planets), so going back for missed stars pays.
+  The pill under each planet's name shows where you stand and turns gold when a chest is ready.
+  Home's next-goal line and the Campaign card in Modes tell you when one is waiting.
+  ELITE. Two pills at the top switch between Standard and Elite once Elite is open; the Elite
+  trail is purple and plays the stage on Elite. The Elite Campaign card in Modes opens it.
+  Tapping a stage opens a sheet from the bottom: its stars, PLAY with its power cost, and
+  "Set as my stage on Home".
+- WEAPON EVOLUTIONS (Heroes > the weapon). Every weapon changes shape at level 10 and level 20,
+  and each shape changes how it fires:
+  Ion Pistol: charged bolt every 4th shot, then charged bolts fly through every bug.
+  Arc Welder: every 2nd bolt arcs, then three bolts side by side.
+  Pulse Cannon: a wider blast, then a blast as strong as the shell.
+  Dread Railgun: a faster, fatter bolt, then every 4th bolt hits 60% harder.
+  Sun Rifle: a fan of four, then a fan of five that reaches further.
+  Frost Rifle: slows twice as much, then every 12th bolt freezes a bug solid.
+  The Weapons screen shows the three shapes and what the next one does; crossing level 10 or 20
+  shows a full-screen EVOLVED moment.
+- NOTE: frost and fire showing on the bugs, and the reworked variants (steel bands, hex shell,
+  chevrons, green cross instead of the grey ring) were already built in dev210. Please look at
+  them on the phone and say whether they read well.
+
+NOT CHECKED BY ME: nothing has been on a phone. The Campaign was looked at in five still pictures
+(the trail, a story message, a stage sheet, the Elite trail, a chest opening); I did not scroll
+the whole trail or tap through it by hand. The story text is my first draft: change any of it.
+All eighteen weapon shapes were fired for 25 seconds each in a real stage; I did not see the
+EVOLVED moment appear. Chest sizes and the power of each weapon shape are first guesses.
 
 ## dev260: special waves, today's deals, a What's new sheet (three updates since dev257)
 

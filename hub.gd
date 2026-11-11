@@ -370,7 +370,7 @@ func _build_home() -> void:
 	spacer.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	top.add_child(spacer)
 	var menu := _icon_button("MenuButton", "menu", 44.0, 32.0, 16)
-	menu.pressed.connect(func(): _side_popup("MENU", "Build %s\nMail, log-in rewards and community come with the online update (2.0)." % BuildInfo.BUILD, [["Settings", func(): _smooth_change_scene("res://settings.tscn")], ["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]]))
+	menu.pressed.connect(func(): _side_popup("MENU", "Build %s\nMail, log-in rewards and community come with the online update (2.0)." % BuildInfo.BUILD, [["Settings", func(): _smooth_change_scene("res://settings.tscn")]]))
 	top.add_child(menu)
 
 	# ---- stage block: mode tag, stage name with arrows, Standard / Elite ----
@@ -696,7 +696,7 @@ func _hero_face() -> Texture2D:
 # the menu in the top-right corner: Settings, the stage map, and what comes with the online update
 func _menu_popup() -> void:
 	_side_popup("MENU", "Build %s\nMail, log-in rewards and community come with the online update (2.0)." % BuildInfo.BUILD,
-		[["Settings", func(): _smooth_change_scene("res://settings.tscn")], ["Stage Map", func(): _smooth_change_scene("res://stage_map.tscn")]])
+		[["Settings", func(): _smooth_change_scene("res://settings.tscn")]])
 
 # the next hero you own becomes the profile picture
 func _next_profile_pic() -> void:

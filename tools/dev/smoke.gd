@@ -48,6 +48,7 @@ func _initialize() -> void:
 	_check_base_cards()
 	_check_welcome()
 	_check_deals()
+	_check_campaign()
 	_check_talents()
 	_check_scrap()
 	_check_etrials()
@@ -1015,3 +1016,31 @@ func _check_deals() -> void:
 	_expect(Deals.buy(s, "no_such") == "Not on offer today", "only today's three")
 	s["deals"]["day"] = Deals.day() - 1
 	_expect(Deals.bought(s).is_empty(), "a new day: all three back")
+
+# the Campaign: story notes open with progress, star chests at 10 / 20 / 30 stars a planet
+func _check_campaign() -> void:
+	_expect(Campaign.STORY.size() == StageData.AREAS.size(), "a story chapter per planet")
+	for a in Campaign.STORY.size():
+		_expect(Campaign.STORY[a].size() == 3, "planet %d has three notes" % (a + 1))
+		for n in Campaign.STORY[a]:
+			_expect(String(n.title) != "" and String(n.text).length() > 40 and String(n.text).length() < 260, "planet %d note '%s' is a short message" % [a + 1, n.title])
+	var s := {"stage_unlocked": 1, "coins": 0, "crystals": 0}
+	_expect(Campaign.note_open(s, 0, 0) and not Campaign.note_open(s, 0, 1) and not Campaign.note_open(s, 1, 0), "a new player has the first note only")
+	_expect(Campaign.unread(s) == [0, 0], "and it is unread (%s)" % str(Campaign.unread(s)))
+	Campaign.mark_read(s, 0, 0)
+	_expect(Campaign.unread(s).is_empty() and not Campaign.waiting(s), "read: nothing waits")
+	s["stage_unlocked"] = 11
+	_expect(Campaign.note_open(s, 0, 2) and Campaign.note_open(s, 1, 0) and not Campaign.note_open(s, 1, 1), "after the first boss: its closing note and planet 2's opening")
+	_expect(Campaign.unread(s) == [1, 0], "the newest unread comes first (%s)" % str(Campaign.unread(s)))
+	var st := {}
+	for i in range(1, 8):
+		st[str(i)] = 3
+	s["stars"] = st
+	_expect(Campaign.planet_stars(s, 0) == 21 and Campaign.planet_stars(s, 1) == 0, "21 stars on planet 1")
+	_expect(Campaign.chests_earned(s, 0) == 2 and Campaign.chest_ready(s, 0) and Campaign.next_mark(s, 0) == 10, "two chests earned")
+	var r1 := Campaign.claim(s, 0)
+	var r2 := Campaign.claim(s, 0)
+	_expect(int(r1.get("crystals", 0)) == 10 and int(r2.get("crystals", 0)) == 20 and int(r2.get("key_u", 0)) == 2, "they pay in order")
+	_expect(int(s.crystals) == 30 and int(s.coins) == 1200, "and the wallet has it (%s coins, %s crystals)" % [str(s.coins), str(s.crystals)])
+	_expect(Campaign.claim(s, 0).is_empty() and Campaign.next_mark(s, 0) == 30 and not Campaign.chest_ready(s, 0), "the third waits for 30 stars")
+	_expect(int(Campaign.chest_reward(5, 2).coins) > int(Campaign.chest_reward(0, 2).coins), "later planets pay more")

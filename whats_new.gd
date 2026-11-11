@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
+	["Campaign", "Modes > Campaign: the trail of every stage, with the commander's story messages and a star chest at 10, 20 and 30 stars on each planet."],
+	["Weapon evolutions", "Heroes > the weapon: every weapon changes shape at Lv.10 and Lv.20, and each shape fires differently."],
 	["A new base", "A glowing core and four pods replace the old platform. Tap the core in a fight for the Core Pulse (from stage 7)."],
 	["Buildings, links and base cards", "Heroes > Base: nine buildings, perks at level 5, pairs that link, and power cards tied to what you field."],
-	["Research Lab", "Heroes > Base > Research: slow upgrades that run while the game is closed (from stage 12)."],
-	["Season Pass", "The trophy button on Home: thirty tiers of rewards every 30 days (from stage 8)."],
+	["Research Lab and Season Pass", "Heroes > Base > Research: slow upgrades that run while the game is closed (stage 12). The trophy button on Home: thirty tiers of rewards every 30 days (stage 8)."],
 	["Boss Rush and special waves", "Modes: Boss Rush (stage 20). In every stage from 8 on, some waves are a Swarm, a Heavy wave, a Rush or a Gold Rush."],
 	["Abilities and contracts", "Heroes: an Ability button with three upgrades. Quests > Career: contracts that pay a hero's shards."],
-	["Daily Spin, daily deals, Welcome back", "Store > Offers: a free spin a day. Store > Shop > Today: three deals a day. Come back after a few hours for a gift."],
-	["Music and new settings", "Settings: music, volume, vibration, screen shake, damage numbers, auto-advance."],
+	["Daily Spin, daily deals, music", "Store > Offers: a free spin a day. Store > Shop > Today: three deals a day. Settings: music, volume, vibration, screen shake."],
 ]
 
 static func due(save: Dictionary) -> bool:

@@ -141,7 +141,10 @@ func _clean_card(id: String, locked: bool) -> Button:
 			line2 = StageData.stage_name(selected_stage)
 			var pk := Backdrop.planet_of(String(StageData.sector(selected_stage).get("bg", "hive_a")))
 			pic = load("res://skies/%s_planet.webp" % pk) if ResourceLoader.exists("res://skies/%s_planet.webp" % pk) else UIKit.ic("ic_base")
-			action = func(): _play(false)
+			if Campaign.waiting(_save):   # a star chest or a story note is waiting on the trail
+				line2 = "Chest or message waiting"
+				line2_col = UIKit.GOLD
+			action = func(): _open_campaign(false)
 		"elite":
 			var es := StageData.elite_top(_save)
 			title_txt = "Elite Campaign"
@@ -150,7 +153,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 			line2_col = Color(0.73, 0.64, 1.0)
 			pic = UIKit.ic("ic_elite")
 			pic_bg = Color(0.11, 0.086, 0.25)
-			action = func(): _play(true)
+			action = func(): _open_campaign(true)
 		"promotion":
 			title_txt = "Promotion"
 			line1 = "Rank %d of %d" % [Promotion.rank(_save), Promotion.RANKS.size()]
@@ -295,6 +298,12 @@ func _thousands(n: int) -> String:
 		out = "," + s.substr(s.length() - 3) + out
 		s = s.substr(0, s.length() - 3)
 	return s + out
+
+# Campaign / Elite Campaign: the trail of stages (stage_map.tscn), with the story and the star chests
+func _open_campaign(elite: bool) -> void:
+	get_tree().root.set_meta("campaign_elite", elite)
+	get_tree().root.set_meta("campaign_back", "res://modes.tscn")
+	get_tree().change_scene_to_file("res://stage_map.tscn")
 
 # Campaign / Elite Campaign: the selected stage (clamped to that ladder), as the old Play buttons did
 func _play(elite: bool) -> void:
