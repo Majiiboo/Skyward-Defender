@@ -51,6 +51,7 @@ func _initialize() -> void:
 	_check_campaign()
 	_check_works()
 	_check_hints()
+	_check_store2()
 	_check_talents()
 	_check_scrap()
 	_check_magma()
@@ -1113,3 +1114,43 @@ func _check_hints() -> void:
 	_expect(Hints.next(s, ["base", "research"]) == "", "nothing left: nothing shows")
 	s["hints_on"] = false
 	_expect(Hints.next(s, ["spin"]) == "", "switched off in Settings: none")
+
+# the Store after the dev265 playtest: chests give a set, stage offers, the event store
+func _check_store2() -> void:
+	var STORE = load("res://store.gd")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 11
+	var s := {"coins": 0, "crystals": 1000, "selected_stage": 12, "stage_unlocked": 13}
+	for tier in ["u", "e", "l"]:
+		var c0 := int(s.coins)
+		var r: Dictionary = STORE.chest_open_in(s, tier, "crystals", rng)
+		var items: Array = r.get("items", [])
+		_expect(not r.has("why") and items.size() >= 1 + int(STORE.KEY_CHESTS[tier].extra_n), "chest %s gives a set of items (%d)" % [tier, items.size()])
+		var best := "common"
+		var coin_sum := 0
+		for it in items:
+			if ChestReveal.RANK.find(String(it.rarity)) > ChestReveal.RANK.find(best):
+				best = String(it.rarity)
+			if String(it.k) == "coins":
+				coin_sum += int(it.n)
+			_expect(ChestReveal.icon_of(it) != null and ChestReveal.name_of(it) != "", "chest %s item %s has a picture and a name" % [tier, str(it.k)])
+		_expect(best == {"u": "uncommon", "e": "epic", "l": "legendary"}[tier], "chest %s: its best item wears the chest's rarity (%s)" % [tier, best])
+		_expect(int(s.coins) - c0 == coin_sum, "chest %s: the coins on the cards are the coins paid (%d = %d)" % [tier, int(s.coins) - c0, coin_sum])
+	_expect(ChestReveal.merged([{"k": "coins", "n": 100, "rarity": "common"}, {"k": "coins", "n": 50, "rarity": "common"}, {"k": "core", "n": 1, "rarity": "epic"}]).size() == 2, "the same kind folds into one card")
+	# stage offers
+	var t := {"stage_unlocked": 5, "crystals": 500, "coins": 0}
+	_expect(StageOffers.stages(t).is_empty() and StageOffers.due(t) == 0, "no stage offer before stage 5 is cleared")
+	t["stage_unlocked"] = 12
+	_expect(StageOffers.stages(t) == [10, 5] and StageOffers.due(t) == 10, "stage 11 cleared: the offers of 10 and 5, the newest announced (%s)" % str(StageOffers.stages(t)))
+	StageOffers.mark_seen(t, 10)
+	_expect(StageOffers.due(t) == 0 and StageOffers.waiting(t) == 2, "announced once; both still wait in the Store")
+	_expect(StageOffers.buy(t, 5) == "" and StageOffers.bought(t, 5) and StageOffers.buy(t, 5) == "Bought" and int(t.crystals) == 500 - int(StageOffers.offer(5).cost) and int(t.coins) == 1500, "an offer is bought once, for crystals")
+	_expect(StageOffers.buy(t, 15) != "" and int(StageOffers.offer(30).cost) > int(StageOffers.offer(5).cost), "a later stage's offer is closed, and bigger")
+	# the event store
+	var e := {"stage_unlocked": 20, "coins": 0}
+	Events.add_points(e, 60)
+	_expect(Events.tokens(e) == 60, "event points pay tokens one for one")
+	_expect(Events.shop_buy(e, "key_e") != "" and Events.shop_buy(e, "coins") == "" and Events.tokens(e) == 35 and int(e.coins) == 3000, "tokens trade for items")
+	_expect(Events.shop_bought(e, "coins") == 1 and Events.shop_why_not({"stage_unlocked": 2}, "coins") != "", "a weekly count is kept; closed before the event opens")
+	for it in Events.SHOP:
+		_expect(ResourceLoader.exists("res://icons/%s.png" % String(it.icon)), "event store item %s has a picture" % it.id)

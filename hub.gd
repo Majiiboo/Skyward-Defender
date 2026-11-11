@@ -43,7 +43,7 @@ const LEFT_RAIL := [
 	{"id": "PromoButton", "icon": "promo", "label": "Promo", "dot": false, "hidden": true,
 		"title": "PROMO", "body": "Special deals and bundles will show here once the Store opens for real-money packs."},
 	{"id": "StarterButton", "icon": "starter", "label": "Starter", "dot": false,
-		"go": ["NavStore", "store_tab", 3]},
+		"go": ["NavStore", "store_tab", 0]},
 ]
 const RIGHT_RAIL := [
 	{"id": "DailyButton", "icon": "daily", "label": "Daily", "dot": false,
@@ -160,6 +160,21 @@ func _ready() -> void:
 			if is_inside_tree() and _current_view == null and _popup_layer == null:
 				Welcome.show(self, back)
 				_refresh_dots(Progress.read()))
+	elif StageOffers.due(ws) > 0:
+		# a STAGE OFFER opened by the stage just cleared (StageOffers): shown once; it then waits in
+		# Store > Offers > Stage
+		var so := StageOffers.due(ws)
+		StageOffers.mark_seen(ws, so)
+		Progress.write(ws)
+		get_tree().create_timer(0.6).timeout.connect(func():
+			if is_inside_tree() and _current_view == null and _popup_layer == null:
+				var off := StageOffers.offer(so)
+				Moment.show(self, {"title": String(off.name), "text": "A bundle worth %d crystals for %d. It waits in Store > Offers > Stage if you pass now." % [int(off.was), int(off.cost)],
+					"tex": UIKit.ic("pack_stage", "ic_pack"), "col": UIKit.GOLD, "chip": "STAGE %d CLEARED" % so, "go_text": "SHOW ME",
+					"go": func():
+						get_tree().root.set_meta("store_tab", 1)
+						get_tree().root.set_meta("offers_tab", 3)
+						_on_nav_tap("NavStore", "res://store.tscn")}))
 	else:
 		get_tree().create_timer(0.7).timeout.connect(_announce_new)   # NEW: a system opened since the last visit (Unlocks)
 	call_deferred("_home_tips")   # guided first-time tips (Tips)

@@ -72,7 +72,7 @@ const PART_COLOR := {"alloy": "rare", "cell": "epic", "core": "legendary"}
 const KEY_DEALS := [{"kind": "key_u", "n": 1, "color": "rare"}, {"kind": "key_e", "n": 1, "color": "epic"}, {"kind": "key_u", "n": 5, "color": "rare"}]
 const SPECIALTY := [{"kind": "ess", "n": 1, "color": "legendary"}, {"kind": "barrel", "n": 3, "color": "rare"}, {"kind": "rotor", "n": 3, "color": "rare"}, {"kind": "lens", "n": 1, "color": "epic"}]
 
-const TAB_NAMES := ["Chests", "Offers", "Shop", "Crystals", "Exchange"]
+const TAB_NAMES := ["Store", "Offers", "Event"]   # rebuilt after the dev265 playtest (was Chests / Offers / Shop / Crystals / Exchange)
 
 var tab := 0
 var d := {}
@@ -287,17 +287,26 @@ func _build() -> void:
 	if get_tree().root.has_meta("store_tab"):
 		tab = int(get_tree().root.get_meta("store_tab"))
 		get_tree().root.remove_meta("store_tab")
+	if get_tree().root.has_meta("offers_tab"):   # ... and for an Offers section (Home's stage offer, captures)
+		_offers_tab = int(get_tree().root.get_meta("offers_tab"))
+		get_tree().root.remove_meta("offers_tab")
 	if get_tree().root.has_meta("shop_tab"):   # ... and for a Shop section (captures use it)
 		_shop_tab = int(get_tree().root.get_meta("shop_tab"))
 		get_tree().root.remove_meta("shop_tab")
 	tab = clampi(tab, 0, TAB_NAMES.size() - 1)
 	_tabs_row = UIKit.tabs(TAB_NAMES, func(i): tab = i; _fill(), tab, [], [],
-		[UIKit.ic("ic_chest_e"), UIKit.ic("ic_gift"), UIKit.ic("ic_coin"), UIKit.ic("ic_crystal"), UIKit.ic("ic_exchange", "ic_pack")])
+		[UIKit.ic("ic_chest_e"), UIKit.ic("ic_gift"), UIKit.ic("ic_token", "ic_exchange")])
 	col.add_child(_tabs_row)
+	var psc := ScrollContainer.new()   # every tab scrolls; a drag works from anywhere (UIKit.smooth_scroll)
+	psc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	psc.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	col.add_child(psc)
+	UIKit.smooth_scroll(psc)
 	_page = VBoxContainer.new()
+	_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	psc.add_child(_page)
 	_page.add_theme_constant_override("separation", 10)
 	_page.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	col.add_child(_page)
 	var code := UIKit.ghost_button("Have a code?", 12)
 	code.custom_minimum_size = Vector2(0, 32)
 	code.pressed.connect(_code_popup)
@@ -314,13 +323,11 @@ func _fill() -> void:
 	var pack_free := false
 	for p in PACKS_FREE:
 		pack_free = pack_free or free_left_s(d, "pack_" + String(p.id), int(p.every)) == 0
-	UIKit.tab_dots(_tabs_row, [chest_free, Progress.attention(d).store or pack_free, false, false, false])
+	UIKit.tab_dots(_tabs_row, [chest_free or bool(Progress.attend(d).claimable), pack_free or Spin.free_ready(d), false])
 	match tab:
-		0: _fill_chests()
-		1: _fill_offers()
-		2: _fill_shop()
-		3: _fill_crystals()
-		4: _fill_exchange()
+		0: _fill_main()
+		1: _fill_offers2()
+		_: _fill_event()
 	UIKit.reveal(_page)
 	if tab == (0 if UIKit.CLEAN else 1):   # the daily gift's tip, wherever the gift is
 		call_deferred("_tips")
@@ -1542,3 +1549,341 @@ func _dbg_chest(t) -> void:
 	var r := chest_open_in(d, String(t), "crystals")
 	if not r.has("why"):
 		ChestReveal.show(self, String(t), r)
+
+# ================================================================== THE STORE, REBUILT (Rudy, dev265 playtest)
+# Three tabs instead of five:
+#   STORE   one scrolling page: the daily gift, the three chests as WIDE cards (picture left,
+#           what it is and how far to the pity item right, its button under), coins, crystals,
+#           supplies (keys, parts, materials).
+#   OFFERS  Daily (today's three deals, the daily pack, the Daily Spin) | Weekly | Monthly |
+#           Stage (StageOffers: one bundle per fifth stage cleared, a missed one waits here).
+#   EVENT   the event store: tokens from the weekly event traded for items (Events.SHOP).
+var _offers_tab := 0
+var _supply_tab := 0
+
+func _fill_main() -> void:
+	_gift_strip()
+	_page.add_child(UIKit.header("Chests"))
+	var mats := Materials.read(d)
+	for tier in CHEST_ORDER:
+		_page.add_child(_chest_card(String(tier), mats))
+	_page.add_child(UIKit.header("Coins"))
+	var cg := _wide_grid()
+	var crystals := int(d.get("crystals", 0))
+	var n := 0
+	for o in OFFERS:
+		var oo: Dictionary = o
+		var owned: bool = oo.get("once", false) and bool(d.get(oo.get("flag", ""), false))
+		var speed: bool = String(oo.id) == "speed"
+		var oc: int = int(Dictionary(oo.get("reward", {})).get("coins", 0))
+		var pile: int = 1 + (1 if oc >= 1000 else 0) + (1 if oc >= 3000 else 0) + (1 if oc >= 10000 else 0)
+		var state := _state_pill("Owned", "plain", null, UIKit.SOFT) if owned else _price_pill(int(oo.price), crystals >= int(oo.price))
+		var b := _item_square(UIKit.ic("ic_energy", "ui_energy") if speed else UIKit.ic("coins_%d" % pile, "ic_coin"), String(oo.name),
+			"x2" if speed else "+" + UIKit.num(oc), state, _small("Game speed, forever") if speed else null, 196.0, 88.0, n * 0.4)
+		if owned:
+			b.disabled = true
+		else:
+			b.pressed.connect(func(): _buy(oo))
+		cg.add_child(b)
+		n += 1
+	_page.add_child(UIKit.header("Crystals"))
+	_fill_crystals_clean()
+	_page.add_child(UIKit.header("Supplies"))
+	var names: Array = ["Keys", "Special"]
+	var lists: Array = [KEY_DEALS, SPECIALTY]
+	if Unlocks.open(d, "workshop"):   # parts once the Workshop is open
+		names.insert(1, "Parts")
+		lists.insert(1, PART_DEALS)
+	_supply_tab = clampi(_supply_tab, 0, names.size() - 1)
+	_page.add_child(UIKit.sub_tabs(names, _supply_tab, func(i): _supply_tab = i; _fill()))
+	var sg := _wide_grid()
+	sg.columns = 3
+	var have := Parts.read(d)
+	var m := 0
+	for item in lists[_supply_tab]:
+		var deal: Dictionary = item
+		var resolved := resolve(d, {String(deal.kind): int(deal.n)})
+		var real: String = resolved.keys()[0]
+		var price: int = int(deal.n) * int(Parts.kind(real).crystals)
+		# a small picture: these icons are 96 px, blown up they went soft (the "blurry key")
+		var sb := _item_square(_reward_icon(real), String(Parts.kind(real).name), "x%d" % int(deal.n),
+			_price_pill(price, crystals >= price or DevTools.on), _small("Have %d" % int(have.get(real, 0))), 176.0, 60.0, m * 0.3)
+		sb.pressed.connect(func(): _buy_kind(deal))
+		sg.add_child(sb)
+		m += 1
+
+# a chest as one wide card: the picture left; right its name, your keys, the bar to the pity
+# item and ONE button (FREE, a key, or the crystal price). Tap the card for x10 and the odds.
+func _chest_card(tier: String, mats: Dictionary) -> Button:
+	var c: Dictionary = KEY_CHESTS[tier]
+	var rc: Color = UIKit.RARITY.get(String(c.color), UIKit.CYAN)
+	var b := _square()
+	b.custom_minimum_size = Vector2(0, 150)
+	var h := HBoxContainer.new()
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 12.0
+	h.offset_right = -14.0
+	h.offset_top = 12.0
+	h.offset_bottom = -12.0
+	h.add_theme_constant_override("separation", 14)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	var frame := PanelContainer.new()
+	frame.custom_minimum_size = Vector2(124, 0)
+	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	frame.add_theme_stylebox_override("panel", UIKit.box(Color(rc.r * 0.1 + 0.04, rc.g * 0.1 + 0.06, rc.b * 0.1 + 0.1), Color(rc, 0.35), 18, 1))
+	frame.add_child(_floating(UIKit.ic("chest2_%s_closed" % tier, String(c.icon)), 100.0, CHEST_ORDER.find(tier) * 0.5))
+	h.add_child(frame)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	h.add_child(v)
+	var head := HBoxContainer.new()
+	head.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var nm := UIKit.title(String(c.name), 18, rc.lightened(0.25))
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(nm)
+	var keys: int = int(mats.get(c.key, 0)) if String(c.key) != "" else 0
+	if String(c.key) != "":
+		head.add_child(UIKit.iconed(Materials.icon(String(c.key)), str(keys), 14, UIKit.TEXT, 20.0))
+	v.add_child(head)
+	if int(c.pity) > 0:
+		var into: int = opens_of(d, tier) % int(c.pity)
+		var bar := ProgressBar.new()
+		bar.max_value = int(c.pity)
+		bar.value = into
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(0, 6)
+		bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		bar.add_theme_stylebox_override("background", UIKit.pill(Color(0.1, 0.153, 0.25), 3, Vector2.ZERO))
+		bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.GOLD, 3, Vector2.ZERO))
+		v.add_child(bar)
+		v.add_child(UIKit.label("Opened %d of %d  ·  then %s" % [into, int(c.pity), String(c.pity_text)], 12, UIKit.SOFT))
+	else:
+		v.add_child(UIKit.label("Five items, one of them Legendary", 12, UIKit.SOFT))
+	# the one button
+	var left_s := free_left_s(d, "chest_" + tier, DAY_S) if c.free else -1
+	var how := "crystals"
+	var act: Button
+	if left_s == 0:
+		how = "free"
+		act = Button.new()
+		act.text = "FREE"
+		act.add_theme_font_override("font", UIKit.title_font())
+		act.add_theme_font_size_override("font_size", 17)
+		var gs := UIKit.pill(Color(0.44, 0.94, 0.72), 14, Vector2(10, 4))
+		for stn in ["normal", "hover", "pressed"]:
+			act.add_theme_stylebox_override(stn, gs)
+		act.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+		for cn in ["font_color", "font_hover_color", "font_pressed_color"]:
+			act.add_theme_color_override(cn, Color(0.024, 0.19, 0.12))
+		UIKit.press_fx(act)
+	elif keys > 0:
+		how = "key"
+		act = UIKit.gold_button("OPEN  ·  1 key", 15)
+	else:
+		act = UIKit.teal_button(str(int(c.crystals)), 16)
+		act.icon = UIKit.ic("ic_crystal", "ui_crystal")
+		act.add_theme_constant_override("icon_max_width", 20)
+		act.add_theme_font_override("font", UIKit.title_font())
+	act.custom_minimum_size = Vector2(0, 42)
+	var open_how := how
+	act.pressed.connect(func(): _open_key_chest(tier, open_how))
+	v.add_child(act)
+	if left_s > 0:
+		v.add_child(UIKit.label("Free again in %s" % left_text(left_s), 11, UIKit.SOFT))
+	b.pressed.connect(func(): _chest_sheet(tier))
+	return b
+
+# ---- OFFERS
+func _fill_offers2() -> void:
+	var pack_ready := func(id: String, every: int) -> bool:
+		return free_left_s(d, "pack_" + id, every) == 0
+	var dots: Array = [pack_ready.call("daily", DAY_S) or Spin.free_ready(d), pack_ready.call("weekly", 7 * DAY_S), pack_ready.call("monthly", 30 * DAY_S), false]
+	_offers_tab = clampi(_offers_tab, 0, 3)
+	_page.add_child(UIKit.sub_tabs(["Daily", "Weekly", "Monthly", "Stage"], _offers_tab, func(i): _offers_tab = i; _fill(), dots))
+	match _offers_tab:
+		0:
+			var g := _wide_grid()
+			g.add_child(_pack_square(PACKS_FREE[0], 0))
+			g.add_child(_spin_square())
+			if Deals.open(d):
+				_page.add_child(UIKit.header("Today's deals"))
+				var dg := _wide_grid()
+				var di := 0
+				for deal in Deals.today():
+					var dl: Dictionary = deal
+					var gone: bool = Deals.bought(d).has(String(dl.id))
+					var can: bool = Deals.why_not(d, dl) == ""
+					var cur_icon: Texture2D = UIKit.ic("ic_crystal", "ui_crystal") if String(dl.cur) == "crystals" else UIKit.ic("ic_coin", "ui_coin")
+					var dstate := _state_pill("Bought", "plain", null, UIKit.SOFT) if gone else _state_pill(UIKit.num(int(dl.cost)), "plain", cur_icon, UIKit.TEXT if can else Color(1.0, 0.55, 0.55))
+					var dsq := _item_square(UIKit.ic(String(dl.icon), "ic_gift"), String(dl.name), "-%d%%" % Deals.off_percent(dl), dstate, _small("Was %s" % UIKit.num(int(dl.was))), 196.0, 80.0, di * 0.4, gone)
+					dsq.pressed.connect(func():
+						d = Progress.read()
+						var why := Deals.buy(d, String(dl.id))
+						if why != "":
+							_toast(why)
+							return
+						Progress.write(d)
+						Sfx.play("buy")
+						_toast("Bought: " + String(dl.name))
+						_fill())
+					dg.add_child(dsq)
+					di += 1
+			else:
+				_page.add_child(_small("Three daily deals open after stage %d." % Deals.DEALS_FROM))
+		1:
+			var g := _wide_grid()
+			g.add_child(_pack_square(PACKS_FREE[1], 0))
+			g.add_child(_item_square(UIKit.ic("pack_weekly", "ic_pack"), "Weekly bundle", "", _state_pill("SOON", "plain", null, UIKit.SOFT), _small(String(PACKS_FREE[1].paid)), 206.0, 84.0, 0.4, true))
+			_page.add_child(_small("The paid bundle opens with the Google Play release."))
+		2:
+			var g := _wide_grid()
+			g.add_child(_pack_square(PACKS_FREE[2], 0))
+			var ss := _item_square(UIKit.ic("tab_trophies", "ic_rank"), "Season Pass", "", _state_pill("OPEN", "plain", null, UIKit.TEXT) if Season.open(d) else _state_pill("Stage %d" % Season.SEASON_FROM, "plain", null, UIKit.SOFT), _small("Thirty tiers every 30 days"), 206.0, 84.0, 0.4, not Season.open(d))
+			ss.pressed.connect(func():
+				if Season.open(d):
+					get_tree().change_scene_to_file("res://season_page.tscn"))
+			g.add_child(ss)
+		3:
+			var list := StageOffers.stages(d)
+			if list.is_empty():
+				var e := _small("Clear stage %d to open your first stage offer.\nEvery fifth stage opens one, and it waits here until you buy it." % StageOffers.EVERY)
+				e.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+				_page.add_child(e)
+			for s in list:
+				_page.add_child(_stage_offer_card(int(s)))
+
+# the free part of a daily / weekly / monthly pack
+func _pack_square(p: Dictionary, i: int) -> Button:
+	var left_s := free_left_s(d, "pack_" + String(p.id), int(p.every))
+	var state := _state_pill("FREE", "free") if left_s == 0 else _state_pill(left_text(left_s), "plain", null, UIKit.SOFT)
+	var b := _item_square(UIKit.ic("pack_" + String(p.id), "ic_pack"), String(p.name), "", state, _reward_row(resolve(d, p.free)), 206.0, 84.0, i * 0.5)
+	var pk: Dictionary = p
+	b.pressed.connect(func():
+		d = Progress.read()
+		var wait := free_left_s(d, "pack_" + String(pk.id), int(pk.every))
+		if wait > 0:
+			_toast("Back in " + left_text(wait))
+			return
+		var got := resolve(d, pk.free)
+		if claim_pack_in(d, pk) != "":
+			return
+		Progress.write(d)
+		Sfx.play("coin")
+		_toast("+ " + Progress.reward_text(got))
+		_fill())
+	return b
+
+func _spin_square() -> Button:
+	var sp_state := _state_pill("FREE", "free") if Spin.free_ready(d) else _state_pill("Back tomorrow" if Spin.left(d) <= 0 else ("%d left" % Spin.left(d) if Spin.open(d) else "Stage %d" % Spin.SPIN_FROM), "plain", null, UIKit.SOFT)
+	var sq := _item_square(UIKit.ic("ic_gift"), "Daily Spin", "", sp_state, _small("Eight prizes on a wheel"), 206.0, 84.0, 0.5)
+	sq.pressed.connect(func():
+		if not Spin.open(d):
+			_toast("Opens after stage %d" % Spin.SPIN_FROM)
+			return
+		SpinSheet.show(self, func():
+			d = Progress.read()
+			_fill()))
+	return sq
+
+# one stage offer: a wide card with what is inside, the saving and the price
+func _stage_offer_card(stage: int) -> Button:
+	var o := StageOffers.offer(stage)
+	var gone := StageOffers.bought(d, stage)
+	var b := _square()
+	b.custom_minimum_size = Vector2(0, 128)
+	var h := HBoxContainer.new()
+	h.set_anchors_preset(Control.PRESET_FULL_RECT)
+	h.offset_left = 12.0
+	h.offset_right = -14.0
+	h.offset_top = 10.0
+	h.offset_bottom = -10.0
+	h.add_theme_constant_override("separation", 12)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(h)
+	var pic := _floating(UIKit.ic("pack_stage", "ic_pack"), 92.0, 0.0)
+	pic.custom_minimum_size = Vector2(96, 92)
+	if gone:
+		pic.modulate = Color(0.5, 0.55, 0.68, 0.8)
+	h.add_child(pic)
+	var v := VBoxContainer.new()
+	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	v.alignment = BoxContainer.ALIGNMENT_CENTER
+	v.add_theme_constant_override("separation", 6)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(UIKit.title(String(o.name), 18, UIKit.GOLD if bool(o.boss) and not gone else (UIKit.TEXT if not gone else UIKit.SOFT)))
+	var shown: Dictionary = Dictionary(o.reward).duplicate()
+	var shards := int(shown.get("shards_duty", 0))
+	shown.erase("shards_duty")
+	var rr := _reward_row(shown)
+	rr.alignment = BoxContainer.ALIGNMENT_BEGIN
+	if shards > 0:
+		rr.add_child(UIKit.iconed(UIKit.ic("mat_shard", "ic_shard"), str(shards), 12, UIKit.TEXT, 18.0))
+	v.add_child(rr)
+	v.add_child(UIKit.label("Worth %s crystals" % UIKit.num(int(o.was)), 11, UIKit.SOFT))
+	h.add_child(v)
+	var price := _state_pill("Bought", "plain", null, UIKit.SOFT) if gone else _price_pill(int(o.cost), int(d.get("crystals", 0)) >= int(o.cost) or DevTools.on)
+	price.custom_minimum_size = Vector2(88, 42)
+	price.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	h.add_child(price)
+	if gone:
+		b.disabled = true
+	else:
+		b.pressed.connect(func():
+			d = Progress.read()
+			var why := StageOffers.buy(d, stage)
+			if why != "":
+				_toast(why)
+				return
+			Progress.write(d)
+			Sfx.play("buy")
+			_toast("Bought: " + String(o.name))
+			_fill())
+	return b
+
+# ---- EVENT: tokens from the weekly event, traded here
+func _fill_event() -> void:
+	var tok := UIKit.ic("ic_token", "mat_token")
+	var head := UIKit.panel(22)
+	var hh := HBoxContainer.new()
+	hh.add_theme_constant_override("separation", 12)
+	var tr := TextureRect.new()
+	tr.texture = tok
+	tr.custom_minimum_size = Vector2(52, 52)
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	hh.add_child(tr)
+	var hv := VBoxContainer.new()
+	hv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	hv.alignment = BoxContainer.ALIGNMENT_CENTER
+	hv.add_theme_constant_override("separation", 2)
+	hv.add_child(UIKit.title("%s event tokens" % UIKit.num(Events.tokens(d)), 20, UIKit.GOLD))
+	var sub := UIKit.label(("Earn them in the weekly event (Modes). %s: %s left." % [String(Events.theme().name), Events.left_text()]) if Events.open(d) else "The weekly event opens after stage %d." % Events.EVENT_FROM, 12, UIKit.SOFT)
+	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	hv.add_child(sub)
+	hh.add_child(hv)
+	head.add_child(hh)
+	_page.add_child(head)
+	var g := _wide_grid()
+	var i := 0
+	for it in Events.SHOP:
+		var item: Dictionary = it
+		var left: int = int(item.limit) - Events.shop_bought(d, String(item.id))
+		var can: bool = Events.shop_why_not(d, String(item.id)) == ""
+		var state := _state_pill("Next week", "plain", null, UIKit.SOFT) if left <= 0 else _state_pill(str(int(item.cost)), "plain", tok, UIKit.TEXT if can else Color(1.0, 0.55, 0.55))
+		var sq := _item_square(UIKit.ic(String(item.icon), "ic_gift"), String(item.name), "", state, _small("%d left this week" % maxi(left, 0)), 196.0, 76.0, i * 0.3, left <= 0)
+		sq.pressed.connect(func():
+			d = Progress.read()
+			var why := Events.shop_buy(d, String(item.id))
+			if why != "":
+				_toast(why)
+				return
+			Progress.write(d)
+			Sfx.play("buy")
+			_toast("Traded: " + String(item.name))
+			_fill())
+		g.add_child(sq)
+		i += 1

@@ -69,6 +69,7 @@ static func points_for(won: bool, hull_share: float, hp_lost: float) -> int:
 static func add_points(save: Dictionary, n: int) -> void:
 	var st := state(save)
 	st.points = int(st.points) + maxi(n, 0)
+	save["event_tokens"] = int(save.get("event_tokens", 0)) + maxi(n, 0)   # a token a point, for the Event store
 	save["event"] = st
 
 # how many track steps the points have reached
@@ -100,3 +101,66 @@ static func left_text() -> String:
 	if s >= 86400:
 		return "%dd %dh" % [s / 86400, (s % 86400) / 3600]
 	return "%dh %02dm" % [s / 3600, (s % 3600) / 60]
+
+# ------------------------------------------------------------------ THE EVENT STORE (Rudy, dev265)
+# Every event point also pays one EVENT TOKEN. Tokens are kept from week to week and are spent in
+# Store > Event on the items below; each has a limit that comes back with the new week.
+# Save "event_tokens": n. Save "event_shop": {"week": n, "bought": {id: times}}.
+const SHOP := [
+	{"id": "coins",    "name": "3,000 Coins",    "give": {"coins": 3000},     "cost": 25, "limit": 10, "icon": "ic_coin"},
+	{"id": "key_u",    "name": "Uncommon Key",   "give": {"key_u": 1},        "cost": 30, "limit": 5,  "icon": "mat_key_u"},
+	{"id": "cores",    "name": "2 Power Cores",  "give": {"core": 2},         "cost": 60, "limit": 3,  "icon": "ic_core"},
+	{"id": "crystals", "name": "40 Crystals",    "give": {"crystals": 40},    "cost": 70, "limit": 2,  "icon": "ic_crystal"},
+	{"id": "shards",   "name": "10 Hero Shards", "give": {"shards_duty": 10}, "cost": 80, "limit": 3,  "icon": "mat_shard"},
+	{"id": "key_e",    "name": "Epic Key",       "give": {"key_e": 1},        "cost": 90, "limit": 2,  "icon": "mat_key_e"},
+]
+
+static func tokens(save: Dictionary) -> int:
+	return maxi(int(save.get("event_tokens", 0)), 0)
+
+static func shop_bought(save: Dictionary, id: String) -> int:
+	var s = save.get("event_shop", {})
+	if typeof(s) != TYPE_DICTIONARY or int(s.get("week", -1)) != week():
+		return 0
+	var b = s.get("bought", {})
+	return int(b.get(id, 0)) if typeof(b) == TYPE_DICTIONARY else 0
+
+static func shop_item(id: String) -> Dictionary:
+	for it in SHOP:
+		if String(it.id) == id:
+			return it
+	return {}
+
+static func shop_why_not(save: Dictionary, id: String) -> String:
+	var it := shop_item(id)
+	if it.is_empty():
+		return "Not in the event store"
+	if not open(save):
+		return "Opens after stage %d" % EVENT_FROM
+	if shop_bought(save, id) >= int(it.limit):
+		return "Back next week"
+	if not DevTools.on and tokens(save) < int(it.cost):
+		return "%d tokens needed" % int(it.cost)
+	return ""
+
+# trade tokens for an item; "" on success
+static func shop_buy(save: Dictionary, id: String) -> String:
+	var why := shop_why_not(save, id)
+	if why != "":
+		return why
+	var it := shop_item(id)
+	if not DevTools.on:
+		save["event_tokens"] = tokens(save) - int(it.cost)
+	var give: Dictionary = Dictionary(it.give).duplicate()
+	if give.has("shards_duty"):
+		give["shards"] = {String(Heroes.read(save).selected): int(give.shards_duty)}
+		give.erase("shards_duty")
+	Progress.grant(save, give)
+	var n := shop_bought(save, id) + 1
+	var s = save.get("event_shop", {})
+	var b: Dictionary = {}
+	if typeof(s) == TYPE_DICTIONARY and int(s.get("week", -1)) == week() and typeof(s.get("bought", {})) == TYPE_DICTIONARY:
+		b = s.bought
+	b[id] = n
+	save["event_shop"] = {"week": week(), "bought": b}
+	return ""
