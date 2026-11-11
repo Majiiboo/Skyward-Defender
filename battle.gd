@@ -653,6 +653,7 @@ func _start_stage() -> void:
 	_hp_lost = 0.0
 	_parts_got = {}
 	_stars_got = 0
+	_poison_t = 0.0
 	_gems_got = 0
 	_kills_by = {}
 	if stage == 1 and not _is_trial() and not _seen.has("tip_move"):   # the first fight ever: say how to play, once
@@ -1083,8 +1084,8 @@ func _aim_and_fire(delta: float) -> void:
 			burst_dir = d2
 			burst_tid = int(target.get("id", -2))
 		return
-	# manual: straight up, finger down or not (a lifted finger only fires while there is something to shoot)
-	_firing_up = dragging or not enemies.is_empty()
+	# manual: straight up, ONLY while a finger is down (Rudy, dev265 playtest: lifting the finger stops the fire)
+	_firing_up = dragging
 	if _firing_up and fire_timer <= 0.0:
 		fire_timer = interval
 		_kick(1.0)
@@ -1108,6 +1109,8 @@ const AI_SPEED := 420.0
 var _ai_t := 0.0
 var _ai_x := -1.0          # where it is sliding to (-1 = staying put)
 var _ai_gem := false
+var _ai_hunt := false          # the autopilot is flying under a bug (unhurried)
+const AI_HUNT_SPEED := 170.0
 
 func _ai_threat(p0: Vector2, target_x: float) -> float:
 	var worst := 9999.0
@@ -1135,6 +1138,7 @@ func _auto_pilot(delta: float) -> void:
 			var here := _ai_threat(p, p.x)
 			_ai_x = -1.0
 			_ai_gem = false
+			_ai_hunt = false
 			if here < 24.0:
 				var best_d := here
 				for i in range(-10, 11):
@@ -1151,8 +1155,22 @@ func _auto_pilot(delta: float) -> void:
 						bd = dg
 						_ai_x = g.pos.x
 						_ai_gem = true
+			# nothing to dodge, no gem in reach: he HUNTS (Rudy, dev265: "he doesn't really move across the screen").
+			# He flies under the lowest bug, the one nearest the base, if the way there is safe.
+			if _ai_x < 0.0 and here > 60.0:
+				var low_y := -1.0
+				var low_x := -1.0
+				for e in enemies:
+					if e.pos.y > low_y and e.pos.y > 30.0 and e.pos.y < BASE_Y - 60.0 and String(e.type) != "crate":
+						low_y = e.pos.y
+						low_x = e.pos.x
+				if low_x >= 0.0 and absf(low_x - p.x) > 36.0:
+					var hx := clampf(low_x, 30.0, FIELD_W - 30.0)
+					if _ai_threat(p, hx) > 50.0:
+						_ai_x = hx
+						_ai_hunt = true
 	if _ai_x >= 0.0:
-		var step := (AI_SPEED if not _ai_gem else 220.0) * delta
+		var step := (AI_HUNT_SPEED if _ai_hunt else (AI_SPEED if not _ai_gem else 220.0)) * delta
 		_drag_by(Vector2(clampf(_ai_x - soldier_pos.x, -step, step), 0.0))
 		if absf(_ai_x - soldier_pos.x) < 2.0:
 			_ai_x = -1.0
@@ -1354,7 +1372,7 @@ func _update_bullets(delta: float) -> void:
 		b.pos += b.vel * delta
 		var shot_down := false
 		for pb in bullets:
-			if pb.pos.distance_to(b.pos) < 14.0:
+			if not b.get("boss", false) and pb.pos.distance_to(b.pos) < 14.0:   # a boss's shots cannot be shot down: move
 				shot_down = true
 				# Mirror Shell (talent card): the shot is thrown back up the way it came, as a bolt of
 				# ours; overcharged, our bolt flies on instead of being spent
@@ -1374,6 +1392,15 @@ func _update_bullets(delta: float) -> void:
 			_hurt_base(8.0)
 			_burst(b.pos, 6.0, Color(0.18, 0.9, 1.0), 4)
 			continue
+		if String(b.get("kind", "")) == "poison" and b.pos.distance_to(soldier_pos) < 18.0:
+			# the Hive Mother's poison: a lighter hit, then it eats at him for a few seconds
+			if inv_t <= 0.0 and not (_ult_live > 0.0 and _ult_kind == "phase" and _live_ups >= 3):
+				stat_hit_bullet += 1
+				_poison_t = POISON_T
+				_float_text(soldier_pos + Vector2(0, -52), "POISONED", Color(0.55, 1.0, 0.4), true)
+			_hurt_pilot(GOO_DMG * 0.5)
+			_burst(b.pos, 14.0, Color(0.5, 1.0, 0.35), 10)
+			continue
 		if b.pos.distance_to(soldier_pos) < 14.0:
 			if inv_t <= 0.0:
 				stat_hit_bullet += 1
@@ -1384,6 +1411,7 @@ func _update_bullets(delta: float) -> void:
 	enemy_bullets = live_eb
 
 func _update_enemies(delta: float) -> void:
+	_update_poison(delta)
 	var live: Array = []
 	var centre := Vector2(FIELD_W / 2, BASE_Y)
 	_update_auras(delta)   # support variants (boosters, healers)
@@ -1581,6 +1609,8 @@ func _update_enemies(delta: float) -> void:
 						d.lock_y = (e.pos.y + 60.0) / FIELD_H
 						live.append(d)
 						_burst(e.pos, 16.0, Color(1.0, 0.75, 0.3), 6)
+				if e.type == "hive_mother" and e.get("arrived", false):   # she shoots as well as hatches (Rudy, dev265)
+					_boss_attack(e, delta)
 				if e.laying > 0.0:
 					e.laying -= delta
 				else:
@@ -3404,6 +3434,23 @@ func _draw() -> void:
 		var heat: float = clampf((fire_rate_mult - 1.0) / 0.5, 0.0, 1.0)
 		draw_circle(_muzzle_world(), 3.0 + 4.0 * heat, Color(1.0, 0.75, 0.5, 0.25 + 0.35 * heat))
 	for eb in enemy_bullets:
+		if eb.get("kind", "") == "bossgoo":
+			# the Hive Mother's own goo: bigger and brighter than a Spitter's, with a hard white rim (it cannot be shot down)
+			var bd: Vector2 = eb.vel.normalized()
+			draw_line(eb.pos - bd * 18.0, eb.pos, Color(1.0, 0.35, 0.8, 0.3), 7.0, true)
+			draw_circle(eb.pos, 7.5, Color(0.85, 0.2, 0.7, 0.95))
+			draw_circle(eb.pos, 3.5, Color(1.0, 0.85, 0.95))
+			draw_arc(eb.pos, 8.5 + 1.0 * sin(time_alive * 14.0 + float(eb.ph)), 0.0, TAU, 18, Color(1, 1, 1, 0.75), 1.4, true)
+			continue
+		if eb.get("kind", "") == "poison":
+			# the Hive Mother's poison glob: a big green drop with a bubbling skin and a trail
+			var pd: Vector2 = eb.vel.normalized()
+			var pw: float = 1.0 + 0.12 * sin(time_alive * 12.0 + float(eb.ph))
+			draw_line(eb.pos - pd * 22.0, eb.pos, Color(0.4, 1.0, 0.3, 0.3), 9.0, true)
+			draw_circle(eb.pos, 10.0 * pw, Color(0.25, 0.75, 0.2, 0.9))
+			draw_circle(eb.pos + Vector2(-2.5, -3.0), 4.0, Color(0.75, 1.0, 0.55, 0.9))
+			draw_arc(eb.pos, 12.5 * pw, 0.0, TAU, 20, Color(0.6, 1.0, 0.4, 0.6), 1.5, true)
+			continue
 		if eb.get("kind", "") == "lava":
 			# a Spitfire's lava glob (2026-11-10): a white-hot drop with an orange skin and a short trail
 			var ld: Vector2 = eb.vel.normalized()
@@ -3432,6 +3479,7 @@ func _draw() -> void:
 			draw_circle(eb.pos, 5, Color(1.0, 0.2, 0.6, 0.5))
 			draw_circle(eb.pos, 2.5, Color(1.0, 0.8, 0.9))
 	_draw_fire_patches()   # burning patches under the bugs (dev209)
+	_draw_poison()
 	# enemies
 	for e in enemies:
 		_draw_enemy(e)
@@ -3505,6 +3553,7 @@ func _draw_enemy(e: Dictionary) -> void:
 			draw_arc(mouth, size * (0.6 - 0.4 * wk), 0.0, TAU, 24, Color(scol.lerp(Color(1.0, 0.45, 0.6), 0.5), 0.3 + 0.5 * wk), 2.0)
 	if e.type == "hive_mother":
 		EnemyRig.draw_hive_mother(self, e.pos, size * (0.68 if e.get("mini", false) else 0.9), time_alive, float(e.laying), e.hp < e.hp_max * 0.5)
+		_draw_boss_warn(e, size)
 	elif EnemyRig.is_machine(String(e.type)):
 		# the Scrap Belt machines from Luna's pieces (dev198); the bosses a little bigger
 		var msz: float = size * ((0.68 if e.get("mini", false) else 0.9) if _is_boss(e) else 1.0)
@@ -5318,8 +5367,8 @@ func _draw_move_tip() -> void:
 		return
 	var a: float = clampf(_move_tip, 0.0, 1.0) * clampf((7.0 - _move_tip) * 2.0, 0.0, 1.0)
 	var y: float = soldier_pos.y + 64.0
-	_hc.draw_string(title_font, Vector2(0, y), "DRAG TO FLY", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 18, Color(1, 1, 1, a))
-	_hc.draw_string(hud_font, Vector2(0, y + 20.0), "He fires straight up. Get under the bugs.", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 12, Color(0.8, 0.86, 0.95, a))
+	_hc.draw_string(title_font, Vector2(0, y), "HOLD TO FIRE, DRAG TO FLY", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 18, Color(1, 1, 1, a))
+	_hc.draw_string(hud_font, Vector2(0, y + 20.0), "He fires straight up while your finger is down. Get under the bugs.", HORIZONTAL_ALIGNMENT_CENTER, FIELD_W, 12, Color(0.8, 0.86, 0.95, a))
 
 # ---- THE CORE BASE in the fight (Backdrop.draw_core_base; stand-in shapes until Luna's art).
 # A pod flashes when its building does something you can see: _pod_ping(id).
@@ -5520,3 +5569,111 @@ func _wave_kind_for(w: int) -> String:
 	if h >= 260:
 		return ""
 	return String(WAVE_KIND_ORDER[absi(stage * 13 + w * 17 + h) % WAVE_KIND_ORDER.size()])
+
+# ------------------------------------------------------------------ THE HIVE MOTHER SHOOTS (Rudy, dev265 playtest:
+# "fairly easy; she should shoot as well as hatch, in a variety of ways, maybe a poison effect")
+# Between broods she attacks in turn: a FAN of goo, a quick BURST aimed at the hero, and (the full
+# boss only) a slow POISON glob: a lighter hit that then eats at him for POISON_T seconds. Her
+# mouth lights up HM_WARN seconds before each attack. Angry (under half health) she attacks
+# sooner and with more. The young one (mini) only knows the smaller fan and burst.
+const HM_EVERY := 3.6
+const HM_WARN := 0.6
+const POISON_T := 4.0
+const POISON_DPS := 0.025     # share of the hero's max health a second (never the last point)
+var _poison_t := 0.0
+
+func _boss_mouth(e: Dictionary) -> Vector2:
+	return e.pos + Vector2(0.0, float(e.r) * 0.85)
+
+func _boss_glob(e: Dictionary, dir: Vector2, kind: String, speed: float) -> void:
+	var mouth := _boss_mouth(e)
+	enemy_bullets.append({"pos": mouth + dir * 6.0, "vel": dir * speed, "kind": "bossgoo" if kind == "goo" else kind, "ph": rng.randf() * TAU, "boss": true})
+	for k in 3:
+		sparks.append({"pos": mouth, "vel": dir.rotated(rng.randf_range(-0.8, 0.8)) * rng.randf_range(30, 90), "life": 0.3,
+			"col": Color(0.5, 1.0, 0.35) if kind == "poison" else Color(0.75, 0.4, 1.0)})
+
+func _boss_attack(e: Dictionary, delta: float) -> void:
+	if float(e.get("laying", 0.0)) > 0.0 or float(e.get("freeze_t", 0.0)) > 0.0:
+		return   # busy hatching, or frozen
+	var mini: bool = e.get("mini", false)
+	var enraged: bool = e.hp < e.hp_max * 0.5
+	var aim: Vector2 = (soldier_pos - _boss_mouth(e)).normalized()
+	# the rest of a burst
+	if int(e.get("atk_left", 0)) > 0:
+		e.atk_gap = float(e.get("atk_gap", 0.0)) - delta
+		if float(e.atk_gap) <= 0.0:
+			e.atk_gap = 0.22
+			e.atk_left = int(e.atk_left) - 1
+			_boss_glob(e, aim.rotated(rng.randf_range(-0.06, 0.06)), "goo", 170.0)
+			Sfx.play("spit", rng.randf_range(1.0, 1.15))
+		return
+	var before: float = float(e.get("atk_t", 2.6))
+	e.atk_t = before - delta
+	if before > HM_WARN and float(e.atk_t) <= HM_WARN:
+		Sfx.play("spit", 0.8)   # the warning starts
+	if float(e.atk_t) > 0.0:
+		return
+	e.atk_t = HM_EVERY * (1.3 if mini else 1.0) * (0.72 if enraged else 1.0)
+	e.atk_n = int(e.get("atk_n", 0)) + 1
+	var kinds: int = 2 if mini else 3
+	match int(e.atk_n) % kinds:
+		1:   # the fan
+			var n: int = 3 if mini else (7 if enraged else 5)
+			var spread: float = 0.55 if mini else 0.95
+			for i in n:
+				_boss_glob(e, aim.rotated(lerpf(-spread * 0.5, spread * 0.5, float(i) / float(n - 1))), "goo", 135.0)
+			Sfx.play("spit")
+		0 when not mini:   # poison: one slow glob, two when angry
+			_boss_glob(e, aim, "poison", 112.0)
+			if enraged:
+				_boss_glob(e, aim.rotated(0.4 if rng.randf() < 0.5 else -0.4), "poison", 112.0)
+			Sfx.play("spit", 0.7)
+		_:   # the burst: the first now, the rest a beat apart
+			_boss_glob(e, aim, "goo", 170.0)
+			e.atk_left = (1 if mini else 2) + (1 if enraged else 0)
+			e.atk_gap = 0.22
+			Sfx.play("spit", 1.1)
+
+# her mouth lights before an attack: a ring closing on it, green before poison
+func _draw_boss_warn(e: Dictionary, _size: float) -> void:
+	if not e.get("arrived", false) or float(e.get("laying", 0.0)) > 0.0 or int(e.get("atk_left", 0)) > 0:
+		return
+	var t: float = float(e.get("atk_t", 9.0))
+	if t > HM_WARN or t <= 0.0:
+		return
+	var k: float = 1.0 - t / HM_WARN
+	var kinds: int = 2 if e.get("mini", false) else 3
+	var poison: bool = kinds == 3 and (int(e.get("atk_n", 0)) + 1) % 3 == 0
+	var col := Color(0.5, 1.0, 0.35) if poison else Color(1.0, 0.45, 0.75)
+	var m := _boss_mouth(e)
+	draw_circle(m, 10.0 + 6.0 * k, Color(col, 0.18 + 0.2 * k))
+	draw_arc(m, 34.0 - 22.0 * k, 0.0, TAU, 28, Color(col, 0.35 + 0.5 * k), 2.0, true)
+
+func _update_poison(delta: float) -> void:
+	if _poison_t <= 0.0:
+		return
+	_poison_t -= delta
+	var loss: float = minf(pilot_hp_max * POISON_DPS * delta, maxf(pilot_hp - 1.0, 0.0))
+	if loss > 0.0:
+		pilot_hp -= loss
+		_hp_lost += loss
+		_took_damage = true
+
+# poisoned: a green haze round the hero with bubbles rising, and the seconds left
+func _draw_poison() -> void:
+	if _poison_t <= 0.0:
+		return
+	var a: float = clampf(_poison_t / 0.5, 0.0, 1.0)
+	var pulse: float = 0.5 + 0.5 * sin(time_alive * 6.0)
+	draw_circle(soldier_pos, 26.0 + 3.0 * pulse, Color(0.4, 1.0, 0.3, 0.12 * a))
+	draw_arc(soldier_pos, 27.0 + 3.0 * pulse, 0.0, TAU, 28, Color(0.55, 1.0, 0.4, 0.55 * a), 1.5, true)
+	for i in 4:
+		var ph: float = fmod(time_alive * 0.9 + float(i) * 0.25, 1.0)
+		draw_circle(soldier_pos + Vector2(sin(float(i) * 2.4 + time_alive) * 18.0, 14.0 - 44.0 * ph), 2.6 * (1.0 - ph), Color(0.6, 1.0, 0.45, 0.8 * (1.0 - ph) * a))
+	draw_string(hud_font, soldier_pos + Vector2(-30.0, 46.0), "POISON %ds" % ceili(_poison_t), HORIZONTAL_ALIGNMENT_CENTER, 60.0, 10, Color(0.6, 1.0, 0.45, a))
+
+func _dbg_boss_attack() -> void:
+	for e in enemies:
+		if e.type == "hive_mother":
+			e.arrived = true
+			e.atk_t = 0.01
