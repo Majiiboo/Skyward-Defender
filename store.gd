@@ -541,8 +541,11 @@ func _floating(tex: Texture2D, h: float, delay: float) -> Control:
 	if not Perf.lite():
 		var tw := tr.create_tween().set_loops()
 		tw.tween_interval(delay)
-		tw.tween_property(tr, "position:y", -5.0, 1.6).set_trans(Tween.TRANS_SINE)
-		tw.tween_property(tr, "position:y", 0.0, 1.6).set_trans(Tween.TRANS_SINE)
+		# a slow breath in size, not a bob: moving a picture a few pixels over seconds lands on whole
+		# pixels and reads as a stutter on a phone (Rudy, dev265)
+		tr.resized.connect(func(): tr.pivot_offset = tr.size * 0.5)
+		tw.tween_property(tr, "scale", Vector2(1.04, 1.04), 1.8).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(tr, "scale", Vector2.ONE, 1.8).set_trans(Tween.TRANS_SINE)
 	return holder
 
 func _chest_square(tier: String, mats: Dictionary) -> Button:

@@ -674,7 +674,7 @@ func _check_codex() -> void:
 	var s := {"crystals": 0, "stage_unlocked": 1}
 	for cat in Codex.CATS:
 		var es := Codex.entries(s, String(cat))
-		_expect(es.size() >= 6, "the %s page has entries (%d)" % [cat, es.size()])
+		_expect(es.size() >= 5, "the %s page has entries (%d)" % [cat, es.size()])
 		for e in es:
 			_expect(e.tex != null and String(e.name) != "", "%s / %s has a picture and a name" % [cat, e.id])
 	_expect(Codex.count(s, "heroes")[0] == 1 and Codex.count(s, "heroes")[1] == Heroes.ORDER.size(), "a fresh save owns one hero of six")

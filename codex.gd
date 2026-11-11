@@ -9,8 +9,8 @@ extends RefCounted
 # An entry you do not have yet shows as a dark shape with a question mark: something to find.
 # Save "codex_claimed": {category: rewards taken (0-4)}.
 
-const CATS := ["enemies", "heroes", "turrets", "cards"]
-const NAMES := {"enemies": "Enemies", "heroes": "Heroes", "turrets": "Base", "cards": "Cards"}
+const CATS := ["enemies", "bosses", "heroes", "turrets", "cards"]   # bosses on their own page (Rudy, dev265)
+const NAMES := {"enemies": "Enemies", "bosses": "Bosses", "heroes": "Heroes", "turrets": "Base", "cards": "Cards"}
 const STEPS := [0.25, 0.5, 0.75, 1.0]      # the share of a category that pays
 const CRYSTALS := [10, 15, 25, 50]
 
@@ -43,12 +43,14 @@ static func enemy_tex(id: String) -> Texture2D:
 static func entries(save: Dictionary, cat: String) -> Array:
 	var out: Array = []
 	match cat:
-		"enemies":
+		"enemies", "bosses":
 			var seen: Array = save.get("seen_enemies", [])
 			for id in StageData.ENEMIES:
 				var def: Dictionary = StageData.ENEMIES[id]
 				if String(def.get("intro", "")) == "":
 					continue   # spore pods and junk bolts are part of another bug
+				if StageData.is_boss(String(id)) != (cat == "bosses"):
+					continue   # bosses and mini-bosses have their own category
 				out.append({"id": id, "name": String(def.get("name", String(id).capitalize())), "tex": enemy_tex(id), "have": seen.has(id)})
 		"heroes":
 			var h := Heroes.read(save)

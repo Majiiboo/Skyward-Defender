@@ -7,6 +7,7 @@ var tab := 0
 var _list: VBoxContainer
 var _note: Label
 var _wallet: HBoxContainer
+var _hold_fill := false
 var _tabs_row: HBoxContainer
 var d := {}
 
@@ -22,6 +23,7 @@ func _build() -> void:
 	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	add_child(scroll)
+	UIKit.smooth_scroll(scroll)   # a drag scrolls from anywhere, cards and buttons included
 	var root := MarginContainer.new()
 	root.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for m in ["margin_left", "margin_right"]:
@@ -70,6 +72,8 @@ func _build() -> void:
 	_fill()
 
 func _fill() -> void:
+	if _hold_fill:   # a claim settling in place (no rebuild under the finger)
+		return
 	for c in _list.get_children():
 		c.queue_free()
 	for c in _wallet.get_children():
@@ -240,7 +244,33 @@ func _clean_row(text: String, progress: float, goal: float, reward: Dictionary, 
 	elif done:
 		b = UIKit.gold_button(amount, 15)
 		b.pressed.connect(func():
+			# claim IN PLACE (Rudy, dev265): the row settles where it is, the reward flies to the total
+			var c0 := int(d.get("coins", 0))
+			var x0 := int(d.get("crystals", 0))
+			_hold_fill = true
 			on_claim.call()
+			_hold_fill = false
+			b.text = "Done"
+			b.icon = null
+			b.disabled = true
+			p.create_tween().tween_property(p, "modulate:a", 0.6, 0.3)
+			UIKit.tab_dots(_tabs_row, Progress.attention(d).quests_tabs)
+			var c1 := int(d.get("coins", 0))
+			var x1 := int(d.get("crystals", 0))
+			var from: Vector2 = b.get_global_rect().get_center() - global_position
+			var to: Vector2 = _wallet.get_global_rect().get_center() - global_position
+			var paint := func(k: float):
+				for w in _wallet.get_children():
+					w.queue_free()
+				_wallet.add_child(UIKit.wallet(roundi(lerpf(c0, c1, k)), roundi(lerpf(x0, x1, k))))
+			var land := func():
+				create_tween().tween_method(paint, 0.0, 1.0, 0.6).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+			if c1 > c0:
+				UIKit.fly_reward(self, UIKit.ic("ic_coin", "ui_coin"), from, to, 6 + mini((c1 - c0) / 100, 6), land)
+			elif x1 > x0:
+				UIKit.fly_reward(self, UIKit.ic("ic_crystal", "ui_crystal"), from, to, 5 + mini(x1 - x0, 6), land)
+			elif icon != null:
+				UIKit.fly_reward(self, icon, from, from + Vector2(0, -70), 5)
 			_toast("+ " + Progress.reward_text(reward)))
 	else:
 		b = UIKit.teal_button(amount, 15)

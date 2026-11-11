@@ -35,6 +35,7 @@ const PILL_BOTTOM := 12.0      # ... and ends this far above the screen bottom
 const CAP_OUT := 8.0           # the capsule sticks out this far above and below the pill
 var glass := false             # set by setup when UIKit.CLEAN
 var slide_p := 1.0             # 0..1 through a slide (drives the stretch)
+var _slide_wait := 0           # frames to hold before a glide starts
 var _slide_from := 0.0
 var _slide_to := 0.0
 var _mat: ShaderMaterial
@@ -50,6 +51,7 @@ func setup(bar: Control) -> void:
 	_follow_bar()
 
 func snap_to_tab(tab: Control, edge: int) -> void:
+	_slide_wait = 0
 	_tab = tab
 	_edge = edge
 	_kill_tween()
@@ -65,21 +67,24 @@ func slide_to_tab(tab: Control, edge: int) -> void:
 		_slide_from = notch_x
 		_slide_to = _target_x()
 		slide_p = 0.0
-		_tween.tween_property(self, "slide_p", 1.0, 0.45)
+		# the glide starts two frames late: the tapped page is built in this very frame, and that
+		# hitch used to land in the middle of the bounce (Rudy, dev265: "it gets stuck, then goes back")
+		_kill_tween()
+		_slide_wait = 2
 		return
 	_tween.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	_tween.tween_property(self, "notch_x", _target_x(), slide_time)
 
 static func _back_out(t: float) -> float:   # ease with a small overshoot (like cubic-bezier .3,1.35,.5,1)
-	var c := 1.6
+	var c := 1.05   # a small overshoot: one soft settle, no second wobble
 	var u := t - 1.0
 	return 1.0 + (c + 1.0) * u * u * u + c * u * u
 
 func _glass_rects() -> Array:
 	var pill := Rect2(PILL_SIDE, bump_h + PILL_TOP, size.x - PILL_SIDE * 2.0, size.y - bump_h - PILL_TOP - PILL_BOTTOM)
 	var p := clampf(slide_p, 0.0, 1.0)
-	var sx := NavIcon._k(p, [[0.0, 1.0], [0.35, 1.3], [0.7, 0.94], [1.0, 1.0]])
-	var sy := NavIcon._k(p, [[0.0, 1.0], [0.35, 0.88], [0.7, 1.05], [1.0, 1.0]])
+	var sx := NavIcon._k(p, [[0.0, 1.0], [0.4, 1.22], [1.0, 1.0]])
+	var sy := NavIcon._k(p, [[0.0, 1.0], [0.4, 0.92], [1.0, 1.0]])
 	var w := bump_w * sx
 	var h := (pill.size.y + CAP_OUT * 2.0) * sy
 	var cx := notch_x + bump_w * 0.5
@@ -102,11 +107,16 @@ func _kill_tween() -> void:
 
 func _process(_delta: float) -> void:
 	_follow_bar()
+	if _slide_wait > 0:
+		_slide_wait -= 1
+		if _slide_wait == 0:
+			_tween = create_tween()
+			_tween.tween_property(self, "slide_p", 1.0, 0.34)
 	if glass and slide_p < 1.0:
 		notch_x = lerpf(_slide_from, _slide_to, _back_out(slide_p))
 	# Layout can settle after first load (safe areas, tall phones). If we are
 	# not mid-slide, keep the notch glued to the active tab.
-	if _tab != null and (_tween == null or not _tween.is_running()):
+	if _tab != null and _slide_wait == 0 and (_tween == null or not _tween.is_running()):
 		var x := _target_x()
 		if absf(x - notch_x) > 0.5:
 			notch_x = x

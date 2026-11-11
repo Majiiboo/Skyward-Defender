@@ -58,24 +58,35 @@ static func show(host: Control) -> void:
 	v.add_theme_constant_override("separation", 7)
 	sheet.add_child(v)
 	v.add_child(UIKit.popup_title("What's new"))
-	v.add_child(UIKit.label("Build %s" % BuildInfo.BUILD, 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("Build %s" % BuildInfo.BUILD, 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	# big, easy text; the list scrolls (Rudy, dev265: small writing in a lot of boxes)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(0, minf(host.size.y * 0.58, 520.0))
+	v.add_child(sc)
+	var list := VBoxContainer.new()
+	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	list.add_theme_constant_override("separation", 10)
+	sc.add_child(list)
 	for n in NOTES:
 		var row := PanelContainer.new()
-		row.add_theme_stylebox_override("panel", UIKit.box(Color(UIKit.CARD_HI, 0.5), Color(1, 1, 1, 0.04), 14, 1))
+		row.add_theme_stylebox_override("panel", UIKit.box(Color(UIKit.CARD_HI, 0.5), Color(1, 1, 1, 0.04), 18, 1))
 		var m := MarginContainer.new()
 		for side in ["left", "right"]:
-			m.add_theme_constant_override("margin_" + side, 12)
+			m.add_theme_constant_override("margin_" + side, 16)
 		for side in ["top", "bottom"]:
-			m.add_theme_constant_override("margin_" + side, 6)
+			m.add_theme_constant_override("margin_" + side, 12)
 		var rv := VBoxContainer.new()
-		rv.add_theme_constant_override("separation", 1)
-		rv.add_child(UIKit.title(String(n[0]), 14, UIKit.GOLD))
-		var body := UIKit.label(String(n[1]), 11, UIKit.TEXT)
+		rv.add_theme_constant_override("separation", 5)
+		var head := UIKit.title(String(n[0]), 18, UIKit.GOLD)
+		head.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		rv.add_child(head)
+		var body := UIKit.label(String(n[1]), 15, UIKit.TEXT)
 		body.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		rv.add_child(body)
 		m.add_child(rv)
 		row.add_child(m)
-		v.add_child(row)
+		list.add_child(row)
 	var go := UIKit.gold_button("GOT IT", 17)
 	go.custom_minimum_size = Vector2(0, 50)
 	go.pressed.connect(layer.queue_free)

@@ -97,7 +97,7 @@ static func panel(radius: float = 14.0) -> PanelContainer:
 static func label(text: String, size_px: int = 14, col: Color = Color.WHITE, align: int = HORIZONTAL_ALIGNMENT_LEFT) -> Label:
 	var l := Label.new()
 	l.text = text
-	l.add_theme_font_size_override("font_size", size_px + (1 if size_px <= 13 else 0))   # small text one size up (Rudy: too small, too thin)
+	l.add_theme_font_size_override("font_size", maxi(size_px + (1 if size_px <= 13 else 0), 12))   # small text one size up and never under 12 (Rudy: too small, too thin; again after dev265: bigger and thicker)
 	l.add_theme_color_override("font_color", col)
 	l.horizontal_alignment = align
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -396,10 +396,10 @@ static func dot(b: Control, on: bool) -> void:
 	s.border_color = Color(0.04, 0.06, 0.17)
 	d.add_theme_stylebox_override("panel", s)
 	d.set_anchors_preset(Control.PRESET_TOP_RIGHT)
-	d.offset_left = -13.0
-	d.offset_right = -3.0
-	d.offset_top = 3.0
-	d.offset_bottom = 13.0
+	d.offset_left = -19.0   # a little in from the corner: on a rounded pill the corner itself is cut away (Rudy, dev265)
+	d.offset_right = -9.0
+	d.offset_top = 5.0
+	d.offset_bottom = 15.0
 	b.add_child(d)
 
 # dots on a tabs() row: flags[i] true = the i-th tab has something to claim
@@ -825,3 +825,83 @@ static func sub_tabs(names: Array, selected: int, on_pick: Callable, dots: Array
 	row.set_meta("tab_map", map)
 	tab_dots(row, dots)
 	return row
+
+# ---- scrolling that never sticks (Rudy, dev265: "it's hard to drag sometimes") ----
+# A ScrollContainer only feels a finger-drag that reaches it. A card or a button in the list
+# swallows the touch (mouse filter STOP), so a drag that starts on one does nothing. This watches
+# a scroll list and sets everything inside it to PASS as it is built: taps still work (a Button
+# drops its press when the list starts to move), drags scroll from anywhere.
+# A control inside a Button keeps STOP, or its tap would press the Button under it as well.
+static func smooth_scroll(sc: ScrollContainer) -> void:
+	if sc == null or not sc.is_inside_tree():
+		return
+	var fix := func(n: Node):
+		if not is_instance_valid(sc) or not (n is Control) or n == sc or not sc.is_ancestor_of(n):
+			return
+		var c: Control = n
+		if c.mouse_filter != Control.MOUSE_FILTER_STOP or c is ScrollContainer or c is ScrollBar or c is LineEdit or c is Slider:
+			return
+		var up := c.get_parent()
+		while up != null and up != sc:
+			if up is BaseButton:
+				return
+			up = up.get_parent()
+		c.mouse_filter = Control.MOUSE_FILTER_PASS
+	var tree := sc.get_tree()
+	tree.node_added.connect(fix)
+	sc.tree_exiting.connect(func():
+		if tree.node_added.is_connected(fix):
+			tree.node_added.disconnect(fix))
+	var walk: Array = [sc]
+	while not walk.is_empty():
+		var n: Node = walk.pop_back()
+		for ch in n.get_children():
+			fix.call(ch)
+			walk.append(ch)
+
+# ---- a reward that FLIES to your total (Rudy, dev265) ----
+# `n` small pictures burst out of `from`, hang a beat and stream to `to` (both in `host`'s own
+# coordinates), one after the other; on_land runs as the first one arrives (count the total up).
+static func fly_reward(host: Control, icon: Texture2D, from: Vector2, to: Vector2, n: int = 8, on_land: Callable = Callable()) -> void:
+	if host == null or icon == null or not host.is_inside_tree():
+		if on_land.is_valid():
+			on_land.call()
+		return
+	n = clampi(n, 3, 14)
+	for i in n:
+		var tr := TextureRect.new()
+		tr.texture = icon
+		tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		tr.size = Vector2(22, 22)
+		tr.pivot_offset = Vector2(11, 11)
+		tr.position = from - Vector2(11, 11)
+		tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		tr.z_index = 50
+		tr.scale = Vector2(0.2, 0.2)
+		host.add_child(tr)
+		var ang: float = TAU * float(i) / float(n) + 0.4
+		var out: Vector2 = from + Vector2(cos(ang), sin(ang)) * (26.0 + 14.0 * float(i % 3)) - Vector2(11, 11)
+		var tw := tr.create_tween()
+		tw.tween_property(tr, "position", out, 0.22).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+		tw.parallel().tween_property(tr, "scale", Vector2.ONE, 0.22)
+		tw.tween_interval(0.08 + 0.045 * float(i))
+		tw.tween_property(tr, "position", to - Vector2(11, 11), 0.38).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_IN)
+		tw.parallel().tween_property(tr, "scale", Vector2(0.6, 0.6), 0.38)
+		if i == 0:
+			tw.tween_callback(func():
+				Sfx.play("coin")
+				if on_land.is_valid():
+					on_land.call())
+		elif i % 3 == 0:
+			tw.tween_callback(func(): Sfx.play("coin", 1.0 + 0.04 * float(i)))
+		tw.tween_callback(tr.queue_free)
+
+# count a number label-maker up from `a` to `b` over `secs`: calls paint(value) each step
+static func count_up(host: Node, a: int, b: int, paint: Callable, secs: float = 0.6) -> void:
+	if host == null or not host.is_inside_tree() or a == b:
+		paint.call(b)
+		return
+	var tw := host.create_tween()
+	tw.tween_method(func(v: float): paint.call(roundi(v)), float(a), float(b), secs).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tw.tween_callback(func(): paint.call(b))
