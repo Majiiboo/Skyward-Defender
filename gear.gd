@@ -2961,7 +2961,7 @@ func _weapons_screen() -> void:
 	Hints.show(self, ["weapon"])
 	var eq: String = gear.equipped["Weapon"]
 	var eq_el: String = GearData.ITEMS[eq].set
-	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
+	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  %s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
 	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
 	var est: Dictionary = GearData.weapon_style(eq)
 	if not est.is_empty():
@@ -3001,7 +3001,7 @@ func _weapons_screen() -> void:
 		var rn := GearData.rarity_name(GearData.rarity(gear, id))
 		var sub := ("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
 		var wst: Dictionary = GearData.weapon_style(id)
-		var t := _pick_square(_pic(id), String(info.name), 118.0, id == eq, UIKit.RARITY[set_id], not open, String(wst.get("style", "")) if open else sub)
+		var t := _pick_square(_pic(id), String(info.name), 118.0, id == eq, UIKit.RARITY[set_id], not open, GearData.class_name_of(id) if open else sub)   # its class: Sidearm / Twin pistols / Rifle / Heavy
 		UIKit.corner_icon(t, UIKit.element_icon(set_id), 20.0)
 		var item: String = id
 		t.pressed.connect(func():

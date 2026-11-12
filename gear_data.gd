@@ -411,6 +411,20 @@ const WEAPON_STYLE := {
 	"frost_rifle":  {"style": "Stream", "text": "A rapid stream that slows what it hits"},
 }
 
+# WEAPON CLASSES (Rudy, 2026-11-12): how a weapon is CARRIED and how hard it kicks (HeroFight):
+# a sidearm in one hand, twin pistols one in each, a main rifle, a heavy launcher on the shoulder.
+const WEAPON_CLASS := {"laser_pistol": "sidearm", "dual_minis": "twin", "pulse_cannon": "heavy",
+	"railgun": "main", "laser_rifle": "main", "frost_rifle": "main"}
+const CLASS_NAMES := {"sidearm": "Sidearm", "twin": "Twin pistols", "main": "Rifle", "heavy": "Heavy"}
+
+static func weapon_class(item_id: String) -> String:
+	if not ITEMS.has(item_id) or String(ITEMS[item_id].slot) != "Weapon":
+		return "main"
+	return String(WEAPON_CLASS.get(String(SETS[ITEMS[item_id].set].weapon), "main"))
+
+static func class_name_of(item_id: String) -> String:
+	return String(CLASS_NAMES[weapon_class(item_id)])
+
 # the style of an item ("" for anything that is not a weapon)
 static func weapon_style(item_id: String) -> Dictionary:
 	if not ITEMS.has(item_id) or String(ITEMS[item_id].slot) != "Weapon":

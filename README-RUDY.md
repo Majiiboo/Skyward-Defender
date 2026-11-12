@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev272 (version/code=272 and version/name="1.0-dev272" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev273 (version/code=273 and version/name="1.0-dev273" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,26 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev273: weapon classes (one update since dev272)
+
+Pick the penguin, then Heroes > the weapon tile, and try each weapon in a fight.
+
+- FOUR WEAPON CLASSES. Every weapon now belongs to a class, shown under it on the Weapons screen,
+  and the penguin CARRIES each class differently:
+  SIDEARM (Ion Pistol): a small pistol in one mitten, a light kick.
+  TWIN PISTOLS (Arc Welder): one in EACH mitten. His right arm is mirrored to the left side in
+  place of the flipper. The two fire in turn, each with its own kick, and the shots leave from
+  the left and the right tip in turn.
+  RIFLE (Frost Rifle, Sun Rifle, Dread Railgun): in one mitten, as before.
+  HEAVY (Pulse Cannon): carried on his shoulder. The hardest kick, and it shoves him back.
+- The Pulse Cannon was painted muzzle-down; in his hands it now points the right way.
+
+NOT DONE YET (needs Luna): the weapons are still the six shared ones, so the Arc Welder does not
+look like two pistols, and no weapon is the penguin's own design. That is the next brief: his own
+pistol and his own launcher, to go with the rifle he already has.
+NOT CHECKED: nothing on a phone. I watched each class large, still and firing. The other five
+heroes still use their old pictures, so they show no difference between classes.
 
 ## dev272: your dev271 notes, first batch (one update since dev271)
 

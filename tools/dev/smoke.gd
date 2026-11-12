@@ -52,6 +52,7 @@ func _initialize() -> void:
 	_check_works()
 	_check_hints()
 	_check_hero_fight()
+	_check_weapon_classes()
 	_check_store2()
 	_check_talents()
 	_check_scrap()
@@ -1182,3 +1183,29 @@ func _check_hero_fight() -> void:
 	_expect(not HeroFight.ready(), "the Settings switch brings the old look back")
 	HeroFight.on = true
 	PilotRig.hero = was
+
+# weapon classes (2026-11-12): every weapon has one, and two pistols fire from both sides in turn
+func _check_weapon_classes() -> void:
+	var seen := {}
+	for id in GearData.ITEMS:
+		if String(GearData.ITEMS[id].slot) == "Weapon":
+			seen[GearData.weapon_class(id)] = true
+			_expect(GearData.CLASS_NAMES.has(GearData.weapon_class(id)), "%s has a class" % id)
+	_expect(seen.size() == 4, "all four classes are in use (%d)" % seen.size())
+	_expect(GearData.weapon_class("scavenger_weapon") == "twin" and GearData.weapon_class("void_weapon") == "heavy", "the Arc Welder is twin pistols, the Pulse Cannon heavy")
+	var was_hero := PilotRig.hero
+	var was_held := PilotRig.held
+	PilotRig.hero = "frost"
+	PilotRig.held = "scavenger_weapon"
+	if PilotRig._tex.has("held") or ResourceLoader.exists("res://heroes/frost/weapon.png"):
+		var s := HeroFight.State.new()
+		var at := Vector2(240, 600)
+		s.update(1.0 / 60.0, at, -PI / 2.0)
+		var a := HeroFight.muzzle(s, at, 75.0)
+		s.fire()
+		var b := HeroFight.muzzle(s, at, 75.0)
+		_expect(a.x > at.x and b.x < at.x, "two pistols: right then left (%.0f, %.0f)" % [a.x - at.x, b.x - at.x])
+		s.fire()
+		_expect(s.hand == 0 and s.kick2_v > 0.0, "the left pistol has its own kick")
+	PilotRig.hero = was_hero
+	PilotRig.held = was_held

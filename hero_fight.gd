@@ -70,6 +70,9 @@ class State:
 	var head_v := 0.0
 	var kick := 0.0                # the weapon's recoil, whole-picture px
 	var kick_v := 0.0
+	var kick2 := 0.0               # the LEFT weapon, when he carries two
+	var kick2_v := 0.0
+	var hand := 0                  # two pistols: whose turn it is (0 right, 1 left)
 	var nod := 0.0                 # the head follows a kick a beat late
 	var nod_v := 0.0
 	var aim := 0.0                 # the weapon's angle off straight up
@@ -111,14 +114,22 @@ class State:
 		head += head_v * dt
 		kick_v += (-kick * 620.0 - kick_v * 30.0) * dt
 		kick = clampf(kick + kick_v * dt, -30.0, 130.0)
-		nod_v += ((kick * 0.3 - nod) * 300.0 - nod_v * 16.0) * dt
+		kick2_v += (-kick2 * 620.0 - kick2_v * 30.0) * dt
+		kick2 = clampf(kick2 + kick2_v * dt, -30.0, 130.0)
+		nod_v += (((kick + kick2) * 0.3 - nod) * 300.0 - nod_v * 16.0) * dt
 		nod += nod_v * dt
 		flinch = maxf(flinch - delta * 3.0, 0.0)
 		cast = maxf(cast - delta * 1.3, 0.0)
 
 	# power 1 = a normal shot; a heavy weapon or a charged shot passes more
 	func fire(power: float = 1.0) -> void:
-		kick_v += 1500.0 * clampf(power, 0.3, 3.0)
+		var cls := HeroFight.wclass()
+		var v := 1500.0 * clampf(power * float(HeroFight.KICK.get(cls, 1.0)), 0.3, 3.2)
+		if cls == "twin" and hand == 1:
+			kick2_v += v
+		else:
+			kick_v += v
+		hand = (1 - hand) if cls == "twin" else 0
 
 	func hit() -> void:
 		flinch = 1.0
@@ -126,6 +137,22 @@ class State:
 
 	func do_cast() -> void:
 		cast = 1.0
+
+# ------------------------------------------------------------------ weapon classes
+# How he CARRIES the weapon follows its class (GearData.weapon_class, Rudy 2026-11-12):
+#   sidearm  a pistol in the right mitten, a light kick
+#   twin     a pistol in EACH mitten: the right arm mirrored to the left in place of the flipper;
+#            the two fire and kick in turn
+#   main     a rifle in the right mitten (his own weapon from Luna)
+#   heavy    a launcher carried on the shoulder, the hardest kick, and it shoves him back
+const KICK := {"sidearm": 0.8, "twin": 0.7, "main": 1.0, "heavy": 1.6}
+const SHOVE := {"sidearm": 0.2, "twin": 0.2, "main": 0.28, "heavy": 0.45}
+const MIRROR := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(-6, 0))   # left <-> right about his middle
+# a held picture painted muzzle-DOWN (the cannon): turned over here, with its real grip and muzzle
+const HELD_FIX := {"void_weapon": {"grip": Vector2(0.45, 0.5), "muzzle": Vector2(0.42, 0.9)}}
+
+static func wclass() -> String:
+	return GearData.weapon_class(PilotRig.held) if PilotRig.held != "" else "main"
 
 # ------------------------------------------------------------------ the pose
 
@@ -138,7 +165,7 @@ static func _root(s: State, pos: Vector2, height: float) -> Transform2D:
 	var jolt := sin(s.flinch * PI) * 0.22 * s.flinch_dir
 	var pop := 1.0 + 0.1 * sin(clampf(s.cast, 0.0, 1.0) * PI) - 0.08 * sin(s.flinch * PI)
 	var squash := Vector2(1.0 - 0.05 * absf(s.lean), 1.0) * pop
-	var back := Vector2(0, s.kick * 0.28 * k)
+	var back := Vector2(0, (s.kick + s.kick2) * float(SHOVE.get(wclass(), 0.28)) * k)
 	return Transform2D(s.lean * 0.15 + jolt, squash * k, 0.0, pos + back)
 
 static func _local(at: Vector2, rot: float, scl: Vector2 = Vector2.ONE) -> Transform2D:
@@ -149,11 +176,12 @@ static func _put(c: CanvasItem, m: Transform2D, tx: Texture2D, pv: Vector2, col:
 	c.draw_set_transform_matrix(m)
 	c.draw_texture_rect(tx, Rect2(-pv * size, size), false, col)
 
-static func _arm_rot(s: State, kit: Dictionary) -> float:
-	return float(kit.arm.rot) + s.aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
+static func _arm_rot(s: State, kit: Dictionary, aim: float) -> float:
+	return float(kit.arm.rot) + aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
 
-# the weapon in his mitten: [transform inside the figure, texture, grip (0..1), muzzle (0..1), drawn size]
-static func _rifle(s: State, kit: Dictionary) -> Array:
+# the weapon in a mitten, for the RIGHT hand (the left is this, mirrored, with the aim turned round):
+# [transform inside the figure, texture, grip (0..1), muzzle (0..1), drawn size]
+static func _rifle(s: State, kit: Dictionary, aim: float, kick: float) -> Array:
 	var tx: Texture2D
 	var grip := Vector2(0.62, 0.6)
 	var muz := Vector2(0.42, 0.0)
@@ -166,20 +194,33 @@ static func _rifle(s: State, kit: Dictionary) -> Array:
 		if not _tex.has(key):
 			_tex[key] = load("res://heroes/%s/weapon.png" % PilotRig.hero)
 		tx = _tex[key]
+	var turn_over := HELD_FIX.has(PilotRig.held)
+	if turn_over:
+		grip = HELD_FIX[PilotRig.held].grip
+		muz = HELD_FIX[PilotRig.held].muzzle
+	var heavy := wclass() == "heavy"
 	# a weapon is sized to HIM (Rudy, dev271: the pistol was half his size): a pistol short, a rifle longer
-	var sc := float(kit.rifle_len) * float(PilotRig.HELD_LEN.get(PilotRig.held, 760.0)) / 760.0 / tx.get_height()
+	var sc := float(kit.rifle_len) * (1.12 if heavy else 1.0) * float(PilotRig.HELD_LEN.get(PilotRig.held, 760.0)) / 760.0 / tx.get_height()
 	var size := Vector2(tx.get_size()) * sc
 	var arm: Dictionary = kit.arm
 	var arm_len := float(arm.hand) * tex(PilotRig.hero, "arm").get_height() * 2.0
-	var hand: Vector2 = arm.at + Vector2(0, -arm_len).rotated(_arm_rot(s, kit)) + Vector2(0, s.kick * 0.45)
-	var rot := s.aim * 0.7
-	var at := hand + Vector2(0, s.kick * 0.55).rotated(rot)
-	return [_local(at, rot), tx, grip, muz, size]
+	var hand: Vector2 = arm.at + Vector2(0, -arm_len).rotated(_arm_rot(s, kit, aim)) + Vector2(0, kick * 0.45)
+	if heavy:   # on the shoulder: it rides the pad, the mitten only steadies it
+		hand = arm.at + Vector2(26, -74) + Vector2(0, kick * 0.2)
+	var rot := aim * 0.7
+	var at := hand + Vector2(0, kick * (0.8 if heavy else 0.55)).rotated(rot)
+	return [_local(at, rot, Vector2(1, -1) if turn_over else Vector2.ONE), tx, grip, muz, size]
+
+static func _draw_rifle(c: CanvasItem, m: Transform2D, rf: Array, col: Color) -> void:
+	var rsize: Vector2 = rf[4]
+	c.draw_set_transform_matrix(m * (rf[0] as Transform2D))
+	c.draw_texture_rect(rf[1], Rect2(-(rf[2] as Vector2) * rsize, rsize), false, col)
 
 static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = PilotRig.LIFT) -> void:
 	var id := PilotRig.hero
 	var kit: Dictionary = SETS[id]
 	var root := _root(s, pos, height)
+	var cls := wclass()
 	var flash := 1.0 + 1.1 * s.flinch
 	var col := Color(lift.r * flash, lift.g * flash, lift.b * flash, lift.a * alpha)
 	var tuck := maxf(-s.trail, 0.0)             # backing up
@@ -194,24 +235,31 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 		var rot: float = s.leg[i] + paddle - side * (0.34 * tuck + 0.3 * casting) + side * 0.05 * reach
 		var ln := 1.0 + 0.16 * reach - 0.2 * tuck
 		_put(c, root * _local(p.at + Vector2(0, 14.0 * reach - 6.0 * tuck), rot, Vector2(1.0, ln)), tex(id, "leg_l" if i == 0 else "leg_r"), p.pv, col)
-	# the flipper: it strokes as he flies (faster with speed), sweeps back in a climb or when he
-	# moves toward its own side, and flings forward on the ability
-	var fl: Dictionary = kit.flipper
-	var amt := float(kit.flap)
-	var stroke := sin(s.flap)
-	var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting
-	var f_len := 1.0 - 0.14 * amt * (0.5 + 0.5 * cos(s.flap)) * (0.4 + 0.6 * s.speed)
-	_put(c, root * _local(fl.at, f_rot, Vector2(f_len, 1.0)), tex(id, "flipper"), fl.pv, col)
-	# the weapon, then the arm over its grip
-	var rf := _rifle(s, kit)
-	var rsize: Vector2 = rf[4]
-	c.draw_set_transform_matrix(root * (rf[0] as Transform2D))
-	c.draw_texture_rect(rf[1], Rect2(-(rf[2] as Vector2) * rsize, rsize), false, col)
 	var arm: Dictionary = kit.arm
-	_put(c, root * _local(arm.at + Vector2(0, s.kick * 0.45), _arm_rot(s, kit)), tex(id, "arm"), arm.pv, col)
+	if cls == "twin":
+		# two pistols: the left arm is the right one mirrored, with its own weapon and its own kick
+		var lm := root * MIRROR
+		_draw_rifle(c, lm, _rifle(s, kit, -s.aim, s.kick2), col)
+		_put(c, lm * _local(arm.at + Vector2(0, s.kick2 * 0.45), _arm_rot(s, kit, -s.aim)), tex(id, "arm"), arm.pv, col)
+	else:
+		# the flipper: it strokes as he flies (faster with speed), sweeps back in a climb or when he
+		# moves toward its own side, and flings forward on the ability
+		var fl: Dictionary = kit.flipper
+		var amt := float(kit.flap)
+		var stroke := sin(s.flap)
+		var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting
+		var f_len := 1.0 - 0.14 * amt * (0.5 + 0.5 * cos(s.flap)) * (0.4 + 0.6 * s.speed)
+		_put(c, root * _local(fl.at, f_rot, Vector2(f_len, 1.0)), tex(id, "flipper"), fl.pv, col)
+	# the weapon, then the arm over its grip (a heavy one rides the shoulder, over the body)
+	var rf := _rifle(s, kit, s.aim, s.kick)
+	if cls != "heavy":
+		_draw_rifle(c, root, rf, col)
+	_put(c, root * _local(arm.at + Vector2(0, s.kick * 0.45), _arm_rot(s, kit, s.aim)), tex(id, "arm"), arm.pv, col)
 	# the body with his pack, then the helmet: the head turns to the nearest bug, leads into a
 	# lean, and nods back a beat after each shot
 	_put(c, root * _local(kit.body.at, 0.0), tex(id, "body"), kit.body.pv, col)
+	if cls == "heavy":
+		_draw_rifle(c, root, rf, col)
 	var hm: Dictionary = kit.helmet
 	var h_at: Vector2 = hm.at + Vector2(s.lean * 9.0 + s.head * 10.0, s.nod - 8.0 * casting - 10.0 * sin(s.flinch * PI))
 	_put(c, root * _local(h_at, s.head * 0.8 - s.lean * 0.1 + s.flinch * 0.2 * s.flinch_dir), tex(id, "helmet"), hm.pv, col)
@@ -232,9 +280,14 @@ static func draw_flames(c: CanvasItem, s: State, pos: Vector2, height: float, al
 		c.draw_texture_rect(tx, Rect2(-size.x * 0.5, -size.y * 0.04, size.x, size.y), false, Color(1, 1, 1, alpha * (0.75 + 0.25 * flick)))
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-# where his bolts start: the tip of the weapon, wherever the pose has put it
+# where his bolts start: the tip of the weapon, wherever the pose has put it (with two pistols,
+# the one whose turn it is)
 static func muzzle(s: State, pos: Vector2, height: float) -> Vector2:
 	var kit: Dictionary = SETS[PilotRig.hero]
-	var rf := _rifle(s, kit)
+	var left := wclass() == "twin" and s.hand == 1
+	var rf := _rifle(s, kit, -s.aim if left else s.aim, s.kick2 if left else s.kick)
 	var rsize: Vector2 = rf[4]
-	return _root(s, pos, height) * ((rf[0] as Transform2D) * (((rf[3] as Vector2) - (rf[2] as Vector2)) * rsize))
+	var m := _root(s, pos, height)
+	if left:
+		m = m * MIRROR
+	return m * ((rf[0] as Transform2D) * (((rf[3] as Vector2) - (rf[2] as Vector2)) * rsize))
