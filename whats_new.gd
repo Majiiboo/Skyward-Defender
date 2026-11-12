@@ -6,6 +6,7 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
+	["Tougher bugs", "Bugs have more health and their hits hurt: watch your health bar. Weapons are sized to the hero, Settings fits the screen again, and the Base page scrolls."],
 	["The penguin moves", "Captain Frost is rebuilt for the fight: he leans into a turn, his legs drag behind him, his flipper works and his weapon kicks. Settings > New hero motion switches back to the old look."],
 	["Hold to fire", "In MANUAL he now fires only while your finger is down. Lift it and he stops. AUTO still aims and fires for you."],
 	["The Hive Mother fights back", "She shoots between broods: a fan of goo, a quick burst, and a slow green poison glob. Her mouth lights up first. Her shots cannot be shot down: move."],
@@ -13,7 +14,6 @@ const NOTES := [
 	["Chests open with a show", "Every chest gives a set of items, shown one by one. An Epic or Legendary item arrives face down, glows, then flips."],
 	["Space music", "New menu and battle music with a space theme. Settings > Music turns it off."],
 	["AUTO flies", "With AUTO on he now flies under the nearest bug instead of standing still."],
-	["Smoother menus", "Bigger, bolder text. Lists scroll from anywhere. Quest rewards fly to your total. Bosses have their own page in the Collection."],
 ]
 
 static func due(save: Dictionary) -> bool:

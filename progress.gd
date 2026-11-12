@@ -360,7 +360,7 @@ static func attention(d: Dictionary) -> Dictionary:
 			if GearData.can_merge(g, id, r):
 				gear_merge = true
 	var p := Patrol.tick(d.duplicate(true))   # a copy: looking must not count time
-	var patrol: bool = not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0 and Unlocks.open(d, "patrol")
+	var patrol: bool = float(p.stored_s) >= Patrol.DOT_S and not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0 and Unlocks.open(d, "patrol")   # the dot waits for a real haul (Rudy, dev271)
 	if not Unlocks.open(d, "workshop"):   # no dot for a page the player cannot see yet (Unlocks)
 		parts_merge = false
 		gear_merge = false

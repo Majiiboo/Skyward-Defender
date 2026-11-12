@@ -20,6 +20,7 @@ const WAVES_PER_HOUR := 3600.0 / WAVE_S
 const FULL_S := 2.0 * 3600.0
 const HALF_S := 6.0 * 3600.0
 const CAP_S := 8.0 * 3600.0
+const DOT_S := 4.0 * 3600.0     # the red dot shows only once four hours of loot have built up
 const DAY_CAP_S := 12.0 * 3600.0
 const COIN_RATE := 0.4
 const MAX_COLLECTS := 3

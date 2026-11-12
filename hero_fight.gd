@@ -26,7 +26,7 @@ const SETS := {
 		"leg_l":   {"at": Vector2(479, 680), "pv": Vector2(0.5, 0.12)},
 		"leg_r":   {"at": Vector2(601, 680), "pv": Vector2(0.5, 0.12)},
 		"jets":    [Vector2(505, 748), Vector2(564, 748)],
-		"rifle_len": 440.0,
+		"rifle_len": 250.0,
 		"flap": 1.0,                       # how hard the flipper works (each hero flies his own way)
 	},
 }
@@ -166,7 +166,8 @@ static func _rifle(s: State, kit: Dictionary) -> Array:
 		if not _tex.has(key):
 			_tex[key] = load("res://heroes/%s/weapon.png" % PilotRig.hero)
 		tx = _tex[key]
-	var sc := float(kit.rifle_len) / tx.get_height()
+	# a weapon is sized to HIM (Rudy, dev271: the pistol was half his size): a pistol short, a rifle longer
+	var sc := float(kit.rifle_len) * float(PilotRig.HELD_LEN.get(PilotRig.held, 760.0)) / 760.0 / tx.get_height()
 	var size := Vector2(tx.get_size()) * sc
 	var arm: Dictionary = kit.arm
 	var arm_len := float(arm.hand) * tex(PilotRig.hero, "arm").get_height() * 2.0

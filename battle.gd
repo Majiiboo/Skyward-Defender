@@ -1944,7 +1944,7 @@ func _hurt_base(amount: float) -> void:
 		_pulse_blocked += 1
 		_pulse_flash = maxf(_pulse_flash, 0.35)
 		return
-	amount *= 1.0 - _base_dr   # gear milestones (Chest)
+	amount *= (1.0 - _base_dr) * _base_hit()   # gear milestones (Chest); bugs hit the base harder (dev272)
 	hit_t = 0.0
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
@@ -1979,7 +1979,7 @@ func _hurt_pilot(amount: float = GOO_DMG) -> void:
 		_rig_view.hit()   # he flinches and flashes
 	_buzz(45)
 	_streak_break()   # a hit ends the kill streak
-	var dmg := amount * (1.0 - _def)   # DEF takes its share off
+	var dmg := amount * _enemy_hit() * (1.0 - _def)   # DEF takes its share off; bugs hit harder (dev272)
 	pilot_hp = maxf(pilot_hp - dmg, 0.0)
 	# Second Wind (talent card): once a run, the blow that would finish him heals him instead
 	if pilot_hp <= 0.0 and _second_wind > 0:
@@ -2469,8 +2469,12 @@ func _confirm_leave() -> void:
 	row.add_child(go)
 	v.add_child(row)
 	p.add_child(v)
-	layer.add_child(p)
-	p.position = Vector2((layer.size.x - w) * 0.5, layer.size.y * 0.36)
+	# centred by a container: placed by hand, the card grew to the bottom of the screen (Rudy, dev271)
+	var cc := CenterContainer.new()
+	cc.size = layer.size
+	cc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(cc)
+	cc.add_child(p)
 	UIKit.pop_in(p)
 
 func _toggle_pause() -> void:
@@ -4166,7 +4170,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (BossRush.RUSH_HP * (1.0 + BossRush.RUSH_STEP * wave_index) if boss_rush else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (BossRush.RUSH_HP * (1.0 + BossRush.RUSH_STEP * wave_index) if boss_rush else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * _tough() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -5695,3 +5699,32 @@ func _dbg_boss_attack() -> void:
 		if e.type == "hive_mother":
 			e.arrived = true
 			e.atk_t = 0.01
+
+# TOUGHER BUGS (Rudy, dev271 playtest: "you shoot them a few times and your weapons drill right
+# through", "I can get shot multiple times and my health just goes down a little"). Three dials, all
+# gentle on the first stages and full from stage 6: bug health, what a hit does to the hero (his
+# health grows with his level, a bug's hit did not: it now grows a little every stage), and what a
+# bug does to the base.
+const TOUGH_HP := 1.15         # to stage 20, easing to TOUGH_LATE by stage 30 (1.3 everywhere lost every stage-30 and stage-45 test: the base fell by wave 4)
+const TOUGH_LATE := 1.05
+const HIT_HERO := 1.6
+const HIT_HERO_STAGE := 0.03
+const HIT_BASE := 1.15
+const HIT_BASE_STAGE := 0.0
+static var TOUGH_ON := true   # the sim can switch it off to compare
+
+func _ease_in() -> float:
+	return clampf((stage - 1) / 5.0, 0.0, 1.0)
+
+func _tough() -> float:
+	return lerpf(1.0, lerpf(TOUGH_HP, TOUGH_LATE, clampf((stage - 20) / 10.0, 0.0, 1.0)), _ease_in()) if TOUGH_ON else 1.0
+
+func _enemy_hit() -> float:
+	return lerpf(1.0, HIT_HERO, _ease_in()) * (1.0 + HIT_HERO_STAGE * maxi(stage - 6, 0)) if TOUGH_ON else 1.0
+
+func _base_hit() -> float:
+	return lerpf(1.0, lerpf(HIT_BASE, 1.0, clampf((stage - 20) / 10.0, 0.0, 1.0)), _ease_in()) if TOUGH_ON else 1.0   # back to 1 by stage 30: the base is already the tight spot there
+
+func _dbg_leave() -> void:   # captures: the pause menu with the "leave the stage?" card over it
+	_toggle_pause()
+	_confirm_leave()

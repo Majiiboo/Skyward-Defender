@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev271 (version/code=271 and version/name="1.0-dev271" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev272 (version/code=272 and version/name="1.0-dev272" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,30 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev272: your dev271 notes, first batch (one update since dev271)
+
+- SETTINGS WORKS AGAIN. Every card ran off the right edge, so no switch could be tapped. My fault:
+  the new "New hero motion" line was too long and pushed the whole page wide. Long lines now wrap.
+- WEAPONS SIZED TO THE HERO. A weapon was drawn at one length whatever it was, so the pistol was
+  half the penguin. Now a pistol is about a third of his body and a rifle a little under half.
+- TOUGHER BUGS. Three changes, all gentle on stages 1-5 and full from stage 6:
+  bug health +15% (easing to +5% by stage 30, where the base is already the tight spot);
+  a hit on the hero does 60% more, and 3% more again with every stage after 6 (his health grew
+  with his level, a bug's hit never did, which is why hits stopped mattering);
+  a hit on the base does 15% more up to stage 20.
+- "LEAVE THE STAGE?" is a small centred card again (it grew to the bottom of the screen).
+- THE BASE PAGE SCROLLS. A drag that started on a card or a button was swallowed; the whole
+  Heroes page now scrolls from anywhere.
+- PATROL'S RED DOT waits until four hours of loot have built up, so it no longer comes straight
+  back after you collect. Collecting itself is unchanged (see my note in the chat).
+
+TESTED: the test pilots, two or three runs each. Stage 5 and 12: all won. Stage 30: 5 of 6.
+Stage 45: all won (on slightly harder numbers than the final ones). The hero now loses 70-330
+health in a stage where he used to lose almost none.
+NOT CHECKED: nothing on a phone. Stage 30 swung between all won and all lost while I tuned it,
+so it is still the knife edge: tell me how it feels. The Hero page turn-by-drag shares the page
+with the new scrolling: tell me if turning him now also scrolls the page.
 
 ## dev271: the penguin moves (one update since dev270)
 

@@ -105,7 +105,7 @@ func _fill() -> void:
 		h.add_child(b)
 		p.add_child(h)
 		_page.add_child(p)
-	_page.add_child(_switch("New hero motion", "Heroes rebuilt for the fight, from above, in moving parts (the penguin first). Off = the old look.", bool(d.get("hero_new", true)), func(v: bool):
+	_page.add_child(_switch("New hero motion", "The penguin from above, in moving parts. Off = the old look", bool(d.get("hero_new", true)), func(v: bool):
 		d = Progress.read()
 		d["hero_new"] = v
 		Progress.write(d)
@@ -272,7 +272,9 @@ func _switch(name: String, help: String, on: bool, on_change: Callable, soon: bo
 	v.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	v.add_theme_constant_override("separation", 1)
 	v.add_child(UIKit.label(name, 15, Color(0.85, 0.9, 1.0) if not soon else UIKit.MUTED))
-	v.add_child(UIKit.label(help, 11, UIKit.MUTED))
+	var help_l := UIKit.label(help, 11, UIKit.MUTED)
+	help_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # a long line used to push every card past the right edge
+	v.add_child(help_l)
 	h.add_child(v)
 	var b := _toggle(on, func(): on_change.call(not on))
 	b.disabled = soon
@@ -292,7 +294,9 @@ func _choice(name: String, help: String, options: Array, current: float, on_pick
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 6)
 	v.add_child(UIKit.label(name, 15, Color(0.85, 0.9, 1.0)))
-	v.add_child(UIKit.label(help, 11, UIKit.MUTED))
+	var help_l := UIKit.label(help, 11, UIKit.MUTED)
+	help_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART   # a long line used to push every card past the right edge
+	v.add_child(help_l)
 	var h := HBoxContainer.new()
 	h.add_theme_constant_override("separation", 8)
 	for o in options:
