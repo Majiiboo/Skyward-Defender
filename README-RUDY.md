@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev270 (version/code=270 and version/name="1.0-dev270" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev271 (version/code=271 and version/name="1.0-dev271" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,39 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev271: the penguin moves (one update since dev270)
+
+The first hero rebuilt for the fight. Pick CAPTAIN FROST (the penguin) and start any stage.
+
+- A NEW PENGUIN IN THE FIGHT. He is now seen from above, short and round, built from Luna's nine
+  new pieces, and every piece moves on its own:
+  LEAN: he tips into a drag, goes a touch too far, and settles back when you stop.
+  LEGS: they swing behind him when you move sideways, stretch out behind when you fly forward,
+  and tuck up and spread when you back away. Hanging still, they paddle slowly.
+  FLIPPER: it strokes as he flies, faster the faster you go, and sweeps back in a climb.
+  WEAPON: it kicks back in his hand with every shot and he is shoved back a little with it.
+  A slow, heavy weapon kicks harder than a rapid one; a charged or rail shot kicks hardest.
+  HEAD: it turns toward the nearest bug above him, and nods back a beat after each shot.
+  HIT: he jolts, shrinks for a moment and flashes white.
+  ABILITY: he flings his flipper forward, swells and his jets flare.
+  JETS: two flames that grow when he climbs and shrink when he backs up.
+- HE HOLDS THE WEAPON YOU EQUIPPED, and his shots leave from its tip.
+- OLD AGAINST NEW. Settings > Fight > "New hero motion". Off = the old penguin, on = the new one.
+  Play the same stage both ways.
+- The other five heroes are unchanged (they come after you are happy with this one). The Heroes
+  page still shows the full-body penguin: only the fight changed.
+
+NOT CHECKED BY ME:
+- Nothing has been on a phone. I watched him large, move by move, and in a recorded stage-8 fight
+  on AUTO. How it FEELS under your thumb is exactly what I cannot test.
+- His shots now start at the weapon's tip, which sits to the right of his body, not over his
+  head. Tell me if aiming feels off-centre.
+- His hit size is unchanged, but he looks wider than the old penguin (the big helmet). Tell me if
+  hits feel unfair.
+- The balance sweeps were not re-run: nothing in the numbers changed.
+
+WHAT TO TELL ME: which moves are too much, too little or missing. Each one is a dial.
 
 ## dev270: your dev265 playtest notes, first batch (five updates since dev265)
 

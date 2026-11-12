@@ -345,6 +345,7 @@ func _ready() -> void:
 	_fx.material = fx_mat
 	if PilotRig.ENABLED:
 		_rig_view = PilotRigView.new()
+		_rig_view.fight = true   # a hero with fight pieces flies from above, in moving parts (HeroFight)
 		_rig_view.height = PILOT_HEIGHT
 		add_child(_rig_view)
 	_fx.draw.connect(_draw_fx)
@@ -529,6 +530,8 @@ func _start_stage() -> void:
 	# the pilot's gear: every slot boosts a battle stat, sets add bonuses (gear_data.gd)
 	var gs := Heroes.stats(sv)   # the hero and his weapon (heroes, dev172)
 	PilotRig.set_gear(sv)   # he holds the equipped weapon; visor and orb in the gear colours
+	HeroFight.apply_from(sv)   # Settings: the new hero motion (on unless switched off)
+	HeroFight.warm(PilotRig.hero)
 	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
 	_hero_id = String(gs.get("hero", "rook"))
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
@@ -946,6 +949,14 @@ func _pilot_motion(delta: float) -> void:
 		var a: float = 1.0
 		if inv_t > 0.0:
 			a = lerpf(1.0, 0.55 + 0.45 * absf(cos(time_alive * PI * 4.0)), smoothstep(0.0, 0.3, inv_t))
+		# his head turns to the nearest bug above him (HeroFight)
+		var near_d := 420.0 * 420.0
+		_rig_view.fstate.look = Vector2.INF
+		for e in enemies:
+			var ed: float = (e.pos as Vector2).distance_squared_to(soldier_pos)
+			if ed < near_d and e.pos.y < soldier_pos.y - 20.0:
+				near_d = ed
+				_rig_view.fstate.look = e.pos
 		_rig_view.update(delta, soldier_pos + Vector2(0, sin(time_alive * 4.0) * 2.5), rig_aim, draw_bank / 0.3,
 			clampf(1.0 - vy_smooth / 260.0, 0.35, 1.9), vy_smooth, a)
 		# Aegis: light hugging his outline (brighter with the 2nd Aegis, flares when he is hit)
@@ -977,7 +988,8 @@ func _muzzle_world() -> Vector2:
 func _kick(v: float) -> void:
 	gun_recoil = v
 	if _rig_view:
-		_rig_view.fire()
+		# the weapon has weight: a slow, heavy weapon kicks harder than a rapid one
+		_rig_view.fire(v * clampf(0.55 + float(_weapon().get("interval", 0.25)) * 1.8, 0.7, 2.2))
 
 # Stage won (Rudy, dev108): the last pickups fly in, then he turns to the sky and blasts
 # off the top of the screen, and only then does Stage Cleared show.
@@ -1223,6 +1235,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
+		if (crit or rail) and i == 0 and _rig_view:
+			_rig_view.fire(1.6)   # a charged or rail shot shoves him back harder
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * ((float(w.get("charge_mult", 3.0)) if w_charged else 3.0) if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
@@ -1961,6 +1975,8 @@ func _hurt_pilot(amount: float = GOO_DMG) -> void:
 	if _support_blocks():   # the Guard drone takes this one
 		return
 	inv_t = 1.0 * _recovery
+	if _rig_view:
+		_rig_view.hit()   # he flinches and flashes
 	_buzz(45)
 	_streak_break()   # a hit ends the kill streak
 	var dmg := amount * (1.0 - _def)   # DEF takes its share off
@@ -4654,6 +4670,8 @@ func _use_ability() -> void:
 	_abilities_used += 1
 	_buzz(30)
 	_ability_effect(_hero_id, false)
+	if _rig_view:
+		_rig_view.cast()   # his ability pose
 
 # WINGMATE (2026-11-10; IDEAS-2026-11-10.md 6): a second hero you own rides along as support
 # (Heroes.wing). He lends his passive at half strength (Heroes.stats) and fires his own ability by

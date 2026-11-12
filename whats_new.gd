@@ -6,6 +6,7 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
+	["The penguin moves", "Captain Frost is rebuilt for the fight: he leans into a turn, his legs drag behind him, his flipper works and his weapon kicks. Settings > New hero motion switches back to the old look."],
 	["Hold to fire", "In MANUAL he now fires only while your finger is down. Lift it and he stops. AUTO still aims and fires for you."],
 	["The Hive Mother fights back", "She shoots between broods: a fan of goo, a quick burst, and a slow green poison glob. Her mouth lights up first. Her shots cannot be shot down: move."],
 	["A new Store", "Three tabs. Store: chests as big cards, coins, crystals, supplies. Offers: daily, weekly, monthly and one for every fifth stage you clear. Event: trade event tokens."],
@@ -13,7 +14,6 @@ const NOTES := [
 	["Space music", "New menu and battle music with a space theme. Settings > Music turns it off."],
 	["AUTO flies", "With AUTO on he now flies under the nearest bug instead of standing still."],
 	["Smoother menus", "Bigger, bolder text. Lists scroll from anywhere. Quest rewards fly to your total. Bosses have their own page in the Collection."],
-	["The Magma World has its own creatures", "From stage 21: Cinder Flies, Crust Backs, Spitfires and Comets. The Smelter guards stage 25 and the Caldera Queen stage 30."],
 ]
 
 static func due(save: Dictionary) -> bool:

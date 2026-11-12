@@ -21,6 +21,8 @@ var shield_col := Color(0.55, 0.85, 1.0)
 var front_only := false     # always face the camera (Gear showcase): the chunky chibi front pose
 var face_override := 2.0    # Heroes page swivel (Rudy, dev172): -1..1 sets the facing by hand; 2 = off
 var spin_override := -1.0   # the full circle (dev188): 0..1 round the figure (0 left side, .25 camera, .5 right, .75 back); -1 = off
+var fight := false            # the fight and the Home battle set this: a hero with fight pieces (HeroFight) is drawn from them
+var fstate := HeroFight.State.new()
 
 func _init() -> void:
 	# rim: his whole outline in one flat cool colour, nudged a pixel each way, behind him
@@ -67,6 +69,7 @@ func update(delta: float, at: Vector2, aim: float, lean: float, hover: float, vy
 	pos = at
 	alpha = a
 	rig.update(delta, aim, lean, hover, vy)
+	fstate.update(delta, at, aim)
 	rig.spin = spin_override
 	if spin_override >= 0.0:
 		rig.face = cos(spin_override * TAU)   # the lights and muzzle follow the nearest front facing
@@ -83,12 +86,25 @@ func update(delta: float, at: Vector2, aim: float, lean: float, hover: float, vy
 	_behind.queue_redraw()
 	_front.queue_redraw()
 
-func fire() -> void:
+func _fight() -> bool:
+	return fight and HeroFight.ready()
+
+# power: 1 = a normal shot, more for a heavy or charged one (the weapon kicks harder)
+func fire(power: float = 1.0) -> void:
 	rig.fire()
+	fstate.fire(power)
+
+func hit() -> void:
+	fstate.hit()
+
+func cast() -> void:
+	fstate.do_cast()
 
 func muzzle() -> Vector2:
 	if X.is_empty():
 		X = PilotRig.solve(rig)
+	if _fight():
+		return HeroFight.muzzle(fstate, pos, height * PilotRig.SIZE)
 	if PilotRig.hero_mode():
 		return PilotRig.hero_muzzle(rig, pos, height * PilotRig.SIZE)
 	return PilotRig.muzzle_screen(rig, X, pos, height * PilotRig.SIZE)
@@ -103,6 +119,9 @@ func _front_a() -> float:
 
 func _draw_figure(c: CanvasItem, at: Vector2, lift: Color = PilotRig.LIFT) -> void:
 	var h := height * PilotRig.SIZE
+	if _fight():   # the hero from above, in moving pieces (2026-11-12)
+		HeroFight.draw(c, fstate, at, h, alpha, lift)
+		return
 	if PilotRig.hero_mode():   # a hero from Luna's frames (dev172)
 		PilotRig.draw_hero(c, rig, at, h, alpha, lift)
 		return
@@ -161,11 +180,17 @@ func _draw_behind() -> void:
 	if not X.is_empty():
 		var h := height * PilotRig.SIZE
 		Backdrop.soft_glow(_behind, pos + Vector2(0, -h * 0.1), h * 0.5, Color(PilotRig.BACKLIGHT, PilotRig.BACKLIGHT.a * alpha))
-		if not PilotRig.hero_mode():   # heroes carry their own flames in the frames
+		if not PilotRig.hero_mode() and not _fight():   # heroes carry their own flames in the frames
 			PilotRig.draw_light(_behind, rig, X, pos, h, PilotSprite.style, 0.0, alpha)
 
 func _draw_front() -> void:
 	if not X.is_empty():
+		if _fight():
+			var fh := height * PilotRig.SIZE
+			HeroFight.draw_flames(_front, fstate, pos, fh, alpha)
+			if rig.recoil > 0.2:
+				_front.draw_circle(HeroFight.muzzle(fstate, pos, fh), height * 0.085 * rig.recoil, Color(Heroes.element_color(Heroes.element_of(PilotRig.hero)), 0.7 * alpha))
+			return
 		if PilotRig.hero_mode():
 			if rig.recoil > 0.2:   # the muzzle flash at the weapon's barrel
 				var m := PilotRig.hero_muzzle(rig, pos, height * PilotRig.SIZE)

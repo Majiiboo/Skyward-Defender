@@ -86,6 +86,7 @@ func _ready() -> void:
 		add_child(_far)
 	if PilotRig.ENABLED:
 		_rig_view = PilotRigView.new()
+		_rig_view.fight = true
 		_rig_view.height = PILOT_H
 		(_far if DISTANT else self).add_child(_rig_view)
 
@@ -430,6 +431,8 @@ func _load_wall_turrets() -> void:
 				d = parsed
 	_wall_unlocked = int(d.get("stage_unlocked", 1))
 	PilotRig.set_gear(d)   # his weapon, visor and orb follow the gear (re-read when Home shows)
+	HeroFight.apply_from(d)
+	HeroFight.warm(PilotRig.hero)
 	if _rig_view:
 		_rig_view.height = PILOT_H * float(Heroes.ROSTER[Heroes.selected(Heroes.read(d))].build.scale)   # his build (heroes)
 	var tdat := Turrets.read(d)

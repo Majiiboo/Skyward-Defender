@@ -51,6 +51,7 @@ func _initialize() -> void:
 	_check_campaign()
 	_check_works()
 	_check_hints()
+	_check_hero_fight()
 	_check_store2()
 	_check_talents()
 	_check_scrap()
@@ -1154,3 +1155,30 @@ func _check_store2() -> void:
 	_expect(Events.shop_bought(e, "coins") == 1 and Events.shop_why_not({"stage_unlocked": 2}, "coins") != "", "a weekly count is kept; closed before the event opens")
 	for it in Events.SHOP:
 		_expect(ResourceLoader.exists("res://icons/%s.png" % String(it.icon)), "event store item %s has a picture" % it.id)
+
+# the hero rebuilt for the fight (HeroFight, 2026-11-12): the pieces exist, the pose stays sane
+func _check_hero_fight() -> void:
+	_expect(HeroFight.has("frost"), "Frost has his fight pieces")
+	_expect(not HeroFight.has("rook"), "a hero without fight pieces keeps the old look")
+	for p in ["body", "helmet", "flipper", "arm", "leg_l", "leg_r", "flame"]:
+		_expect(ResourceLoader.exists("res://heroes/frost/fight/%s.png" % p), "fight piece %s is cut" % p)
+	var was := PilotRig.hero
+	PilotRig.hero = "frost"
+	var s := HeroFight.State.new()
+	var at := Vector2(240, 600)
+	for i in 120:   # two seconds of hard flying, firing, a hit and the ability
+		at += Vector2(sin(i * 0.2) * 9.0, cos(i * 0.13) * 7.0)
+		if i % 8 == 0:
+			s.fire(2.0)
+		if i == 40:
+			s.hit()
+		if i == 60:
+			s.do_cast()
+		s.update(1.0 / 60.0, at, -PI / 2.0)
+	_expect(absf(s.lean) < 1.5 and absf(s.kick) < 131.0 and absf(s.leg[0]) < 1.2, "the springs stay in range (lean %.2f, kick %.1f)" % [s.lean, s.kick])
+	var m := HeroFight.muzzle(s, at, 75.0)
+	_expect(m.distance_to(at) < 90.0 and m.y < at.y, "his shots start at the weapon tip, above and near him (%s)" % [m - at])
+	HeroFight.on = false
+	_expect(not HeroFight.ready(), "the Settings switch brings the old look back")
+	HeroFight.on = true
+	PilotRig.hero = was

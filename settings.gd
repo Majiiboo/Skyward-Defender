@@ -105,6 +105,12 @@ func _fill() -> void:
 		h.add_child(b)
 		p.add_child(h)
 		_page.add_child(p)
+	_page.add_child(_switch("New hero motion", "Heroes rebuilt for the fight, from above, in moving parts (the penguin first). Off = the old look.", bool(d.get("hero_new", true)), func(v: bool):
+		d = Progress.read()
+		d["hero_new"] = v
+		Progress.write(d)
+		HeroFight.on = v
+		_fill()))
 	_page.add_child(_switch("Left-handed", "Swaps the AUTO and ability buttons in a fight", bool(d.get("left_hand", false)), func(v: bool):
 		d = Progress.read()
 		d["left_hand"] = v
