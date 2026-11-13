@@ -35,6 +35,9 @@ const WEAPONS := {
 }
 var weapon_id := "laser_pistol"
 var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20
+var _mastery := {}              # Mastery.bonus for the class in hand
+var _mastery_cls := "main"
+var _mastery_pierce := 0        # every nth bolt pierces (rifle mastery 5)
 var _wpn := {}
 var _wpn_key := ""
 
@@ -44,6 +47,15 @@ func _weapon() -> Dictionary:
 	if key != _wpn_key:
 		_wpn = Dictionary(WEAPONS[weapon_id]).duplicate()
 		_wpn.merge(GearData.form_mods(weapon_id, weapon_form), true)
+		if not _mastery.is_empty():   # mastery step 5 bends the class trick
+			if _wpn.has("charge") and int(_mastery.charge_minus) > 0:
+				_wpn["charge"] = maxi(int(_wpn.charge) - int(_mastery.charge_minus), 2)
+				_wpn["charge_mult"] = float(_wpn.get("charge_mult", 3.0)) + float(_mastery.charge_mult_add)
+			if _wpn.has("spark_every") and int(_mastery.spark_minus) > 0:
+				_wpn["spark_every"] = maxi(int(_wpn.spark_every) - int(_mastery.spark_minus), 1)
+			if _wpn.has("splash"):
+				_wpn["splash"] = float(_wpn.splash) * float(_mastery.splash_x)
+				_wpn["splash_share"] = minf(float(_wpn.get("splash_share", 0.6)) + float(_mastery.splash_share_add), 1.2)
 		_wpn_key = key
 	return _wpn
 
@@ -629,6 +641,15 @@ func _start_stage() -> void:
 		_start_hero_card()
 	_shot_n = 0
 	weapon_id = gs.weapon
+	# WEAPON MASTERY (Mastery): the steps bought for this weapon class
+	_mastery_cls = String(GearData.WEAPON_CLASS.get(weapon_id, "main"))
+	_mastery = Mastery.bonus(sv, _mastery_cls)
+	damage_mult *= 1.0 + float(_mastery.atk)
+	fire_rate_mult *= 1.0 + float(_mastery.rate)
+	_crit_rate += float(_mastery.crit)
+	_crit_dmg += float(_mastery.crit_dmg)
+	_mastery_pierce = int(_mastery.pierce_every)
+	_wpn_key = ""
 	weapon_form = int(gs.get("weapon_form", 1))
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
@@ -1240,7 +1261,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * ((float(w.get("charge_mult", 3.0)) if w_charged else 3.0) if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
-			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0), "hits": [],
+			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0) or (_mastery_pierce > 0 and _shot_n % _mastery_pierce == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
 			"frost": frost_level > 0 or bool(w.get("frost", false)), "rail": rail or rail_gun, "lucky": lucky,
 			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
@@ -2094,6 +2115,9 @@ func _end_run(won: bool) -> void:
 		_write_save({"etrials": d.get("etrials", {}), "coins": int(d.coins), "crystals": int(d.get("crystals", 0)), "hero": d.get("hero", {})})
 	if run_mode:   # an Expedition fight: the run takes the result (Runs.fight_done)
 		_run_end(won)
+	# the kills of this fight count toward the mastery of the weapon class he carried (Mastery)
+	Mastery.add_kills(d, _mastery_cls, kills)
+	_write_save({"mastery": d.get("mastery", {})})
 	# the hero on duty adds to his contracts (Contracts): a win, his kills, his abilities
 	if Contracts.open(d):
 		Contracts.add(d, _hero_id, won, kills, _abilities_used)

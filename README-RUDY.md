@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev273 (version/code=273 and version/name="1.0-dev273" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev276 (version/code=276 and version/name="1.0-dev276" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,36 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev276: weapons from above, and weapon mastery (three updates since dev273)
+
+Pick the penguin. Heroes > the weapon tile shows the new mastery card.
+
+- WEAPONS SEEN FROM ABOVE. The penguin's weapons are now painted from above like he is (Luna's
+  rifle, pistol and launcher), and he carries each the way a real one would be carried:
+  RIFLE: tucked under his right arm, partly under his helmet. His flipper folds back along his
+  side while he hangs still and comes out to stroke when he moves.
+  PISTOL: small, held forward beside his helmet.
+  TWO PISTOLS: one in each mitten.
+  LAUNCHER: on his shoulder, part of it under the helmet.
+  Whichever pistol, rifle or launcher you equip, he shows HIS ice version of that class.
+- WEAPON MASTERY. Each weapon class (Sidearm, Twin pistols, Rifle, Heavy) has FIVE steps.
+  A step opens after enough kills made while carrying that class, then costs coins to unlock.
+  Kills needed in total: 100, 300, 800, 2,000, 5,000. Coins: 500, 1,500, 4,000, 10,000, 25,000.
+  Steps 1-4 are steady gains (attack, crit chance, fire rate, crit damage, blast reach).
+  Step 5 is the one worth the grind:
+  Sidearm, Hair trigger: the charged shot comes one shot sooner and hits once more as hard.
+  Twin pistols, Storm link: the arc comes one shot sooner and both pistols hit 15% harder.
+  Rifle, Punch through: every 4th bolt flies through the bug it hits, and fire rate +10%.
+  Heavy, Shockwave: the blast reaches 30% further and hits 25% harder.
+  Kills count at the end of every fight, win or lose, for the class you carried. The card on
+  the Weapons screen shows the five pips, the next step, your kills, and the UNLOCK button.
+
+NOT DONE YET: the power cards do not yet change with the weapon class (that is the next piece).
+The other five heroes still use their old pictures.
+NOT CHECKED: nothing on a phone. The kill and coin amounts are first guesses: tell me if a step
+comes too fast or too slow. The balance sweep was not re-run: a fresh save has no mastery, so
+nothing changes until steps are bought, and then the hero is stronger.
 
 ## dev273: weapon classes (one update since dev272)
 

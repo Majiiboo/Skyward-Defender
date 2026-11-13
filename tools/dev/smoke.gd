@@ -53,6 +53,7 @@ func _initialize() -> void:
 	_check_hints()
 	_check_hero_fight()
 	_check_weapon_classes()
+	_check_mastery()
 	_check_store2()
 	_check_talents()
 	_check_scrap()
@@ -1209,3 +1210,22 @@ func _check_weapon_classes() -> void:
 		_expect(s.hand == 0 and s.kick2_v > 0.0, "the left pistol has its own kick")
 	PilotRig.hero = was_hero
 	PilotRig.held = was_held
+
+# weapon mastery (2026-11-13): kills open a step, coins buy it, five steps, the last bends the trick
+func _check_mastery() -> void:
+	for cls in GearData.CLASS_NAMES:
+		_expect(Mastery.TRACKS.has(cls) and (Mastery.TRACKS[cls] as Array).size() == Mastery.STEPS, "%s has five mastery steps" % cls)
+	var s := {"coins": 100000}
+	_expect(Mastery.level(s, "main") == 0 and Mastery.why_not(s, "main") == "100 more kills", "a fresh class needs its first kills")
+	Mastery.add_kills(s, "main", 100)
+	_expect(Mastery.ready(s, "main") and not Mastery.ready(s, "heavy"), "kills count for their own class only")
+	_expect(Mastery.buy(s, "main") and Mastery.level(s, "main") == 1 and int(s.coins) == 99500, "a step costs its coins")
+	_expect(not Mastery.buy(s, "main"), "the next step waits for more kills")
+	Mastery.add_kills(s, "main", 5000)
+	for i in 4:
+		Mastery.buy(s, "main")
+	var b := Mastery.bonus(s, "main")
+	_expect(Mastery.level(s, "main") == 5 and Mastery.next_step(s, "main").is_empty(), "five steps and no more")
+	_expect(is_equal_approx(float(b.atk), 0.08) and is_equal_approx(float(b.rate), 0.16) and int(b.pierce_every) == 4, "the rifle steps add up (atk %.2f, rate %.2f)" % [float(b.atk), float(b.rate)])
+	var poor := {"coins": 10, "mastery": {"twin": {"kills": 150, "level": 0}}}
+	_expect(Mastery.why_not(poor, "twin") == "Not enough coins", "kills in, coins short")

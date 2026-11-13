@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
+	["Weapon mastery", "Each weapon class has five steps. Kills with that class open a step, coins unlock it, and the fifth is the big one. Heroes > the weapon tile."],
+	["Weapons from above", "The penguin carries his own ice rifle, pistol and launcher, seen from above: the rifle under his arm, the launcher on his shoulder."],
 	["Weapon classes", "Sidearm, twin pistols, rifle and heavy. The penguin carries each differently: a pistol in each hand for the Arc Welder, the Pulse Cannon on his shoulder."],
 	["Tougher bugs", "Bugs have more health and their hits hurt: watch your health bar. Weapons are sized to the hero, Settings fits the screen again, and the Base page scrolls."],
 	["The penguin moves", "Captain Frost is rebuilt for the fight: he leans into a turn, his legs drag behind him, his flipper works and his weapon kicks. Settings > New hero motion switches back to the old look."],
 	["Hold to fire", "In MANUAL he now fires only while your finger is down. Lift it and he stops. AUTO still aims and fires for you."],
 	["The Hive Mother fights back", "She shoots between broods: a fan of goo, a quick burst, and a slow green poison glob. Her mouth lights up first. Her shots cannot be shot down: move."],
 	["A new Store", "Three tabs. Store: chests as big cards, coins, crystals, supplies. Offers: daily, weekly, monthly and one for every fifth stage you clear. Event: trade event tokens."],
-	["Chests open with a show", "Every chest gives a set of items, shown one by one. An Epic or Legendary item arrives face down, glows, then flips."],
-	["Space music", "New menu and battle music with a space theme. Settings > Music turns it off."],
 ]
 
 static func due(save: Dictionary) -> bool:

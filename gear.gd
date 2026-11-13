@@ -2990,6 +2990,7 @@ func _weapons_screen() -> void:
 		v.add_child(nl)
 	elif form_now == 3:
 		v.add_child(UIKit.label(String(GearData.form_info(eq, 3).get("text", "")), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(_mastery_card(GearData.weapon_class(eq), layer))
 	var grid := GridContainer.new()
 	grid.columns = 3
 	grid.add_theme_constant_override("h_separation", 8)
@@ -4565,3 +4566,68 @@ func _on_ability_up() -> void:
 # capture hook (tools/dev/capture.gd CAP_CALL="_dbg_ability")
 func _dbg_ability() -> void:
 	_ability_sheet()
+
+# WEAPON MASTERY (Mastery, 2026-11-13): the five steps of the class of the weapon in hand, on the
+# Weapons screen: pips, the next step, the kills toward it, and one gold button once they are in.
+func _mastery_card(cls: String, layer: Control) -> Control:
+	var data := _read()
+	var lv := Mastery.level(data, cls)
+	var p := UIKit.panel(12)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	head.add_child(UIKit.label("%s mastery" % String(GearData.CLASS_NAMES[cls]), 14, UIKit.TEXT))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(sp)
+	for i in Mastery.STEPS:   # five pips: gold = bought
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(18, 8)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if i < lv else Color(UIKit.CARD_HI, 0.9), 4, Vector2.ZERO))
+		head.add_child(pip)
+	v.add_child(head)
+	var nx := Mastery.next_step(data, cls)
+	if nx.is_empty():
+		var done := UIKit.label("Mastered. %s" % String(Mastery.TRACKS[cls][Mastery.STEPS - 1].text), 12, UIKit.GOLD)
+		done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(done)
+		p.add_child(v)
+		return p
+	var is_last := int(nx.n) == Mastery.STEPS
+	var line := UIKit.label("Step %d  ·  %s: %s" % [int(nx.n), String(nx.name), String(nx.text)], 12, UIKit.GOLD if is_last else UIKit.SOFT)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(line)
+	var have := Mastery.kills(data, cls)
+	var need := int(nx.kills)
+	if have < need:
+		var bar := ProgressBar.new()
+		bar.max_value = need
+		bar.value = have
+		bar.show_percentage = false
+		bar.custom_minimum_size = Vector2(0, 8)
+		bar.add_theme_stylebox_override("background", UIKit.pill(Color(UIKit.CARD_HI, 0.9), 4, Vector2.ZERO))
+		bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 4, Vector2.ZERO))
+		v.add_child(bar)
+		v.add_child(UIKit.label("%s / %s kills with this class" % [UIKit.num(have), UIKit.num(need)], 11, UIKit.MUTED))
+	else:
+		var why := Mastery.why_not(data, cls)
+		var b := UIKit.gold_button("UNLOCK  ·  %s coins" % UIKit.num(int(nx.cost)), 14)
+		b.custom_minimum_size = Vector2(0, 40)
+		b.disabled = why != ""
+		if why != "":
+			b.text = "%s  ·  %s coins" % [why, UIKit.num(int(nx.cost))]
+		b.pressed.connect(func():
+			var d := _read()
+			if Mastery.buy(d, cls):
+				_write_data(d)
+				coins = int(d.get("coins", 0))
+				_paint_wallet()
+				Sfx.play("upgrade")
+				_milestone_toast("%s mastery step %d: %s" % [String(GearData.CLASS_NAMES[cls]), Mastery.level(d, cls), String(nx.name)])
+				layer.queue_free()
+				_weapons_screen())
+		v.add_child(b)
+	p.add_child(v)
+	return p
