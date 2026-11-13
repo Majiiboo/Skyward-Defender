@@ -53,6 +53,7 @@ static func warm(id: String) -> void:
 	if has(id):
 		for p in ["body", "helmet", "flipper", "arm", "leg_l", "leg_r", "flame"]:
 			tex(id, p)
+		_top()
 
 class State:
 	var t := 0.0
@@ -148,8 +149,19 @@ class State:
 const KICK := {"sidearm": 0.8, "twin": 0.7, "main": 1.0, "heavy": 1.6}
 const SHOVE := {"sidearm": 0.2, "twin": 0.2, "main": 0.28, "heavy": 0.45}
 const MIRROR := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(-6, 0))   # left <-> right about his middle
+const TOP_GRIP := {"sidearm": 0.78, "twin": 0.78, "main": 0.45, "heavy": 0.55}   # where the mitten sits on a top-view weapon (share of its length from the muzzle)
 # a held picture painted muzzle-DOWN (the cannon): turned over here, with its real grip and muzzle
 const HELD_FIX := {"void_weapon": {"grip": Vector2(0.45, 0.5), "muzzle": Vector2(0.42, 0.9)}}
+
+# a weapon painted from ABOVE for this hero, one per class (heroes/<id>/fight/top_<class>.png): carried close,
+# tucked under the arm, partly under the helmet, instead of the side-view picture held out
+static func _top() -> Texture2D:
+	var cls := wclass()
+	var key := "%s/top_%s" % [PilotRig.hero, cls]
+	if not _tex.has(key):
+		var path := "res://heroes/%s/fight/top_%s.png" % [PilotRig.hero, "sidearm" if cls == "twin" else cls]   # two pistols = his pistol twice
+		_tex[key] = load(path) if ResourceLoader.exists(path) else null
+	return _tex[key]
 
 static func wclass() -> String:
 	return GearData.weapon_class(PilotRig.held) if PilotRig.held != "" else "main"
@@ -177,7 +189,7 @@ static func _put(c: CanvasItem, m: Transform2D, tx: Texture2D, pv: Vector2, col:
 	c.draw_texture_rect(tx, Rect2(-pv * size, size), false, col)
 
 static func _arm_rot(s: State, kit: Dictionary, aim: float) -> float:
-	return float(kit.arm.rot) + aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
+	return (0.33 if _top() != null else float(kit.arm.rot)) + aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
 
 # the weapon in a mitten, for the RIGHT hand (the left is this, mirrored, with the aim turned round):
 # [transform inside the figure, texture, grip (0..1), muzzle (0..1), drawn size]
@@ -194,7 +206,12 @@ static func _rifle(s: State, kit: Dictionary, aim: float, kick: float) -> Array:
 		if not _tex.has(key):
 			_tex[key] = load("res://heroes/%s/weapon.png" % PilotRig.hero)
 		tx = _tex[key]
-	var turn_over := HELD_FIX.has(PilotRig.held)
+	var top := _top()
+	if top != null:
+		tx = top
+		grip = Vector2(0.5, TOP_GRIP.get(wclass(), 0.45))
+		muz = Vector2(0.5, 0.0)
+	var turn_over := top == null and HELD_FIX.has(PilotRig.held)
 	if turn_over:
 		grip = HELD_FIX[PilotRig.held].grip
 		muz = HELD_FIX[PilotRig.held].muzzle
@@ -202,6 +219,8 @@ static func _rifle(s: State, kit: Dictionary, aim: float, kick: float) -> Array:
 	# a weapon is sized to HIM (Rudy, dev271: the pistol was half his size): a pistol short, a rifle longer
 	var sc := float(kit.rifle_len) * (1.12 if heavy else 1.0) * float(PilotRig.HELD_LEN.get(PilotRig.held, 760.0)) / 760.0 / tx.get_height()
 	var size := Vector2(tx.get_size()) * sc
+	if top != null:
+		size = Vector2(tx.get_size()) * 2.0   # cut at half the whole picture, like his pieces
 	var arm: Dictionary = kit.arm
 	var arm_len := float(arm.hand) * tex(PilotRig.hero, "arm").get_height() * 2.0
 	var hand: Vector2 = arm.at + Vector2(0, -arm_len).rotated(_arm_rot(s, kit, aim)) + Vector2(0, kick * 0.45)
@@ -247,7 +266,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 		var fl: Dictionary = kit.flipper
 		var amt := float(kit.flap)
 		var stroke := sin(s.flap)
-		var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting
+		var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting - (0.7 if _top() != null else 0.0) * (1.0 - s.speed) * (1.0 - casting)   # tucked back along his side while he hangs still with a rifle under the other arm
 		var f_len := 1.0 - 0.14 * amt * (0.5 + 0.5 * cos(s.flap)) * (0.4 + 0.6 * s.speed)
 		_put(c, root * _local(fl.at, f_rot, Vector2(f_len, 1.0)), tex(id, "flipper"), fl.pv, col)
 	# the weapon, then the arm over its grip (a heavy one rides the shoulder, over the body)

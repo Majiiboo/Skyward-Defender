@@ -18,6 +18,10 @@ const SETS := {
 			"leg_r":   ["leg_r", 0.95, false],
 			"leg_l":   ["leg_r", 0.95, true],            # leg_l came with a flat cap on top: the right one mirrored
 			"flame":   ["flame", 1.0, false],
+			# his weapons seen from above, one per CLASS (HeroFight._top): carried close, tucked under the arm
+			"top_main":    ["rifle", 0.81, false],
+			"top_sidearm": ["top_pistol", 1.0, false],
+			"top_heavy":   ["top_launcher", 1.0, false],
 			"whole":   ["whole", 1.0, false],
 		},
 	},
@@ -31,6 +35,9 @@ func _initialize() -> void:
 		DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out))
 		for p in spec.pieces:
 			var row: Array = spec.pieces[p]
+			if not FileAccess.file_exists(src + String(spec.prefix) + String(row[0]) + ".webp"):
+				print("%s %s: not delivered yet" % [id, p])
+				continue
 			var img := Image.load_from_file(ProjectSettings.globalize_path(src + String(spec.prefix) + String(row[0]) + ".webp"))
 			img.convert(Image.FORMAT_RGBA8)
 			var keyed: Image = _light(img) if p == "flame" else _solid(img)
