@@ -19,7 +19,7 @@ const SETS := {
 			"leg_l":   ["leg_r", 0.95, true],            # leg_l came with a flat cap on top: the right one mirrored
 			"flame":   ["flame", 1.0, false],
 			# his weapons seen from above, one per CLASS (HeroFight._top): carried close, tucked under the arm
-			"top_main":    ["rifle", 0.81, false],
+			"top_main":    ["top_streamer", 1.0, false],     # the ice stream gun (2026-11-14); before it: ["rifle", 0.81]
 			"top_sidearm": ["top_pistol", 1.0, false],
 			"top_heavy":   ["top_launcher", 1.0, false],
 			"whole":   ["whole", 1.0, false],

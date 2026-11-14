@@ -24,7 +24,7 @@ const STREAM_W := 400
 const STREAM_BLEND := 200    # rows cross-faded so the top joins the bottom
 const STREAM_OUT_W := 160
 const FLOOR := 0.045         # the render's background grey, taken off
-const SIDES := {"frost": {"prefix": "frostfight_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}}}
+const SIDES := {"frost": {"prefix": "frostfight_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "streamer": "main"}}}
 
 func _initialize() -> void:
 	for el in ELEMENTS:
@@ -59,6 +59,10 @@ func _initialize() -> void:
 			var img := _open("res://art_src/heroes/%s/%s%s.webp" % [id, spec.prefix, f])
 			if img == null:
 				continue
+			if f == "streamer":   # the mist Luna painted round the nozzle keys out as a dark smudge: painted away first
+				img.fill_rect(Rect2i(0, 0, 1024, 214), Color.BLACK)
+				img.fill_rect(Rect2i(0, 0, 410, 345), Color.BLACK)
+				img.fill_rect(Rect2i(654, 0, 370, 345), Color.BLACK)
 			_save(_trim(_solid(img), 4), "res://heroes/%s/side_%s.png" % [id, spec.files[f]])
 	quit()
 

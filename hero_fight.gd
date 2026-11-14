@@ -149,7 +149,7 @@ class State:
 const KICK := {"sidearm": 0.8, "twin": 0.7, "main": 1.0, "heavy": 1.6}
 const SHOVE := {"sidearm": 0.2, "twin": 0.2, "main": 0.28, "heavy": 0.45}
 const MIRROR := Transform2D(Vector2(-1, 0), Vector2(0, 1), Vector2(-6, 0))   # left <-> right about his middle
-const TOP_GRIP := {"sidearm": 0.78, "twin": 0.78, "main": 0.45, "heavy": 0.55}   # where the mitten sits on a top-view weapon (share of its length from the muzzle)
+const TOP_GRIP := {"sidearm": 0.78, "twin": 0.78, "main": 0.62, "heavy": 0.55}   # where the mitten sits on a top-view weapon (share of its length from the muzzle)
 # a held picture painted muzzle-DOWN (the cannon): turned over here, with its real grip and muzzle
 const HELD_FIX := {"void_weapon": {"grip": Vector2(0.45, 0.5), "muzzle": Vector2(0.42, 0.9)}}
 
