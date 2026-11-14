@@ -2,9 +2,9 @@ class_name Arsenal
 extends RefCounted
 # EVERY HERO HAS HIS OWN WEAPONS (Rudy, 2026-11-13). A hero's weapons are separate items: his own
 # level, his own mastery, unlocked one by one. Nothing is shared between heroes.
-# - Each hero has THREE of the four classes (SETS: the first comes with him) plus a fourth
+# - Each hero has the FOUR classes in one order (ORDER: the pistol comes with him) plus a fifth
 #   SPECIALTY slot that stays locked until we add his unique weapon.
-# - The second and third open at a HERO LEVEL (OPEN_LEVEL) and then cost coins (OPEN_COST).
+# - The others open at a HERO LEVEL (OPEN_LEVEL) and then cost coins (OPEN_COST).
 # - A weapon levels as far as its hero's rarity step allows (CAPS: Common 10 .. Legendary and up 30).
 #   Weapon copies and Workshop merging are gone; drops that used to be a copy pay coins
 #   (GearData.drop_coins).
@@ -16,16 +16,15 @@ extends RefCounted
 # the sims did not have to change. Never call Heroes.read from here (Heroes.read -> migrate ->
 # GearData.read -> here): the raw_ readers take what they need straight from the save.
 
-const SETS := {   # the first is the weapon he comes with
-	"rook":   ["sidearm", "main", "twin"],
-	"sparks": ["twin", "sidearm", "heavy"],
-	"frost":  ["main", "sidearm", "heavy"],
-	"hollow": ["heavy", "sidearm", "main"],
-	"nyx":    ["main", "twin", "sidearm"],
-	"ember":  ["main", "twin", "heavy"],
-}
-const OPEN_LEVEL := [1, 5, 12]        # the hero level that opens his 1st / 2nd / 3rd weapon
-const OPEN_COST := [0, 2000, 8000]    # and its price in coins
+# Rudy 2026-11-14: EVERY hero has the same four classes in the same order: the pistol he comes
+# with, then twin pistols, the rifle, the cannon. What differs per hero is the look, the name and
+# what it fires (his element). The SPECIALTY slot (a unique weapon, not in the game yet) is
+# earned: all four of his weapons at mastery step SPECIAL_STEP.
+const ORDER := ["sidearm", "twin", "main", "heavy"]
+const SETS := {"rook": ORDER, "sparks": ORDER, "frost": ORDER, "hollow": ORDER, "nyx": ORDER, "ember": ORDER}
+const OPEN_LEVEL := [1, 5, 10, 15]          # the hero level that opens his 1st .. 4th weapon
+const OPEN_COST := [0, 2000, 5000, 10000]   # and its price in coins
+const SPECIAL_STEP := 3                     # mastery step on all four that earns the Specialty slot
 const CAPS := [10, 15, 20, 25, 30]    # weapon level cap by the hero's step (5 and up = 30)
 const SPECIALTY := "Specialty"
 
@@ -229,3 +228,15 @@ static func take_view(save: Dictionary, gear: Dictionary) -> void:
 		if gear.levels.has(id):
 			row.levels[c] = clampi(int(gear.levels[id]), 1, GearData.MAX_LEVEL)
 	save["arsenal"] = a
+
+# ------------------------------------------------------------------ the Specialty slot
+# how many of his four weapons have reached mastery step SPECIAL_STEP
+static func special_count(save: Dictionary, hid: String) -> int:
+	var n := 0
+	for c in classes(hid):
+		if Mastery.level(save, key(hid, String(c))) >= SPECIAL_STEP:
+			n += 1
+	return n
+
+static func special_earned(save: Dictionary, hid: String) -> bool:
+	return special_count(save, hid) >= classes(hid).size()

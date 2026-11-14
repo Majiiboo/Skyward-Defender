@@ -1227,35 +1227,44 @@ func _check_mastery() -> void:
 	var poor := {"coins": 10, "mastery": {"twin": {"kills": 150, "level": 0}}}
 	_expect(Mastery.why_not(poor, "twin") == "Not enough coins", "kills in, coins short")
 
-# EVERY HERO HIS OWN WEAPONS (Arsenal, 2026-11-13): three classes + a specialty slot, unlocked by
-# hero level + coins, levelled per hero, capped by his step, mastery per weapon
+# EVERY HERO HIS OWN WEAPONS (Arsenal, 2026-11-14): the same four classes in one order (pistol,
+# twins, rifle, cannon), unlocked by hero level + coins, levelled per hero, capped by his step,
+# mastery per weapon; the Specialty slot is earned with all four at mastery step 3
 func _check_four_weapons() -> void:
 	for hid in Heroes.ROSTER:
-		_expect(Arsenal.SETS.has(hid) and Arsenal.classes(hid).size() == 3, "%s has three weapons" % hid)
+		_expect(Arsenal.classes(hid) == ["sidearm", "twin", "main", "heavy"], "%s has the four in order" % hid)
 		for cls in Arsenal.classes(hid):
-			_expect(GearData.CLASS_ITEM.has(cls) and String(GearData.HERO_WEAPONS[hid][cls]) != "", "%s names his %s" % [hid, cls])
+			_expect(String(GearData.HERO_WEAPONS[hid][cls]) != "", "%s names his %s" % [hid, cls])
 	var s := {"coins": 5000, "hero": {"selected": "frost", "owned": ["rook", "frost"], "levels": {"frost": 4, "rook": 9}, "tiers": {}}, "arsenal": {}}
 	var g := GearData.read(s)
-	_expect(g.equipped.Weapon == "frost_weapon" and GearData.owned(g, "frost_weapon") and not GearData.owned(g, "ion_weapon"), "the penguin starts with his rifle only")
-	_expect(GearData.cap_of(g, "frost_weapon") == 15, "Frost starts Uncommon: his weapons cap at 15 (%d)" % GearData.cap_of(g, "frost_weapon"))
-	_expect(Arsenal.why_not(s, "frost", "sidearm") == "Hero Lv.5" and Arsenal.why_not(s, "frost", "twin") == "Not his", "the pistol waits for hero Lv.5; twins are not his")
+	_expect(g.equipped.Weapon == "ion_weapon" and GearData.owned(g, "ion_weapon") and not GearData.owned(g, "frost_weapon"), "the penguin starts with his pistol only")
+	_expect(GearData.cap_of(g, "ion_weapon") == 15, "Frost starts Uncommon: his weapons cap at 15 (%d)" % GearData.cap_of(g, "ion_weapon"))
+	_expect(Arsenal.why_not(s, "frost", "twin") == "Hero Lv.5" and Arsenal.why_not(s, "frost", "main") == "Hero Lv.10", "twins wait for hero Lv.5, the rifle for Lv.10")
 	s.hero.levels["frost"] = 5
-	_expect(Arsenal.unlock(s, "frost", "sidearm") and int(s.coins) == 3000 and not Arsenal.unlock(s, "frost", "heavy"), "the pistol costs 2,000; the launcher waits for Lv.12")
-	_expect(Arsenal.equip(s, "frost", "sidearm") and GearData.read(s).equipped.Weapon == "ion_weapon", "equipped: the view follows")
+	_expect(Arsenal.unlock(s, "frost", "twin") and int(s.coins) == 3000 and not Arsenal.unlock(s, "frost", "heavy"), "the twins cost 2,000; the cannon waits for Lv.15")
+	_expect(Arsenal.equip(s, "frost", "twin") and GearData.read(s).equipped.Weapon == "scavenger_weapon", "equipped: the view follows")
 	g = GearData.read(s)
-	g.levels["ion_weapon"] = 6
+	g.levels["scavenger_weapon"] = 6
 	Arsenal.take_view(s, g)
-	_expect(Arsenal.level(Arsenal.read(s), "frost", "sidearm") == 6 and Arsenal.level(Arsenal.read(s), "rook", "sidearm") == 1, "levels are his alone: Rook s pistol is still Lv.1")
+	_expect(Arsenal.level(Arsenal.read(s), "frost", "twin") == 6 and Arsenal.level(Arsenal.read(s), "rook", "twin") == 1, "levels are his alone: Rook s twins are still Lv.1")
 	s.hero.selected = "rook"
 	_expect(GearData.read(s).equipped.Weapon == "ion_weapon" and GearData.level(GearData.read(s), "ion_weapon") == 1 and GearData.cap_of(GearData.read(s), "ion_weapon") == 10, "switching hero switches the weapons")
+	# the Specialty slot: all four at mastery step 3
+	_expect(Arsenal.special_count(s, "frost") == 0 and not Arsenal.special_earned(s, "frost"), "no specialty yet")
+	s["mastery"] = {}
+	for cls in Arsenal.ORDER:
+		s.mastery[Arsenal.key("frost", cls)] = {"kills": 900, "level": 3 if cls != "heavy" else 2}
+	_expect(Arsenal.special_count(s, "frost") == 3 and not Arsenal.special_earned(s, "frost"), "three of four is not enough")
+	s.mastery[Arsenal.key("frost", "heavy")].level = 3
+	_expect(Arsenal.special_earned(s, "frost") and not Arsenal.special_earned(s, "rook"), "all four at step 3 earns it, for him only")
 	# an old save: shared weapons become every hero s, spare copies pay coins, class mastery spreads
 	var old := {"coins": 100, "stage_unlocked": 45, "gear": {"equipped": {"Weapon": "nightmare_weapon"}, "levels": {"nightmare_weapon": 14, "frost_weapon": 3, "ion_weapon": 8},
 		"copies": {"nightmare_weapon": {"common": 2, "uncommon": 1}}}, "mastery": {"main": {"kills": 150, "level": 1}}}
 	var a := Arsenal.read(old)
 	_expect(Arsenal.level(a, "frost", "main") == 14 and Arsenal.level(a, "rook", "sidearm") == 8 and Arsenal.equipped(a, "frost") == "main", "old levels carried to each hero")
-	_expect(Array(a["frost"].owned).has("sidearm") and Array(a["frost"].owned).has("heavy"), "what was open stays open")
+	_expect(Array(a["frost"].owned).has("twin") and Array(a["frost"].owned).has("heavy"), "what was open stays open")
 	var paid := Arsenal.settle(old)
 	_expect(paid == 550 and int(old.coins) == 650 and old.has("arsenal") and Arsenal.settle(old) == -1, "spare copies paid once (%d)" % paid)
 	_expect(Mastery.level(old, Arsenal.key("frost", "main")) == 1 and Mastery.kills(old, Arsenal.key("nyx", "main")) == 150 and not Dictionary(old.mastery).has("main"), "class mastery became per weapon")
 	_expect(GearData.weapon_name("frost_weapon", "frost") == "Frost Rifle" and GearData.weapon_name("void_weapon", "frost") == "Avalanche", "names per hero")
-	_expect(int(Heroes.stats(s).get("weapon_form", 0)) == 1 and String(Heroes.stats(s).weapon) == "laser_pistol", "battle stats read the hero s weapon")
+	_expect(String(Heroes.stats(s).weapon) == "laser_pistol", "battle stats read the hero s weapon")

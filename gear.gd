@@ -3093,7 +3093,7 @@ func _weapons_screen() -> void:
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
 	var sdata := _read()
-	for cls in Arsenal.classes(hid):   # HIS three weapons (Arsenal), then the specialty slot
+	for cls in Arsenal.classes(hid):   # HIS four weapons (Arsenal), in the order they open
 		var id: String = GearData.CLASS_ITEM[cls]
 		var open := GearData.owned(gear, id)
 		var why := Arsenal.why_not(sdata, hid, String(cls))   # "" = can be unlocked now
@@ -3126,11 +3126,30 @@ func _weapons_screen() -> void:
 			layer.queue_free()
 			_weapons_screen())
 		grid.add_child(t)
-	var spec := _pick_square(load("res://icons/ui_padlock.png"), Arsenal.SPECIALTY, 92.0, false, UIKit.SOFT, true, "Coming later")   # his unique weapon, one day
-	spec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spec.pressed.connect(func(): _milestone_toast("A unique weapon for %s. Not in the game yet." % String(Heroes.ROSTER[hid].name)))
-	grid.add_child(spec)
 	v.add_child(grid)
+	# the Specialty slot: his unique weapon, earned with all four at mastery step SPECIAL_STEP
+	var sp_n := Arsenal.special_count(sdata, hid)
+	var sp_all := Arsenal.classes(hid).size()
+	var sp_p := PanelContainer.new()
+	sp_p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.55), 12, Vector2(12, 7)))
+	var sp_row := HBoxContainer.new()
+	sp_row.add_theme_constant_override("separation", 8)
+	var sp_ic := TextureRect.new()
+	sp_ic.texture = load("res://icons/ui_padlock.png")
+	sp_ic.custom_minimum_size = Vector2(18, 18)
+	sp_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	sp_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	sp_ic.modulate = UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT
+	sp_row.add_child(sp_ic)
+	var sp_l := UIKit.label("%s weapon" % Arsenal.SPECIALTY, 12, UIKit.GOLD if sp_n >= sp_all else UIKit.TEXT)
+	sp_row.add_child(sp_l)
+	var sp_t := UIKit.label("Earned. Coming in a later update." if sp_n >= sp_all else "All four at mastery step %d" % Arsenal.SPECIAL_STEP, 11, UIKit.MUTED)
+	sp_t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	sp_t.clip_text = true
+	sp_row.add_child(sp_t)
+	sp_row.add_child(UIKit.label("%d / %d" % [sp_n, sp_all], 12, UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT))
+	sp_p.add_child(sp_row)
+	v.add_child(sp_p)
 	# the equipped weapon's details and its Upgrade button (the same ones the Hero page kept)
 	var urow := HBoxContainer.new()
 	urow.add_theme_constant_override("separation", 8)
