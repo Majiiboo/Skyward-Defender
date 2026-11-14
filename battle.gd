@@ -36,6 +36,10 @@ const WEAPONS := {
 var weapon_id := "laser_pistol"
 var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20
 var _mastery := {}              # Mastery.bonus for the class in hand
+var _steps := {}                # WeaponSteps.bonus for the weapon in hand (its level milestones)
+var _volley_n := 0              # volleys fired this stage (a third shot every other one, the fan every 10th)
+var _ice_patches: Array = []    # the cannon's Ice field: {pos, r, t} patches that slow bugs
+var _shard_q: Array = []        # the pistol's Shatter: shards waiting to be added to the bullets
 var _mastery_cls := "main"
 var _mastery_pierce := 0        # every nth bolt pierces (rifle mastery 5)
 var _shot_shape := "pellet"     # what the weapon in hand fires (Shots.shape by class): pellet / ball / stream / boulder
@@ -52,6 +56,15 @@ func _weapon() -> Dictionary:
 		_wpn.merge(GearData.form_mods(weapon_id, weapon_form), true)
 		if _wpn.has("rate_per_level"):   # the cannon: slow because it hits hard, a little faster every level
 			_wpn["interval"] = float(_wpn.interval) / (1.0 + float(_wpn.rate_per_level) * (_weapon_lv - 1))
+		if not _steps.is_empty():   # level milestones: reach, blast, the charged shot, a wider stream
+			if _wpn.has("range"):
+				_wpn["range"] = float(_wpn.range) * float(_steps.range_x)
+			if _wpn.has("splash") and String(GearData.WEAPON_CLASS.get(weapon_id, "")) == "heavy":
+				_wpn["splash"] = float(_wpn.splash) * float(_steps.splash_x)
+			if _wpn.has("charge"):
+				_wpn["charge_mult"] = float(_wpn.get("charge_mult", 3.0)) + float(_steps.charge_mult_add)
+			if _shot_shape == "stream":
+				_wpn["hit_radius"] = float(_wpn.hit_radius) * float(_steps.stream_wide)
 		if not _mastery.is_empty():   # mastery step 5 bends the class trick
 			if _wpn.has("charge") and int(_mastery.charge_minus) > 0:
 				_wpn["charge"] = maxi(int(_wpn.charge) - int(_mastery.charge_minus), 2)
@@ -658,6 +671,16 @@ func _start_stage() -> void:
 	_crit_rate += float(_mastery.crit)
 	_crit_dmg += float(_mastery.crit_dmg)
 	_mastery_pierce = int(_mastery.pierce_every)
+	# the weapon's own LEVEL MILESTONES (WeaponSteps): every 5 levels, by class; Lv.30 by element
+	_steps = WeaponSteps.bonus(String(GearData.WEAPON_CLASS.get(weapon_id, "main")), String(gs.get("element", "ion")), _weapon_lv)
+	damage_mult *= 1.0 + float(_steps.atk)
+	fire_rate_mult *= 1.0 + float(_steps.rate)
+	_crit_rate += float(_steps.crit)
+	_crit_dmg += float(_steps.crit_dmg)
+	Shots.stream_wide = float(_steps.stream_wide)
+	_volley_n = 0
+	_ice_patches.clear()
+	_shard_q.clear()
 	_wpn_key = ""
 	weapon_form = int(gs.get("weapon_form", 1))
 	PilotSprite.style = gs.thruster
@@ -906,6 +929,7 @@ func _process(delta: float) -> void:
 	_spawn_step(delta)
 	_update_runners(delta)
 	_update_strikes(delta)
+	_update_patches(delta)
 	_update_supply(delta)
 	_update_support(delta)
 	_update_streak(delta)
@@ -1259,6 +1283,14 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 	shake = maxf(shake, float(feel.shake))
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
+	# level milestones: the twins' third shot every other volley, the Blizzard fan every 10th
+	_volley_n += 1
+	if int(w.get("extra_every", 0)) > 0 and _volley_n % int(w.extra_every) == 0:
+		count += 1
+		spread = maxf(spread, 0.14)
+	if int(_steps.get("fan_every", 0)) > 0 and _volley_n % int(_steps.fan_every) == 0:
+		count = maxi(count, int(_steps.fan))
+		spread = maxf(spread, 0.55)
 	for i in count:
 		var off := 0.0
 		if count > 1:
@@ -1284,6 +1316,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"frost": frost_level > 0 or (bool(w.get("frost", false)) and _stream_fx == "slow"), "rail": rail or rail_gun, "lucky": lucky,
 			"shape": _shot_shape, "sn": _shot_n, "born": time_alive, "lane": i, "burn": bool(w.get("frost", false)) and _stream_fx == "burn",
 			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
+			"charged": w_charged, "splash_slow": float(w.get("splash_slow", 0.0)),
 			"freeze": int(w.get("freeze_every", 0)) > 0 and _shot_n % int(w.freeze_every) == 0,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
@@ -1362,6 +1395,8 @@ func _update_bullets(delta: float) -> void:
 					dmg *= WEAK_MULT   # her weak point is open (_boss_weak): a reticle shows it
 				var emult: float = _drone_mult if b.get("drone", false) else _elem_mult   # the drone has its own element
 				dmg *= emult
+				if float(_steps.get("chill_dmg", 0.0)) > 0.0 and (float(e.get("slow_t", 0.0)) > 0.0 or float(e.get("freeze_t", 0.0)) > 0.0):
+					dmg *= 1.0 + float(_steps.chill_dmg)   # Frostbite (the rifle's Lv.30): chilled bugs take more
 				if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 					dmg *= 1.2
 				if b.get("frost", false):
@@ -1406,6 +1441,19 @@ func _update_bullets(delta: float) -> void:
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
+				if int(_steps.get("shatter", 0)) > 0 and b.get("charged", false) and float(e.hp) <= 0.0:   # Shatter (the pistol's Lv.30)
+					for si in int(_steps.shatter):
+						var sb: Dictionary = b.duplicate(true)
+						sb.pos = Vector2(e.pos)
+						sb.vel = Vector2.RIGHT.rotated(TAU * si / float(_steps.shatter) + 0.3) * 420.0
+						sb.dmg = float(b.dmg) * 0.2
+						sb.charged = false
+						sb.big = false
+						sb.pierce = false
+						sb.tid = -2
+						sb.hits = [e.id]
+						sb.ttl = 0.4
+						_shard_q.append(sb)
 				Sfx.play("boss_hit" if _is_boss(e) else (String(hfeel.hit_snd) if hsh != "" else "hit"), rng.randf_range(0.92, 1.08))
 				shake = maxf(shake, float(hfeel.hit_shake) if hsh != "" else 0.0)
 				if float(b.get("splash", 0.0)) > 0.0:
@@ -1414,6 +1462,9 @@ func _update_bullets(delta: float) -> void:
 							o.hp -= (dmg * float(b.get("splash_share", 0.6))) if _can_hurt(o) else 0.0
 							if _can_hurt(o):
 								o.hit_t = HIT_FLINCH_T   # the bugs caught in the blast flinch too
+								if float(b.get("splash_slow", 0.0)) > 0.0:   # the twins' Packed shots
+									o.slow_t = maxf(float(o.get("slow_t", 0.0)), 1.5)
+									o.slow = maxf(float(o.get("slow", 0.0)), float(b.splash_slow))
 					var bpic := _shot_fx("burst") if hsh == "boulder" else ""   # Luna's shattering burst
 					if bpic != "":
 						_fx_add(bpic, b.pos, float(b.splash) * 1.5, 0.42, rng.randf() * TAU, 1.75, Color.WHITE)
@@ -1421,6 +1472,8 @@ func _update_bullets(delta: float) -> void:
 					else:
 						_fx_add("nova", b.pos, float(b.splash) * 0.75, 0.34, 0.0, 1.8, Color(hcol, 0.95) if hsh != "" else Color(0.8, 0.5, 1.0))
 					if hsh == "boulder":
+						if float(_steps.get("patch", 0.0)) > 0.0:   # Ice field (the cannon's Lv.30)
+							_ice_patches.append({"pos": Vector2(b.pos), "r": float(b.splash) * 0.95, "t": float(_steps.patch), "max": float(_steps.patch)})
 						Sfx.play("boom", rng.randf_range(0.94, 1.06))
 						hitstop = maxf(hitstop, 0.03)
 				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
@@ -1448,6 +1501,8 @@ func _update_bullets(delta: float) -> void:
 		if not hit and b.pos.y > -30.0 and b.pos.y < FIELD_H + 30.0 and b.pos.x > -30.0 and b.pos.x < FIELD_W + 30.0:
 			live.append(b)
 	live.append_array(bounced)
+	live.append_array(_shard_q)
+	_shard_q.clear()
 	bullets = live
 	var live_eb: Array = []
 	for b in enemy_bullets:
@@ -3770,6 +3825,37 @@ func _shot_bits(pos: Vector2, n: int, speed: float) -> void:
 		fxs[-1]["vel"] = Vector2(cos(a), sin(a)) * speed * rng.randf_range(0.5, 1.0)
 		fxs[-1]["spin"] = rng.randf_range(-5.0, 5.0)
 
+# ICE FIELD (the cannon's Lv.30 milestone): a patch where a boulder burst; bugs on it are slowed
+func _update_patches(delta: float) -> void:
+	if _ice_patches.is_empty():
+		return
+	var keep: Array = []
+	for p in _ice_patches:
+		p.t = float(p.t) - delta
+		if float(p.t) <= 0.0:
+			continue
+		keep.append(p)
+		for e in enemies:
+			if not _is_boss(e) and Vector2(e.pos).distance_to(p.pos) < float(p.r) + float(e.r) * 0.5:
+				e.slow_t = maxf(float(e.get("slow_t", 0.0)), 0.3)
+				e.slow = maxf(float(e.get("slow", 0.0)), 0.4)
+	_ice_patches = keep
+
+func _draw_patches() -> void:
+	var col: Color = Shots.colours(_bolt_set)[1]
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	for p in _ice_patches:
+		var k := clampf(float(p.t) / 0.6, 0.0, 1.0) * clampf((float(p.max) - float(p.t)) / 0.25, 0.0, 1.0)
+		_fx.draw_circle(p.pos, float(p.r), Color(col, 0.13 * k))
+		_fx.draw_circle(p.pos, float(p.r) * 0.66, Color(col, 0.1 * k))
+		_fx.draw_arc(p.pos, float(p.r), 0.0, TAU, 40, Color(col.lerp(Color.WHITE, 0.5), 0.5 * k), 1.5, true)
+		var bit := _shot_fx("bit_0")
+		if bit != "":
+			for i in 5:
+				var a := i * 1.2566 + time_alive * 0.5
+				var bp: Vector2 = Vector2(p.pos) + Vector2(cos(a), sin(a)) * float(p.r) * 0.55
+				_fx.draw_texture_rect(_fx_tex[bit], Rect2(bp - Vector2(7, 7), Vector2(14, 14)), false, Color(1, 1, 1, 0.8 * k))
+
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
 	# a ceiling on live effects (efficiency pass, 27): the oldest goes first on a crowded screen,
 	# and battery saver keeps half as many
@@ -3783,6 +3869,7 @@ func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 
 func _draw_fx() -> void:
 	_draw_zaps()
 	_draw_drone_light()
+	_draw_patches()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]

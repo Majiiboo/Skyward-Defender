@@ -542,13 +542,8 @@ func _select(slot: String) -> void:
 	var cap := GearData.level_cap(rar)   # the rarity cap: copies merged in the Workshop are the weapon stars (DESIGN-stars.md)
 	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < cap else "  (cap)"
 	_detail.text = "%s  Lv.%d / %d  ·  %s\n%s %s%s" % [GearData.weapon_name(id, _hero_id()), lv, cap, GearData.rarity_name(rar), st.text, _stat_text(slot, lv), next_txt]
-	# its milestone (every 5 levels): what it gives, and how many it has reached
-	var gms: Dictionary = GearData.MILESTONE[slot]
-	var got := GearData.milestones(lv)
-	if got >= GearData.max_milestones():
-		_detail.text += "\n%s  x%d (max)" % [gms.text, got]
-	else:
-		_detail.text += "\n%s  %s" % [gms.text, ("x%d, next Lv.%d" % [got, (got + 1) * GearData.MILESTONE_EVERY]) if got > 0 else "at Lv.%d" % GearData.MILESTONE_EVERY]
+	# its level milestones are shown as the six chips above (WeaponSteps): how many it has reached
+	_detail.text += "  ·  Milestones %d / %d" % [WeaponSteps.count(lv), WeaponSteps.LEVELS.size()]
 	var cost := GearData.upgrade_cost(lv)
 	_upgrade_btn.disabled = lv >= cap or coins < cost
 	if lv >= GearData.MAX_LEVEL:
@@ -603,8 +598,6 @@ func _on_upgrade_pressed() -> void:
 	if not await _pay_upgrade(cost, lv, Materials.weapon_need(lv, _hero_el())):
 		return
 	gear.levels[id] = lv + 1
-	if GearData.milestones(lv + 1) > GearData.milestones(lv):
-		_milestone_toast("%s reached Lv.%d: %s" % [GearData.ITEMS[id].name, lv + 1, GearData.MILESTONE[selected_slot].text])
 	_save()
 	Progress.bump("upgrades")
 	_select(selected_slot)
@@ -3094,24 +3087,31 @@ func _weapons_screen() -> void:
 		var now_fi: Dictionary = GearData.form_info(eq, GearData.weapon_form(_lvl(eq)))   # form II / III: say what it does NOW
 		srow.add_child(UIKit.label(String(now_fi.get("text", est.text)), 12, UIKit.TEXT))
 		v.add_child(srow)
-	# its three shapes (GearData.WEAPON_FORMS): the one it is in lit, the next with its level
-	var form_now := GearData.weapon_form(_lvl(eq))
+	# its SIX LEVEL MILESTONES (WeaponSteps): one every 5 levels, its own by class; Lv.10 and 20
+	# change how it fires, Lv.30 comes from the hero's element. Reached = lit, the next named.
+	var ms_n := WeaponSteps.count(_lvl(eq))
+	var ms_cap := Arsenal.cap(_read(), hid)
 	var frow := HBoxContainer.new()
 	frow.alignment = BoxContainer.ALIGNMENT_CENTER
-	frow.add_theme_constant_override("separation", 6)
-	for f in [1, 2, 3]:
-		var fname: String = String(est.get("style", "")) if f == 1 else String(GearData.form_info(eq, f).get("name", ""))
-		var fc := UIKit.chip("%s  %s" % [GearData.FORM_NAMES[f - 1], fname], UIKit.GOLD if f == form_now else (Heroes.element_color(eq_el) if f < form_now else UIKit.SOFT))
-		fc.modulate.a = 1.0 if f <= form_now else 0.6
+	frow.add_theme_constant_override("separation", 5)
+	for i in WeaponSteps.LEVELS.size():
+		var ml := int(WeaponSteps.LEVELS[i])
+		var big_one: bool = ml % 10 == 0
+		var fc := UIKit.chip(("★ %d" if big_one else "%d") % ml, (UIKit.GOLD if big_one else Heroes.element_color(eq_el)) if i < ms_n else UIKit.SOFT)
+		fc.modulate.a = 1.0 if i < ms_n else (0.6 if ml <= ms_cap else 0.3)
 		frow.add_child(fc)
 	v.add_child(frow)
-	if form_now < 3:
-		var nf: Dictionary = GearData.form_info(eq, form_now + 1)
-		var nl := UIKit.label("Next shape at Lv.%d: %s" % [int(GearData.FORM_LEVELS[form_now]), String(nf.get("text", ""))], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	if ms_n < WeaponSteps.LEVELS.size():
+		var nst: Dictionary = WeaponSteps.step(eq, eq_el, ms_n)
+		var nlv := int(WeaponSteps.LEVELS[ms_n])
+		var nl := UIKit.label("Next at Lv.%d · %s: %s" % [nlv, String(nst.get("name", "")), String(nst.get("text", ""))], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(nl)
-	elif form_now == 3:
-		v.add_child(UIKit.label(String(GearData.form_info(eq, 3).get("text", "")), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		if nlv > ms_cap:
+			v.add_child(UIKit.label("Ascend %s to level this weapon past Lv.%d" % [String(Heroes.ROSTER[hid].name), ms_cap], 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	else:
+		var lst: Dictionary = WeaponSteps.step(eq, eq_el, WeaponSteps.LEVELS.size() - 1)
+		v.add_child(UIKit.label("%s: %s" % [String(lst.get("name", "")), String(lst.get("text", ""))], 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(_mastery_card(Arsenal.key(hid, GearData.weapon_class(eq)), layer))
 	var grid := GridContainer.new()
 	grid.columns = 4
@@ -3187,16 +3187,16 @@ func _weapons_screen() -> void:
 	ub.disabled = _upgrade_btn.disabled
 	ub.pressed.connect(func():
 		var item_was: String = gear.equipped["Weapon"]
-		var form_was := GearData.weapon_form(_lvl(item_was))
+		var ms_was := WeaponSteps.count(_lvl(item_was))
 		await _on_upgrade_pressed()
 		layer.queue_free()
 		_weapons_screen()
-		var form_is := GearData.weapon_form(_lvl(item_was))
-		if form_is > form_was:   # it changed shape: say so, full screen
-			var fi: Dictionary = GearData.form_info(item_was, form_is)
-			Moment.show(self, {"title": "%s %s" % [GearData.weapon_name(item_was, _hero_id()), GearData.FORM_NAMES[form_is - 1]],
-				"text": "%s: %s." % [String(fi.get("name", "")), String(fi.get("text", ""))], "tex": _weapon_pic(item_was),
-				"col": Heroes.element_color(_hero_el()), "chip": "EVOLVED", "go_text": "GOT IT"}))
+		var ms_is := WeaponSteps.count(_lvl(item_was))
+		if ms_is > ms_was:   # a level milestone: say so, full screen
+			var fi: Dictionary = WeaponSteps.step(item_was, _hero_el(), ms_is - 1)
+			Moment.show(self, {"title": String(fi.get("name", "")).to_upper(),
+				"text": "%s Lv.%d: %s." % [GearData.weapon_name(item_was, _hero_id()), int(WeaponSteps.LEVELS[ms_is - 1]), String(fi.get("text", ""))], "tex": _weapon_show_pic(item_was)[0],
+				"col": Heroes.element_color(_hero_el()), "chip": "EVOLVED" if fi.has("form") else ("CAPSTONE" if ms_is == WeaponSteps.LEVELS.size() else "MILESTONE"), "go_text": "GOT IT"}))
 	urow.add_child(ub)
 	v.add_child(urow)
 	v.add_child(UIKit.label("A weapon levels as far as its hero's step allows. Ascend him to raise the cap.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))

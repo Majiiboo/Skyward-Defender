@@ -23,6 +23,7 @@ const BALL_FILL := 0.6         # how much of the snowball picture the ball itsel
 const STREAM_TILE := 104.0     # px of stream one copy of the strip covers
 const STREAM_FLOW := 430.0     # px a second the spray rushes along the stream
 static var _cache := {}
+static var stream_wide := 1.0   # battle sets it: the rifle's Lv.25 milestone sprays a wider stream
 
 static func tex(element: String, piece: String) -> Texture2D:
 	var key := element + "_" + piece
@@ -78,7 +79,7 @@ static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Textur
 		var nn := dir.orthogonal()
 		mid.append(line[i] + nn * sin(along * 0.05 - t * 11.0) * 2.2 * u)
 		nrm.append(nn)
-		hw.append(lerpf(7.0, 23.0, smoothstep(0.0, 0.4, u)) * (1.0 + 0.3 * smoothstep(0.7, 1.0, u)))
+		hw.append(lerpf(7.0, 23.0 * stream_wide, smoothstep(0.0, 0.4, u)) * (1.0 + 0.3 * smoothstep(0.7, 1.0, u)))
 		al.append(smoothstep(0.0, 0.05, u + 0.02) * (1.0 - smoothstep(0.74, 1.0, u)) * smoothstep(0.0, 34.0, total - along))   # the tip always fades out: never a cut edge
 		s1.append((along + 4000.0 - fposmod(t * STREAM_FLOW, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE)
 		s2.append((along + 4000.0 - fposmod(t * STREAM_FLOW * 0.62, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE * 0.8 + 0.37)

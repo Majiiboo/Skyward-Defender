@@ -457,8 +457,8 @@ const WEAPON_FORMS := {
 		{"name": "Quick charge", "text": "Every 4th bolt is charged", "mods": {"charge": 4}},
 		{"name": "Lance shot", "text": "Charged bolts fly through every bug", "mods": {"charge": 4, "charge_pierce": true}}],
 	"dual_minis": [
-		{"name": "Live wire", "text": "Every 2nd bolt arcs", "mods": {"spark_every": 2}},
-		{"name": "Triple", "text": "Three bolts side by side", "mods": {"spark_every": 2, "projectiles": 3, "damage": 0.42, "spread": 0.12}}],
+		{"name": "Packed shots", "text": "Shots burst and slow the bugs around the one they hit", "mods": {"splash": 36.0, "splash_share": 0.35, "splash_slow": 0.25}},
+		{"name": "Third hand", "text": "Every other volley throws a third shot", "mods": {"splash": 36.0, "splash_share": 0.35, "splash_slow": 0.25, "extra_every": 2}}],
 	"pulse_cannon": [
 		{"name": "Wide blast", "text": "The blast reaches a third further", "mods": {"splash": 82.0}},
 		{"name": "Full blast", "text": "The blast hits as hard as the shell", "mods": {"splash": 82.0, "splash_share": 0.95}}],
