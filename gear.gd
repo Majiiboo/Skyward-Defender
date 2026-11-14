@@ -168,7 +168,6 @@ func _weapon_tile_pic(id: String) -> Texture2D:
 			var two := Image.create(roundi(w * 1.3), roundi(h * 1.7), false, Image.FORMAT_RGBA8)
 			two.blit_rect(img, Rect2i(0, 0, w, h), Vector2i.ZERO)
 			var other: Image = img.duplicate()
-			other.flip_y()
 			two.blend_rect(other, Rect2i(0, 0, w, h), Vector2i(two.get_width() - w, two.get_height() - h))
 			img = two
 		_tile_pics[key] = ImageTexture.create_from_image(img)
@@ -2552,7 +2551,7 @@ class WeaponShow extends Control:
 		var room_t := size.y * (0.36 if twin else 0.74)
 		var s := minf(minf(size.x * 0.84 / long, room_t / thick), 1.25 if upright else 10.0)
 		var bob := sin(t * 1.3) * 3.0
-		var rows: Array = [[-1.0, 1.0], [1.0, -1.0]] if twin else [[0.0, 1.0]]
+		var rows: Array = [[-1.0, 1.0], [1.0, 1.0]] if twin else [[0.0, 1.0]]
 		for row in rows:
 			var off := Vector2(float(row[0]) * 16.0, float(row[0]) * thick * s * 0.72 + bob * (1.0 if float(row[0]) <= 0.0 else -1.0))
 			if upright:
@@ -3123,7 +3122,7 @@ func _weapons_screen() -> void:
 		var id: String = GearData.CLASS_ITEM[cls]
 		var open := GearData.owned(gear, id)
 		var why := Arsenal.why_not(sdata, hid, String(cls))   # "" = can be unlocked now
-		var sub := "%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]
+		var sub := ""   # an owned weapon: only its name (class and level are in the showcase box above)
 		if not open:
 			sub = ("%s coins" % UIKit.num(Arsenal.cost(hid, String(cls)))) if why == "" or why == "Not enough coins" else why
 		var t := _pick_square(_weapon_tile_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, Heroes.element_color(eq_el) if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
