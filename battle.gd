@@ -25,19 +25,22 @@ const WEAPONS := {
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
 	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
-	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.44, "speed": 430.0, "damage": 1.85, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true, "splash": 62.0},   # Void: slow shells that EXPLODE (the blast hits bugs around the one it struck)
+	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.6, "speed": 430.0, "damage": 2.6, "rate_per_level": 0.012, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true, "splash": 62.0},   # Void: slow shells that EXPLODE (the blast hits bugs around the one it struck)
 	# Nightmare set: slow rail bolts that pierce every bug in their line
 	"railgun": {"name": "Railgun", "interval": 0.45, "speed": 640.0, "damage": 1.5, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0, "rail": true},
 	# Solar set: fast, long-range bolts
 	"laser_rifle": {"name": "Sun Rifle", "interval": 0.3, "speed": 620.0, "damage": 0.62, "projectiles": 3, "spread": 0.5, "hit_radius": 20.0, "range": 340.0},   # Fire: a FAN of three short-range bolts: fly close and it hits hardest
 	# Frost set: rapid small bolts
-	"frost_rifle": {"name": "Frost Rifle", "interval": 0.14, "speed": 560.0, "damage": 0.58, "projectiles": 1, "spread": 0.03, "hit_radius": 18.0, "frost": true},   # Ice: a rapid stream that SLOWS what it hits
+	"frost_rifle": {"name": "Frost Rifle", "interval": 0.1, "speed": 620.0, "damage": 0.48, "projectiles": 1, "spread": 0.0, "hit_radius": 18.0, "frost": true, "range": 340.0},   # Ice: a rapid stream that SLOWS what it hits
 }
 var weapon_id := "laser_pistol"
 var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20
 var _mastery := {}              # Mastery.bonus for the class in hand
 var _mastery_cls := "main"
 var _mastery_pierce := 0        # every nth bolt pierces (rifle mastery 5)
+var _shot_shape := "pellet"     # what the weapon in hand fires (Shots.shape by class): pellet / ball / stream / boulder
+var _stream_fx := "slow"        # what the rifle's stream does, by the hero's element (Shots.stream_fx)
+var _weapon_lv := 1             # the level of the weapon in hand (the cannon fires faster as it levels)
 var _wpn := {}
 var _wpn_key := ""
 
@@ -47,6 +50,8 @@ func _weapon() -> Dictionary:
 	if key != _wpn_key:
 		_wpn = Dictionary(WEAPONS[weapon_id]).duplicate()
 		_wpn.merge(GearData.form_mods(weapon_id, weapon_form), true)
+		if _wpn.has("rate_per_level"):   # the cannon: slow because it hits hard, a little faster every level
+			_wpn["interval"] = float(_wpn.interval) / (1.0 + float(_wpn.rate_per_level) * (_weapon_lv - 1))
 		if not _mastery.is_empty():   # mastery step 5 bends the class trick
 			if _wpn.has("charge") and int(_mastery.charge_minus) > 0:
 				_wpn["charge"] = maxi(int(_wpn.charge) - int(_mastery.charge_minus), 2)
@@ -643,6 +648,10 @@ func _start_stage() -> void:
 	weapon_id = gs.weapon
 	# WEAPON MASTERY (Mastery): the steps bought for this weapon class
 	_mastery_cls = Arsenal.key(String(gs.get("hero", "rook")), String(GearData.WEAPON_CLASS.get(weapon_id, "main")))   # per WEAPON: this hero s own (Arsenal)
+	_shot_shape = Shots.shape(String(GearData.WEAPON_CLASS.get(weapon_id, "main")))
+	_weapon_lv = int(gs.get("weapon_level", 1))
+	_wpn_key = ""   # rebuilt with the level in
+	_stream_fx = Shots.stream_fx(String(gs.get("element", "ion")))
 	_mastery = Mastery.bonus(sv, _mastery_cls)
 	damage_mult *= 1.0 + float(_mastery.atk)
 	fire_rate_mult *= 1.0 + float(_mastery.rate)
@@ -1263,7 +1272,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0) or (_mastery_pierce > 0 and _shot_n % _mastery_pierce == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
-			"frost": frost_level > 0 or bool(w.get("frost", false)), "rail": rail or rail_gun, "lucky": lucky,
+			"frost": frost_level > 0 or (bool(w.get("frost", false)) and _stream_fx == "slow"), "rail": rail or rail_gun, "lucky": lucky,
+			"shape": _shot_shape, "sn": _shot_n, "born": time_alive, "lane": i, "burn": bool(w.get("frost", false)) and _stream_fx == "burn",
 			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
 			"freeze": int(w.get("freeze_every", 0)) > 0 and _shot_n % int(w.freeze_every) == 0,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
@@ -1350,6 +1360,9 @@ func _update_bullets(delta: float) -> void:
 					e.slow = minf(maxf(0.15 * maxi(frost_level, 1), float(b.get("fslow", 0.0))) + _chill_bonus, 0.5)
 					if b.get("freeze", false) and not _is_boss(e):   # the Frost Rifle's third shape: Ice lock
 						e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 0.9)
+				if b.get("burn", false) and e.type != "spore":   # a fire stream (Shots): a light burn in place of the chill
+					e.burn_t = maxf(float(e.get("burn_t", 0.0)), 1.2)
+					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.02) * float(e.hp_max))
 				# hero cards: Deep Freeze slows, Afterburn sets burning
 				if _freeze_level > 0:
 					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
@@ -3723,6 +3736,31 @@ func _draw_fx() -> void:
 		var th: float = L * tr.get_height() / tr.get_width()
 		_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
 		_fx.draw_texture_rect(tr, Rect2(-L * 0.9, -th * 0.5, L, th), false, Color.WHITE if bl.col == "tracer" else Color(1.0, 0.7, 0.35))
+	# THE RIFLE'S STREAM (Shots.draw_stream): one ribbon from the muzzle through every stream bolt
+	# in the air, newest first, per lane (extra bolts from cards run as their own streams). Each bolt
+	# keeps the line it was fired on, so the ribbon bends when he moves, like a water gun.
+	if _shot_shape == "stream":
+		var lanes := {}
+		for bl in bullets:
+			if String(bl.get("shape", "")) == "stream":
+				var ln := int(bl.get("lane", 0))
+				if not lanes.has(ln):
+					lanes[ln] = []
+				lanes[ln].append(bl)
+		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var reach := float(_weapon().get("range", 340.0))
+		for ln in lanes:
+			var arr: Array = lanes[ln]
+			arr.sort_custom(func(a, b): return int(a.sn) > int(b.sn))
+			var run := PackedVector2Array()
+			if time_alive - float(arr[0].get("born", 0.0)) < 0.3 and not picking:
+				run.append(_muzzle_world())
+			for bl in arr:
+				if run.size() > 0 and run[run.size() - 1].distance_to(bl.pos) > Shots.STREAM_GAP:
+					Shots.draw_stream(_fx, run, _bolt_set, time_alive, reach)
+					run = PackedVector2Array()
+				run.append(bl.pos)
+			Shots.draw_stream(_fx, run, _bolt_set, time_alive, reach)
 	# the pilot's bolts: Luna's energy bolt, its bright head on the bullet (Heavy Bolts:
 	# bigger and brighter)
 	var bt0: Texture2D = _fx_tex["bolt"]
@@ -3735,6 +3773,11 @@ func _draw_fx() -> void:
 			_fx.draw_texture_rect(bt0, Rect2(-20, -5, 24, 10), false, Color(0.85, 0.5, 1.0))
 			continue
 		var big: float = 1.6 if bl.get("big", false) else (1.25 if bl.get("pierce", false) else 1.0)
+		# WHAT THE WEAPON FIRES (Shots): pellets, balls, a stream or one big shot, in the hero's element
+		if bl.has("shape"):
+			_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
+			if Shots.draw(_fx, String(bl.shape), _bolt_set, (1.0 + (big - 1.0) * 0.7) * (0.9 + 0.1 * bw), int(bl.get("sn", 0)), time_alive):
+				continue
 		# the cards change how a bolt LOOKS (Luna's bolt designs): a needle with a ring for
 		# rail / piercing shots, a crackling bolt for Chain Spark, a fat slug for Heavy Bolts,
 		# twin strands for Burst Fire; Frost Rounds tint them icy

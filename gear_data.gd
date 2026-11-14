@@ -420,10 +420,10 @@ static func power(gear: Dictionary) -> int:
 const WEAPON_STYLE := {
 	"laser_pistol": {"style": "Charged shot", "text": "Every 5th bolt hits three times as hard"},
 	"dual_minis":   {"style": "Arc", "text": "Twin bolts; every 3rd arcs to a second bug"},
-	"pulse_cannon": {"style": "Blast", "text": "Slow shells that explode"},
+	"pulse_cannon": {"style": "Blast", "text": "One slow, heavy shot that explodes"},
 	"railgun":      {"style": "Pierce", "text": "A slow bolt through every bug in its line"},
 	"laser_rifle":  {"style": "Fan", "text": "Three short-range bolts: fly close"},
-	"frost_rifle":  {"style": "Stream", "text": "A rapid stream that slows what it hits"},
+	"frost_rifle":  {"style": "Stream", "text": "A steady short-range stream that slows"},
 }
 
 # WEAPON CLASSES (Rudy, 2026-11-12): how a weapon is CARRIED and how hard it kicks (HeroFight):
@@ -470,7 +470,7 @@ const WEAPON_FORMS := {
 		{"name": "Sunburst", "text": "A fan of five that reaches further", "mods": {"projectiles": 5, "damage": 0.46, "spread": 0.72, "range": 420.0}}],
 	"frost_rifle": [
 		{"name": "Deep chill", "text": "Slows twice as much", "mods": {"frost_slow": 0.3}},
-		{"name": "Ice lock", "text": "Every 12th bolt freezes a bug solid", "mods": {"frost_slow": 0.3, "freeze_every": 12}}],
+		{"name": "Ice lock", "text": "The stream now and then freezes a bug solid", "mods": {"frost_slow": 0.3, "freeze_every": 16}}],
 }
 
 # 1, 2 or 3 by the weapon's level
