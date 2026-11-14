@@ -128,6 +128,23 @@ func _weapon_pic(id: String) -> Texture2D:
 	var p := "res://heroes/%s/fight/top_%s.png" % [_hero_id(), "sidearm" if cls == "twin" else cls]
 	return load(p) if ResourceLoader.exists(p) else _pic(id)
 
+
+# the picture for the Weapons showcase, [texture, painted muzzle-up]: the hero's own SIDE view of
+# that class when Luna has painted one (heroes/<id>/side_<class>.png, or his signature weapon.png
+# for its class), else his top-view picture, else the shared one
+func _weapon_show_pic(id: String) -> Array:
+	var hid := _hero_id()
+	var cls := GearData.weapon_class(id)
+	var one := "sidearm" if cls == "twin" else cls
+	var tries: Array = ["res://heroes/%s/side_%s.png" % [hid, one]]
+	if GearData.weapon_class(String(Heroes.ROSTER[hid].weapon)) == cls:
+		tries.append("res://heroes/%s/weapon.png" % hid)
+	tries.append("res://heroes/%s/fight/show_%s.png" % [hid, one])
+	for p in tries:
+		if ResourceLoader.exists(p):
+			return [load(p), true]
+	return [_pic(id), false]
+
 # the element of the hero on duty (his version of a weapon asks for his essence)
 func _hero_el() -> String:
 	return String(Heroes.ROSTER[_hero_id()].element)
@@ -2473,6 +2490,49 @@ func _on_turret_unlock() -> void:
 # ring, a soft light column); Luna's painted layers (gear/stand_disc.png, stand_glow.png,
 # stand_beam.png, LUNA-BRIEF-hero-stand.md) replace the code shapes the moment they exist.
 # Same API as the old PlatformFloor: feet_y(), glow, glow_col, flash(), tiles.
+# THE WEAPON SHOWCASE (Rudy, 2026-11-13: "a big box to showcase it, they are really well designed"):
+# the weapon in hand, large, on a soft glow in the hero's element colour, slowly floating. A hero's
+# own top-view picture (heroes/<id>/fight/show_<class>.png, muzzle up) is laid on its side; the
+# shared side-view pictures are drawn as they are. Twin pistols = the pistol twice, mirrored.
+class WeaponShow extends Control:
+	var tex: Texture2D
+	var upright := false          # painted muzzle-up (the top-view art): turn it on its side
+	var twin := false
+	var col := Color(0.6, 0.9, 1.0)
+	var t := 0.0
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _draw() -> void:
+		var c := size * 0.5
+		Backdrop.soft_glow(self, c, size.y * 0.95, Color(col, 0.2))
+		Backdrop.soft_glow(self, c + Vector2(size.x * 0.22, 0), size.y * 0.55, Color(col, 0.12))
+		draw_line(Vector2(size.x * 0.12, size.y - 10.0), Vector2(size.x * 0.88, size.y - 10.0), Color(col, 0.25), 1.0)
+		if tex == null:
+			return
+		var ts := tex.get_size()
+		var long := ts.y if upright else ts.x
+		var thick := ts.x if upright else ts.y
+		var room_t := size.y * (0.36 if twin else 0.74)
+		var s := minf(minf(size.x * 0.84 / long, room_t / thick), 1.25 if upright else 10.0)
+		var bob := sin(t * 1.3) * 3.0
+		var rows: Array = [[-1.0, 1.0], [1.0, -1.0]] if twin else [[0.0, 1.0]]
+		for row in rows:
+			var off := Vector2(float(row[0]) * 16.0, float(row[0]) * thick * s * 0.72 + bob * (1.0 if float(row[0]) <= 0.0 else -1.0))
+			if upright:
+				draw_set_transform(c + off, PI * 0.5 + sin(t * 0.7) * 0.012, Vector2(s * float(row[1]), s))
+			else:
+				draw_set_transform(c + off, sin(t * 0.7) * 0.012, Vector2(s, s * float(row[1])))
+			draw_texture(tex, -ts * 0.5, Color(0, 0, 0, 0.35))   # a soft drop shadow first
+			if upright:
+				draw_set_transform(c + off - Vector2(0, 5), PI * 0.5 + sin(t * 0.7) * 0.012, Vector2(s * float(row[1]), s))
+			else:
+				draw_set_transform(c + off - Vector2(0, 5), sin(t * 0.7) * 0.012, Vector2(s, s * float(row[1])))
+			draw_texture(tex, -ts * 0.5)
+		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 class HeroStand extends Control:
 	const FLOOR_UP := 40.0       # the disc's centre, up from the bottom of the stage
 	const DISC_W := 300.0
@@ -2971,7 +3031,26 @@ func _weapons_screen() -> void:
 	var eq: String = gear.equipped["Weapon"]
 	var hid := _hero_id()
 	var eq_el: String = _hero_el()
-	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  %s  ·  Lv.%d  ·  %s" % [GearData.weapon_name(eq, hid), GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
+	# the showcase: the weapon in hand, big
+	var show_p := UIKit.panel(6)
+	var show_v := VBoxContainer.new()
+	show_v.add_theme_constant_override("separation", 0)
+	var ws := WeaponShow.new()
+	ws.custom_minimum_size = Vector2(0, 168)
+	ws.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var eq_cls := GearData.weapon_class(eq)
+	var big: Array = _weapon_show_pic(eq)
+	ws.upright = bool(big[1])
+	ws.tex = big[0]
+	ws.twin = eq_cls == "twin" and ws.upright
+	ws.col = Heroes.element_color(eq_el)
+	show_v.add_child(ws)
+	show_v.add_child(UIKit.title(GearData.weapon_name(eq, hid), 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
+	var show_sub := UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el))
+	show_sub.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	show_v.add_child(show_sub)
+	show_p.add_child(show_v)
+	v.add_child(show_p)
 	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
 	var est: Dictionary = GearData.weapon_style(eq)
 	if not est.is_empty():
@@ -3009,7 +3088,7 @@ func _weapons_screen() -> void:
 		var id: String = GearData.CLASS_ITEM[cls]
 		var open := GearData.owned(gear, id)
 		var sub := ("%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]) if open else "Stage %d" % GearData.class_stage(cls)
-		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 112.0, id == eq, GearData.rarity_color(GearData.rarity(gear, id)) if open else UIKit.SOFT, not open, sub)
+		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, GearData.rarity_color(GearData.rarity(gear, id)) if open else UIKit.SOFT, not open, sub)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UIKit.dot(t, open and Mastery.ready(_read(), String(cls)))
 		var item: String = id

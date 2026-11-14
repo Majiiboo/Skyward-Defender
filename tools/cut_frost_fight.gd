@@ -47,6 +47,10 @@ func _initialize() -> void:
 				cut.flip_x()
 			var s := float(row[1]) * HALF
 			cut.resize(maxi(1, roundi(cut.get_width() * s)), maxi(1, roundi(cut.get_height() * s)), Image.INTERPOLATE_LANCZOS)
+			# a weapon also gets a FULL-SIZE cut for the Weapons screen showcase (gear.gd WeaponShow)
+			if String(p).begins_with("top_"):
+				var big := _trim(keyed, 4)
+				_save(big, out + "show_" + String(p).trim_prefix("top_") + ".png")
 			_save(cut, out + p + ".png")
 			print("%s %s: in the art %s -> saved %dx%d" % [id, p, used, cut.get_width(), cut.get_height()])
 	quit()
