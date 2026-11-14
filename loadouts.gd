@@ -89,6 +89,8 @@ static func apply(save: Dictionary, i: int) -> bool:
 		if DroneData.PODS.has(String(d.get("pod", ""))):
 			dr["pod"] = String(d.pod)
 		save["drone"] = dr
+	if typeof(eq) == TYPE_DICTIONARY and GearData.ITEMS.has(String(eq.get("Weapon", ""))):   # the weapon class, on the hero now on duty (Arsenal)
+		Arsenal.equip(save, Arsenal.raw_selected(save), GearData.weapon_class(String(eq.get("Weapon", ""))))
 	save["loadout_active"] = i
 	return true
 

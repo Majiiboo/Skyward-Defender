@@ -114,7 +114,7 @@ func _check_gear() -> void:
 	_expect(made == 4, "quick merge count (%d)" % made)
 	# the save round-trips through JSON
 	var back := GearData.read(JSON.parse_string(JSON.stringify({"gear": GearData.write(g), "stage_unlocked": 12})))
-	_expect(GearData.rarity(back, "ion_weapon") == "uncommon" and GearData.copies_of(back, "ion_boots", "rare") == 1, "save round trip")
+	_expect(GearData.copies_of(back, "ion_boots", "rare") == 1, "save round trip")
 	# drops: the stage's own set, Common on early stages
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
@@ -153,7 +153,7 @@ func _check_gear() -> void:
 	# a drop or a Patrol gear copy is granted through Progress.grant like everything else
 	var s3 := {"stage_unlocked": 12}
 	Progress.grant(s3, {"gear": [{"id": "ion_helmet", "rarity": "uncommon"}]})
-	_expect(GearData.copies_of(GearData.read(s3), "ion_helmet", "uncommon") == 1, "grant adds a copy")
+	_expect(int(s3.get("coins", 0)) == 400, "a granted weapon copy pays coins now")
 	_expect(Progress.reward_text({"gear": [{"id": "ion_helmet", "rarity": "uncommon"}]}).contains("Ion Visor"), "reward text names the piece")
 	_expect(Patrol.per_wave(24).has("gear"), "Patrol farms gear copies")
 
@@ -187,7 +187,7 @@ func _check_attend() -> void:
 		GearData.add_copy(g, "ion_boots", "common")
 	s.gear = GearData.write(g)
 	at = Progress.attention(s)
-	_expect(not at.store and at.gear and at.gear_ws[1], "attention: gear merge only (%s)" % str(at))
+	_expect(not at.store and not at.gear_ws[1], "attention: no gear merge dot any more (%s)" % str(at))
 
 func _check_promotion() -> void:
 	var s := {"pilot_xp": 0}
@@ -276,10 +276,6 @@ func _check_unlocks() -> void:
 	_expect(Unlocks.fresh(s).is_empty(), "announced once")
 	s["stage_unlocked"] = 7
 	_expect(Unlocks.fresh(s) == ["patrol"], "stage 6 cleared: patrol next")
-	var g := GearData.read(s)
-	GearData.add_copy(g, "ion_weapon", "common")
-	s["gear"] = GearData.write(g)
-	_expect(Unlocks.open(s, "workshop"), "a spare copy opens the Workshop early")
 	s["pilot_xp"] = Turrets.xp_for_level(8)
 	_expect(Unlocks.open(s, "drone") and Unlocks.open(s, "promotion") and not Unlocks.open(s, "elite"), "Lv.8: drone and promotion, not elite")
 	var old := {"pilot_xp": Turrets.xp_for_level(12), "stage_unlocked": 20}
@@ -336,7 +332,7 @@ func _check_heroes() -> void:
 	_expect(Heroes.level(mh, "rook") > 10, "old armour coins become Rook levels (got Lv.%d)" % Heroes.level(mh, "rook"))
 	_expect(Heroes.tier(mh, "rook") == 1 and Heroes.shards(mh, "rook") == 12, "3 spare commons + 1 rare = 12 shards (got tier %d, %d shards)" % [Heroes.tier(mh, "rook"), Heroes.shards(mh, "rook")])
 	var og := GearData.read(old)
-	_expect(GearData.level(og, "ion_weapon") == 4 and int(og.copies["ion_weapon"]["common"]) == 3, "the weapon keeps its level and copies")
+	_expect(GearData.level(og, "ion_weapon") == 4, "the weapon keeps its level and copies")
 	var drop := GearData.roll_drop(7, RandomNumberGenerator.new())
 	_expect(String(GearData.ITEMS[drop.id].slot) == "Weapon", "drops are weapons only")
 
@@ -489,7 +485,7 @@ func _check_store() -> void:
 		var r: Dictionary = STORE.chest_open_in(s, "u", "key", rng)
 		opened += 1
 		if opened == 10:
-			pity_seen = bool(r.get("pity", false)) and r.has("gear") and r.gear[0].rarity == "epic" and r.has("ess_scavenger")
+			pity_seen = bool(r.get("pity", false)) and int(r.get("coins", 0)) >= 5000 and r.has("ess_scavenger")
 	_expect(pity_seen, "the 10th Uncommon open is the pity item: a Core, an Arc Charge (stage 12 is weak to Electric) and an Epic gear copy")
 	_expect(STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "" and int(Materials.read(s).key_u) >= 1 and STORE.claim_pack_in(s, STORE.PACKS_FREE[0]) == "Not ready", "the daily pack's free part claims once a day")
 	_expect(STORE.odds_text(STORE.KEY_CHESTS["u"]).begins_with("45% 600 coins"), "odds text: " + STORE.odds_text(STORE.KEY_CHESTS["u"]))
@@ -1217,10 +1213,10 @@ func _check_mastery() -> void:
 	for cls in GearData.CLASS_NAMES:
 		_expect(Mastery.TRACKS.has(cls) and (Mastery.TRACKS[cls] as Array).size() == Mastery.STEPS, "%s has five mastery steps" % cls)
 	var s := {"coins": 100000}
-	_expect(Mastery.level(s, "main") == 0 and Mastery.why_not(s, "main") == "100 more kills", "a fresh class needs its first kills")
-	Mastery.add_kills(s, "main", 100)
+	_expect(Mastery.level(s, "main") == 0 and Mastery.why_not(s, "main") == "60 more kills", "a fresh class needs its first kills")
+	Mastery.add_kills(s, "main", 60)
 	_expect(Mastery.ready(s, "main") and not Mastery.ready(s, "heavy"), "kills count for their own class only")
-	_expect(Mastery.buy(s, "main") and Mastery.level(s, "main") == 1 and int(s.coins) == 99500, "a step costs its coins")
+	_expect(Mastery.buy(s, "main") and Mastery.level(s, "main") == 1 and int(s.coins) == 99600, "a step costs its coins")
 	_expect(not Mastery.buy(s, "main"), "the next step waits for more kills")
 	Mastery.add_kills(s, "main", 5000)
 	for i in 4:
@@ -1231,30 +1227,35 @@ func _check_mastery() -> void:
 	var poor := {"coins": 10, "mastery": {"twin": {"kills": 150, "level": 0}}}
 	_expect(Mastery.why_not(poor, "twin") == "Not enough coins", "kills in, coins short")
 
-# FOUR WEAPONS, ONE PER CLASS (2026-11-13): the old six fold into four, opened by stage, named per hero
+# EVERY HERO HIS OWN WEAPONS (Arsenal, 2026-11-13): three classes + a specialty slot, unlocked by
+# hero level + coins, levelled per hero, capped by his step, mastery per weapon
 func _check_four_weapons() -> void:
-	_expect(GearData.CLASSES.size() == 4, "four classes")
-	for cls in GearData.CLASSES:
-		_expect(GearData.weapon_class(String(GearData.CLASS_ITEM[cls])) == cls, "%s item is of its class" % cls)
-		for hid in Heroes.ROSTER:
-			_expect(String(GearData.HERO_WEAPONS[hid][cls]) != "", "%s names his %s" % [hid, cls])
-	var fresh := GearData.read({"stage_unlocked": 1})
-	_expect(fresh.copies.has("ion_weapon") and not fresh.copies.has("frost_weapon") and not fresh.copies.has("void_weapon"), "a new player starts with the sidearm only")
-	var s6 := GearData.read({"stage_unlocked": 6})
-	_expect(s6.copies.has("frost_weapon") and not s6.copies.has("scavenger_weapon"), "the rifle opens after stage 5")
-	var s21 := GearData.read({"stage_unlocked": 21})
-	_expect(s21.copies.has("scavenger_weapon") and s21.copies.has("void_weapon") and not s21.copies.has("nightmare_weapon"), "all four by stage 21, no retired rifle")
-	var old := {"stage_unlocked": 45, "gear": {"equipped": {"Weapon": "nightmare_weapon"}, "levels": {"nightmare_weapon": 14, "frost_weapon": 3, "solar_weapon": 9},
-		"copies": {"nightmare_weapon": {"common": 2, "uncommon": 1}, "solar_weapon": {"common": 1}}, "recent": ["solar_weapon"]}}
-	var g := GearData.read(old)
-	_expect(g.equipped.Weapon == "frost_weapon" and GearData.level(g, "frost_weapon") == 14, "an old railgun becomes the Rifle at its level")
-	_expect(GearData.copies_of(g, "frost_weapon", "common") == 3 and GearData.copies_of(g, "frost_weapon", "uncommon") == 1 and not g.copies.has("solar_weapon"), "its copies move to the Rifle")
-	_expect(g.recent == ["frost_weapon"], "recent list follows")
-	_expect(GearData.weapon_name("frost_weapon", "frost") == "Frost Rifle" and GearData.weapon_name("void_weapon", "frost") == "Avalanche" and GearData.weapon_name("ion_boots", "frost") == "Ion Boots", "names per hero")
-	var rng := RandomNumberGenerator.new()
-	rng.seed = 5
-	for i in 60:
-		var d1: Dictionary = GearData.roll_drop(3, rng)
-		_expect(String(d1.id) == "ion_weapon", "stage 3 drops the sidearm only")
-		var d2: Dictionary = GearData.roll_drop(40, rng)
-		_expect(GearData.CLASS_ITEM.values().has(String(d2.id)), "late drops are one of the four")
+	for hid in Heroes.ROSTER:
+		_expect(Arsenal.SETS.has(hid) and Arsenal.classes(hid).size() == 3, "%s has three weapons" % hid)
+		for cls in Arsenal.classes(hid):
+			_expect(GearData.CLASS_ITEM.has(cls) and String(GearData.HERO_WEAPONS[hid][cls]) != "", "%s names his %s" % [hid, cls])
+	var s := {"coins": 5000, "hero": {"selected": "frost", "owned": ["rook", "frost"], "levels": {"frost": 4, "rook": 9}, "tiers": {}}, "arsenal": {}}
+	var g := GearData.read(s)
+	_expect(g.equipped.Weapon == "frost_weapon" and GearData.owned(g, "frost_weapon") and not GearData.owned(g, "ion_weapon"), "the penguin starts with his rifle only")
+	_expect(GearData.cap_of(g, "frost_weapon") == 15, "Frost starts Uncommon: his weapons cap at 15 (%d)" % GearData.cap_of(g, "frost_weapon"))
+	_expect(Arsenal.why_not(s, "frost", "sidearm") == "Hero Lv.5" and Arsenal.why_not(s, "frost", "twin") == "Not his", "the pistol waits for hero Lv.5; twins are not his")
+	s.hero.levels["frost"] = 5
+	_expect(Arsenal.unlock(s, "frost", "sidearm") and int(s.coins) == 3000 and not Arsenal.unlock(s, "frost", "heavy"), "the pistol costs 2,000; the launcher waits for Lv.12")
+	_expect(Arsenal.equip(s, "frost", "sidearm") and GearData.read(s).equipped.Weapon == "ion_weapon", "equipped: the view follows")
+	g = GearData.read(s)
+	g.levels["ion_weapon"] = 6
+	Arsenal.take_view(s, g)
+	_expect(Arsenal.level(Arsenal.read(s), "frost", "sidearm") == 6 and Arsenal.level(Arsenal.read(s), "rook", "sidearm") == 1, "levels are his alone: Rook s pistol is still Lv.1")
+	s.hero.selected = "rook"
+	_expect(GearData.read(s).equipped.Weapon == "ion_weapon" and GearData.level(GearData.read(s), "ion_weapon") == 1 and GearData.cap_of(GearData.read(s), "ion_weapon") == 10, "switching hero switches the weapons")
+	# an old save: shared weapons become every hero s, spare copies pay coins, class mastery spreads
+	var old := {"coins": 100, "stage_unlocked": 45, "gear": {"equipped": {"Weapon": "nightmare_weapon"}, "levels": {"nightmare_weapon": 14, "frost_weapon": 3, "ion_weapon": 8},
+		"copies": {"nightmare_weapon": {"common": 2, "uncommon": 1}}}, "mastery": {"main": {"kills": 150, "level": 1}}}
+	var a := Arsenal.read(old)
+	_expect(Arsenal.level(a, "frost", "main") == 14 and Arsenal.level(a, "rook", "sidearm") == 8 and Arsenal.equipped(a, "frost") == "main", "old levels carried to each hero")
+	_expect(Array(a["frost"].owned).has("sidearm") and Array(a["frost"].owned).has("heavy"), "what was open stays open")
+	var paid := Arsenal.settle(old)
+	_expect(paid == 550 and int(old.coins) == 650 and old.has("arsenal") and Arsenal.settle(old) == -1, "spare copies paid once (%d)" % paid)
+	_expect(Mastery.level(old, Arsenal.key("frost", "main")) == 1 and Mastery.kills(old, Arsenal.key("nyx", "main")) == 150 and not Dictionary(old.mastery).has("main"), "class mastery became per weapon")
+	_expect(GearData.weapon_name("frost_weapon", "frost") == "Frost Rifle" and GearData.weapon_name("void_weapon", "frost") == "Avalanche", "names per hero")
+	_expect(int(Heroes.stats(s).get("weapon_form", 0)) == 1 and String(Heroes.stats(s).weapon) == "laser_pistol", "battle stats read the hero s weapon")

@@ -110,13 +110,12 @@ static func claim(save: Dictionary) -> Dictionary:
 	var got := ready(p)
 	for k in got:
 		p.store[k] = float(p.store[k]) - float(got[k])
-	# whole gear copies become real pieces of the farmed stage's set
+	# what used to be weapon copies is salvage now (Arsenal): coins by the rarity rolled
 	if got.has("gear"):
 		var rng := RandomNumberGenerator.new()
-		var pieces: Array = []
 		for i in int(got.gear):
-			pieces.append(GearData.roll_drop(int(p.stage), rng))
-		got["gear"] = pieces
+			got["coins"] = float(got.get("coins", 0)) + GearData.drop_coins(String(GearData.roll_drop(int(p.stage), rng).rarity))
+		got.erase("gear")
 	Progress.grant(save, got)
 	p.stored_s = 0.0
 	p.day_claims = int(p.day_claims) + 1

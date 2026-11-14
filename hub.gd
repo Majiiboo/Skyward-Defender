@@ -110,6 +110,7 @@ func _ready() -> void:
 	if th: theme = th
 	# Patrol farms while the game is closed: count what it earned since last time
 	var ps := Progress.read()
+	Arsenal.settle(ps)   # once per save: every hero gets his own weapons (arsenal.gd)
 	Patrol.tick(ps)
 	Progress.write(ps)
 	Perf.apply_from(ps)   # performance mode and frame counter (Settings)

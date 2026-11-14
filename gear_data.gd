@@ -183,30 +183,27 @@ static func read(save: Dictionary) -> Dictionary:
 			for id in rc:
 				if ITEMS.has(String(id)):
 					recent.append(String(id))
-	# the two retired rifles fold into the one Rifle: the higher level, all the copies
-	for old in RETIRED:
-		var to: String = RETIRED[old]
-		if lv.has(old):
-			lv[to] = maxi(int(lv.get(to, 1)), int(lv[old]))
-			lv.erase(old)
-		if copies.has(old):
-			var into: Dictionary = copies.get(to, {})
-			for r in copies[old]:
-				into[r] = int(into.get(r, 0)) + int(copies[old][r])
-			copies[to] = into
-			copies.erase(old)
-		if eq["Weapon"] == old:
-			eq["Weapon"] = to
-		for i in recent.size():
-			if recent[i] == old:
-				recent[i] = to
-	# every piece of an unlocked set (and whatever is worn) is owned as one Common copy
+	# THE WEAPON IS A VIEW OF THE ARSENAL (arsenal.gd, 2026-11-13): the hero on duty's own weapons,
+	# each class under its CLASS_ITEM id: his level, and the rarity that carries his step's level cap.
+	# Whatever the save's old "gear" block said about weapons is dropped here.
+	for id in ITEMS:
+		if String(ITEMS[id].slot) == "Weapon":
+			lv.erase(id)
+			copies.erase(id)
+	var ar_hid := Arsenal.raw_selected(save)
+	var ar_row: Dictionary = Arsenal.read(save)[ar_hid]
+	var ar_rar := Arsenal.rarity_for(save, ar_hid)
+	for c in (Arsenal.classes(ar_hid) if DevTools.on else ar_row.owned):
+		lv[CLASS_ITEM[c]] = int(ar_row.levels.get(c, 1))
+		copies[CLASS_ITEM[c]] = {ar_rar: 1}
+	eq["Weapon"] = CLASS_ITEM[String(ar_row.equipped)]
+	recent = recent.filter(func(x): return String(ITEMS[x].slot) != "Weapon")
+	# every armour piece of an unlocked set (and whatever is worn) is owned as one Common copy
 	var unlocked := int(save.get("stage_unlocked", 1))
 	for id in ITEMS:
-		if RETIRED.has(id):
+		if String(ITEMS[id].slot) == "Weapon":
 			continue
-		var open_now: bool = class_open(weapon_class(id), unlocked) if String(ITEMS[id].slot) == "Weapon" else set_unlocked(ITEMS[id].set, unlocked)
-		if not copies.has(id) and (open_now or eq.values().has(id)):
+		if not copies.has(id) and (set_unlocked(ITEMS[id].set, unlocked) or eq.values().has(id)):
 			copies[id] = {"common": 1}
 	return {"equipped": eq, "levels": lv, "copies": copies, "recent": recent}
 
@@ -314,12 +311,8 @@ static func stage_set(stage: int) -> String:
 
 static func roll_drop(stage: int, rng: RandomNumberGenerator) -> Dictionary:
 	var planet := clampi((stage - 1) / 10, 0, SET_ORDER.size() - 1)
-	# one of the four class weapons that is open by this stage (was: the planet's set weapon)
-	var pool: Array = []
-	for c in CLASSES:
-		if class_open(c, stage + 1):
-			pool.append(CLASS_ITEM[c])
-	var drop_id: String = pool[rng.randi_range(0, pool.size() - 1)]
+	# (weapon copies are gone, Arsenal: the id only says it was a weapon; callers pay GearData.drop_coins(rarity))
+	var drop_id: String = CLASS_ITEM["sidearm"]
 	var w: Array = DROP_WEIGHTS[planet]
 	var total := 0
 	for x in w:
@@ -509,9 +502,6 @@ static func form_info(item_id: String, f: int) -> Dictionary:
 const CLASSES := ["sidearm", "main", "twin", "heavy"]
 const CLASS_ITEM := {"sidearm": "ion_weapon", "main": "frost_weapon", "twin": "scavenger_weapon", "heavy": "void_weapon"}
 const RETIRED := {"nightmare_weapon": "frost_weapon", "solar_weapon": "frost_weapon"}
-# a class opens once save stage_unlocked reaches this (6 = stage 5 cleared). THE DIAL for Rudy:
-# all 1 = every class from the start.
-const CLASS_STAGE := {"sidearm": 1, "main": 6, "twin": 11, "heavy": 21}
 # each hero's own name for his four (looks: Luna, per hero)
 const HERO_WEAPONS := {
 	"rook":   {"sidearm": "Ion Pistol", "main": "Ion Carbine", "twin": "Ion Twins", "heavy": "Ion Mortar"},
@@ -521,13 +511,6 @@ const HERO_WEAPONS := {
 	"nyx":    {"sidearm": "Dread Pistol", "main": "Dread Rifle", "twin": "Dread Twins", "heavy": "Dread Mortar"},
 	"ember":  {"sidearm": "Sun Pistol", "main": "Sun Rifle", "twin": "Sun Twins", "heavy": "Sun Mortar"},
 }
-
-static func class_open(cls: String, stage_unlocked: int) -> bool:
-	return stage_unlocked >= int(CLASS_STAGE.get(cls, 1))
-
-# the stage to clear for a class that is still closed
-static func class_stage(cls: String) -> int:
-	return int(CLASS_STAGE.get(cls, 1)) - 1
 
 # what `hero_id` calls this weapon (the plain class name for anything else)
 static func weapon_name(item_id: String, hero_id: String) -> String:
@@ -540,3 +523,8 @@ static func weapon_name(item_id: String, hero_id: String) -> String:
 
 static func is_retired(item_id: String) -> bool:
 	return RETIRED.has(item_id)
+
+# what a drop that used to be a weapon copy pays now (weapon copies are gone: Arsenal)
+const DROP_COINS := {"common": 150, "uncommon": 400, "rare": 1000, "epic": 2500, "legendary": 6000}
+static func drop_coins(r: String) -> int:
+	return int(DROP_COINS.get(r, 150))

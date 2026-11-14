@@ -29,11 +29,11 @@ const CHESTS := [
 const DAY_S := 86400
 const KEY_CHESTS := {
 	"u": {"name": "Uncommon Chest", "color": "rare", "key": "key_u", "crystals": 40, "free": true, "icon": "ic_chest_u", "pity": 10,
-		"pity_text": "an Epic item", "pity_reward": {"core": 1, "ess": 1, "gear": "epic"},
+		"pity_text": "an Epic haul", "pity_reward": {"core": 1, "ess": 1, "gear": "epic"},
 		"rolls": [[45, {"coins": 600}], [22, {"alloy": 6}], [15, {"cell": 2}], [12, {"barrel": 1, "rotor": 1}], [6, {"crystals": 25}]],
 		"extra_n": 2, "extras": [{"coins": 150}, {"coins": 250}, {"alloy": 2}, {"barrel": 1}, {"rotor": 1}]},
 	"e": {"name": "Epic Chest", "color": "epic", "key": "key_e", "crystals": 120, "free": true, "icon": "ic_chest_e", "pity": 10,
-		"pity_text": "a Legendary item", "pity_reward": {"core": 3, "ess": 3, "gear": "legendary", "crystals": 150},
+		"pity_text": "a Legendary haul", "pity_reward": {"core": 3, "ess": 3, "gear": "legendary", "crystals": 150},
 		"rolls": [[32, {"coins": 2500}], [24, {"cell": 5}], [16, {"core": 1}], [16, {"ess": 1}], [12, {"crystals": 80}]],
 		"extra_n": 3, "extras": [{"coins": 600}, {"coins": 900}, {"alloy": 5}, {"cell": 1}, {"rotor": 2}, {"barrel": 2}]},
 	"l": {"name": "Legendary Chest", "color": "legendary", "key": "", "crystals": 300, "free": false, "icon": "ic_chest_l", "pity": 0,
@@ -127,7 +127,9 @@ static func resolve(save: Dictionary, reward: Dictionary, rng: RandomNumberGener
 			var r := rng if rng != null else RandomNumberGenerator.new()
 			if rng == null:
 				r.randomize()
-			out["gear"] = [{"id": GearData.roll_drop(stage, r).id, "rarity": String(reward[k])}]
+			out["coins"] = int(out.get("coins", 0)) + GearData.drop_coins(String(reward[k])) * 2   # weapon copies are gone (Arsenal): a chest's weapon is a pile of coins
+		elif k == "coins":
+			out["coins"] = int(out.get("coins", 0)) + int(reward[k])
 		else:
 			out[k] = reward[k]
 	return out
@@ -145,7 +147,7 @@ static func roll_text(reward: Dictionary) -> String:
 		if k == "ess":
 			bits.append("%d essence" % int(reward[k]))
 		elif k == "gear":
-			bits.append("a %s gear copy" % String(reward[k]))
+			bits.append("%s coins" % UIKit.num(GearData.drop_coins(String(reward[k])) * 2))
 		elif k == "coins" or k == "crystals":
 			bits.append("%s %s" % [UIKit.num(int(reward[k])), k])
 		else:

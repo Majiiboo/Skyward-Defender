@@ -94,6 +94,8 @@ func _load() -> void:
 	t_tracks = t.tracks
 	t_owned = t.owned
 	t_stars = t.get("stars", {})
+	if Arsenal.settle(data) >= 0:   # once per save: every hero gets his own weapons (arsenal.gd)
+		_write_data(data)
 	coins = int(data.get("coins", 0))
 	pilot_level = Turrets.pilot_level(int(data.get("pilot_xp", 0)))
 	t_unlocked = int(data.get("stage_unlocked", 1))
@@ -104,6 +106,7 @@ func _load() -> void:
 
 func _save() -> void:
 	var data := _read()
+	Arsenal.take_view(data, gear)   # the weapon (which one, its level) lives in the hero's arsenal
 	data["gear"] = GearData.write(gear)
 	data["coins"] = coins
 	# the jetpack sets the thruster style (the Home wallpaper reads "thruster")
@@ -526,7 +529,9 @@ func _select(slot: String) -> void:
 	if lv >= GearData.MAX_LEVEL:
 		_upgrade_btn.text = "MAX"
 	elif lv >= cap:
-		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
+		_upgrade_btn.text = "Lv.%d cap
+Ascend the hero
+to raise it" % cap   # the cap follows the hero s step (Arsenal)
 	else:
 		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, _hero_el()))
 	if _wing_btn:
@@ -698,8 +703,10 @@ func _refresh_workshop(pop: String = "") -> void:
 			_refresh_ws_gear()
 		elif i == 2:
 			_refresh_ws_craft()
-	_ws_tabs_row = UIKit.sub_tabs(["Parts", "Gear", "Craft"], _ws_tab, func(i: int):   # sub-tabs in the shared dark-pill style
-		_ws_tab = i
+	if _ws_tab == 1:   # the Gear sub-tab (weapon copies, merging) is gone: weapons belong to each hero now (Arsenal)
+		_ws_tab = 0
+	_ws_tabs_row = UIKit.sub_tabs(["Parts", "Craft"], 0 if _ws_tab == 0 else 1, func(i: int):   # sub-tabs in the shared dark-pill style
+		_ws_tab = 0 if i == 0 else 2
 		_refresh_workshop())
 	_workshop_box.add_child(_ws_tabs_row)
 	_paint_dots()
@@ -2188,6 +2195,7 @@ func _select_hero(id: String) -> void:
 	var data := _read()
 	data["hero"] = Heroes.write(hero)
 	_write_data(data)
+	gear = GearData.read(data)   # his own weapons (the Weapon slot is a view of his arsenal)
 	PilotRig.set_gear(data)   # the showcase swaps to him at once
 	_paint_roster()
 	_paint_hero()
@@ -3079,25 +3087,49 @@ func _weapons_screen() -> void:
 		v.add_child(nl)
 	elif form_now == 3:
 		v.add_child(UIKit.label(String(GearData.form_info(eq, 3).get("text", "")), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(_mastery_card(GearData.weapon_class(eq), layer))
+	v.add_child(_mastery_card(Arsenal.key(hid, GearData.weapon_class(eq)), layer))
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
-	for cls in GearData.CLASSES:   # the four classes, each in the look and name of the hero on duty
+	var sdata := _read()
+	for cls in Arsenal.classes(hid):   # HIS three weapons (Arsenal), then the specialty slot
 		var id: String = GearData.CLASS_ITEM[cls]
 		var open := GearData.owned(gear, id)
-		var sub := ("%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]) if open else "Stage %d" % GearData.class_stage(cls)
-		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, GearData.rarity_color(GearData.rarity(gear, id)) if open else UIKit.SOFT, not open, sub)
+		var why := Arsenal.why_not(sdata, hid, String(cls))   # "" = can be unlocked now
+		var sub := "%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]
+		if not open:
+			sub = ("%s coins" % UIKit.num(Arsenal.cost(hid, String(cls)))) if why == "" or why == "Not enough coins" else why
+		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, Heroes.element_color(eq_el) if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		UIKit.dot(t, open and Mastery.ready(_read(), String(cls)))
+		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
+		var wcls := String(cls)
 		t.pressed.connect(func():
 			if open:
 				_equip(item)
-				layer.queue_free()
-				_weapons_screen())
+			elif why == "":
+				var d := _read()
+				if Arsenal.unlock(d, hid, wcls):
+					Arsenal.equip(d, hid, wcls)
+					_write_data(d)
+					coins = int(d.get("coins", 0))
+					gear = GearData.read(d)
+					PilotRig.set_gear(d)
+					Sfx.play("upgrade")
+					_select(selected_slot)
+					Moment.show(self, {"title": GearData.weapon_name(item, hid), "text": "%s unlocked for %s." % [String(GearData.CLASS_NAMES[wcls]), String(Heroes.ROSTER[hid].name)],
+						"tex": _weapon_show_pic(item)[0], "col": Heroes.element_color(_hero_el()), "chip": "NEW WEAPON", "go_text": "GOT IT"})
+			else:
+				_milestone_toast("%s: %s first" % [GearData.weapon_name(item, hid), ("reach " + why) if why.begins_with("Hero") else "more coins"])
+				return
+			layer.queue_free()
+			_weapons_screen())
 		grid.add_child(t)
+	var spec := _pick_square(load("res://icons/ui_padlock.png"), Arsenal.SPECIALTY, 92.0, false, UIKit.SOFT, true, "Coming later")   # his unique weapon, one day
+	spec.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spec.pressed.connect(func(): _milestone_toast("A unique weapon for %s. Not in the game yet." % String(Heroes.ROSTER[hid].name)))
+	grid.add_child(spec)
 	v.add_child(grid)
 	# the equipped weapon's details and its Upgrade button (the same ones the Hero page kept)
 	var urow := HBoxContainer.new()
@@ -3123,7 +3155,7 @@ func _weapons_screen() -> void:
 				"col": Heroes.element_color(_hero_el()), "chip": "EVOLVED", "go_text": "GOT IT"}))
 	urow.add_child(ub)
 	v.add_child(urow)
-	v.add_child(UIKit.label("Spare copies merge in the Workshop.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	v.add_child(UIKit.label("A weapon levels as far as its hero's step allows. Ascend him to raise the cap.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.get_child(v.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	var close := UIKit.ghost_button("Close", 13)
 	close.custom_minimum_size = Vector2(0, 38)
@@ -4664,7 +4696,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 	v.add_theme_constant_override("separation", 4)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
-	head.add_child(UIKit.label("%s mastery" % String(GearData.CLASS_NAMES[cls]), 14, UIKit.TEXT))
+	head.add_child(UIKit.label("%s mastery" % GearData.weapon_name(String(GearData.CLASS_ITEM[Mastery.cls_of(cls)]), _hero_id()), 14, UIKit.TEXT))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
@@ -4677,7 +4709,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 	v.add_child(head)
 	var nx := Mastery.next_step(data, cls)
 	if nx.is_empty():
-		var done := UIKit.label("Mastered. %s" % String(Mastery.TRACKS[cls][Mastery.STEPS - 1].text), 12, UIKit.GOLD)
+		var done := UIKit.label("Mastered. %s" % String(Mastery.TRACKS[Mastery.cls_of(cls)][Mastery.STEPS - 1].text), 12, UIKit.GOLD)
 		done.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(done)
 		p.add_child(v)
@@ -4697,7 +4729,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 		bar.add_theme_stylebox_override("background", UIKit.pill(Color(UIKit.CARD_HI, 0.9), 4, Vector2.ZERO))
 		bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 4, Vector2.ZERO))
 		v.add_child(bar)
-		v.add_child(UIKit.label("%s / %s kills with this class" % [UIKit.num(have), UIKit.num(need)], 11, UIKit.MUTED))
+		v.add_child(UIKit.label("%s / %s kills with this weapon" % [UIKit.num(have), UIKit.num(need)], 11, UIKit.MUTED))
 	else:
 		var why := Mastery.why_not(data, cls)
 		var b := UIKit.gold_button("UNLOCK  ·  %s coins" % UIKit.num(int(nx.cost)), 14)
@@ -4712,7 +4744,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 				coins = int(d.get("coins", 0))
 				_paint_wallet()
 				Sfx.play("upgrade")
-				_milestone_toast("%s mastery step %d: %s" % [String(GearData.CLASS_NAMES[cls]), Mastery.level(d, cls), String(nx.name)])
+				_milestone_toast("%s mastery step %d: %s" % [GearData.weapon_name(String(GearData.CLASS_ITEM[Mastery.cls_of(cls)]), _hero_id()), Mastery.level(d, cls), String(nx.name)])
 				layer.queue_free()
 				_weapons_screen())
 		v.add_child(b)

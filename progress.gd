@@ -102,14 +102,12 @@ static func grant(d: Dictionary, reward: Dictionary) -> Dictionary:
 		for hid in sh:
 			Heroes.add_shards(hh, String(hid), int(sh[hid]))
 		d["hero"] = Heroes.write(hh)
-	# gear copies (dev139): "gear": [{"id": item id, "rarity": r}, ...]
+	# "gear": [{"id", "rarity"}, ...] used to be weapon copies; they are gone (Arsenal), each pays coins
 	var gl = reward.get("gear", [])
-	if typeof(gl) == TYPE_ARRAY and not gl.is_empty():
-		var g := GearData.read(d)
+	if typeof(gl) == TYPE_ARRAY:
 		for piece in gl:
 			if typeof(piece) == TYPE_DICTIONARY:
-				GearData.add_copy(g, String(piece.get("id", "")), String(piece.get("rarity", "common")))
-		d["gear"] = GearData.write(g)
+				d["coins"] = int(d.get("coins", 0)) + GearData.drop_coins(String(piece.get("rarity", "common")))
 	return d
 
 static func reward_text(reward: Dictionary) -> String:
@@ -354,11 +352,7 @@ static func attention(d: Dictionary) -> Dictionary:
 		if int(parts[k]) >= Parts.MERGE_COST:
 			parts_merge = true
 	var g := GearData.read(d)
-	var gear_merge := false
-	for id in g.copies:
-		for r in g.copies[id]:
-			if GearData.can_merge(g, id, r):
-				gear_merge = true
+	var gear_merge := false   # weapon copies are gone (Arsenal): nothing to merge; the dot now says a weapon can be unlocked
 	var p := Patrol.tick(d.duplicate(true))   # a copy: looking must not count time
 	var patrol: bool = float(p.stored_s) >= Patrol.DOT_S and not Patrol.ready(p).is_empty() and Patrol.collects_left(p) > 0 and Unlocks.open(d, "patrol")   # the dot waits for a real haul (Rudy, dev271)
 	if not Unlocks.open(d, "workshop"):   # no dot for a page the player cannot see yet (Unlocks)
@@ -368,7 +362,7 @@ static func attention(d: Dictionary) -> Dictionary:
 		q[3] = false
 	q.append(Codex.claimable(d))   # the Collection tab: a category reward is waiting
 	return {"quests": q[0] or q[1] or q[2] or q[3] or q[4], "quests_tabs": q, "store": bool(attend(d).claimable) or Spin.free_ready(d),
-		"gear": parts_merge or gear_merge or Talents.affordable(d) or Research.ready(d), "gear_ws": [parts_merge, gear_merge], "patrol": patrol}   # a talent node ready to buy (dev197)
+		"gear": parts_merge or Arsenal.ready(d, Arsenal.raw_selected(d)) or Talents.affordable(d) or Research.ready(d), "gear_ws": [parts_merge, gear_merge], "patrol": patrol}   # a talent node ready to buy (dev197)
 
 # anything waiting to be claimed (for a red dot on Home)
 static func has_claimable(d: Dictionary) -> bool:

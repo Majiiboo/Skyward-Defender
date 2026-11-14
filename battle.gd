@@ -642,7 +642,7 @@ func _start_stage() -> void:
 	_shot_n = 0
 	weapon_id = gs.weapon
 	# WEAPON MASTERY (Mastery): the steps bought for this weapon class
-	_mastery_cls = String(GearData.WEAPON_CLASS.get(weapon_id, "main"))
+	_mastery_cls = Arsenal.key(String(gs.get("hero", "rook")), String(GearData.WEAPON_CLASS.get(weapon_id, "main")))   # per WEAPON: this hero s own (Arsenal)
 	_mastery = Mastery.bonus(sv, _mastery_cls)
 	damage_mult *= 1.0 + float(_mastery.atk)
 	fire_rate_mult *= 1.0 + float(_mastery.rate)
@@ -2203,14 +2203,12 @@ func _end_run(won: bool) -> void:
 		for k in _mats_got:
 			md.materials[k] = int(md.materials[k]) + int(_mats_got[k])
 		patch["materials"] = md.materials
-	# a gear copy for merging (dev139): always on boss stages and in Elite, else about a
-	# third of the time; the piece comes from this planet's set (GearData.roll_drop)
+	# salvage (was a weapon copy, dev139; weapon copies are gone, Arsenal): always on boss stages and
+	# in Elite, else about a third of the time, a pile of coins by the rarity that dropped
 	_gear_got = {}
 	if won and rng.randf() < GearData.drop_chance(stage, elite):
 		_gear_got = GearData.roll_drop(stage, rng)
-		var g := GearData.read(d)
-		GearData.add_copy(g, _gear_got.id, _gear_got.rarity)
-		patch["gear"] = GearData.write(g)
+		patch["coins"] = int(patch.coins) + GearData.drop_coins(String(_gear_got.rarity))
 	# hero shards (heroes, dev172): a boss stage or an Elite win drops shards of the hero this
 	# planet is weak to (Heroes.hero_for_planet), so stars come from playing where he shines
 	_shards_got = {}
@@ -3295,9 +3293,7 @@ func _show_end(won: bool) -> void:
 		if int(_parts_got.get(k, 0)) > 0:
 			loot.add_child(_loot_tile(Parts.icon(k), "+%d" % int(_parts_got[k]), Color(0.75, 0.9, 1.0)))
 	if not _gear_got.is_empty():
-		var gid: String = _gear_got.id
-		var gpath := "res://gear/%s_t1.png" % gid
-		loot.add_child(_loot_tile(load(gpath) if ResourceLoader.exists(gpath) else load("res://gear/%s.png" % gid), GearData.rarity_name(_gear_got.rarity), GearData.rarity_color(_gear_got.rarity)))
+		loot.add_child(_loot_tile(UIKit.ic("ic_coin"), "+%s" % UIKit.num(GearData.drop_coins(String(_gear_got.rarity))), GearData.rarity_color(_gear_got.rarity)))
 	if not _shards_got.is_empty():
 		var sid: String = _shards_got.id
 		var pp := "res://heroes/%s/portrait.png" % sid

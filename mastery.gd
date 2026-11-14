@@ -5,11 +5,11 @@ extends RefCounted
 # that class, and then costs coins to unlock. Steps 1-4 are steady gains (attack, crit, fire
 # rate...); step 5 is the one worth the grind: it changes what the class's own trick does.
 # Kills are counted per class at the end of every fight (battle _end_run), win or lose.
-# save "mastery" = {class: {"kills": n, "level": 0..5}}
+# save "mastery" = {"<hero>:<class>": {"kills": n, "level": 0..5}}   (per WEAPON since the arsenal; see cls_of)
 
 const STEPS := 5
-const KILLS := [100, 300, 800, 2000, 5000]          # kills with the class, in total, for step n
-const COST := [500, 1500, 4000, 10000, 25000]       # coins to unlock step n once the kills are in
+const KILLS := [60, 200, 500, 1200, 3000]          # kills with the class, in total, for step n
+const COST := [400, 1200, 3000, 7000, 15000]       # coins to unlock step n once the kills are in
 
 # effect keys (added up over the steps bought):
 #   atk, rate = +share of hero damage / fire rate      crit = +crit chance     crit_dmg = +crit multiplier
@@ -68,7 +68,7 @@ static func kills(save: Dictionary, cls: String) -> int:
 	return int(read(save, cls).kills)
 
 static func add_kills(save: Dictionary, cls: String, n: int) -> void:
-	if not TRACKS.has(cls) or n <= 0:
+	if not TRACKS.has(cls_of(cls)) or n <= 0:
 		return
 	var row := read(save, cls)
 	row.kills = int(row.kills) + n
@@ -77,9 +77,9 @@ static func add_kills(save: Dictionary, cls: String, n: int) -> void:
 # the step that comes next ({} when all five are bought)
 static func next_step(save: Dictionary, cls: String) -> Dictionary:
 	var lv := level(save, cls)
-	if lv >= STEPS or not TRACKS.has(cls):
+	if lv >= STEPS or not TRACKS.has(cls_of(cls)):
 		return {}
-	var s: Dictionary = Dictionary(TRACKS[cls][lv]).duplicate()
+	var s: Dictionary = Dictionary(TRACKS[cls_of(cls)][lv]).duplicate()
 	s["kills"] = int(KILLS[lv])
 	s["cost"] = int(COST[lv])
 	s["n"] = lv + 1
@@ -115,10 +115,10 @@ static func buy(save: Dictionary, cls: String) -> bool:
 static func bonus(save: Dictionary, cls: String) -> Dictionary:
 	var out := {"atk": 0.0, "rate": 0.0, "crit": 0.0, "crit_dmg": 0.0, "charge_minus": 0, "charge_mult_add": 0.0,
 		"spark_minus": 0, "pierce_every": 0, "splash_x": 1.0, "splash_share_add": 0.0}
-	if not TRACKS.has(cls):
+	if not TRACKS.has(cls_of(cls)):
 		return out
 	for i in level(save, cls):
-		var fx: Dictionary = TRACKS[cls][i].fx
+		var fx: Dictionary = TRACKS[cls_of(cls)][i].fx
 		for k in fx:
 			if k == "splash_x":
 				out[k] = float(out[k]) * float(fx[k])
@@ -127,3 +127,8 @@ static func bonus(save: Dictionary, cls: String) -> Dictionary:
 			else:
 				out[k] = out[k] + fx[k]
 	return out
+
+# PER WEAPON (Arsenal, 2026-11-13): every function above takes a KEY, "<hero>:<class>" (Arsenal.key),
+# so the penguin's rifle earns its own steps; a bare class name still works (old saves, the smoke test).
+static func cls_of(k: String) -> String:
+	return k.get_slice(":", 1) if k.contains(":") else k
