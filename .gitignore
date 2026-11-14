@@ -14,3 +14,4 @@ android/build/
 Thumbs.db
 _*_tmp.gd
 _*_tmp.gd.uid
+out/

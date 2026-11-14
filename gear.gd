@@ -148,6 +148,32 @@ func _weapon_show_pic(id: String) -> Array:
 			return [load(p), true]
 	return [_pic(id), false]
 
+# the same picture for a small tile: a side view is laid on its side (muzzle to the right), as in
+# the showcase box, so the four tiles read as a pistol, pistols, a rifle and a cannon
+var _tile_pics := {}
+func _weapon_tile_pic(id: String) -> Texture2D:
+	var got: Array = _weapon_show_pic(id)
+	if not bool(got[1]):
+		return got[0]
+	var key := _hero_id() + ":" + id
+	if not _tile_pics.has(key):
+		var img: Image = (got[0] as Texture2D).get_image()
+		if img.is_compressed():
+			img.decompress()
+		img.rotate_90(CLOCKWISE)
+		if GearData.weapon_class(id) == "twin":   # two of them, the second turned over, as in the showcase
+			img.convert(Image.FORMAT_RGBA8)
+			var w := img.get_width()
+			var h := img.get_height()
+			var two := Image.create(roundi(w * 1.3), roundi(h * 1.7), false, Image.FORMAT_RGBA8)
+			two.blit_rect(img, Rect2i(0, 0, w, h), Vector2i.ZERO)
+			var other: Image = img.duplicate()
+			other.flip_y()
+			two.blend_rect(other, Rect2i(0, 0, w, h), Vector2i(two.get_width() - w, two.get_height() - h))
+			img = two
+		_tile_pics[key] = ImageTexture.create_from_image(img)
+	return _tile_pics[key]
+
 # the element of the hero on duty (his version of a weapon asks for his essence)
 func _hero_el() -> String:
 	return String(Heroes.ROSTER[_hero_id()].element)
@@ -3100,7 +3126,7 @@ func _weapons_screen() -> void:
 		var sub := "%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]
 		if not open:
 			sub = ("%s coins" % UIKit.num(Arsenal.cost(hid, String(cls)))) if why == "" or why == "Not enough coins" else why
-		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, Heroes.element_color(eq_el) if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
+		var t := _pick_square(_weapon_tile_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, Heroes.element_color(eq_el) if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
