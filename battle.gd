@@ -1250,7 +1250,13 @@ func _draw_auto_btn() -> void:
 
 func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = false) -> void:
 	var w: Dictionary = _weapon()
-	Sfx.play("shot", rng.randf_range(0.95, 1.05))
+	# THE FEEL OF FIRING (Shots.FEEL): each class has its own sound, flash at the barrel and shake
+	var feel: Dictionary = Shots.feel(_shot_shape)
+	Sfx.play(String(feel.snd), rng.randf_range(0.95, 1.05))
+	if float(feel.flash) > 0.0:
+		var fcol: Color = Shots.colours(_bolt_set)[1]
+		_fx_add("impact", origin + dir * 6.0, float(feel.flash), 0.11, rng.randf() * TAU, 1.5, fcol.lerp(Color.WHITE, 0.35))
+	shake = maxf(shake, float(feel.shake))
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
 	for i in count:
@@ -1267,6 +1273,9 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		if (crit or rail) and i == 0 and _rig_view:
 			_rig_view.fire(1.6)   # a charged or rail shot shoves him back harder
+		if w_charged and i == 0:   # the pistol's charged shot: a rising note and a bigger flash
+			Sfx.play("shot_charge", rng.randf_range(0.97, 1.03))
+			_fx_add("impact", origin + dir * 6.0, float(feel.flash) * 1.9, 0.16, rng.randf() * TAU, 1.7, Color.WHITE)
 		bullets.append({"pos": origin, "vel": dir.rotated(off) * float(w.speed) * (1.4 if rail else 1.0),
 			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * ((float(w.get("charge_mult", 3.0)) if w_charged else 3.0) if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
@@ -1379,16 +1388,32 @@ func _update_bullets(delta: float) -> void:
 				stat_pilot_dmg += minf(dmg, maxf(e.hp, 0.0))
 				_count_dmg("drone" if b.get("drone", false) else "hero", dmg, e)
 				_show_dmg(e, dmg, bool(b.get("lucky", false)), emult)
-				_fx_add("impact", b.pos, 26.0, 0.22, rng.randf() * TAU, 1.6, Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE)
+				# HOW IT LANDS (Shots.FEEL): a pellet a small sharp spark, a snowball a wide soft puff,
+				# the stream a light spatter (not on every bolt), the cannon a blast in his element
+				var hsh := String(b.get("shape", ""))
+				var hfeel: Dictionary = Shots.feel(hsh)
+				var hcol: Color = Color(0.7, 0.92, 1.0) if b.get("frost", false) else Color.WHITE
+				if hsh != "":
+					hcol = Color(Shots.colours(_bolt_set)[1]).lerp(Color.WHITE, 0.45)
+				if hsh == "" or int(b.get("sn", 0)) % int(hfeel.hit_every) == 0:
+					_fx_add("impact", b.pos, (float(hfeel.hit) if hsh != "" else 26.0) * (1.35 if b.get("big", false) and hsh == "pellet" else 1.0), 0.22, rng.randf() * TAU, 1.6, hcol)
+					if hsh == "ball":   # the snowball bursts: a second, slower puff around the first
+						_fx_add("impact", b.pos, 22.0, 0.34, rng.randf() * TAU, 2.3, Color(hcol, 0.55))
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
-				Sfx.play("boss_hit" if _is_boss(e) else "hit", rng.randf_range(0.92, 1.08))
+				Sfx.play("boss_hit" if _is_boss(e) else (String(hfeel.hit_snd) if hsh != "" else "hit"), rng.randf_range(0.92, 1.08))
+				shake = maxf(shake, float(hfeel.hit_shake) if hsh != "" else 0.0)
 				if float(b.get("splash", 0.0)) > 0.0:
 					for o in enemies:
 						if o != e and o.pos.distance_to(b.pos) < float(b.splash):
 							o.hp -= (dmg * float(b.get("splash_share", 0.6))) if _can_hurt(o) else 0.0
-					_fx_add("nova", b.pos, float(b.splash) * 0.6, 0.3, 0.0, 1.8, Color(0.8, 0.5, 1.0))
+							if _can_hurt(o):
+								o.hit_t = HIT_FLINCH_T   # the bugs caught in the blast flinch too
+					_fx_add("nova", b.pos, float(b.splash) * 0.75, 0.34, 0.0, 1.8, Color(hcol, 0.95) if hsh != "" else Color(0.8, 0.5, 1.0))
+					if hsh == "boulder":
+						Sfx.play("boom", rng.randf_range(0.94, 1.06))
+						hitstop = maxf(hitstop, 0.03)
 				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
 					_chain(e, int(b.weld), dmg * 0.6)
 				if int(b.get("spark", 0)) > 0:

@@ -247,3 +247,17 @@ static func draw_stream(c: CanvasItem, pts: PackedVector2Array, element: String,
 				break
 			run += seg
 	c.draw_circle(pts[0], 4.0, Color(core, 0.9))   # the bright mouth of the barrel
+
+# THE FEEL OF FIRING (step 4, 2026-11-14): each class sounds, flashes and lands its own way.
+#   snd = the sound of a shot        flash = size of the burst of light at the barrel (0 = none)
+#   hit = size of the hit splash     hit_every = show the splash on every Nth bolt only (the stream)
+#   hit_snd = the sound of a hit     shake = screen shake when it fires / when it lands
+const FEEL := {
+	"pellet":  {"snd": "shot_pellet", "flash": 15.0, "hit": 22.0, "hit_every": 1, "hit_snd": "hit", "shake": 0.0, "hit_shake": 0.0},
+	"ball":    {"snd": "shot_ball", "flash": 21.0, "hit": 34.0, "hit_every": 1, "hit_snd": "hit_puff", "shake": 0.0, "hit_shake": 0.0},
+	"stream":  {"snd": "stream", "flash": 0.0, "hit": 17.0, "hit_every": 3, "hit_snd": "hit_soft", "shake": 0.0, "hit_shake": 0.0},
+	"boulder": {"snd": "shot_heavy", "flash": 40.0, "hit": 48.0, "hit_every": 1, "hit_snd": "boom", "shake": 0.16, "hit_shake": 0.3},
+}
+
+static func feel(sh: String) -> Dictionary:
+	return FEEL.get(sh, FEEL["pellet"])
