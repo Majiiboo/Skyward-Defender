@@ -121,6 +121,17 @@ func _pic(id: String) -> Texture2D:
 	var p := "res://gear/%s_t%d.png" % [id, GearData.tier(_lvl(id))]
 	return load(p) if ResourceLoader.exists(p) else load("res://gear/%s.png" % id)
 
+# a weapon as the hero on duty carries it: his own picture of that class (painted from above,
+# heroes/<id>/fight/top_<class>.png) when Luna has made it, else the shared picture
+func _weapon_pic(id: String) -> Texture2D:
+	var cls := GearData.weapon_class(id)
+	var p := "res://heroes/%s/fight/top_%s.png" % [_hero_id(), "sidearm" if cls == "twin" else cls]
+	return load(p) if ResourceLoader.exists(p) else _pic(id)
+
+# the element of the hero on duty (his version of a weapon asks for his essence)
+func _hero_el() -> String:
+	return String(Heroes.ROSTER[_hero_id()].element)
+
 # ------------------------------------------------------------------ build
 
 func _build() -> void:
@@ -424,7 +435,7 @@ func _paint_slot(s: String) -> void:
 	v.alignment = BoxContainer.ALIGNMENT_CENTER
 	v.add_theme_constant_override("separation", 0)
 	var tr := TextureRect.new()
-	tr.texture = _pic(id)
+	tr.texture = _weapon_pic(id) if s == "Weapon" else _pic(id)
 	tr.custom_minimum_size = Vector2(0, 42)
 	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -485,7 +496,7 @@ func _select(slot: String) -> void:
 	var rar := GearData.rarity(gear, id)
 	var cap := GearData.level_cap(rar)   # the rarity cap: copies merged in the Workshop are the weapon stars (DESIGN-stars.md)
 	var next_txt := ("  ->  " + _stat_text(slot, lv + 1)) if lv < cap else "  (cap)"
-	_detail.text = "%s  Lv.%d / %d  ·  %s\n%s %s%s\n%s" % [info.name, lv, cap, GearData.rarity_name(rar), st.text, _stat_text(slot, lv), next_txt, set_info.minor]
+	_detail.text = "%s  Lv.%d / %d  ·  %s\n%s %s%s" % [GearData.weapon_name(id, _hero_id()), lv, cap, GearData.rarity_name(rar), st.text, _stat_text(slot, lv), next_txt]
 	# its milestone (every 5 levels): what it gives, and how many it has reached
 	var gms: Dictionary = GearData.MILESTONE[slot]
 	var got := GearData.milestones(lv)
@@ -493,8 +504,6 @@ func _select(slot: String) -> void:
 		_detail.text += "\n%s  x%d (max)" % [gms.text, got]
 	else:
 		_detail.text += "\n%s  %s" % [gms.text, ("x%d, next Lv.%d" % [got, (got + 1) * GearData.MILESTONE_EVERY]) if got > 0 else "at Lv.%d" % GearData.MILESTONE_EVERY]
-	if slot == "Weapon":
-		_detail.text += "\n" + GearData.WEAPON_TEXT[set_info.weapon]
 	var cost := GearData.upgrade_cost(lv)
 	_upgrade_btn.disabled = lv >= cap or coins < cost
 	if lv >= GearData.MAX_LEVEL:
@@ -502,7 +511,7 @@ func _select(slot: String) -> void:
 	elif lv >= cap:
 		_upgrade_btn.text = "Lv.%d cap\nMerge copies\nin Workshop" % cap   # a higher rarity raises it
 	else:
-		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[gear.equipped[selected_slot]].set)))
+		_upgrade_btn.text = _upgrade_text(cost, lv, Materials.weapon_need(lv, _hero_el()))
 	if _wing_btn:
 		_wing_btn.visible = not Heroes.wing_choices(hero).is_empty()
 		_wing_btn.queue_redraw()
@@ -544,7 +553,7 @@ func _on_upgrade_pressed() -> void:
 	if lv >= GearData.cap_of(gear, id) or coins < cost:
 		return
 	Sfx.play("upgrade")
-	if not await _pay_upgrade(cost, lv, Materials.weapon_need(lv, String(GearData.ITEMS[id].set))):
+	if not await _pay_upgrade(cost, lv, Materials.weapon_need(lv, _hero_el())):
 		return
 	gear.levels[id] = lv + 1
 	if GearData.milestones(lv + 1) > GearData.milestones(lv):
@@ -2960,8 +2969,9 @@ func _weapons_screen() -> void:
 	v.add_child(UIKit.title("Weapons", 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	Hints.show(self, ["weapon"])
 	var eq: String = gear.equipped["Weapon"]
-	var eq_el: String = GearData.ITEMS[eq].set
-	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  %s  ·  Lv.%d  ·  %s" % [GearData.ITEMS[eq].name, GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
+	var hid := _hero_id()
+	var eq_el: String = _hero_el()
+	v.add_child(UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  %s  ·  Lv.%d  ·  %s" % [GearData.weapon_name(eq, hid), GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el)))
 	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
 	var est: Dictionary = GearData.weapon_style(eq)
 	if not est.is_empty():
@@ -2992,18 +3002,16 @@ func _weapons_screen() -> void:
 		v.add_child(UIKit.label(String(GearData.form_info(eq, 3).get("text", "")), 11, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 	v.add_child(_mastery_card(GearData.weapon_class(eq), layer))
 	var grid := GridContainer.new()
-	grid.columns = 3
-	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 8)
-	for set_id in GearData.SET_ORDER:
-		var id: String = "%s_weapon" % set_id
-		var info: Dictionary = GearData.ITEMS[id]
-		var open := GearData.set_unlocked(set_id, t_unlocked) or GearData.owned(gear, id)
-		var rn := GearData.rarity_name(GearData.rarity(gear, id))
-		var sub := ("Lv.%d · %s" % [_lvl(id), rn]) if open else "Stage %d" % (int(GearData.SETS[set_id].unlock_stage) - 1)
-		var wst: Dictionary = GearData.weapon_style(id)
-		var t := _pick_square(_pic(id), String(info.name), 118.0, id == eq, UIKit.RARITY[set_id], not open, GearData.class_name_of(id) if open else sub)   # its class: Sidearm / Twin pistols / Rifle / Heavy
-		UIKit.corner_icon(t, UIKit.element_icon(set_id), 20.0)
+	grid.columns = 4
+	grid.add_theme_constant_override("h_separation", 6)
+	grid.add_theme_constant_override("v_separation", 6)
+	for cls in GearData.CLASSES:   # the four classes, each in the look and name of the hero on duty
+		var id: String = GearData.CLASS_ITEM[cls]
+		var open := GearData.owned(gear, id)
+		var sub := ("%s · Lv.%d" % ["Twins" if cls == "twin" else String(GearData.CLASS_NAMES[cls]), _lvl(id)]) if open else "Stage %d" % GearData.class_stage(cls)
+		var t := _pick_square(_weapon_pic(id), GearData.weapon_name(id, hid), 112.0, id == eq, GearData.rarity_color(GearData.rarity(gear, id)) if open else UIKit.SOFT, not open, sub)
+		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		UIKit.dot(t, open and Mastery.ready(_read(), String(cls)))
 		var item: String = id
 		t.pressed.connect(func():
 			if open:
@@ -3031,9 +3039,9 @@ func _weapons_screen() -> void:
 		var form_is := GearData.weapon_form(_lvl(item_was))
 		if form_is > form_was:   # it changed shape: say so, full screen
 			var fi: Dictionary = GearData.form_info(item_was, form_is)
-			Moment.show(self, {"title": "%s %s" % [String(GearData.ITEMS[item_was].name), GearData.FORM_NAMES[form_is - 1]],
-				"text": "%s: %s." % [String(fi.get("name", "")), String(fi.get("text", ""))], "tex": _pic(item_was),
-				"col": Heroes.element_color(String(GearData.ITEMS[item_was].set)), "chip": "EVOLVED", "go_text": "GOT IT"}))
+			Moment.show(self, {"title": "%s %s" % [GearData.weapon_name(item_was, _hero_id()), GearData.FORM_NAMES[form_is - 1]],
+				"text": "%s: %s." % [String(fi.get("name", "")), String(fi.get("text", ""))], "tex": _weapon_pic(item_was),
+				"col": Heroes.element_color(_hero_el()), "chip": "EVOLVED", "go_text": "GOT IT"}))
 	urow.add_child(ub)
 	v.add_child(urow)
 	v.add_child(UIKit.label("Spare copies merge in the Workshop.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))

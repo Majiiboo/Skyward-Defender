@@ -91,19 +91,19 @@ const WEAPON_TEXT := {"laser_pistol": "Single shots", "dual_minis": "Twin shots"
 # 36 pieces: id -> {name, slot, set}. Pictures: gear/<id>_t1..t3.png, one per upgrade
 # tier (tools/cut_gear_art.gd); gear/<id>.png is the older painted fallback.
 const ITEMS := {
-	"ion_weapon": {"name": "Ion Pistol", "slot": "Weapon", "set": "ion"},
+	"ion_weapon": {"name": "Sidearm", "slot": "Weapon", "set": "ion"},
 	"ion_helmet": {"name": "Ion Visor", "slot": "Helmet", "set": "ion"},
 	"ion_chest": {"name": "Ion Core Plate", "slot": "Chest", "set": "ion"},
 	"ion_gauntlets": {"name": "Ion Gloves", "slot": "Gauntlets", "set": "ion"},
 	"ion_boots": {"name": "Ion Boots", "slot": "Boots", "set": "ion"},
 	"ion_jetpack": {"name": "Ion Jet", "slot": "Jetpack", "set": "ion"},
-	"scavenger_weapon": {"name": "Arc Welder", "slot": "Weapon", "set": "scavenger"},
+	"scavenger_weapon": {"name": "Twin pistols", "slot": "Weapon", "set": "scavenger"},
 	"scavenger_helmet": {"name": "Scav Helm", "slot": "Helmet", "set": "scavenger"},
 	"scavenger_chest": {"name": "Scav Tri-Plate", "slot": "Chest", "set": "scavenger"},
 	"scavenger_gauntlets": {"name": "Scav Grips", "slot": "Gauntlets", "set": "scavenger"},
 	"scavenger_boots": {"name": "Scav Treads", "slot": "Boots", "set": "scavenger"},
 	"scavenger_jetpack": {"name": "Twin Burners", "slot": "Jetpack", "set": "scavenger"},
-	"void_weapon": {"name": "Pulse Cannon", "slot": "Weapon", "set": "void"},
+	"void_weapon": {"name": "Launcher", "slot": "Weapon", "set": "void"},
 	"void_helmet": {"name": "Void Crest", "slot": "Helmet", "set": "void"},
 	"void_chest": {"name": "Void Hex Plate", "slot": "Chest", "set": "void"},
 	"void_gauntlets": {"name": "Void Fists", "slot": "Gauntlets", "set": "void"},
@@ -121,7 +121,7 @@ const ITEMS := {
 	"solar_gauntlets": {"name": "Sun Fists", "slot": "Gauntlets", "set": "solar"},
 	"solar_boots": {"name": "Hover Boots", "slot": "Boots", "set": "solar"},
 	"solar_jetpack": {"name": "Sun Engine", "slot": "Jetpack", "set": "solar"},
-	"frost_weapon": {"name": "Frost Rifle", "slot": "Weapon", "set": "frost"},
+	"frost_weapon": {"name": "Rifle", "slot": "Weapon", "set": "frost"},
 	"frost_helmet": {"name": "Frost T-Visor", "slot": "Helmet", "set": "frost"},
 	"frost_chest": {"name": "Diamond Plate", "slot": "Chest", "set": "frost"},
 	"frost_gauntlets": {"name": "Crystal Fists", "slot": "Gauntlets", "set": "frost"},
@@ -183,10 +183,30 @@ static func read(save: Dictionary) -> Dictionary:
 			for id in rc:
 				if ITEMS.has(String(id)):
 					recent.append(String(id))
+	# the two retired rifles fold into the one Rifle: the higher level, all the copies
+	for old in RETIRED:
+		var to: String = RETIRED[old]
+		if lv.has(old):
+			lv[to] = maxi(int(lv.get(to, 1)), int(lv[old]))
+			lv.erase(old)
+		if copies.has(old):
+			var into: Dictionary = copies.get(to, {})
+			for r in copies[old]:
+				into[r] = int(into.get(r, 0)) + int(copies[old][r])
+			copies[to] = into
+			copies.erase(old)
+		if eq["Weapon"] == old:
+			eq["Weapon"] = to
+		for i in recent.size():
+			if recent[i] == old:
+				recent[i] = to
 	# every piece of an unlocked set (and whatever is worn) is owned as one Common copy
 	var unlocked := int(save.get("stage_unlocked", 1))
 	for id in ITEMS:
-		if not copies.has(id) and (set_unlocked(ITEMS[id].set, unlocked) or eq.values().has(id)):
+		if RETIRED.has(id):
+			continue
+		var open_now: bool = class_open(weapon_class(id), unlocked) if String(ITEMS[id].slot) == "Weapon" else set_unlocked(ITEMS[id].set, unlocked)
+		if not copies.has(id) and (open_now or eq.values().has(id)):
 			copies[id] = {"common": 1}
 	return {"equipped": eq, "levels": lv, "copies": copies, "recent": recent}
 
@@ -294,10 +314,12 @@ static func stage_set(stage: int) -> String:
 
 static func roll_drop(stage: int, rng: RandomNumberGenerator) -> Dictionary:
 	var planet := clampi((stage - 1) / 10, 0, SET_ORDER.size() - 1)
-	var set_id: String = SET_ORDER[planet]
-	if planet > 0 and rng.randf() < 0.25:
-		set_id = SET_ORDER[rng.randi_range(0, planet - 1)]   # a piece for an older set
-	var slot: String = "Weapon"   # heroes (dev172): the weapon is the only gear slot that drops; armour is gone
+	# one of the four class weapons that is open by this stage (was: the planet's set weapon)
+	var pool: Array = []
+	for c in CLASSES:
+		if class_open(c, stage + 1):
+			pool.append(CLASS_ITEM[c])
+	var drop_id: String = pool[rng.randi_range(0, pool.size() - 1)]
 	var w: Array = DROP_WEIGHTS[planet]
 	var total := 0
 	for x in w:
@@ -309,7 +331,7 @@ static func roll_drop(stage: int, rng: RandomNumberGenerator) -> Dictionary:
 		if pick <= 0:
 			r = RARITIES[i]
 			break
-	return {"id": "%s_%s" % [set_id, slot.to_lower()], "rarity": r}
+	return {"id": drop_id, "rarity": r}
 
 # the best rarity a stage can drop (the Modes rewards row)
 static func best_drop_rarity(stage: int) -> String:
@@ -478,3 +500,43 @@ static func form_info(item_id: String, f: int) -> Dictionary:
 		return {}
 	var wk := String(SETS[ITEMS[item_id].set].weapon)
 	return WEAPON_FORMS[wk][f - 2] if WEAPON_FORMS.has(wk) else {}
+
+# FOUR WEAPONS, ONE PER CLASS (Rudy, 2026-11-13): the six shared weapons of the old gear sets
+# became FOUR, one per class. A class is levelled, merged and mastered ONCE and every hero carries
+# HIS version of it (his name for it here, his picture in heroes/<id>/fight/top_<class>.png, later
+# what it fires). The four keep the old item ids so saves, copies and pictures carry over; the two
+# extra rifles are RETIRED into the one Rifle (GearData.read moves their level and copies).
+const CLASSES := ["sidearm", "main", "twin", "heavy"]
+const CLASS_ITEM := {"sidearm": "ion_weapon", "main": "frost_weapon", "twin": "scavenger_weapon", "heavy": "void_weapon"}
+const RETIRED := {"nightmare_weapon": "frost_weapon", "solar_weapon": "frost_weapon"}
+# a class opens once save stage_unlocked reaches this (6 = stage 5 cleared). THE DIAL for Rudy:
+# all 1 = every class from the start.
+const CLASS_STAGE := {"sidearm": 1, "main": 6, "twin": 11, "heavy": 21}
+# each hero's own name for his four (looks: Luna, per hero)
+const HERO_WEAPONS := {
+	"rook":   {"sidearm": "Ion Pistol", "main": "Ion Carbine", "twin": "Ion Twins", "heavy": "Ion Mortar"},
+	"sparks": {"sidearm": "Rivet Gun", "main": "Scrap Rifle", "twin": "Arc Welders", "heavy": "Junk Launcher"},
+	"frost":  {"sidearm": "Ice Pick", "main": "Frost Rifle", "twin": "Twin Picks", "heavy": "Avalanche"},
+	"hollow": {"sidearm": "Void Pistol", "main": "Void Rifle", "twin": "Void Twins", "heavy": "Pulse Cannon"},
+	"nyx":    {"sidearm": "Dread Pistol", "main": "Dread Rifle", "twin": "Dread Twins", "heavy": "Dread Mortar"},
+	"ember":  {"sidearm": "Sun Pistol", "main": "Sun Rifle", "twin": "Sun Twins", "heavy": "Sun Mortar"},
+}
+
+static func class_open(cls: String, stage_unlocked: int) -> bool:
+	return stage_unlocked >= int(CLASS_STAGE.get(cls, 1))
+
+# the stage to clear for a class that is still closed
+static func class_stage(cls: String) -> int:
+	return int(CLASS_STAGE.get(cls, 1)) - 1
+
+# what `hero_id` calls this weapon (the plain class name for anything else)
+static func weapon_name(item_id: String, hero_id: String) -> String:
+	if not ITEMS.has(item_id):
+		return item_id
+	if String(ITEMS[item_id].slot) != "Weapon":
+		return String(ITEMS[item_id].name)
+	var cls := weapon_class(item_id)
+	return String(HERO_WEAPONS.get(hero_id, {}).get(cls, ITEMS[item_id].name))
+
+static func is_retired(item_id: String) -> bool:
+	return RETIRED.has(item_id)

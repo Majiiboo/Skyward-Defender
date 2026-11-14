@@ -54,6 +54,7 @@ func _initialize() -> void:
 	_check_hero_fight()
 	_check_weapon_classes()
 	_check_mastery()
+	_check_four_weapons()
 	_check_store2()
 	_check_talents()
 	_check_scrap()
@@ -1229,3 +1230,31 @@ func _check_mastery() -> void:
 	_expect(is_equal_approx(float(b.atk), 0.08) and is_equal_approx(float(b.rate), 0.16) and int(b.pierce_every) == 4, "the rifle steps add up (atk %.2f, rate %.2f)" % [float(b.atk), float(b.rate)])
 	var poor := {"coins": 10, "mastery": {"twin": {"kills": 150, "level": 0}}}
 	_expect(Mastery.why_not(poor, "twin") == "Not enough coins", "kills in, coins short")
+
+# FOUR WEAPONS, ONE PER CLASS (2026-11-13): the old six fold into four, opened by stage, named per hero
+func _check_four_weapons() -> void:
+	_expect(GearData.CLASSES.size() == 4, "four classes")
+	for cls in GearData.CLASSES:
+		_expect(GearData.weapon_class(String(GearData.CLASS_ITEM[cls])) == cls, "%s item is of its class" % cls)
+		for hid in Heroes.ROSTER:
+			_expect(String(GearData.HERO_WEAPONS[hid][cls]) != "", "%s names his %s" % [hid, cls])
+	var fresh := GearData.read({"stage_unlocked": 1})
+	_expect(fresh.copies.has("ion_weapon") and not fresh.copies.has("frost_weapon") and not fresh.copies.has("void_weapon"), "a new player starts with the sidearm only")
+	var s6 := GearData.read({"stage_unlocked": 6})
+	_expect(s6.copies.has("frost_weapon") and not s6.copies.has("scavenger_weapon"), "the rifle opens after stage 5")
+	var s21 := GearData.read({"stage_unlocked": 21})
+	_expect(s21.copies.has("scavenger_weapon") and s21.copies.has("void_weapon") and not s21.copies.has("nightmare_weapon"), "all four by stage 21, no retired rifle")
+	var old := {"stage_unlocked": 45, "gear": {"equipped": {"Weapon": "nightmare_weapon"}, "levels": {"nightmare_weapon": 14, "frost_weapon": 3, "solar_weapon": 9},
+		"copies": {"nightmare_weapon": {"common": 2, "uncommon": 1}, "solar_weapon": {"common": 1}}, "recent": ["solar_weapon"]}}
+	var g := GearData.read(old)
+	_expect(g.equipped.Weapon == "frost_weapon" and GearData.level(g, "frost_weapon") == 14, "an old railgun becomes the Rifle at its level")
+	_expect(GearData.copies_of(g, "frost_weapon", "common") == 3 and GearData.copies_of(g, "frost_weapon", "uncommon") == 1 and not g.copies.has("solar_weapon"), "its copies move to the Rifle")
+	_expect(g.recent == ["frost_weapon"], "recent list follows")
+	_expect(GearData.weapon_name("frost_weapon", "frost") == "Frost Rifle" and GearData.weapon_name("void_weapon", "frost") == "Avalanche" and GearData.weapon_name("ion_boots", "frost") == "Ion Boots", "names per hero")
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 5
+	for i in 60:
+		var d1: Dictionary = GearData.roll_drop(3, rng)
+		_expect(String(d1.id) == "ion_weapon", "stage 3 drops the sidearm only")
+		var d2: Dictionary = GearData.roll_drop(40, rng)
+		_expect(GearData.CLASS_ITEM.values().has(String(d2.id)), "late drops are one of the four")
