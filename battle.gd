@@ -1396,7 +1396,11 @@ func _update_bullets(delta: float) -> void:
 				if hsh != "":
 					hcol = Color(Shots.colours(_bolt_set)[1]).lerp(Color.WHITE, 0.45)
 				if hsh == "" or int(b.get("sn", 0)) % int(hfeel.hit_every) == 0:
-					_fx_add("impact", b.pos, (float(hfeel.hit) if hsh != "" else 26.0) * (1.35 if b.get("big", false) and hsh == "pellet" else 1.0), 0.22, rng.randf() * TAU, 1.6, hcol)
+					var hpic := _shot_fx("hit") if hsh != "" else ""   # Luna's frost splash when it is painted
+					var hsize: float = (float(hfeel.hit) if hsh != "" else 26.0) * (1.35 if b.get("big", false) and hsh == "pellet" else 1.0)
+					_fx_add(hpic if hpic != "" else "impact", b.pos, hsize * (1.5 if hpic != "" else 1.0), 0.24, rng.randf() * TAU, 1.6, Color.WHITE if hpic != "" else hcol)
+					if hsh != "":
+						_shot_bits(b.pos, 3 if hsh == "ball" else 1, 90.0)
 					if hsh == "ball":   # the snowball bursts: a second, slower puff around the first
 						_fx_add("impact", b.pos, 22.0, 0.34, rng.randf() * TAU, 2.3, Color(hcol, 0.55))
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
@@ -1410,7 +1414,12 @@ func _update_bullets(delta: float) -> void:
 							o.hp -= (dmg * float(b.get("splash_share", 0.6))) if _can_hurt(o) else 0.0
 							if _can_hurt(o):
 								o.hit_t = HIT_FLINCH_T   # the bugs caught in the blast flinch too
-					_fx_add("nova", b.pos, float(b.splash) * 0.75, 0.34, 0.0, 1.8, Color(hcol, 0.95) if hsh != "" else Color(0.8, 0.5, 1.0))
+					var bpic := _shot_fx("burst") if hsh == "boulder" else ""   # Luna's shattering burst
+					if bpic != "":
+						_fx_add(bpic, b.pos, float(b.splash) * 1.5, 0.42, rng.randf() * TAU, 1.75, Color.WHITE)
+						_shot_bits(b.pos, 7, 200.0)
+					else:
+						_fx_add("nova", b.pos, float(b.splash) * 0.75, 0.34, 0.0, 1.8, Color(hcol, 0.95) if hsh != "" else Color(0.8, 0.5, 1.0))
 					if hsh == "boulder":
 						Sfx.play("boom", rng.randf_range(0.94, 1.06))
 						hitstop = maxf(hitstop, 0.03)
@@ -2105,6 +2114,10 @@ func _step_effects(delta: float) -> void:
 	var live_fx: Array = []
 	for f in fxs:
 		f.life -= delta
+		if f.has("vel"):   # a loose bit of ice or ember flies on and slows
+			f.pos += Vector2(f.vel) * delta
+			f.vel = Vector2(f.vel) * maxf(1.0 - 3.0 * delta, 0.0)
+			f.rot = float(f.rot) + float(f.get("spin", 0.0)) * delta
 		if f.life > 0.0:
 			live_fx.append(f)
 	fxs = live_fx
@@ -3729,6 +3742,33 @@ func _draw_shards() -> void:
 		draw_set_transform(sh.pos, sh.rot, Vector2.ONE)
 		draw_texture_rect(at, Rect2(-sz * 0.5, sz), false, Color(1, 1, 1, a))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+# LUNA'S HIT PICTURES for the hero's element (fx/shots/<element>_<piece>.png via Shots.tex): the
+# name to give _fx_add, or "" while that piece is not painted (the old spark then).
+var _shot_fx_miss := {}
+func _shot_fx(piece: String) -> String:
+	var key := _bolt_set + "_" + piece
+	if _fx_tex.has(key):
+		return key
+	if _shot_fx_miss.has(key):
+		return ""
+	var t2 := Shots.tex(_bolt_set, piece)
+	if t2 == null:
+		_shot_fx_miss[key] = true
+		return ""
+	_fx_tex[key] = t2
+	return key
+
+# n loose bits (snowflake, chip, sparkle, puff) thrown out from a hit
+func _shot_bits(pos: Vector2, n: int, speed: float) -> void:
+	for i in n:
+		var nm := _shot_fx("bit_%d" % rng.randi_range(0, 3))
+		if nm == "" or Perf.lite():
+			return
+		var a := rng.randf() * TAU
+		_fx_add(nm, pos, rng.randf_range(9.0, 15.0), rng.randf_range(0.35, 0.6), a, 1.0, Color(1, 1, 1, 0.9))
+		fxs[-1]["vel"] = Vector2(cos(a), sin(a)) * speed * rng.randf_range(0.5, 1.0)
+		fxs[-1]["spin"] = rng.randf_range(-5.0, 5.0)
 
 func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 0.0, grow: float = 1.5, col: Color = Color.WHITE) -> void:
 	# a ceiling on live effects (efficiency pass, 27): the oldest goes first on a crowded screen,

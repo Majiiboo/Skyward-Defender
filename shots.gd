@@ -58,7 +58,7 @@ static func _strip(c: CanvasItem, t2: Texture2D, mid: PackedVector2Array, nrm: P
 			cur = nxt
 
 # the stream from Luna's strip: thin at the barrel, a wide rushing spray, fading out at its reach
-static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Texture2D, t: float, reach: float) -> void:
+static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Texture2D, t: float, reach: float, element: String = "") -> void:
 	var n := line.size()
 	var mid := PackedVector2Array()
 	var nrm := PackedVector2Array()
@@ -66,6 +66,9 @@ static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Textur
 	var al := PackedFloat32Array()
 	var s1 := PackedFloat32Array()
 	var s2 := PackedFloat32Array()
+	var total := 0.0
+	for i in range(1, n):
+		total += line[i].distance_to(line[i - 1])
 	var along := 0.0
 	for i in n:
 		if i > 0:
@@ -76,11 +79,23 @@ static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Textur
 		mid.append(line[i] + nn * sin(along * 0.05 - t * 11.0) * 2.2 * u)
 		nrm.append(nn)
 		hw.append(lerpf(7.0, 23.0, smoothstep(0.0, 0.4, u)) * (1.0 + 0.3 * smoothstep(0.7, 1.0, u)))
-		al.append(smoothstep(0.0, 0.05, u + 0.02) * (1.0 - smoothstep(0.62, 1.0, u)))
+		al.append(smoothstep(0.0, 0.05, u + 0.02) * (1.0 - smoothstep(0.74, 1.0, u)) * smoothstep(0.0, 34.0, total - along))   # the tip always fades out: never a cut edge
 		s1.append((along + 4000.0 - fposmod(t * STREAM_FLOW, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE)
 		s2.append((along + 4000.0 - fposmod(t * STREAM_FLOW * 0.62, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE * 0.8 + 0.37)
 	_strip(c, t2, mid, nrm, hw, al, s2, 1.4, 0.45)   # a wider, slower layer underneath hides the repeat
 	_strip(c, t2, mid, nrm, hw, al, s1, 1.0, 1.0)
+	# where the stream runs out it breaks up into mist and flakes (Luna's stream_end: the spray
+	# comes in at the back of the picture as wide as the strip, so the two join)
+	var se := tex(element, "stream_end")
+	if se != null and n >= 2 and total > 40.0:
+		var ea := maxf(smoothstep(0.5, 0.82, along / maxf(reach, 1.0)) * 0.9, 0.6)
+		var ed: Vector2 = (mid[n - 1] - mid[n - 3 if n >= 3 else n - 2]).normalized()
+		var es := hw[n - 1] * 2.0 * 1024.0 / 330.0
+		var eo: Vector2 = mid[n - 1] - ed * (es * 0.3 + 14.0)
+		var ex := ed * es
+		var ey := ed.orthogonal() * es * 0.5
+		var ec := Color(1, 1, 1, ea)
+		c.draw_polygon(PackedVector2Array([eo - ey, eo + ex - ey, eo + ex + ey, eo + ey]), PackedColorArray([ec, ec, ec, ec]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), se)
 
 static func shape(cls: String) -> String:
 	return String(SHAPE.get(cls, "pellet"))
@@ -126,6 +141,11 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 		"pellet":
 			var L := 15.0 * big
 			var W := 4.6 * big
+			var pt := tex(element, "pellet_big" if big > 1.2 else "pellet")
+			if pt != null:   # Luna's ice shard, its mist trailing behind
+				var PS := (46.0 if big > 1.2 else 34.0) * maxf(big, 1.0) * (0.8 if big > 1.2 else 1.0)
+				c.draw_texture_rect(pt, Rect2(-PS * 0.55, -PS * 0.5, PS, PS), false, Color.WHITE)
+				return true
 			c.draw_line(Vector2(-L * 1.7, 0), Vector2(-L * 0.3, 0), Color(glow, 0.35), 2.0)
 			if k == "crystal":   # a sharp shard of ice
 				c.draw_colored_polygon(PackedVector2Array([Vector2(L * 0.55, 0), Vector2(0, -W * 0.5), Vector2(-L * 0.45, 0), Vector2(0, W * 0.5)]), Color(glow, 0.55))
@@ -156,6 +176,16 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 			c.draw_circle(Vector2.ZERO, 2.2 * big, Color(core, 0.7))
 		"boulder":
 			var R := 12.0 * big
+			var bo := tex(element, "boulder")
+			if bo != null:   # Luna's block of ice: it tumbles as it flies, a trail of frost behind it
+				for i in 3:
+					c.draw_circle(Vector2(-R * (1.3 + 0.9 * i), sin(t * 9.0 + seed + i * 1.3) * 3.0), R * (0.5 - 0.12 * i), Color(glow, 0.14 - 0.035 * i))
+				var BS := R * 3.3
+				var spin_a := t * 2.6 + seed
+				var bx := Vector2(cos(spin_a), sin(spin_a)) * BS * 0.5
+				var by := bx.orthogonal()
+				c.draw_polygon(PackedVector2Array([-bx - by, bx - by, bx + by, -bx + by]), PackedColorArray([Color.WHITE, Color.WHITE, Color.WHITE, Color.WHITE]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), bo)
+				return true
 			for i in 4:
 				c.draw_circle(Vector2(-R * (1.2 + 0.9 * i), sin(t * 9.0 + seed + i * 1.3) * 3.0), R * (0.5 - 0.1 * i), Color(glow, 0.2 - 0.04 * i))
 			c.draw_circle(Vector2.ZERO, R * 1.7, Color(glow, 0.16))
@@ -203,7 +233,7 @@ static func draw_stream(c: CanvasItem, pts: PackedVector2Array, element: String,
 		line = sm
 	var st := tex(element, "stream")
 	if st != null:
-		_draw_stream_tex(c, line, st, t, reach)
+		_draw_stream_tex(c, line, st, t, reach, element)
 		c.draw_circle(pts[0], 3.0, Color(core, 0.75))
 		return
 	var n := line.size()

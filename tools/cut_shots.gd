@@ -12,9 +12,9 @@ const ELEMENTS := {"frost": "frostshot_"}
 # piece -> [centre x, centre y, half size of the square taken, saved size]
 const SINGLES := {
 	"snowball": [495, 480, 240, 120],
-	"pellet": [512, 512, 330, 128],
-	"pellet_big": [512, 512, 400, 160],
-	"boulder": [512, 512, 420, 160],
+	"pellet": [512, 512, 230, 128],
+	"pellet_big": [512, 512, 320, 160],
+	"boulder": [516, 500, 340, 176],
 	"hit": [512, 512, 400, 128],
 	"burst": [512, 512, 500, 256],
 	"stream_end": [512, 512, 512, 256],
@@ -39,7 +39,7 @@ func _initialize() -> void:
 			var sq := Image.create(hs * 2, hs * 2, false, Image.FORMAT_RGBA8)
 			sq.fill(Color(0, 0, 0, 1))
 			sq.blit_rect(img, Rect2i(int(row[0]) - hs, int(row[1]) - hs, hs * 2, hs * 2), Vector2i.ZERO)
-			_lift(sq, true)
+			_lift(sq, String(p) != "stream_end")
 			sq.rotate_90(CLOCKWISE)
 			sq.resize(int(row[3]), int(row[3]), Image.INTERPOLATE_LANCZOS)
 			_save(sq, "res://fx/shots/%s_%s.png" % [el, p])
