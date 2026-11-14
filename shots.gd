@@ -17,6 +17,71 @@ const KIND := {"frost": "crystal", "solar": "flame"}          # anything else = 
 const STREAM_FX := {"frost": "slow", "solar": "burn"}
 const STREAM_GAP := 170.0      # two stream bolts further apart than this are not joined (a pause in the firing)
 
+# LUNA'S SHOT PICTURES (tools/cut_shots.gd -> fx/shots/<element>_<piece>.png, light on black, the
+# front of a single shot pointing +x). null while a piece is not painted: the code shapes stay.
+const BALL_FILL := 0.6         # how much of the snowball picture the ball itself fills
+const STREAM_TILE := 104.0     # px of stream one copy of the strip covers
+const STREAM_FLOW := 430.0     # px a second the spray rushes along the stream
+static var _cache := {}
+
+static func tex(element: String, piece: String) -> Texture2D:
+	var key := element + "_" + piece
+	if not _cache.has(key):
+		var p := "res://fx/shots/%s.png" % key
+		_cache[key] = load(p) if ResourceLoader.exists(p) else null
+	return _cache[key]
+
+# one layer of the painted stream: the strip repeated along the ribbon and scrolled. `s` = for
+# every point, how far along it is in strip lengths (rising); a piece that crosses the end of a
+# strip is cut there, so the texture never has to wrap.
+static func _strip(c: CanvasItem, t2: Texture2D, mid: PackedVector2Array, nrm: PackedVector2Array, hw: PackedFloat32Array, al: PackedFloat32Array, s: PackedFloat32Array, wide: float, dim: float) -> void:
+	for i in mid.size() - 1:
+		var a0 := s[i]
+		var a1 := s[i + 1]
+		if a1 - a0 < 0.0001:
+			continue
+		var cur := a0
+		while cur < a1 - 0.0001:
+			var base := floorf(cur + 0.00001)
+			var nxt := minf(a1, base + 1.0)
+			var f0 := (cur - a0) / (a1 - a0)
+			var f1 := (nxt - a0) / (a1 - a0)
+			var p0 := mid[i].lerp(mid[i + 1], f0)
+			var p1 := mid[i].lerp(mid[i + 1], f1)
+			var n0 := nrm[i].lerp(nrm[i + 1], f0) * lerpf(hw[i], hw[i + 1], f0) * wide
+			var n1 := nrm[i].lerp(nrm[i + 1], f1) * lerpf(hw[i], hw[i + 1], f1) * wide
+			var c0 := Color(1, 1, 1, lerpf(al[i], al[i + 1], f0) * dim)
+			var c1 := Color(1, 1, 1, lerpf(al[i], al[i + 1], f1) * dim)
+			var v0 := 1.0 - (cur - base)
+			var v1 := 1.0 - (nxt - base)
+			c.draw_polygon(PackedVector2Array([p0 - n0, p1 - n1, p1 + n1, p0 + n0]), PackedColorArray([c0, c1, c1, c0]), PackedVector2Array([Vector2(0, v0), Vector2(0, v1), Vector2(1, v1), Vector2(1, v0)]), t2)
+			cur = nxt
+
+# the stream from Luna's strip: thin at the barrel, a wide rushing spray, fading out at its reach
+static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Texture2D, t: float, reach: float) -> void:
+	var n := line.size()
+	var mid := PackedVector2Array()
+	var nrm := PackedVector2Array()
+	var hw := PackedFloat32Array()
+	var al := PackedFloat32Array()
+	var s1 := PackedFloat32Array()
+	var s2 := PackedFloat32Array()
+	var along := 0.0
+	for i in n:
+		if i > 0:
+			along += line[i].distance_to(line[i - 1])
+		var u := clampf(along / maxf(reach, 1.0), 0.0, 1.0)
+		var dir: Vector2 = (line[mini(i + 1, n - 1)] - line[maxi(i - 1, 0)]).normalized()
+		var nn := dir.orthogonal()
+		mid.append(line[i] + nn * sin(along * 0.05 - t * 11.0) * 2.2 * u)
+		nrm.append(nn)
+		hw.append(lerpf(7.0, 23.0, smoothstep(0.0, 0.4, u)) * (1.0 + 0.3 * smoothstep(0.7, 1.0, u)))
+		al.append(smoothstep(0.0, 0.05, u + 0.02) * (1.0 - smoothstep(0.62, 1.0, u)))
+		s1.append((along + 4000.0 - fposmod(t * STREAM_FLOW, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE)
+		s2.append((along + 4000.0 - fposmod(t * STREAM_FLOW * 0.62, STREAM_TILE * 400.0) + STREAM_TILE * 400.0) / STREAM_TILE * 0.8 + 0.37)
+	_strip(c, t2, mid, nrm, hw, al, s2, 1.4, 0.45)   # a wider, slower layer underneath hides the repeat
+	_strip(c, t2, mid, nrm, hw, al, s1, 1.0, 1.0)
+
 static func shape(cls: String) -> String:
 	return String(SHAPE.get(cls, "pellet"))
 
@@ -70,6 +135,12 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 				c.draw_circle(Vector2(L * 0.05, 0), W * 0.5, core)
 		"ball":
 			var r := 5.4 * big
+			var bt := tex(element, "snowball")
+			if bt != null:   # Luna's snowball: its loose flakes trail behind it
+				var S := 21.0 * big / BALL_FILL
+				c.draw_circle(Vector2(-r * 1.9, sin(t * 14.0 + seed) * 1.2), r * 0.7, Color(glow, 0.14))
+				c.draw_texture_rect(bt, Rect2(-S * 0.5, -S * 0.5, S, S), false, Color(1, 1, 1, 0.96))
+				return true
 			for i in 3:   # a short trail of puffs
 				c.draw_circle(Vector2(-r * (1.5 + 1.3 * i), sin(t * 14.0 + seed + i) * 1.2), r * (0.55 - 0.13 * i), Color(glow, 0.22 - 0.06 * i))
 			c.draw_circle(Vector2.ZERO, r * 1.7, Color(glow, 0.2))
@@ -130,6 +201,11 @@ static func draw_stream(c: CanvasItem, pts: PackedVector2Array, element: String,
 			sm.append(line[i].lerp(line[i + 1], 0.75))
 		sm.append(line[line.size() - 1])
 		line = sm
+	var st := tex(element, "stream")
+	if st != null:
+		_draw_stream_tex(c, line, st, t, reach)
+		c.draw_circle(pts[0], 3.0, Color(core, 0.75))
+		return
 	var n := line.size()
 	var left := PackedVector2Array()
 	var right := PackedVector2Array()
