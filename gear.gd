@@ -2546,8 +2546,6 @@ class WeaponShow extends Control:
 	var _kick := 0.0             # 1 -> 0: the recoil of the last shot
 
 	func _ready() -> void:
-		if shot == "":
-			return
 		_fxl = Control.new()
 		_fxl.set_anchors_preset(Control.PRESET_FULL_RECT)
 		_fxl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -2560,14 +2558,14 @@ class WeaponShow extends Control:
 	func _process(delta: float) -> void:
 		t += delta
 		queue_redraw()
-		if shot == "":
-			return
 		intro = maxf(intro - delta / 0.16, 0.0)
 		_kick = maxf(_kick - delta / 0.2, 0.0)
 		if sweep >= 0.0:
 			sweep += delta / 0.38
 			if sweep > 1.0:
 				sweep = -1.0
+		if shot == "":
+			return
 		_cool -= delta
 		if _cool <= 0.0:
 			_n += 1
@@ -3243,13 +3241,18 @@ func _weapons_screen() -> void:
 		ws._n = 3
 		ws._cool = 0.4
 	ws.muz_up = 0.2 if (eq_cls == "sidearm" or eq_cls == "twin") else 0.0   # a pistol s barrel sits high in its picture
-	ws.shot = Shots.shape(eq_cls)   # the live firing preview: his real shots at a hologram target
+	if LIVE_ON_PAGE:
+		ws.shot = Shots.shape(eq_cls)   # the live firing preview: his real shots at a hologram target
 	ws.element = eq_el
 	for cid in Chips.fitted(sdata, hid, eq_cls, _lvl(eq)):
 		if String(cid) != "":
 			ws.chip_cols.append(Chips.color(String(cid)))
 			ws.chip_ids.append(String(cid))
 	sv.add_child(ws)
+	var try_b := _try_button()   # the real fight in a small window, with what is fitted now
+	try_b.position = Vector2(8, 8)
+	try_b.pressed.connect(func(): _try_window(layer, hid, eq, Chips.fitted(_read(), hid, eq_cls, _lvl(eq))))
+	ws.add_child(try_b)
 	var shot_b := Button.new()   # what it fires: a tap opens how it works
 	var shot_sb := UIKit.pill(Color(el_col, 0.14), 12, Vector2(10, 4))   # brighter than the tags beside it and edged in his colour: this one opens something
 	shot_sb.border_color = Color(el_col, 0.6)
@@ -5345,6 +5348,15 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 	var pn := UIKit.title(Chips.chip_name(pick, hid, item), 16, pcol.lerp(Color.WHITE, 0.4))
 	pn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	top.add_child(pn)
+	var try_c := _try_button()   # see this chip at work before fitting or buying it
+	try_c.pressed.connect(func():
+		var row: Array = now.duplicate()
+		for ri in row.size():   # one shape at a time, and never the same chip twice
+			if ri != slot and (String(row[ri]) == pick or ((pick == "shape2" or pick == "shape3") and (String(row[ri]) == "shape2" or String(row[ri]) == "shape3"))):
+				row[ri] = ""
+		row[slot] = pick
+		_try_window(wlayer, hid, item, row))
+	top.add_child(try_c)
 	top.add_child(UIKit.chip(String(Chips.RARITY[Chips.rarity_of(pick)].name), pcol))
 	iv.add_child(top)
 	var pt := UIKit.label(Chips.text(pick, hid, item), 12, UIKit.TEXT)
@@ -5442,3 +5454,72 @@ func _dbg_wswap() -> void:
 func _dbg_wupgrade() -> void:
 	_ws_fx = "upgrade"
 	_weapons_screen()
+
+# ------------------------------------------------------------------ THE TRY WINDOW (FightPreview, 2026-11-16)
+# The real fight in a small window over the Weapon page: his hero, the weapon in hand and the
+# three `chips` given (owned or not), flying itself against the bugs of the stage picked on
+# Home. Only when asked for (a Try button), never by itself. Nothing in it is saved.
+const LIVE_ON_PAGE := false   # the weapon firing at a target ON the page (WeaponShow.shot): moved into the Try window
+
+func _try_button() -> Button:
+	var b := UIKit.ghost_button("▶  Try", 12)
+	b.custom_minimum_size = Vector2(76, 34)
+	return b
+
+func _try_window(wlayer: Control, hid: String, item: String, chips: Array) -> void:
+	var old := wlayer.get_node_or_null("TryWindow")
+	if old != null:
+		return
+	FightPreview.save = FightPreview.make_save(_read(), hid, GearData.weapon_class(item), chips)
+	var layer := Control.new()
+	layer.name = "TryWindow"
+	layer.z_index = 10
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wlayer.add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.02, 0.05, 0.82)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var mid := CenterContainer.new()
+	mid.set_anchors_preset(Control.PRESET_FULL_RECT)
+	mid.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(mid)
+	var card := PanelContainer.new()
+	var cs := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.1), 22)
+	cs.content_margin_left = 10
+	cs.content_margin_right = 10
+	cs.content_margin_top = 10
+	cs.content_margin_bottom = 10
+	card.add_theme_stylebox_override("panel", cs)
+	mid.add_child(card)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	card.add_child(v)
+	# the top line: the weapon, the chips in it, a way out
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 6)
+	head.add_child(UIKit.label(GearData.weapon_name(item, hid), 13, UIKit.TEXT))
+	for cid in chips:
+		if String(cid) != "":
+			head.add_child(UIKit.chip(Chips.chip_name(String(cid), hid, item), Chips.color(String(cid))))
+	var sp := Control.new()
+	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	head.add_child(sp)
+	var x := UIKit.ghost_button("✕", 13)
+	x.custom_minimum_size = Vector2(36, 32)
+	x.pressed.connect(layer.queue_free)
+	head.add_child(x)
+	v.add_child(head)
+	var w := minf(size.x - 56.0, (size.y * 0.74 - 70.0) * FightPreview.VIEW.x / float(FightPreview.VIEW.y))
+	v.add_child(FightPreview.make_view(card, w))
+	v.add_child(UIKit.label("Tap outside to close", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
+	UIKit.pop_in(card)
+
+func _dbg_try() -> void:
+	_weapons_screen()
+	var wl := get_child(get_child_count() - 1)
+	_try_window(wl, _hero_id(), gear.equipped["Weapon"], Chips.fitted(_read(), _hero_id(), GearData.weapon_class(gear.equipped["Weapon"]), _lvl(gear.equipped["Weapon"])))

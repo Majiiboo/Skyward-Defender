@@ -306,6 +306,7 @@ var gun_recoil := 0.0
 var gun_raise := 0.0
 var idle_aiming := false
 var auto_on := false               # AUTO: the autopilot flies and aims while no finger is down (save "auto_play")
+var _preview := false              # this fight runs inside the Weapon page s Try window
 var _firing_up := false            # manual: firing straight up this frame (finger down or not)
 var _auto_btn: Button
 var idle_aim_ang := -PI / 2.0
@@ -332,10 +333,12 @@ var _end_panel: Control
 var rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
+	_preview = get_viewport() is SubViewport   # the Weapon page s Try window (FightPreview): the real fight, nothing saved
 	rng.randomize()
 	Sfx.apply_from(_read_save())   # sound on/off (pause menu, Settings)
 	Music.apply_from(_read_save())
-	Music.play("battle")
+	if not _preview:
+		Music.play("battle")
 	PilotSprite.load_style()
 	_stars = Backdrop.make_stars(90, 11)
 	_city = Backdrop.make_city(44, 7)
@@ -437,6 +440,8 @@ func _load() -> void:
 		elite = false
 
 func _read_save() -> Dictionary:
+	if _preview:
+		return FightPreview.save.duplicate(true)
 	if FileAccess.file_exists(SAVE):
 		var f := FileAccess.open(SAVE, FileAccess.READ)
 		if f:
@@ -447,6 +452,8 @@ func _read_save() -> Dictionary:
 	return {}
 
 func _write_save(patch: Dictionary) -> void:
+	if _preview:
+		return
 	var d := _read_save()
 	for k in patch:
 		d[k] = patch[k]
@@ -691,7 +698,7 @@ func _start_stage() -> void:
 	weapon_form = int(chip_live.form)   # the shape chip in its slots (Chips)
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
-	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
+	auto_on = (bool(sv.get("auto_play", false)) and _auto_open()) or _preview   # the Try window flies itself
 	_lefty = bool(sv.get("left_hand", false))   # Settings: left-handed
 	_haptics = bool(sv.get("haptics", true))            # Settings: the phone buzzes on hits
 	_shake_mult = float(sv.get("shake", 1.0))            # Settings: screen shake full / less / off
@@ -807,6 +814,8 @@ func _spawn(id: String) -> void:
 
 # The first time a player meets a bug type, a small card says what it does.
 func _meet(id: String) -> void:
+	if _preview:
+		return
 	if _seen.has(id) or String(StageData.ENEMIES[id].get("intro", "")) == "":
 		return
 	_seen.append(id)
@@ -816,6 +825,8 @@ func _meet(id: String) -> void:
 # The first time ever a variant shows up: the same small info card as a new enemy (Rudy, dev209:
 # what it does, no "kill it first"; players work out the strategy). Waits if a card is up.
 func _meet_variant(v: String, bug: String) -> void:
+	if _preview:
+		return
 	var key := "v_" + v
 	if _seen.has(key) or not _intro.is_empty():
 		return
@@ -837,6 +848,8 @@ func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 # ------------------------------------------------------------------ input
 
 func _input(event: InputEvent) -> void:
+	if _preview:
+		return
 	if paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
 	# long-press tracking for the turret range ring (where the finger went down, how far it moved)
@@ -2152,6 +2165,8 @@ func _xp_need() -> float:
 # ------------------------------------------------------------------ damage, effects, end
 
 func _hurt_base(amount: float) -> void:
+	if _preview:
+		return
 	if _pulse_live > 0.0:   # the Core Pulse stands: nothing gets through
 		_pulse_blocked += 1
 		_pulse_flash = maxf(_pulse_flash, 0.35)
@@ -2180,6 +2195,8 @@ func _hurt_base(amount: float) -> void:
 		hull = maxf(hull - amount, 0.0)
 
 func _hurt_pilot(amount: float = GOO_DMG) -> void:
+	if _preview:
+		return
 	if inv_t > 0.0:
 		return
 	if _ult_live > 0.0 and _ult_kind == "phase" and _live_ups >= 3:   # Out of Phase (Hollow s third upgrade)
@@ -2288,6 +2305,9 @@ func _step_effects(delta: float) -> void:
 	floaters = live
 
 func _end_run(won: bool) -> void:
+	if _preview:
+		_start_stage()   # the Try window never ends: the stage starts over
+		return
 	if won:
 		stage_cleared = true
 		Sfx.play("win")
@@ -2710,6 +2730,8 @@ func _toggle_pause() -> void:
 	queue_redraw()
 
 func _open_cards() -> void:
+	if _preview:
+		return
 	picking = true
 	Sfx.play("card_open")
 	dragging = false
@@ -4099,6 +4121,8 @@ func _draw_heart(c: Vector2, s: float, on: bool) -> void:
 # wave pips and hearts on row 2, then the run XP as a cyan-to-purple bar under it with
 # the run level on a glass chip.
 func _draw_hud() -> void:
+	if _preview:
+		return
 	var cyan := Color(0.18, 0.9, 1.0)
 	var muted := Color(0.62, 0.70, 0.84)
 	_draw_hurt_edge()
@@ -4382,6 +4406,8 @@ func _toggle_cards() -> void:
 # The first time a player reaches a planet (its first stage), a comms message from base
 # says where they are; the battle waits until they tap Launch. Save "areas_briefed".
 func _maybe_brief() -> void:
+	if _preview:
+		return
 	if elite or StageData.area_stage(stage) != 1:
 		return
 	var ai := StageData.area_index(stage)
@@ -5237,6 +5263,8 @@ func _hazard() -> Dictionary:
 	return HAZARDS[a]
 
 func _update_strikes(delta: float) -> void:
+	if _preview:
+		return
 	var hz := _hazard()
 	if hz.is_empty():
 		return
@@ -5316,6 +5344,8 @@ var _crate_tex: Texture2D
 var _supplies_taken := 0
 
 func _plan_supply() -> void:
+	if _preview:
+		return
 	if stage >= SUPPLY_FROM and wave_index > 0 and wave_index % 3 == 2:
 		_crate_due = 4.0
 
@@ -5763,6 +5793,8 @@ func _pulse_open() -> bool:
 	return (stage_unlocked > PULSE_FROM or DevTools.on) and not _mods.has("no_turrets")
 
 func _pulse_setup() -> void:
+	if _preview:
+		return
 	_pulse_t = 20.0
 	_pulse_live = 0.0
 	_pulse_flash = 0.0
@@ -5834,6 +5866,8 @@ func _update_pulse(delta: float) -> void:
 
 # over the core: the charge ring, READY, and the wall itself while it stands
 func _draw_pulse() -> void:
+	if _preview:
+		return
 	if not _pulse_open():
 		return
 	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
@@ -5882,6 +5916,8 @@ var _dmg_numbers := true
 var _auto_next := false
 
 func _buzz(ms: int) -> void:
+	if _preview:
+		return
 	if _haptics and not OS.has_feature("editor") and DisplayServer.get_name() != "headless":
 		Input.vibrate_handheld(ms)
 
