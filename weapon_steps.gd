@@ -52,6 +52,34 @@ const CAPSTONE := {
 		"main": {"name": "Frostbite", "text": "Bugs the stream has slowed take 25% more damage", "fx": {"chill_dmg": 0.25}},
 		"heavy": {"name": "Ice field", "text": "The blast leaves a patch of ice that slows bugs for 3 seconds", "fx": {"patch": 3.0}},
 	},
+	# Rook (energy): precise, builds up
+	"ion": {
+		"sidearm": {"name": "Prism", "text": "A bug killed by a charged shot bursts into bolts", "fx": {"shatter": 6}},
+		"twin": {"name": "Crossfire", "text": "Every 10th volley is a fan of five", "fx": {"fan_every": 10, "fan": 5}},
+		"main": {"name": "Burn through", "text": "The beam builds up 20% further", "fx": {"ramp_max_add": 4}},
+		"heavy": {"name": "Aftershock", "text": "The blast leaves a field that slows bugs for 3 seconds", "fx": {"patch": 3.0}},
+	},
+	# Sparks (electric): everything jumps
+	"scavenger": {
+		"sidearm": {"name": "Static", "text": "Charged shots arc to a second bug", "fx": {"charged_spark": 1}},
+		"twin": {"name": "Overvolt", "text": "Arcs jump to one more bug", "fx": {"spark_add": 1}},
+		"main": {"name": "Chain lightning", "text": "The arc hits as hard as the stream", "fx": {"arc_dmg": 0.5}},
+		"heavy": {"name": "Charged ground", "text": "The blast leaves a field that slows bugs for 3 seconds", "fx": {"patch": 3.0}},
+	},
+	# Hollow (void): takes from the bugs
+	"void": {
+		"sidearm": {"name": "Splinter", "text": "A bug killed by a charged shot bursts into needles", "fx": {"shatter": 6}},
+		"twin": {"name": "Hunger", "text": "Every hit heals him a little", "fx": {"hit_heal": 0.001}},
+		"main": {"name": "Devour", "text": "A bug that dies in the beam heals him 2%", "fx": {"kill_heal": 0.02}},
+		"heavy": {"name": "Singularity", "text": "The blast pulls bugs in three times as hard", "fx": {"pull_x": 2.0}},
+	},
+	# Nyx (nightmare): marks and finishes
+	"nightmare": {
+		"sidearm": {"name": "Execution", "text": "Charged shots hit 50% harder on bugs under half health", "fx": {"exec": 0.5}},
+		"twin": {"name": "Flurry", "text": "Every 10th volley is a fan of five", "fx": {"fan_every": 10, "fan": 5}},
+		"main": {"name": "Dread", "text": "Marked bugs are slowed", "fx": {"mark_slow": 0.3}},
+		"heavy": {"name": "Terror", "text": "Bugs caught in the blast are marked for 2 seconds", "fx": {"blast_mark": 2.0}},
+	},
 	# Ember (2026-11-16): fire spreads and lingers
 	"solar": {
 		"sidearm": {"name": "Flare", "text": "A bug killed by a charged shot bursts into embers", "fx": {"shatter": 6}},
@@ -66,6 +94,18 @@ const PEAK := {"name": "Peak", "text": "Attack +12%", "fx": {"atk": 0.12}}   # a
 # hero who had them (ice). Where an element needs its own (a fire stream burns, it does not chill),
 # FORMS_BY_ELEMENT replaces them: {element: {class: [form II, form III]}}.
 const FORMS_BY_ELEMENT := {
+	"ion": {"main": [
+		{"name": "Tight beam", "text": "Builds up to +50% on one bug", "mods": {"ramp_max": 10}},
+		{"name": "Overdrive", "text": "At full build-up the beam flies on through", "mods": {"ramp_max": 10, "ramp_pierce": true}}]},
+	"scavenger": {"main": [
+		{"name": "Live wire", "text": "Arcs twice as often", "mods": {"arc_every": 3}},
+		{"name": "Forked", "text": "Arcs jump to two bugs", "mods": {"arc_every": 3, "arc_n": 2}}]},
+	"void": {"main": [
+		{"name": "Deep drain", "text": "Heals twice as much", "mods": {"drain_x": 2.0}},
+		{"name": "Leech", "text": "Drained bugs are slowed", "mods": {"drain_x": 2.0, "drain_slow": 0.25}}]},
+	"nightmare": {"main": [
+		{"name": "Deep mark", "text": "Marks last twice as long", "mods": {"mark_t": 0.8}},
+		{"name": "Hunter", "text": "Marks come half again as often", "mods": {"mark_t": 0.8, "mark_every": 8}}]},
 	"solar": {
 		"twin": [
 			{"name": "Packed shots", "text": "Shots burst and scorch the bugs around the one they hit", "mods": {"splash": 36.0, "splash_share": 0.5}},
@@ -125,7 +165,8 @@ static func step(item: String, element: String, i: int) -> Dictionary:
 # everything a weapon of class `cls` has earned at level `lv`, for a hero of `element`
 static func bonus(cls: String, element: String, lv: int) -> Dictionary:
 	var out := {"atk": 0.0, "rate": 0.0, "crit": 0.0, "crit_dmg": 0.0, "charge_mult_add": 0.0, "range_x": 1.0,
-		"splash_x": 1.0, "stream_wide": 1.0, "shatter": 0, "fan_every": 0, "fan": 0, "chill_dmg": 0.0, "patch": 0.0, "burn_hit": 0, "burn_dmg": 0.0, "patch_burn": 0}
+		"splash_x": 1.0, "stream_wide": 1.0, "shatter": 0, "fan_every": 0, "fan": 0, "chill_dmg": 0.0, "patch": 0.0, "burn_hit": 0, "burn_dmg": 0.0, "patch_burn": 0,
+		"ramp_max_add": 0, "charged_spark": 0, "spark_add": 0, "arc_dmg": 0.0, "hit_heal": 0.0, "kill_heal": 0.0, "pull_x": 0.0, "exec": 0.0, "mark_slow": 0.0, "blast_mark": 0.0}
 	if not STEPS.has(cls):
 		return out
 	for i in count(lv):

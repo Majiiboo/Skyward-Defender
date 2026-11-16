@@ -1284,4 +1284,8 @@ func _check_weapon_steps() -> void:
 		_expect(is_zero_approx(float(b0.atk)) and is_zero_approx(float(b0.crit)) and is_equal_approx(float(b0.range_x), 1.0), "%s Lv.1 has no milestone bonus" % cls)
 	_expect(is_equal_approx(float(WeaponSteps.bonus("main", "frost", 15).range_x), 1.21), "the rifle reaches 21% further at Lv.15")
 	_expect(float(WeaponSteps.bonus("main", "frost", 30).chill_dmg) > 0.0 and is_zero_approx(float(WeaponSteps.bonus("main", "ion", 30).chill_dmg)), "Frostbite is the frost capstone only")
-	_expect(is_equal_approx(float(WeaponSteps.bonus("heavy", "ion", 30).atk), 0.22), "an element without a capstone gets Peak")
+	_expect(is_equal_approx(float(WeaponSteps.bonus("heavy", "none", 30).atk), 0.22), "an element without a capstone gets Peak")
+	for el2 in ["ion", "scavenger", "void", "nightmare", "solar", "frost"]:
+		for cls2 in GearData.CLASS_ITEM:
+			_expect(WeaponSteps.step(String(GearData.CLASS_ITEM[cls2]), el2, 5) != WeaponSteps.PEAK, "%s %s has its own Lv.30 capstone" % [el2, cls2])
+		_expect(Shots.text(el2, "main") != "" and Shots.stream_fx(el2) != "", "%s has a stream and what it does" % el2)

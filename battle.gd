@@ -1321,6 +1321,15 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"freeze": int(w.get("freeze_every", 0)) > 0 and _shot_n % int(w.freeze_every) == 0,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
+		# arcs from the electric stream and from milestones (Shots.STREAM_FX "arc", WeaponSteps)
+		var nb: Dictionary = bullets[-1]
+		if _shot_shape == "stream" and _stream_fx == "arc" and _shot_n % int(w.get("arc_every", 6)) == 0:
+			nb.spark = maxi(int(nb.spark), int(w.get("arc_n", 1)))
+			nb["arc"] = true
+		if w_charged and int(_steps.get("charged_spark", 0)) > 0:
+			nb.spark = maxi(int(nb.spark), 1)
+		if int(nb.spark) > 0 and int(w.get("spark_every", 0)) > 0:
+			nb.spark = int(nb.spark) + int(_steps.get("spark_add", 0))
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
 		if (_twin_every > 0 and _shot_n % _twin_every == 0) or (_perk_twin and _shot_n % 6 == 0):
 			var tw: Dictionary = bullets[-1].duplicate(true)
@@ -1400,6 +1409,34 @@ func _update_bullets(delta: float) -> void:
 					dmg *= 1.0 + float(_steps.chill_dmg)   # Frostbite (the rifle's Lv.30): chilled bugs take more
 				if float(_steps.get("burn_dmg", 0.0)) > 0.0 and float(e.get("burn_t", 0.0)) > 0.0:
 					dmg *= 1.0 + float(_steps.burn_dmg)   # Scorch (Ember's rifle at Lv.30): burning bugs take more
+				# WHAT A STREAM DOES, by the hero's element (Shots.STREAM_FX; slow and burn are handled below)
+				if String(b.get("shape", "")) == "stream" and not b.get("drone", false):
+					var sw: Dictionary = _weapon()
+					match _stream_fx:
+						"ramp":   # energy: +5% a hit while it stays on one bug
+							if time_alive - float(e.get("ramp_at", -9.0)) > 0.6:
+								e["ramp"] = 0
+							var rmax := int(sw.get("ramp_max", 6)) + int(_steps.get("ramp_max_add", 0))
+							dmg *= 1.0 + 0.05 * int(e.get("ramp", 0))
+							if bool(sw.get("ramp_pierce", false)) and int(e.get("ramp", 0)) >= rmax:
+								b.pierce = true
+							e["ramp"] = mini(int(e.get("ramp", 0)) + 1, rmax)
+							e["ramp_at"] = time_alive
+						"drain":   # void: every hit gives him a little health back
+							pilot_hp = minf(pilot_hp + pilot_hp_max * 0.0006 * float(sw.get("drain_x", 1.0)), pilot_hp_max)
+							if float(sw.get("drain_slow", 0.0)) > 0.0:
+								e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.0)
+								e.slow = maxf(float(e.get("slow", 0.0)), float(sw.drain_slow))
+						"mark":   # nightmare: now and then a bolt marks the bug (every bolt crits a marked bug)
+							if int(b.get("sn", 0)) % int(sw.get("mark_every", 12)) == 0:
+								e.mark_t = maxf(float(e.get("mark_t", 0.0)), float(sw.get("mark_t", 0.4)))
+							if float(_steps.get("mark_slow", 0.0)) > 0.0 and float(e.get("mark_t", 0.0)) > 0.0:
+								e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.0)
+								e.slow = maxf(float(e.get("slow", 0.0)), float(_steps.mark_slow))
+				if float(_steps.get("exec", 0.0)) > 0.0 and b.get("charged", false) and float(e.hp) < 0.5 * float(e.hp_max):
+					dmg *= 1.0 + float(_steps.exec)   # Execution (Nyx's pistol at Lv.30)
+				if float(_steps.get("hit_heal", 0.0)) > 0.0 and b.has("shape"):
+					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.hit_heal), pilot_hp_max)   # Hunger (Hollow's twins)
 				if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 					dmg *= 1.2
 				if b.get("frost", false):
@@ -1453,6 +1490,8 @@ func _update_bullets(delta: float) -> void:
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
+				if float(_steps.get("kill_heal", 0.0)) > 0.0 and String(b.get("shape", "")) == "stream" and float(e.hp) <= 0.0:
+					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.kill_heal), pilot_hp_max)   # Devour (Hollow's rifle)
 				if int(_steps.get("shatter", 0)) > 0 and b.get("charged", false) and float(e.hp) <= 0.0:   # Shatter (the pistol's Lv.30)
 					for si in int(_steps.shatter):
 						var sb: Dictionary = b.duplicate(true)
@@ -1474,6 +1513,10 @@ func _update_bullets(delta: float) -> void:
 							o.hp -= (dmg * float(b.get("splash_share", 0.6))) if _can_hurt(o) else 0.0
 							if _can_hurt(o):
 								o.hit_t = HIT_FLINCH_T   # the bugs caught in the blast flinch too
+								if hsh == "boulder" and _bolt_set == "void" and not _is_boss(o):   # the black orb pulls them in
+									o.pos = Vector2(o.pos) + (Vector2(b.pos) - Vector2(o.pos)).limit_length(16.0 * (1.0 + float(_steps.get("pull_x", 0.0))))
+								if float(_steps.get("blast_mark", 0.0)) > 0.0:   # Terror (Nyx's cannon)
+									o.mark_t = maxf(float(o.get("mark_t", 0.0)), float(_steps.blast_mark))
 								if float(b.get("splash_slow", 0.0)) > 0.0:   # the twins' Packed shots
 									o.slow_t = maxf(float(o.get("slow_t", 0.0)), 1.5)
 									o.slow = maxf(float(o.get("slow", 0.0)), float(b.splash_slow))
@@ -1493,7 +1536,7 @@ func _update_bullets(delta: float) -> void:
 				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
 					_chain(e, int(b.weld), dmg * 0.6)
 				if int(b.get("spark", 0)) > 0:
-					_chain(e, int(b.spark), dmg * 0.5 * _chain_mult)
+					_chain(e, int(b.spark), dmg * (0.5 + (float(_steps.get("arc_dmg", 0.0)) if b.get("arc", false) else 0.0)) * _chain_mult)
 				# Void set bonus: every 5th bolt flies on through
 				hit = not b.get("pierce", false)
 				# Piercing Rounds: passes through this bug if it still has passes left

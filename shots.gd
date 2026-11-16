@@ -11,10 +11,12 @@ extends RefCounted
 # with the transform already set to the bullet (x = the way it flies).
 
 const SHAPE := {"sidearm": "pellet", "twin": "ball", "main": "stream", "heavy": "boulder"}
-const KIND := {"frost": "crystal", "solar": "flame"}          # anything else = "energy"
+const KIND := {"frost": "crystal", "solar": "flame", "scavenger": "volt", "void": "dark", "nightmare": "shade"}   # anything else (ion) = "energy"
 # what the rifle's stream does to a bug, by element ("slow" = today's chill; the others keep
 # "slow" until each hero's own effect is designed)
-const STREAM_FX := {"frost": "slow", "solar": "burn"}
+# ramp = hits harder the longer it stays on one bug (energy), arc = jumps to a second bug (electric),
+# drain = heals him a little (void), mark = marks a bug so bolts crit it (nightmare)
+const STREAM_FX := {"frost": "slow", "solar": "burn", "ion": "ramp", "scavenger": "arc", "void": "drain", "nightmare": "mark"}
 const STREAM_GAP := 170.0      # two stream bolts further apart than this are not joined (a pause in the firing)
 
 # LUNA'S SHOT PICTURES (tools/cut_shots.gd -> fx/shots/<element>_<piece>.png, light on black, the
@@ -123,9 +125,76 @@ static func text(element: String, cls: String) -> String:
 	var words := {
 		"crystal": {"pellet": "Ice pellets", "ball": "Snowballs", "stream": "Freeze stream", "boulder": "Ice boulder"},
 		"flame": {"pellet": "Embers", "ball": "Fireballs", "stream": "Fire stream", "boulder": "Great fireball"},
-		"energy": {"pellet": "Energy bolts", "ball": "Energy orbs", "stream": "Energy stream", "boulder": "Heavy orb"},
+		"energy": {"pellet": "Energy bolts", "ball": "Paired bolts", "stream": "Energy beam", "boulder": "Plasma orb"},
+		"volt": {"pellet": "Sparks", "ball": "Ball lightning", "stream": "Crackling arc", "boulder": "Thunder ball"},
+		"dark": {"pellet": "Dark needles", "ball": "Twin shades", "stream": "Drain beam", "boulder": "Black orb"},
+		"shade": {"pellet": "Throwing blades", "ball": "Twin crescents", "stream": "Shadow ribbon", "boulder": "Dread orb"},
 	}
 	return String(words[k][shape(cls)])
+
+# STAND-IN LOOKS for the heroes Luna has not painted shots for yet (2026-11-16): electric sparks
+# (volt), void needles and rings (dark), nightmare blades and crescents (shade). Light only.
+static func _draw_kind(c: CanvasItem, sh: String, k: String, core: Color, glow: Color, big: float, seed: int, t: float) -> bool:
+	match sh:
+		"pellet":
+			if k == "volt":      # a short jagged spark
+				var z := PackedVector2Array()
+				for i in 5:
+					z.append(Vector2(-14.0 * big + 6.0 * big * i, (sin(seed * 3.3 + i * 2.1 + floorf(t * 24.0)) * 3.2 * big) if i > 0 and i < 4 else 0.0))
+				c.draw_polyline(z, Color(glow, 0.55), 3.4 * big)
+				c.draw_polyline(z, core, 1.3 * big)
+			elif k == "dark":    # a thin needle with a bright point
+				c.draw_line(Vector2(-16 * big, 0), Vector2(8 * big, 0), Color(glow, 0.5), 3.2 * big)
+				c.draw_line(Vector2(-10 * big, 0), Vector2(8 * big, 0), core, 1.2 * big)
+				c.draw_circle(Vector2(8 * big, 0), 1.9 * big, core)
+			else:                # a thrown blade: a swept chevron
+				c.draw_colored_polygon(PackedVector2Array([Vector2(11, 0) * big, Vector2(-7, -5.5) * big, Vector2(-2, 0) * big, Vector2(-7, 5.5) * big]), Color(glow, 0.7))
+				c.draw_colored_polygon(PackedVector2Array([Vector2(9, 0) * big, Vector2(-3, -2.4) * big, Vector2(0, 0) * big, Vector2(-3, 2.4) * big]), core)
+			return true
+		"ball":
+			var r := 5.6 * big
+			if k == "volt":      # ball lightning: a bright core throwing short arcs
+				c.draw_circle(Vector2.ZERO, r * 1.7, Color(glow, 0.22))
+				for i in 4:
+					var a := seed + i * 1.57 + floorf(t * 20.0) * 2.3
+					var m := Vector2(cos(a), sin(a)) * r * 1.1
+					c.draw_polyline(PackedVector2Array([Vector2.ZERO, m + m.orthogonal() * 0.35, m * 1.9]), Color(glow.lerp(core, 0.5), 0.85), 1.2)
+				c.draw_circle(Vector2.ZERO, r * 0.7, core)
+			elif k == "dark":    # a shade: a ring of light round a dim heart
+				c.draw_circle(Vector2.ZERO, r * 1.1, Color(glow, 0.2))
+				c.draw_arc(Vector2.ZERO, r, 0.0, TAU, 20, Color(glow.lerp(core, 0.4), 0.95), 2.2 * big, true)
+				c.draw_circle(Vector2.ZERO, r * 0.3, Color(core, 0.8))
+			else:                # a crescent, turning as it flies
+				var a0 := t * 11.0 + seed
+				c.draw_arc(Vector2.ZERO, r, a0, a0 + PI * 1.1, 14, Color(glow, 0.6), 4.6 * big, true)
+				c.draw_arc(Vector2.ZERO, r, a0 + 0.15, a0 + PI * 0.95, 14, core, 2.0 * big, true)
+			return true
+		"boulder":
+			var R := 12.0 * big
+			c.draw_circle(Vector2.ZERO, R * 1.7, Color(glow, 0.16))
+			if k == "volt":      # a thunder ball
+				c.draw_circle(Vector2.ZERO, R, Color(glow.lerp(core, 0.3), 0.85))
+				c.draw_circle(Vector2.ZERO, R * 0.55, core)
+				for i in 6:
+					var a := seed + i * 1.05 + floorf(t * 18.0) * 1.7
+					var m := Vector2(cos(a), sin(a)) * R
+					c.draw_polyline(PackedVector2Array([m * 0.6, m * 1.15 + m.orthogonal() * 0.3, m * 1.7]), Color(core, 0.9), 1.4)
+			elif k == "dark":    # a black orb: rings of light turning round nothing
+				c.draw_arc(Vector2.ZERO, R, 0.0, TAU, 28, Color(glow.lerp(core, 0.5), 0.95), 3.0, true)
+				for i in 3:
+					var a := t * (4.0 + i) + seed + i * 2.1
+					c.draw_arc(Vector2.ZERO, R * (0.72 - 0.2 * i), a, a + PI * 1.2, 14, Color(glow, 0.7 - 0.15 * i), 2.0, true)
+				c.draw_circle(Vector2.ZERO, R * 0.16, core)
+			else:                # a dread orb: a spiked star, turning
+				var pts := PackedVector2Array()
+				var sp := t * 3.5 + seed
+				for i in 14:
+					var a := sp + TAU * i / 14.0
+					pts.append(Vector2(cos(a), sin(a)) * R * (1.25 if i % 2 == 0 else 0.7))
+				c.draw_colored_polygon(pts, Color(glow, 0.8))
+				c.draw_circle(Vector2.ZERO, R * 0.5, core)
+			return true
+	return false
 
 # Draws one hero bullet. `sh` = its shape, `big` = 1 or more (charged, crit), `seed` = its own
 # number, `t` = the battle clock. Returns false when this element + shape has no look of its own
@@ -138,6 +207,8 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 	var core: Color = cols[0]
 	var glow: Color = cols[1]
 	var fl := 0.85 + 0.15 * sin(t * 31.0 + seed * 1.7)   # flicker
+	if (k == "volt" or k == "dark" or k == "shade") and _draw_kind(c, sh, k, core, glow, big, seed, t):
+		return true
 	match sh:
 		"pellet":
 			var L := 15.0 * big
@@ -252,6 +323,11 @@ static func draw_stream(c: CanvasItem, pts: PackedVector2Array, element: String,
 		# it leaves the barrel thin, swells into a spray, and frays out at the end of its reach
 		var w := lerpf(4.0, 12.5 if k == "flame" else 10.5, smoothstep(0.0, 0.5, u)) * (1.0 - 0.45 * smoothstep(0.75, 1.0, u))
 		var wave := sin(along * 0.07 - t * 16.0) * 1.8 * u
+		if k == "volt":   # an arc of lightning jitters instead of flowing
+			wave = sin(along * 0.9 + floorf(t * 30.0) * 12.9) * 4.5 * minf(u * 4.0, 1.0)
+		if k == "energy" or k == "dark":   # a beam: narrow and steady
+			w *= 0.62
+			wave *= 0.3
 		var p: Vector2 = line[i] + nrm * wave
 		w *= 0.9 + 0.1 * sin(along * 0.21 - t * 23.0)
 		left.append(p - nrm * w)
