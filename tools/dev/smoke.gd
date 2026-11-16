@@ -57,6 +57,7 @@ func _initialize() -> void:
 	_check_weapon_steps()
 	_check_weapon_reset()
 	_check_specials()
+	_check_chips()
 	_check_four_weapons()
 	_check_store2()
 	_check_talents()
@@ -1314,3 +1315,43 @@ func _check_specials() -> void:
 	for c in Arsenal.ORDER:
 		s.mastery[Arsenal.key("frost", c)] = {"kills": 999, "level": Arsenal.SPECIAL_STEP}
 	_expect(Arsenal.special_earned(s, "frost") and not Arsenal.special_earned(s, "rook"), "all four at step 3 earns his own Specialty only")
+
+# weapon chips: slots by level, own chips by default, buying by rarity, fitting rules
+func _check_chips() -> void:
+	_expect(Chips.slots(9) == 0 and Chips.slots(10) == 1 and Chips.slots(20) == 2 and Chips.slots(30) == 3, "chip slots open at Lv.10 / 20 / 30")
+	for id in Chips.ORDER:
+		var c: Dictionary = Chips.def(id)
+		_expect(String(c.get("name", "")) != "" and Chips.RARITY.has(String(c.get("rarity", ""))) and int(c.get("every", 0)) >= 2, "chip %s has a name, a rarity and a count" % id)
+		_expect(UIKit.ic(String(c.icon)) != null, "chip %s has a picture" % id)
+	for r in Chips.RARITIES:
+		var found := false
+		for id in Chips.ORDER:
+			found = found or Chips.rarity_of(id) == r
+		_expect(found, "there is a %s chip" % r)
+	var s := {"coins": 1000, "stage_unlocked": 1, "hero": {"selected": "frost", "owned": ["frost"]}}
+	# an untouched weapon wears its own chips
+	var l30: Dictionary = Chips.live(s, "frost", "main", 30)
+	_expect(int(l30.form) == 3 and bool(l30.cap) and not bool(l30.special) and l30.chips.is_empty(), "an untouched Lv.30 weapon wears its third shape and its capstone")
+	_expect(int(Chips.live(s, "frost", "main", 12).form) == 2 and int(Chips.live(s, "frost", "main", 5).form) == 1, "shape II from Lv.10, plain before")
+	# buying: rarity sets the price and the stage
+	_expect(Chips.why_not_buy(s, "frag") == "" and Chips.why_not_buy(s, "sure").begins_with("Clear") and Chips.why_not_buy(s, "reaper").begins_with("Clear"), "a Common chip is for sale at once, rarer ones wait for a stage")
+	_expect(Chips.buy(s, "frag") and int(s.coins) == 1000 - Chips.cost("frag") and not Chips.buy(s, "frag"), "a chip is bought once")
+	# fitting
+	_expect(Chips.why_not_fit(s, "frost", "main", 12, 1, "frag") != "", "slot 2 is closed at Lv.12")
+	_expect(Chips.fit(s, "frost", "main", 30, 2, "frag"), "a bought chip goes into slot 3")
+	_expect(Chips.why_not_fit(s, "frost", "main", 30, 1, "frag") == "Already in this weapon", "one of each per weapon")
+	_expect(Chips.why_not_fit(s, "frost", "main", 30, 2, "shape2") == "One shape at a time", "the two shapes never together")
+	_expect(Chips.why_not_fit(s, "frost", "main", 30, 2, "drill") == "Not bought", "a chip you do not own does not fit")
+	_expect(Chips.why_not_fit(s, "frost", "main", 30, 2, Chips.SPECIAL) != "", "the Specialty chip needs the mastery")
+	var lv: Dictionary = Chips.live(s, "frost", "main", 30)
+	_expect(lv.chips.size() == 1 and String(lv.chips[0].id) == "frag" and int(lv.chips[0].every) == Chips.every("frag", "main") and bool(lv.cap), "the fight sees the chip beside the capstone")
+	_expect(Chips.every("frag", "main") > Chips.every("frag", "sidearm") and Chips.every("frag", "sidearm") > Chips.every("frag", "heavy"), "a stream counts more shots than a cannon for the same chip")
+	# taking the capstone out switches it off
+	_expect(Chips.fit(s, "frost", "main", 30, 1, "") and not bool(Chips.live(s, "frost", "main", 30).cap), "a capstone out of its slot is off")
+	_expect(int(WeaponSteps.bonus("heavy", "frost", 30, false).get("patch", 0.0)) == 0 and float(WeaponSteps.bonus("heavy", "frost", 30, true).patch) > 0.0, "the capstone only counts when its chip is in")
+	s["special_test"] = true
+	_expect(Chips.fit(s, "frost", "main", 30, 1, Chips.SPECIAL) and bool(Chips.live(s, "frost", "main", 30).special), "the Specialty fires from a slot")
+	for hid in Arsenal.SETS:
+		for cls in Arsenal.ORDER:
+			for id in Chips.OWN:
+				_expect(Chips.chip_name(id, hid, String(GearData.CLASS_ITEM[cls])) != "", "%s %s has a named %s chip" % [hid, cls, id])

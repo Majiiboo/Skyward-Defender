@@ -673,8 +673,9 @@ func _start_stage() -> void:
 	_crit_rate += float(_mastery.crit)
 	_crit_dmg += float(_mastery.crit_dmg)
 	_mastery_pierce = int(_mastery.pierce_every)
+	var chip_live: Dictionary = Chips.live(sv, String(gs.get("hero", "rook")), String(GearData.WEAPON_CLASS.get(weapon_id, "main")), _weapon_lv)   # the chips embedded in the weapon in hand (its shape and capstone are chips too)
 	# the weapon's own LEVEL MILESTONES (WeaponSteps): every 5 levels, by class; Lv.30 by element
-	_steps = WeaponSteps.bonus(String(GearData.WEAPON_CLASS.get(weapon_id, "main")), String(gs.get("element", "ion")), _weapon_lv)
+	_steps = WeaponSteps.bonus(String(GearData.WEAPON_CLASS.get(weapon_id, "main")), String(gs.get("element", "ion")), _weapon_lv, bool(chip_live.cap))
 	damage_mult *= 1.0 + float(_steps.atk)
 	fire_rate_mult *= 1.0 + float(_steps.rate)
 	_crit_rate += float(_steps.crit)
@@ -683,9 +684,11 @@ func _start_stage() -> void:
 	_volley_n = 0
 	_ice_patches.clear()
 	_shard_q.clear()
+	_chips = chip_live.chips
+	_chip_special = bool(chip_live.special)
 	_special_setup(sv, String(gs.get("hero", "rook")))   # his Specialty weapon, when earned
 	_wpn_key = ""
-	weapon_form = int(gs.get("weapon_form", 1))
+	weapon_form = int(chip_live.form)   # the shape chip in its slots (Chips)
 	PilotSprite.style = gs.thruster
 	game_speed = float(sv.get("game_speed", 1.0))
 	auto_on = bool(sv.get("auto_play", false)) and _auto_open()
@@ -1350,6 +1353,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 						nb.lucky = true
 						nb.big = true
 						nb.dmg = float(nb.dmg) * _crit_dmg
+		_chip_shot(nb)   # WEAPON CHIPS: every Nth shot carries its chip s trick
 		if int(nb.spark) > 0 and int(w.get("spark_every", 0)) > 0:
 			nb.spark = int(nb.spark) + int(_steps.get("spark_add", 0))
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
@@ -1459,6 +1463,8 @@ func _update_bullets(delta: float) -> void:
 					dmg *= 1.0 + float(_steps.exec)   # Execution (Nyx's pistol at Lv.30)
 				if float(b.get("heal", 0.0)) > 0.0:   # the void twins' Leech
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(b.heal), pilot_hp_max)
+				if b.has("chip"):
+					_chip_hit(b, e)
 				if float(b.get("marks", 0.0)) > 0.0:   # the nightmare twins' Mark
 					e.mark_t = maxf(float(e.get("mark_t", 0.0)), float(b.marks))
 				if float(_steps.get("hit_heal", 0.0)) > 0.0 and b.has("shape"):
@@ -6054,7 +6060,7 @@ var _sp_objs: Array = []    # what is in the air / on the field: {kind, pos, t, 
 var _sp_said := false
 
 func _special_setup(sv: Dictionary, hero: String) -> void:
-	_sp_id = hero if Arsenal.SPECIALS.has(hero) and (Arsenal.special_earned(sv, hero) or bool(sv.get("special_test", false))) else ""
+	_sp_id = hero if Arsenal.SPECIALS.has(hero) and (_chip_special or bool(sv.get("special_test", false))) else ""   # it fires only when its gold chip sits in the weapon in hand (Chips)
 	_sp_t = 5.0
 	_sp_objs.clear()
 	_sp_said = false
@@ -6270,3 +6276,78 @@ func _draw_special() -> void:
 				_fx.draw_arc(o.pos, 17.0, sp, sp + PI * 1.15, 16, Color(glow, 0.65), 6.0, true)
 				_fx.draw_arc(o.pos, 17.0, sp + 0.15, sp + PI, 16, core, 2.4, true)
 				_fx.draw_arc(o.pos, 17.0, sp + PI, sp + PI * 2.15, 16, Color(glow, 0.35), 4.0, true)
+
+# ------------------------------------------------------------------ WEAPON CHIPS (Chips, 2026-11-16)
+# Up to three chips sit in the weapon in hand; each makes every Nth shot do something more.
+# _chip_shot marks the shot as it leaves the barrel, _chip_hit does what only happens on a hit.
+var _chips: Array = []          # [{id, every}]
+var _chip_special := false      # the gold Specialty chip sits in this weapon
+
+func _chip_shot(nb: Dictionary) -> void:
+	if _chips.is_empty():
+		return
+	var n := int(nb.get("sn", 0))
+	var ids: Array = []
+	for c in _chips:
+		if n % int(c.every) != 0:
+			continue
+		var id := String(c.id)
+		ids.append(id)
+		match id:
+			"frag":
+				nb.splash = maxf(float(nb.get("splash", 0.0)) * 1.25, 46.0)
+			"drill":
+				nb.pierce = true
+			"sure":
+				if not nb.lucky:
+					nb.lucky = true
+					nb.big = true
+					nb.dmg = float(nb.dmg) * _crit_dmg
+			"over":
+				nb.dmg = float(nb.dmg) * 3.0
+				nb.big = true
+			"cryo":
+				nb.frost = true
+				nb.fslow = maxf(float(nb.get("fslow", 0.0)), 0.3)
+			"fire":
+				nb.burn = true
+			"arc":
+				nb.spark = maxi(int(nb.get("spark", 0)), 1)
+	if ids.is_empty():
+		return
+	nb["chip"] = ids
+	if ids.has("split"):   # two more beside it (a stream sends two loose pellets, so the ribbon stays one)
+		for a in [-0.13, 0.13]:
+			var tw: Dictionary = nb.duplicate(true)
+			tw.vel = Vector2(tw.vel).rotated(a)
+			tw.hits = []
+			tw.chip = []
+			if String(tw.get("shape", "")) == "stream":
+				tw.shape = "pellet"
+			bullets.append(tw)
+
+func _chip_hit(b: Dictionary, e: Dictionary) -> void:
+	var ids: Array = b.chip
+	if ids.is_empty():
+		return
+	for id in ids:
+		match String(id):
+			"stun":
+				if not _is_boss(e):
+					e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 0.6)
+			"mark":
+				e.mark_t = maxf(float(e.get("mark_t", 0.0)), 1.5)
+			"leech":
+				pilot_hp = minf(pilot_hp + pilot_hp_max * 0.01, pilot_hp_max)
+			"guard":
+				shield = minf(shield + shield_max * 0.005, shield_max)
+			"reaper":
+				if not _is_boss(e) and _can_hurt(e) and float(e.hp) < float(e.hp_max) / 3.0:
+					e.hp = minf(float(e.hp), 0.5)   # the shot that carries it finishes the bug
+			"bounty":
+				for i in 2:
+					gems.append({"pos": Vector2(e.pos) + Vector2(rng.randf_range(-12, 12), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
+						"value": 2.0 + stage * 0.4, "vel": Vector2(rng.randf_range(-70, 70), rng.randf_range(-110, -40))})
+	# a small flash in the chip s own colour, so a trigger can be seen
+	_fx_add("impact", b.pos, 30.0, 0.26, rng.randf() * TAU, 1.9, Chips.color(String(ids[0])))
+	b.chip = []   # once per shot, also when it flies on through

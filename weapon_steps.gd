@@ -163,13 +163,15 @@ static func step(item: String, element: String, i: int) -> Dictionary:
 	return row
 
 # everything a weapon of class `cls` has earned at level `lv`, for a hero of `element`
-static func bonus(cls: String, element: String, lv: int) -> Dictionary:
+static func bonus(cls: String, element: String, lv: int, with_cap: bool = true) -> Dictionary:   # with_cap false = the capstone chip is not in a slot (Chips)
 	var out := {"atk": 0.0, "rate": 0.0, "crit": 0.0, "crit_dmg": 0.0, "charge_mult_add": 0.0, "range_x": 1.0,
 		"splash_x": 1.0, "stream_wide": 1.0, "shatter": 0, "fan_every": 0, "fan": 0, "chill_dmg": 0.0, "patch": 0.0, "burn_hit": 0, "burn_dmg": 0.0, "patch_burn": 0,
 		"ramp_max_add": 0, "charged_spark": 0, "spark_add": 0, "arc_dmg": 0.0, "hit_heal": 0.0, "kill_heal": 0.0, "pull_x": 0.0, "exec": 0.0, "mark_slow": 0.0, "blast_mark": 0.0}
 	if not STEPS.has(cls):
 		return out
 	for i in count(lv):
+		if i == LEVELS.size() - 1 and not with_cap:
+			continue
 		var row: Dictionary = Dictionary(CAPSTONE.get(element, {})).get(cls, PEAK) if i == LEVELS.size() - 1 else STEPS[cls][i]
 		var fx: Dictionary = row.get("fx", {})
 		for k in fx:
