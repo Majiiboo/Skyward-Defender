@@ -12,7 +12,7 @@ const ELEMENTS := {"frost": "frostshot_", "solar": "embershot_"}
 # piece -> [centre x, centre y, half size of the square taken, saved size]
 const SINGLES := {
 	"snowball": [495, 480, 240, 120],
-	"fireball": [512, 512, 250, 120],
+	"fireball": [506, 484, 205, 120],
 	"pellet": [512, 512, 230, 128],
 	"pellet_big": [512, 512, 320, 160],
 	"boulder": [516, 500, 340, 176],
@@ -20,8 +20,9 @@ const SINGLES := {
 	"burst": [512, 512, 500, 256],
 	"stream_end": [512, 512, 512, 256],
 }
-const STREAM_X := 312        # the strip taken from the stream picture: x 312 .. 712
-const STREAM_W := 400
+var STREAM_X := 312          # the strip taken from the stream picture: x 312 .. 712 (STREAM_CROP per element)
+var STREAM_W := 400
+const STREAM_CROP := {"solar": [372, 280]}   # a narrower painted stream: a narrower strip, so it fills the ribbon
 const STREAM_BLEND := 200    # rows cross-faded so the top joins the bottom
 const STREAM_OUT_W := 160
 const FLOOR := 0.045         # the render's background grey, taken off
@@ -45,6 +46,8 @@ func _initialize() -> void:
 			sq.resize(int(row[3]), int(row[3]), Image.INTERPOLATE_LANCZOS)
 			_save(sq, "res://fx/shots/%s_%s.png" % [el, p])
 		var st := _open(src + "stream.webp")
+		STREAM_X = int(STREAM_CROP.get(el, [312, 400])[0])
+		STREAM_W = int(STREAM_CROP.get(el, [312, 400])[1])
 		if st != null:
 			_stream(st, "res://fx/shots/%s_stream.png" % el)
 		var bits := _open(src + "bits.webp")
@@ -99,7 +102,7 @@ func _stream(img: Image, out_path: String) -> void:
 			var c := img.get_pixel(STREAM_X + x, y)
 			if y < STREAM_BLEND:
 				c = img.get_pixel(STREAM_X + x, oh + y).lerp(c, float(y) / STREAM_BLEND)
-			var e := minf(float(x), float(STREAM_W - 1 - x)) / 70.0
+			var e := minf(float(x), float(STREAM_W - 1 - x)) / (STREAM_W * 0.175)
 			var m := smoothstep(0.0, 1.0, e)
 			out.set_pixel(x, y, Color(maxf(c.r - FLOOR, 0.0) * k * m, maxf(c.g - FLOOR, 0.0) * k * m, maxf(c.b - FLOOR, 0.0) * k * m, 1.0))
 	out.resize(STREAM_OUT_W, roundi(oh * float(STREAM_OUT_W) / STREAM_W), Image.INTERPOLATE_LANCZOS)

@@ -98,7 +98,11 @@ static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Textur
 		var ex := ed * es
 		var ey := ed.orthogonal() * es * 0.5
 		var ec := Color(1, 1, 1, ea)
-		c.draw_polygon(PackedVector2Array([eo - ey, eo + ex - ey, eo + ex + ey, eo + ey]), PackedColorArray([ec, ec, ec, ec]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), se)
+		# its back edge fades in over the first quarter, so the join with the ribbon never shows as a cut
+		var e0 := Color(1, 1, 1, 0.0)
+		var ek := ex * 0.26
+		c.draw_polygon(PackedVector2Array([eo - ey, eo + ek - ey, eo + ek + ey, eo + ey]), PackedColorArray([e0, ec, ec, e0]), PackedVector2Array([Vector2(0, 0), Vector2(0.26, 0), Vector2(0.26, 1), Vector2(0, 1)]), se)
+		c.draw_polygon(PackedVector2Array([eo + ek - ey, eo + ex - ey, eo + ex + ey, eo + ek + ey]), PackedColorArray([ec, ec, ec, ec]), PackedVector2Array([Vector2(0.26, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0.26, 1)]), se)
 
 static func shape(cls: String) -> String:
 	return String(SHAPE.get(cls, "pellet"))
@@ -245,7 +249,8 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 				c.draw_circle(Vector2(r * 0.25, -r * 0.3), r * 0.42, Color(1, 1, 1, 0.9))   # the lit side
 		"stream":
 			# only a glint: the stream itself is ONE ribbon through all its bolts (draw_stream)
-			c.draw_circle(Vector2.ZERO, 2.2 * big, Color(core, 0.7))
+			if tex(element, "stream") == null:   # a painted stream needs no glint on each bolt
+				c.draw_circle(Vector2.ZERO, 2.2 * big, Color(core, 0.7))
 		"boulder":
 			var R := 12.0 * big
 			var bo := tex(element, "boulder")
