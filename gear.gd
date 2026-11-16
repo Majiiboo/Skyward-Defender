@@ -2541,6 +2541,9 @@ class WeaponShow extends Control:
 	var _muz: Array = []          # the muzzle point(s), set by _draw
 	var _tgt := Vector2.ZERO
 	var muz_up := 0.0            # the barrel s height in the picture, as a share of its thickness above the middle
+	var intro := 0.0             # 1 -> 0: the gun slides in from the right after a switch
+	var sweep := -1.0            # 0 -> 1: a line of light runs stock to barrel after an upgrade
+	var _kick := 0.0             # 1 -> 0: the recoil of the last shot
 
 	func _ready() -> void:
 		if shot == "":
@@ -2559,6 +2562,12 @@ class WeaponShow extends Control:
 		queue_redraw()
 		if shot == "":
 			return
+		intro = maxf(intro - delta / 0.16, 0.0)
+		_kick = maxf(_kick - delta / 0.2, 0.0)
+		if sweep >= 0.0:
+			sweep += delta / 0.38
+			if sweep > 1.0:
+				sweep = -1.0
 		_cool -= delta
 		if _cool <= 0.0:
 			_n += 1
@@ -2571,6 +2580,7 @@ class WeaponShow extends Control:
 			else:
 				_cool = 1.15 if shot == "boulder" else 0.32
 				var lane: int = _n % 2 if twin else 0
+				_kick = 1.0   # the shot kicks the gun back
 				_bolts.append({"u": 0.0, "lane": lane, "n": _n, "chip": chipped, "id": cid, "dy": 0.0, "ci": ci, "hit": false})
 				if cid == "split":   # Splitter: two more leave beside it
 					for dy in [-30.0, 30.0]:
@@ -2632,6 +2642,7 @@ class WeaponShow extends Control:
 	func _draw() -> void:
 		var live := shot != ""
 		var c := Vector2(size.x * (0.37 if live else 0.5), size.y * 0.5)
+		c.x += 25.0 * intro * intro - 8.0 * _kick * _kick * (1.6 if shot == "boulder" else 1.0)
 		Backdrop.soft_glow(self, c, size.y * 0.95, Color(col, 0.2))
 		Backdrop.soft_glow(self, c + Vector2(size.x * 0.22, 0), size.y * 0.55, Color(col, 0.12))
 		draw_line(Vector2(size.x * 0.12, size.y - 10.0), Vector2(size.x * 0.88, size.y - 10.0), Color(col, 0.25), 1.0)
@@ -2642,6 +2653,8 @@ class WeaponShow extends Control:
 		var thick := ts.x if upright else ts.y
 		var room_t := size.y * (0.36 if twin else 0.74)
 		var s := minf(minf(size.x * (0.6 if live else 0.84) / long, room_t / thick), 1.25 if upright else 10.0)
+		if sweep >= 0.0:
+			s *= 1.0 + 0.06 * sin(sweep * PI)   # it swells as the light passes
 		var bob := sin(t * 1.3) * 3.0
 		var rows: Array = [[-1.0, 1.0], [1.0, 1.0]] if twin else [[0.0, 1.0]]
 		_muz.clear()
@@ -2649,16 +2662,21 @@ class WeaponShow extends Control:
 			var off := Vector2(float(row[0]) * 16.0, float(row[0]) * thick * s * 0.72 + bob * (1.0 if float(row[0]) <= 0.0 else -1.0))
 			_muz.append(c + off + Vector2(long * s * 0.5 - 4.0, -5.0 - thick * s * muz_up))
 			if upright:
-				draw_set_transform(c + off, PI * 0.5 + sin(t * 0.7) * 0.012, Vector2(s * float(row[1]), s))
+				draw_set_transform(c + off, PI * 0.5 + sin(t * 0.7) * 0.012 - _kick * _kick * 0.035, Vector2(s * float(row[1]), s))
 			else:
-				draw_set_transform(c + off, sin(t * 0.7) * 0.012, Vector2(s, s * float(row[1])))
+				draw_set_transform(c + off, sin(t * 0.7) * 0.012 - _kick * _kick * 0.035, Vector2(s, s * float(row[1])))
 			draw_texture(tex, -ts * 0.5, Color(0, 0, 0, 0.35))   # a soft drop shadow first
 			if upright:
-				draw_set_transform(c + off - Vector2(0, 5), PI * 0.5 + sin(t * 0.7) * 0.012, Vector2(s * float(row[1]), s))
+				draw_set_transform(c + off - Vector2(0, 5), PI * 0.5 + sin(t * 0.7) * 0.012 - _kick * _kick * 0.035, Vector2(s * float(row[1]), s))
 			else:
-				draw_set_transform(c + off - Vector2(0, 5), sin(t * 0.7) * 0.012, Vector2(s, s * float(row[1])))
-			draw_texture(tex, -ts * 0.5)
+				draw_set_transform(c + off - Vector2(0, 5), sin(t * 0.7) * 0.012 - _kick * _kick * 0.035, Vector2(s, s * float(row[1])))
+			draw_texture(tex, -ts * 0.5, Color(1, 1, 1, 1.0 - intro))
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if sweep >= 0.0:   # the upgrade: a bright line and a soft band run along the gun
+			var sx := c.x - long * s * 0.5 + long * s * sweep
+			var sh := thick * s * 0.62
+			draw_rect(Rect2(sx - 16.0, c.y - sh, 16.0, sh * 2.0), Color(0.6, 0.95, 1.0, 0.16 * (1.0 - sweep * 0.5)))
+			draw_line(Vector2(sx, c.y - sh), Vector2(sx, c.y + sh), Color(0.85, 1.0, 1.0, 0.95), 2.0)
 		if live:   # the hologram target: thin rings and a cross, nudged by every hit
 			var kick := 0.0
 			for h in _hits:
@@ -3194,7 +3212,12 @@ func _weapons_screen() -> void:
 	eli.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	eli.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	head.add_child(eli)
-	head.add_child(UIKit.chip("Lv.%d" % _lvl(eq), GearData.rarity_color(GearData.rarity(gear, eq))))
+	var lv_chip := UIKit.chip("Lv.%d" % _lvl(eq), GearData.rarity_color(GearData.rarity(gear, eq)))
+	head.add_child(lv_chip)
+	if _ws_fx == "upgrade":   # the new level punches in
+		lv_chip.pivot_offset = Vector2(24, 12)
+		lv_chip.scale = Vector2(1.35, 1.35)
+		lv_chip.create_tween().tween_property(lv_chip, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 	v.add_child(head)
 	# ---- ZONE 1, the stage: the weapon big, what it fires, its three chip sockets
 	var stage := UIKit.panel(8)
@@ -3211,6 +3234,14 @@ func _weapons_screen() -> void:
 	ws.twin = eq_cls == "twin" and ws.upright
 	ws.col = el_col
 	ws.clip_contents = true
+	if _ws_fx == "swap":   # a weapon just came to hand: it slides in and fires at once
+		ws.intro = 1.0
+		ws._cool = 0.18
+	elif _ws_fx == "upgrade":
+		ws.sweep = 0.0
+	if _chip_pop >= 0:   # a chip just went in: the next shot is the one that shows it
+		ws._n = 3
+		ws._cool = 0.4
 	ws.muz_up = 0.2 if (eq_cls == "sidearm" or eq_cls == "twin") else 0.0   # a pistol s barrel sits high in its picture
 	ws.shot = Shots.shape(eq_cls)   # the live firing preview: his real shots at a hologram target
 	ws.element = eq_el
@@ -3249,6 +3280,13 @@ func _weapons_screen() -> void:
 	bar.add_theme_constant_override("separation", 8)
 	var atk := UIKit.iconed(UIKit.ic("st_atk"), "ATK %s" % _stat_text("Weapon", _lvl(eq)), 14, UIKit.TEXT)
 	bar.add_child(atk)
+	if _ws_fx == "upgrade":
+		atk.pivot_offset = Vector2(40, 10)
+		atk.scale = Vector2(1.25, 1.25)
+		atk.modulate = Color(1.6, 1.6, 1.6)
+		var atw := atk.create_tween().set_parallel(true)
+		atw.tween_property(atk, "scale", Vector2.ONE, 0.22).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+		atw.tween_property(atk, "modulate", Color.WHITE, 0.3)
 	# does his element help on the stage picked on Home (Heroes.element_mult)
 	var st_mult := Heroes.element_mult(eq_el, int(sdata.get("selected_stage", sdata.get("stage_unlocked", 1))))
 	if st_mult > 1.0:
@@ -3303,11 +3341,18 @@ func _weapons_screen() -> void:
 			eqp.position = Vector2(-26, 5)
 			eqp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			t.add_child(eqp)
+			if _ws_fx == "swap":   # the tick pops onto the tile just tapped
+				eqp.pivot_offset = Vector2(9, 8)
+				eqp.scale = Vector2(0.5, 0.5)
+				var etw := eqp.create_tween()
+				etw.tween_property(eqp, "scale", Vector2(1.15, 1.15), 0.09)
+				etw.tween_property(eqp, "scale", Vector2.ONE, 0.07)
 		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
 		var wcls := String(cls)
 		t.pressed.connect(func():
 			if open:
+				_ws_fx = "swap"
 				_equip(item)
 			elif why == "":
 				var d := _read()
@@ -3353,7 +3398,10 @@ func _weapons_screen() -> void:
 	ub.pressed.connect(func():
 		var item_was: String = gear.equipped["Weapon"]
 		var ms_was := Chips.slots(_lvl(item_was))
+		var lv_was := _lvl(item_was)
 		await _on_upgrade_pressed()
+		if _lvl(item_was) > lv_was:
+			_ws_fx = "upgrade"
 		layer.queue_free()
 		_weapons_screen()
 		var ms_is := Chips.slots(_lvl(item_was))
@@ -3363,9 +3411,10 @@ func _weapons_screen() -> void:
 				"text": "%s Lv.%d. New chip: %s. %s" % [GearData.weapon_name(item_was, _hero_id()), int(Chips.SLOT_LEVELS[ms_is - 1]), Chips.chip_name(own_new, _hero_id(), item_was), Chips.text(own_new, _hero_id(), item_was)], "tex": _weapon_show_pic(item_was)[0],
 				"col": Chips.color(own_new), "chip": "NEW SLOT", "go_text": "GOT IT"}))
 	v.add_child(ub)
+	_ws_fx = ""
 
 # a sheet that slides over the lower part of the weapon page (a child of it, so it goes when the page does)
-func _weapon_sheet(wlayer: Control) -> VBoxContainer:
+func _weapon_sheet(wlayer: Control, slide: bool = true) -> VBoxContainer:
 	var layer := Control.new()
 	layer.name = "WeaponSheet"
 	layer.z_index = 5   # over the weapon tiles and their level pills
@@ -3375,10 +3424,26 @@ func _weapon_sheet(wlayer: Control) -> VBoxContainer:
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
 	var ds := StyleBoxFlat.new()
 	ds.bg_color = Color(0.01, 0.024, 0.055, 0.45)
-	for st in ["normal", "hover", "pressed", "focus"]:
+	for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 		dim.add_theme_stylebox_override(st, ds)
-	dim.pressed.connect(layer.queue_free)
 	layer.add_child(dim)
+	# the drawer rides on a slider: up in 0.24 s (fast off the line, easing in), away in 0.18 s,
+	# always quicker out than in so nobody waits on a panel
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	dim.pressed.connect(func():
+		dim.disabled = true
+		var tw := slider.create_tween().set_parallel(true)
+		tw.tween_property(slider, "position:y", 640.0, 0.18).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
+		tw.tween_property(dim, "modulate:a", 0.0, 0.18)
+		tw.chain().tween_callback(layer.queue_free))
+	if slide:
+		dim.modulate.a = 0.0
+		dim.create_tween().tween_property(dim, "modulate:a", 1.0, 0.18)
+		slider.position.y = 640.0
+		slider.create_tween().tween_property(slider, "position:y", 0.0, 0.24).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	var sheet := PanelContainer.new()
 	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.08), 26)
 	ss.corner_radius_bottom_left = 0
@@ -3390,7 +3455,7 @@ func _weapon_sheet(wlayer: Control) -> VBoxContainer:
 	sheet.add_theme_stylebox_override("panel", ss)
 	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
 	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	layer.add_child(sheet)
+	slider.add_child(sheet)
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	sheet.add_child(v)
@@ -5047,6 +5112,7 @@ class ChipTile extends Button:
 	var note_col := Color(0.6, 0.68, 0.8)
 	var note_tex: Texture2D   # a tiny picture before the note: a coin (for sale) or a padlock (not yet)
 	var tint := false       # Luna s white chip symbols: coloured by the chip s rarity
+	var burst := -1.0      # 0 -> 1: a ring flying out, when a chip has just snapped in
 	var lit := false        # a chip sits here / you have it
 	var picked := false
 	var plus := false       # an open, empty socket
@@ -5058,7 +5124,7 @@ class ChipTile extends Button:
 		focus_mode = Control.FOCUS_NONE
 		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
 			add_theme_stylebox_override(st, StyleBoxEmpty.new())
-		set_process(plus)
+		set_process(plus or burst >= 0.0)
 
 	func _process(delta: float) -> void:
 		t += delta
@@ -5095,6 +5161,12 @@ class ChipTile extends Button:
 			c.y += 4.0
 			r -= 4.0
 		var pts := _pts(c, r)
+		if burst >= 0.0:
+			burst += get_process_delta_time() / 0.4
+			if burst < 1.0:
+				draw_arc(c, r * (1.0 + 0.9 * burst), 0.0, TAU, 32, Color(col.lerp(Color.WHITE, 0.4), 1.0 - burst), 2.0, true)
+			else:
+				burst = -1.0
 		draw_colored_polygon(pts, Color(0.055, 0.085, 0.15))
 		if lit:
 			draw_colored_polygon(pts, Color(col, 0.16))
@@ -5130,6 +5202,7 @@ class ChipTile extends Button:
 
 var _chip_pop := -1   # the socket a chip was just put into: it snaps in once
 var _chip_note := ""  # "+  Frag": shown once beside ATK after a chip went in or out
+var _ws_fx := ""       # the motion the Weapon page owes when it is next built: "swap" or "upgrade"
 
 # all five mastery steps of a weapon as a short track: done, next (kills to go), later
 func _mastery_track(key: String) -> Control:
@@ -5192,6 +5265,7 @@ func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
 			else:
 				_milestone_toast("This chip slot opens at weapon Lv.%d" % int(Chips.SLOT_LEVELS[slot])))
 		if i == _chip_pop:   # it snaps in
+			s.burst = 0.0
 			s.pivot_offset = Vector2(42, 44)
 			s.scale = Vector2(1.5, 1.5)
 			s.modulate = Color(2.2, 2.2, 2.2)
@@ -5221,7 +5295,7 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 	var now: Array = Chips.fitted(data, hid, cls, lv)
 	if pick == "-":
 		pick = String(now[slot])
-	var v := _weapon_sheet(wlayer)
+	var v := _weapon_sheet(wlayer, old == null)
 	v.add_child(UIKit.popup_title("Slot %d" % (slot + 1)))
 	var grid := GridContainer.new()
 	grid.columns = 5
@@ -5359,4 +5433,12 @@ func _shot_tags(el: String, cls: String) -> Array:
 func _dbg_chipfit() -> void:
 	_chip_note = "+  Frag"
 	_chip_pop = 2
+	_weapons_screen()
+
+func _dbg_wswap() -> void:
+	_ws_fx = "swap"
+	_weapons_screen()
+
+func _dbg_wupgrade() -> void:
+	_ws_fx = "upgrade"
 	_weapons_screen()
