@@ -6304,7 +6304,7 @@ func _chip_shot(nb: Dictionary) -> void:
 					nb.big = true
 					nb.dmg = float(nb.dmg) * _crit_dmg
 			"over":
-				nb.dmg = float(nb.dmg) * 3.0
+				nb.dmg = float(nb.dmg) * 2.5
 				nb.big = true
 			"cryo":
 				nb.frost = true
@@ -6322,6 +6322,7 @@ func _chip_shot(nb: Dictionary) -> void:
 			tw.vel = Vector2(tw.vel).rotated(a)
 			tw.hits = []
 			tw.chip = []
+			tw.dmg = float(tw.dmg) * 0.6   # the two extra shots are smaller: about +13% damage in all
 			if String(tw.get("shape", "")) == "stream":
 				tw.shape = "pellet"
 			bullets.append(tw)

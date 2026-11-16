@@ -176,6 +176,19 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 		if OS.get_environment("SIM_WLV") != "":
 			wl = int(OS.get_environment("SIM_WLV"))
 		d["arsenal"] = {hid: {"equipped": sim_cls, "owned": Arsenal.ORDER.duplicate(), "levels": {sim_cls: wl}}}
+		# SIM_CHIPS (2026-11-16): what sits in the weapon s three slots: unset = its own chips (the default),
+		# "none" = empty, or three ids by comma ("shape3,cap,over"); general chips are owned for the run
+		var sim_chips := OS.get_environment("SIM_CHIPS")
+		if sim_chips != "":
+			var row: Array = ["", "", ""]
+			var own: Array = []
+			if sim_chips != "none":
+				var parts := sim_chips.split(",")
+				for i in mini(parts.size(), 3):
+					row[i] = String(parts[i])
+					if Chips.CHIPS.has(String(parts[i])):
+						own.append(String(parts[i]))
+			d["chips"] = {"owned": own, "fit": {Arsenal.key(hid, sim_cls): row}}
 		_wkit = " %s %s Lv.%d" % [hid, sim_cls, wl]
 	var types := ["sentry", "lance", "storm", "gravity"]
 	var lo: Array = ["", "", "", ""]

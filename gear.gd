@@ -3220,15 +3220,27 @@ func _weapons_screen() -> void:
 			ws.chip_ids.append(String(cid))
 	sv.add_child(ws)
 	var shot_b := Button.new()   # what it fires: a tap opens how it works
-	shot_b.flat = true
+	var shot_sb := UIKit.pill(Color(1, 1, 1, 0.06), 12, Vector2(10, 4))   # a faint pill, so it reads as a button
+	shot_sb.border_color = Color(1, 1, 1, 0.12)
+	shot_sb.set_border_width_all(1)
+	for sst in ["normal", "hover", "pressed", "focus"]:
+		shot_b.add_theme_stylebox_override(sst, shot_sb)
 	shot_b.focus_mode = Control.FOCUS_NONE
 	shot_b.text = "%s  ›" % Shots.text(eq_el, eq_cls)
 	shot_b.add_theme_font_size_override("font_size", 12)
 	for fc in ["font_color", "font_hover_color", "font_pressed_color"]:
 		shot_b.add_theme_color_override(fc, el_col)
-	shot_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	shot_b.pressed.connect(func(): _weapon_info(layer, hid, eq))
-	sv.add_child(shot_b)
+	# two or three short behaviour tags beside the name: how it fires at a glance (the words are behind the tap)
+	var shot_row := HBoxContainer.new()
+	shot_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	shot_row.add_theme_constant_override("separation", 6)
+	shot_row.add_child(shot_b)
+	for tg in _shot_tags(eq_el, eq_cls):
+		var tgc := UIKit.chip(String(tg), el_col)
+		tgc.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		shot_row.add_child(tgc)
+	sv.add_child(shot_row)
 	sv.add_child(_chip_sockets(layer, hid, eq))
 	stage.add_child(sv)
 	v.add_child(stage)
@@ -3385,7 +3397,7 @@ func _weapon_info(wlayer: Control, hid: String, eq: String) -> void:
 	var v := _weapon_sheet(wlayer)
 	var eq_el := _hero_el()
 	var eq_cls := GearData.weapon_class(eq)
-	v.add_child(UIKit.popup_title(GearData.weapon_name(eq, hid)))
+	v.add_child(UIKit.popup_title("Weapon mastery  ·  %d / %d" % [Mastery.level(_read(), Arsenal.key(hid, eq_cls)), Mastery.STEPS]))
 	var est: Dictionary = GearData.weapon_style(eq)
 	if eq_cls == "twin":   # the twins trick is by element (Shots.TWIN_TRICK)
 		est = {"style": String(Shots.twin_trick(eq_el)[0]), "text": String(Shots.twin_trick(eq_el)[1])}
@@ -3393,7 +3405,10 @@ func _weapon_info(wlayer: Control, hid: String, eq: String) -> void:
 		var now_fi: Dictionary = WeaponSteps.form(eq, eq_el, int(Chips.live(_read(), hid, eq_cls, _lvl(eq)).form))
 		var sl := UIKit.label("%s: %s" % [String(est.style), String(now_fi.get("text", est.text))], 12, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(sl)
+		var trait_box := PanelContainer.new()   # how the weapon fires right now, set apart from the steps
+		trait_box.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.6), 12, Vector2(12, 7)))
+		trait_box.add_child(sl)
+		v.add_child(trait_box)
 	v.add_child(_mastery_card(Arsenal.key(hid, eq_cls), wlayer))
 	v.add_child(_mastery_track(Arsenal.key(hid, eq_cls)))
 	var cap := Arsenal.cap(_read(), hid)
@@ -4955,7 +4970,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 	v.add_theme_constant_override("separation", 4)
 	var head := HBoxContainer.new()
 	head.add_theme_constant_override("separation", 6)
-	head.add_child(UIKit.label("%s mastery" % GearData.weapon_name(String(GearData.CLASS_ITEM[Mastery.cls_of(cls)]), _hero_id()), 14, UIKit.TEXT))
+	head.add_child(UIKit.label(GearData.weapon_name(String(GearData.CLASS_ITEM[Mastery.cls_of(cls)]), _hero_id()), 14, UIKit.TEXT))
 	var sp := Control.new()
 	sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	head.add_child(sp)
@@ -4963,7 +4978,7 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 		var pip := Panel.new()
 		pip.custom_minimum_size = Vector2(18, 8)
 		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		pip.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if i < lv else Color(UIKit.CARD_HI, 0.9), 4, Vector2.ZERO))
+		pip.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if i < lv else (UIKit.CYAN if i == lv else Color(UIKit.CARD_HI, 0.9)), 4, Vector2.ZERO))
 		head.add_child(pip)
 	v.add_child(head)
 	var nx := Mastery.next_step(data, cls)
@@ -5313,3 +5328,22 @@ func _cost_pill(icon: Texture2D, need: int, have: int) -> Control:
 func _dbg_winfo() -> void:
 	_weapons_screen()
 	_weapon_info(get_child(get_child_count() - 1), _hero_id(), gear.equipped["Weapon"])
+
+# how a weapon behaves in two short tags (the Weapon page, beside what it fires)
+const STREAM_TAG := {"slow": "Slows", "burn": "Burns", "ramp": "Ramps up", "arc": "Chains", "drain": "Heals you", "mark": "Marks"}
+func _shot_tags(el: String, cls: String) -> Array:
+	match cls:
+		"sidearm":
+			return ["Fast", "5th charged"]
+		"twin":
+			return ["Pairs", "3rd: %s" % String(Shots.twin_trick(el)[0])]
+		"main":
+			return ["Short range", String(STREAM_TAG.get(Shots.stream_fx(el), "Slows"))]
+		"heavy":
+			return ["Slow", "Blast"]
+	return []
+
+func _dbg_chipfit() -> void:
+	_chip_note = "+  Frag"
+	_chip_pop = 2
+	_weapons_screen()

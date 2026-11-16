@@ -38,10 +38,10 @@ const CHIPS := {
 	"arc": {"name": "Arc", "rarity": "uncommon", "every": 10, "icon": "el_electric", "text": "jumps on to a second bug"},
 	"guard": {"name": "Guard", "rarity": "uncommon", "every": 20, "icon": "st_def", "text": "mends a little of the base shield"},
 	"bounty": {"name": "Bounty", "rarity": "uncommon", "every": 25, "icon": "ic_coin", "text": "knocks coins out of the bug it hits"},
-	"split": {"name": "Splitter", "rarity": "epic", "every": 9, "icon": "st_rate", "text": "brings two more shots beside it"},
+	"split": {"name": "Splitter", "rarity": "epic", "every": 9, "icon": "st_rate", "text": "brings two smaller shots beside it"},
 	"leech": {"name": "Leech", "rarity": "epic", "every": 15, "icon": "st_hp", "text": "gives the hero 1% of his health back"},
 	"mark": {"name": "Tracer", "rarity": "epic", "every": 12, "icon": "ic_weak", "text": "marks the bug: every hit on it crits for a moment"},
-	"over": {"name": "Overload", "rarity": "legendary", "every": 12, "icon": "st_atk", "text": "hits three times as hard"},
+	"over": {"name": "Overload", "rarity": "legendary", "every": 12, "icon": "st_atk", "text": "hits two and a half times as hard"},
 	"stun": {"name": "Shock", "rarity": "legendary", "every": 14, "icon": "st_rate", "text": "stops the bug dead for a moment"},
 	"reaper": {"name": "Reaper", "rarity": "mythic", "every": 20, "icon": "ic_weak", "text": "finishes a bug that is under a third of its health (not a boss)"},
 }
