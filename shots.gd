@@ -37,6 +37,7 @@ static func tex(element: String, piece: String) -> Texture2D:
 # one layer of the painted stream: the strip repeated along the ribbon and scrolled. `s` = for
 # every point, how far along it is in strip lengths (rising); a piece that crosses the end of a
 # strip is cut there, so the texture never has to wrap.
+# quads go out as draw_primitive (two triangles, no triangulation): a quad that folds over itself at a sharp bend still draws, where draw_polygon failed and left a dark notch
 static func _strip(c: CanvasItem, t2: Texture2D, mid: PackedVector2Array, nrm: PackedVector2Array, hw: PackedFloat32Array, al: PackedFloat32Array, s: PackedFloat32Array, wide: float, dim: float) -> void:
 	for i in mid.size() - 1:
 		var a0 := s[i]
@@ -57,7 +58,7 @@ static func _strip(c: CanvasItem, t2: Texture2D, mid: PackedVector2Array, nrm: P
 			var c1 := Color(1, 1, 1, lerpf(al[i], al[i + 1], f1) * dim)
 			var v0 := 1.0 - (cur - base)
 			var v1 := 1.0 - (nxt - base)
-			c.draw_polygon(PackedVector2Array([p0 - n0, p1 - n1, p1 + n1, p0 + n0]), PackedColorArray([c0, c1, c1, c0]), PackedVector2Array([Vector2(0, v0), Vector2(0, v1), Vector2(1, v1), Vector2(1, v0)]), t2)
+			c.draw_primitive(PackedVector2Array([p0 - n0, p1 - n1, p1 + n1, p0 + n0]), PackedColorArray([c0, c1, c1, c0]), PackedVector2Array([Vector2(0, v0), Vector2(0, v1), Vector2(1, v1), Vector2(1, v0)]), t2)
 			cur = nxt
 
 # the stream from Luna's strip: thin at the barrel, a wide rushing spray, fading out at its reach
@@ -101,8 +102,8 @@ static func _draw_stream_tex(c: CanvasItem, line: PackedVector2Array, t2: Textur
 		# its back edge fades in over the first quarter, so the join with the ribbon never shows as a cut
 		var e0 := Color(1, 1, 1, 0.0)
 		var ek := ex * 0.26
-		c.draw_polygon(PackedVector2Array([eo - ey, eo + ek - ey, eo + ek + ey, eo + ey]), PackedColorArray([e0, ec, ec, e0]), PackedVector2Array([Vector2(0, 0), Vector2(0.26, 0), Vector2(0.26, 1), Vector2(0, 1)]), se)
-		c.draw_polygon(PackedVector2Array([eo + ek - ey, eo + ex - ey, eo + ex + ey, eo + ek + ey]), PackedColorArray([ec, ec, ec, ec]), PackedVector2Array([Vector2(0.26, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0.26, 1)]), se)
+		c.draw_primitive(PackedVector2Array([eo - ey, eo + ek - ey, eo + ek + ey, eo + ey]), PackedColorArray([e0, ec, ec, e0]), PackedVector2Array([Vector2(0, 0), Vector2(0.26, 0), Vector2(0.26, 1), Vector2(0, 1)]), se)
+		c.draw_primitive(PackedVector2Array([eo + ek - ey, eo + ex - ey, eo + ex + ey, eo + ek + ey]), PackedColorArray([ec, ec, ec, ec]), PackedVector2Array([Vector2(0.26, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0.26, 1)]), se)
 
 static func shape(cls: String) -> String:
 	return String(SHAPE.get(cls, "pellet"))
@@ -356,9 +357,9 @@ static func draw_stream(c: CanvasItem, pts: PackedVector2Array, element: String,
 	for i in n - 1:   # a soft outer spray first, twice as wide
 		var a0 := Color(cl[i], cl[i].a * 0.32)
 		var a1 := Color(cl[i + 1], cl[i + 1].a * 0.32)
-		c.draw_polygon(PackedVector2Array([mid[i] + (left[i] - mid[i]) * 1.9, mid[i + 1] + (left[i + 1] - mid[i + 1]) * 1.9, mid[i + 1] + (right[i + 1] - mid[i + 1]) * 1.9, mid[i] + (right[i] - mid[i]) * 1.9]), PackedColorArray([a0, a1, a1, a0]))
+		c.draw_primitive(PackedVector2Array([mid[i] + (left[i] - mid[i]) * 1.9, mid[i + 1] + (left[i + 1] - mid[i + 1]) * 1.9, mid[i + 1] + (right[i + 1] - mid[i + 1]) * 1.9, mid[i] + (right[i] - mid[i]) * 1.9]), PackedColorArray([a0, a1, a1, a0]), PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]))
 	for i in n - 1:
-		c.draw_polygon(PackedVector2Array([left[i], left[i + 1], right[i + 1], right[i]]), PackedColorArray([cl[i], cl[i + 1], cl[i + 1], cl[i]]))
+		c.draw_primitive(PackedVector2Array([left[i], left[i + 1], right[i + 1], right[i]]), PackedColorArray([cl[i], cl[i + 1], cl[i + 1], cl[i]]), PackedVector2Array([Vector2.ZERO, Vector2.ZERO, Vector2.ZERO, Vector2.ZERO]))
 	c.draw_polyline(mid, Color(core, 0.8), 2.4, true)
 	# glints riding up the stream: frost sparkle, or sparks of fire
 	var total := maxf(along, 1.0)
