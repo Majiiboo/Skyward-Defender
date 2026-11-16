@@ -72,6 +72,26 @@ or pay screens.
   Lv.20 weapon. The simulator's player buys far fewer weapon levels than a real one would.
 - **Phone verdict.** Nothing since build dev276 has been played on a phone.
 
+## Weapon chips (Rudy's idea, built 2026-11-16) and where they could go next
+Built: three slots per weapon (Lv.10 / 20 / 30), the weapon's shapes and capstone are its own
+chips, fourteen general chips in five rarities bought once with coins, the Specialty weapon is
+the Mythic chip. Level milestones are gone; levels give plain numbers.
+- **Where rare chips come from.** Today every general chip is coins plus a stage to clear.
+  Better later: Epic from boss stages and Boss Rush, Legendary from the Legendary chest and
+  Elite planets, Mythic from one hard feat each (a full Boss Rush line, a planet on Elite with
+  no base damage). Still owned once: no piles, no merging.
+- **Chip levels.** If chips should grow, a spare copy could raise a chip one step (the count
+  drops: every 8th shot becomes every 7th). Only if Rudy wants more to collect.
+- **More chips.** Ideas not built: Ricochet (bounces off the screen edge once), Magnet (pulls
+  pickups to the bug it hits), Echo (the shot fires again half a second later), Second Wind
+  (a kill with it shaves the ability cooldown), an element chip per hero (his element's status
+  on any weapon).
+- **Chips and power cards.** Cards could read the chips: a card "Chip surge" halves every count
+  for the rest of the stage. Keeps the two systems talking without overlapping.
+- **Chip art.** Icons are borrowed from the stat and element icons. A Luna sheet of small chip
+  pictures (one per chip, rarity as the frame colour) when the list is settled.
+- **Balance.** Not simulated. Three general chips add roughly 10-20% by estimate.
+
 ## After weapons (the agreed order)
 1. Power cards (Rudy's rework, using the list above).
 2. Hero rarity and unlocking.

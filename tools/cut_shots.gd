@@ -23,7 +23,7 @@ const SINGLES := {
 }
 var STREAM_X := 312          # the strip taken from the stream picture: x 312 .. 712 (STREAM_CROP per element)
 var STREAM_W := 400
-const STREAM_CROP := {"solar": [372, 280], "void": [382, 260]}   # a narrower painted stream: a narrower strip, so it fills the ribbon
+const STREAM_CROP := {"solar": [372, 280], "void": [382, 260], "ion": [392, 240], "scavenger": [372, 280], "nightmare": [372, 280]}   # a narrower painted stream: a narrower strip, so it fills the ribbon
 const STREAM_BLEND := 200    # rows cross-faded so the top joins the bottom
 const STREAM_OUT_W := 160
 const FLOOR := 0.045         # the render's background grey, taken off
