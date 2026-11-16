@@ -21,7 +21,7 @@ const SAVE := "user://skybound_save.json"
 const WEAPONS := {
 	# WEAPONS THAT PLAY DIFFERENTLY (2026-11-10, step 3 of DESIGN-base-and-helpers.md; texts in GearData.WEAPON_TEXT).
 	# Energy, the all-rounder: every 5th bolt is a CHARGED SHOT (three times the damage)
-	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.76, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
+	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.8, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
 	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)

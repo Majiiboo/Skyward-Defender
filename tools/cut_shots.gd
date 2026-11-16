@@ -8,11 +8,12 @@ extends "res://tools/cut_ui_art.gd"
 # Single shots are turned so the FRONT points RIGHT (+x = the way a bullet flies in battle).
 # Run: godot --headless --path . --script res://tools/cut_shots.gd   (then --import)
 
-const ELEMENTS := {"frost": "frostshot_", "solar": "embershot_"}
+const ELEMENTS := {"frost": "frostshot_", "solar": "embershot_", "ion": "rookshot_", "scavenger": "sparkshot_", "void": "hollowshot_", "nightmare": "nyxshot_"}
 # piece -> [centre x, centre y, half size of the square taken, saved size]
 const SINGLES := {
 	"snowball": [495, 480, 240, 120],
 	"fireball": [506, 484, 205, 120],
+	"ball": [512, 512, 250, 120],
 	"pellet": [512, 512, 230, 128],
 	"pellet_big": [512, 512, 320, 160],
 	"boulder": [516, 500, 340, 176],

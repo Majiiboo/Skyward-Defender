@@ -200,18 +200,30 @@ static func _draw_kind(c: CanvasItem, sh: String, k: String, core: Color, glow: 
 			return true
 	return false
 
+# the painted piece a shape uses (fx/shots/<element>_<piece>.png), "" for none
+static func piece(sh: String, k: String, big: float) -> String:
+	match sh:
+		"pellet":
+			return "pellet_big" if big > 1.2 else "pellet"
+		"ball":
+			return "fireball" if k == "flame" else ("snowball" if k == "crystal" else "ball")
+		"boulder":
+			return "boulder"
+	return ""
+
 # Draws one hero bullet. `sh` = its shape, `big` = 1 or more (charged, crit), `seed` = its own
 # number, `t` = the battle clock. Returns false when this element + shape has no look of its own
 # (the caller then draws Luna's bolt as before).
 static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: int, t: float) -> bool:
 	var k := kind(element)
-	if k == "energy" and sh == "pellet":
+	var painted := piece(sh, k, big) != "" and tex(element, piece(sh, k, big)) != null   # Luna has painted this one
+	if k == "energy" and sh == "pellet" and not painted:
 		return false
 	var cols := colours(element)
 	var core: Color = cols[0]
 	var glow: Color = cols[1]
 	var fl := 0.85 + 0.15 * sin(t * 31.0 + seed * 1.7)   # flicker
-	if (k == "volt" or k == "dark" or k == "shade") and _draw_kind(c, sh, k, core, glow, big, seed, t):
+	if (k == "volt" or k == "dark" or k == "shade") and not painted and _draw_kind(c, sh, k, core, glow, big, seed, t):
 		return true
 	match sh:
 		"pellet":
@@ -231,7 +243,7 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 				c.draw_circle(Vector2(L * 0.05, 0), W * 0.5, core)
 		"ball":
 			var r := 5.4 * big
-			var bt := tex(element, "fireball" if k == "flame" else "snowball")
+			var bt := tex(element, piece(sh, k, big))
 			if bt != null:   # Luna's snowball: its loose flakes trail behind it
 				var S := 21.0 * big / BALL_FILL
 				c.draw_circle(Vector2(-r * 1.9, sin(t * 14.0 + seed) * 1.2), r * 0.7, Color(glow, 0.14))
