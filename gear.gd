@@ -2525,13 +2525,89 @@ class WeaponShow extends Control:
 	var twin := false
 	var col := Color(0.6, 0.9, 1.0)
 	var t := 0.0
+	# THE LIVE FIRING PREVIEW (2026-11-16): with `shot` set (a Shots shape) the weapon sits to the
+	# left and fires his real shots at a hologram target on the right, over and over. Every 4th
+	# shot shows a fitted chip going off, in that chip s colour. A picture of the weapon at work,
+	# not the fight s rules.
+	var shot := ""
+	var element := ""
+	var chip_cols: Array = []
+	var _fxl: Control
+	var _bolts: Array = []        # {u 0..1 along the way, lane, n}
+	var _hits: Array = []         # {t, col, big}
+	var _cool := 0.5
+	var _n := 0
+	var _muz: Array = []          # the muzzle point(s), set by _draw
+	var _tgt := Vector2.ZERO
+	var muz_up := 0.0            # the barrel s height in the picture, as a share of its thickness above the middle
+
+	func _ready() -> void:
+		if shot == "":
+			return
+		_fxl = Control.new()
+		_fxl.set_anchors_preset(Control.PRESET_FULL_RECT)
+		_fxl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mat := CanvasItemMaterial.new()
+		mat.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD
+		_fxl.material = mat
+		_fxl.draw.connect(_draw_fx)
+		add_child(_fxl)
 
 	func _process(delta: float) -> void:
 		t += delta
 		queue_redraw()
+		if shot == "":
+			return
+		_cool -= delta
+		if _cool <= 0.0:
+			_n += 1
+			var chipped: bool = not chip_cols.is_empty() and _n % 4 == 0
+			if shot == "stream":   # the stream never stops: only its splashes on the target tick
+				_cool = 0.22
+				_hits.append({"t": 0.0, "big": chipped, "col": chip_cols[(_n / 4) % chip_cols.size()] if chipped else col})
+			else:
+				_cool = 1.15 if shot == "boulder" else 0.32
+				_bolts.append({"u": 0.0, "lane": _n % 2 if twin else 0, "n": _n, "chip": chipped})
+		var keep: Array = []
+		for b in _bolts:
+			b.u = float(b.u) + delta * (1.0 if shot == "boulder" else 1.7)
+			if float(b.u) >= 1.0:
+				_hits.append({"t": 0.0, "big": bool(b.chip) or shot == "boulder", "col": chip_cols[(int(b.n) / 4) % chip_cols.size()] if bool(b.chip) else col})
+			else:
+				keep.append(b)
+		_bolts = keep
+		var hk: Array = []
+		for h in _hits:
+			h.t = float(h.t) + delta
+			if float(h.t) < 0.32:
+				hk.append(h)
+		_hits = hk
+		_fxl.queue_redraw()
+
+	func _draw_fx() -> void:
+		if _muz.is_empty():
+			return
+		if shot == "stream":
+			var a: Vector2 = _muz[0]
+			var pts := PackedVector2Array()
+			for i in 8:
+				var f := i / 7.0
+				pts.append(a.lerp(_tgt, f) + Vector2(0, sin(t * 5.0 + f * 4.0) * 5.0 * f))
+			Shots.draw_stream(_fxl, pts, element, t, a.distance_to(_tgt) * 1.15)
+		for b in _bolts:
+			var a2: Vector2 = _muz[int(b.lane) % _muz.size()]
+			_fxl.draw_set_transform(a2.lerp(_tgt, float(b.u)), 0.0, Vector2(1.25, 1.25))
+			Shots.draw(_fxl, shot, element, 1.5 if bool(b.chip) else 1.0, int(b.n), t)
+		_fxl.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		for h in _hits:
+			var f2 := float(h.t) / 0.32
+			var r := (10.0 + 30.0 * f2) * (1.7 if bool(h.big) else 1.0)
+			_fxl.draw_arc(_tgt, r, 0.0, TAU, 28, Color(h.col, 1.0 - f2), 2.0, true)
+			_fxl.draw_circle(_tgt, r * 0.45, Color(h.col, (1.0 - f2) * 0.4))
 
 	func _draw() -> void:
-		var c := size * 0.5
+		var live := shot != ""
+		var c := Vector2(size.x * (0.37 if live else 0.5), size.y * 0.5)
 		Backdrop.soft_glow(self, c, size.y * 0.95, Color(col, 0.2))
 		Backdrop.soft_glow(self, c + Vector2(size.x * 0.22, 0), size.y * 0.55, Color(col, 0.12))
 		draw_line(Vector2(size.x * 0.12, size.y - 10.0), Vector2(size.x * 0.88, size.y - 10.0), Color(col, 0.25), 1.0)
@@ -2541,11 +2617,13 @@ class WeaponShow extends Control:
 		var long := ts.y if upright else ts.x
 		var thick := ts.x if upright else ts.y
 		var room_t := size.y * (0.36 if twin else 0.74)
-		var s := minf(minf(size.x * 0.84 / long, room_t / thick), 1.25 if upright else 10.0)
+		var s := minf(minf(size.x * (0.6 if live else 0.84) / long, room_t / thick), 1.25 if upright else 10.0)
 		var bob := sin(t * 1.3) * 3.0
 		var rows: Array = [[-1.0, 1.0], [1.0, 1.0]] if twin else [[0.0, 1.0]]
+		_muz.clear()
 		for row in rows:
 			var off := Vector2(float(row[0]) * 16.0, float(row[0]) * thick * s * 0.72 + bob * (1.0 if float(row[0]) <= 0.0 else -1.0))
+			_muz.append(c + off + Vector2(long * s * 0.5 - 4.0, -5.0 - thick * s * muz_up))
 			if upright:
 				draw_set_transform(c + off, PI * 0.5 + sin(t * 0.7) * 0.012, Vector2(s * float(row[1]), s))
 			else:
@@ -2557,6 +2635,17 @@ class WeaponShow extends Control:
 				draw_set_transform(c + off - Vector2(0, 5), sin(t * 0.7) * 0.012, Vector2(s, s * float(row[1])))
 			draw_texture(tex, -ts * 0.5)
 		draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		if live:   # the hologram target: thin rings and a cross, nudged by every hit
+			var kick := 0.0
+			for h in _hits:
+				kick = maxf(kick, (1.0 - float(h.t) / 0.32) * (5.0 if bool(h.big) else 2.5))
+			_tgt = Vector2(size.x * 0.9 + kick, size.y * 0.5)
+			var hc := Color(0.45, 0.9, 1.0)
+			draw_arc(_tgt, 20.0, 0.0, TAU, 32, Color(hc, 0.45), 1.0, true)
+			draw_arc(_tgt, 11.0 + sin(t * 2.0) * 1.5, 0.0, TAU, 24, Color(hc, 0.3), 1.0, true)
+			for a in 4:
+				var d := Vector2.RIGHT.rotated(a * PI * 0.5 + t * 0.4)
+				draw_line(_tgt + d * 23.0, _tgt + d * 29.0, Color(hc, 0.5), 1.0, true)
 
 class HeroStand extends Control:
 	const FLOOR_UP := 40.0       # the disc's centre, up from the bottom of the stage
@@ -3097,8 +3186,24 @@ func _weapons_screen() -> void:
 	ws.tex = big[0]
 	ws.twin = eq_cls == "twin" and ws.upright
 	ws.col = el_col
+	ws.clip_contents = true
+	ws.muz_up = 0.2 if (eq_cls == "sidearm" or eq_cls == "twin") else 0.0   # a pistol s barrel sits high in its picture
+	ws.shot = Shots.shape(eq_cls)   # the live firing preview: his real shots at a hologram target
+	ws.element = eq_el
+	for cid in Chips.fitted(sdata, hid, eq_cls, _lvl(eq)):
+		if String(cid) != "":
+			ws.chip_cols.append(Chips.color(String(cid)))
 	sv.add_child(ws)
-	sv.add_child(UIKit.label(Shots.text(eq_el, eq_cls), 12, el_col, HORIZONTAL_ALIGNMENT_CENTER))
+	var shot_b := Button.new()   # what it fires: a tap opens how it works
+	shot_b.flat = true
+	shot_b.focus_mode = Control.FOCUS_NONE
+	shot_b.text = "%s  ›" % Shots.text(eq_el, eq_cls)
+	shot_b.add_theme_font_size_override("font_size", 12)
+	for fc in ["font_color", "font_hover_color", "font_pressed_color"]:
+		shot_b.add_theme_color_override(fc, el_col)
+	shot_b.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	shot_b.pressed.connect(func(): _weapon_info(layer, hid, eq))
+	sv.add_child(shot_b)
 	sv.add_child(_chip_sockets(layer, hid, eq))
 	stage.add_child(sv)
 	v.add_child(stage)
@@ -3109,7 +3214,7 @@ func _weapons_screen() -> void:
 	atk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(atk)
 	var mkey := Arsenal.key(hid, eq_cls)
-	var mb := UIKit.ghost_button("Mastery %d / %d" % [Mastery.level(sdata, mkey), Mastery.TRACKS[Mastery.cls_of(mkey)].size()], 12)
+	var mb := UIKit.ghost_button("Mastery %d / %d  ›" % [Mastery.level(sdata, mkey), Mastery.TRACKS[Mastery.cls_of(mkey)].size()], 12)
 	mb.custom_minimum_size = Vector2(132, 36)
 	UIKit.dot(mb, Mastery.ready(sdata, mkey))
 	mb.pressed.connect(func(): _weapon_info(layer, hid, eq))
@@ -3129,6 +3234,14 @@ func _weapons_screen() -> void:
 			sub = ("%s coins" % UIKit.num(Arsenal.cost(hid, String(cls)))) if why == "" or why == "Not enough coins" else why
 		var t := _pick_square(_weapon_tile_pic(id), GearData.weapon_name(id, hid), 96.0, id == eq, el_col if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		if open:
+			var lvp := PanelContainer.new()   # a small level pill, drawn over the picture
+			lvp.add_theme_stylebox_override("panel", UIKit.pill(Color(0.03, 0.05, 0.1, 0.85), 8, Vector2(5, 1)))
+			lvp.add_child(UIKit.label("Lv.%d" % _lvl(id), 10, UIKit.TEXT))
+			lvp.z_index = 1
+			lvp.position = Vector2(6, 5)
+			lvp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			t.add_child(lvp)
 		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
 		var wcls := String(cls)
@@ -3155,7 +3268,25 @@ func _weapons_screen() -> void:
 		grid.add_child(t)
 	v.add_child(grid)
 	# ---- ZONE 3: the one big button, where the thumb rests
-	var ub := UIKit.gold_button(_upgrade_btn.text.replace("\n", "  ·  "), 15)
+	var up_lv := _lvl(eq)
+	var up_cap := GearData.level_cap(GearData.rarity(gear, eq))
+	var up_text := "UPGRADE"
+	if up_lv >= GearData.MAX_LEVEL:
+		up_text = "MAX LEVEL"
+	elif up_lv >= up_cap:
+		up_text = "Lv.%d cap  ·  ascend %s" % [up_cap, String(Heroes.ROSTER[hid].name)]
+	else:   # what it costs: an icon and a number each, red when you are short of that one
+		var crow := HBoxContainer.new()
+		crow.alignment = BoxContainer.ALIGNMENT_CENTER
+		crow.add_theme_constant_override("separation", 6)
+		crow.add_child(_cost_pill(UIKit.ic("ic_coin"), GearData.upgrade_cost(up_lv), coins))
+		var needs: Dictionary = Parts.need(up_lv)
+		needs.merge(Materials.weapon_need(up_lv, eq_el))
+		var have_p: Dictionary = Parts.read(sdata)
+		for k in needs:
+			crow.add_child(_cost_pill(Parts.icon(String(k)), int(needs[k]), int(have_p.get(k, 0))))
+		v.add_child(crow)
+	var ub := UIKit.gold_button(up_text, 16)
 	ub.custom_minimum_size = Vector2(0, 56)
 	ub.disabled = _upgrade_btn.disabled
 	ub.pressed.connect(func():
@@ -3201,6 +3332,11 @@ func _weapon_sheet(wlayer: Control) -> VBoxContainer:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 10)
 	sheet.add_child(v)
+	var grip := ColorRect.new()   # the handle: this is a drawer, tap outside it to shut it
+	grip.color = Color(1, 1, 1, 0.22)
+	grip.custom_minimum_size = Vector2(44, 4)
+	grip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	v.add_child(grip)
 	return v
 
 # what the Mastery button opens: how it fires, its mastery, the level cap, the reset
@@ -4843,6 +4979,7 @@ class ChipTile extends Button:
 	var tex: Texture2D
 	var note := ""          # a few characters under the shape (a price, "Lv.20", "IN USE")
 	var note_col := Color(0.6, 0.68, 0.8)
+	var note_tex: Texture2D   # a tiny picture before the note: a coin (for sale) or a padlock (not yet)
 	var lit := false        # a chip sits here / you have it
 	var picked := false
 	var plus := false       # an open, empty socket
@@ -4915,7 +5052,13 @@ class ChipTile extends Button:
 			draw_line(c - Vector2(0, 8), c + Vector2(0, 8), pc, 2.0, true)
 		if note != "":
 			var f := get_theme_default_font()
-			draw_string(f, Vector2(0.0, size.y - 3.0), note, HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, note_col)
+			if note_tex != null:
+				var tw := f.get_string_size(note, HORIZONTAL_ALIGNMENT_LEFT, -1, 11).x
+				var x0 := (size.x - tw - 13.0) * 0.5
+				draw_texture_rect(note_tex, Rect2(x0, size.y - 13.0, 11.0, 11.0), false, Color(1, 1, 1, 0.9))
+				draw_string(f, Vector2(x0 + 13.0, size.y - 3.0), note, HORIZONTAL_ALIGNMENT_LEFT, -1, 11, note_col)
+			else:
+				draw_string(f, Vector2(0.0, size.y - 3.0), note, HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, note_col)
 
 var _chip_pop := -1   # the socket a chip was just put into: it snaps in once
 
@@ -5000,12 +5143,13 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 		c.lit = lack == ""
 		c.picked = id == pick
 		if now.has(id):
-			c.note = "IN" if String(now[slot]) == id else "USED"
+			c.note = "EQUIPPED" if String(now[slot]) == id else "IN USE"
 			c.note_col = Chips.color(id).lerp(Color.WHITE, 0.35)
 		elif lack != "":
 			var bw := Chips.why_not_buy(data, id) if general else lack
 			c.note = ("St.%d" % int(Chips.RARITY[Chips.rarity_of(id)].stage)) if bw.begins_with("Clear") else (UIKit.num(Chips.cost(id)) if general else lack.replace("Weapon ", ""))
 			c.note_col = UIKit.GOLD if general and bw == "" else UIKit.MUTED
+			c.note_tex = load("res://icons/ui_padlock.png") if (bw.begins_with("Clear") or not general) else UIKit.ic("ic_coin")
 		c.pressed.connect(func(): _chip_sheet(wlayer, hid, item, slot, id))
 		grid.add_child(c)
 	v.add_child(grid)
@@ -5086,3 +5230,10 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 func _dbg_chips() -> void:
 	_weapons_screen()
 	_chip_sheet(get_child(get_child_count() - 1), _hero_id(), gear.equipped["Weapon"], 2)
+
+# one price as a small pill: a picture and a number, the number red when you have too few
+func _cost_pill(icon: Texture2D, need: int, have: int) -> Control:
+	var p := PanelContainer.new()
+	p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.7), 12, Vector2(9, 4)))
+	p.add_child(UIKit.iconed(icon, UIKit.num(need), 13, Color(1.0, 0.42, 0.42) if have < need and not DevTools.on else UIKit.TEXT, 16.0))
+	return p
