@@ -23,7 +23,7 @@ const WEAPONS := {
 	# Energy, the all-rounder: every 5th bolt is a CHARGED SHOT (three times the damage)
 	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.8, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
-	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.5, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
+	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
 	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.6, "speed": 430.0, "damage": 2.6, "rate_per_level": 0.012, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true, "splash": 62.0},   # Void: slow shells that EXPLODE (the blast hits bugs around the one it struck)
 	# Nightmare set: slow rail bolts that pierce every bug in their line
@@ -37,6 +37,8 @@ var weapon_id := "laser_pistol"
 var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20
 var _mastery := {}              # Mastery.bonus for the class in hand
 var _steps := {}                # WeaponSteps.bonus for the weapon in hand (its level milestones)
+var _hud_left_n := -1          # the HUD's "n left" in this wave, and its text (rebuilt only when it changes)
+var _hud_left := ""
 var _volley_n := 0              # volleys fired this stage (a third shot every other one, the fan every 10th)
 var _ice_patches: Array = []    # the cannon's Ice field: {pos, r, t} patches that slow bugs
 var _shard_q: Array = []        # the pistol's Shatter: shards waiting to be added to the bullets
@@ -1328,6 +1330,24 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			nb["arc"] = true
 		if w_charged and int(_steps.get("charged_spark", 0)) > 0:
 			nb.spark = maxi(int(nb.spark), 1)
+		# the twins' every-3rd trick by element (Shots.TWIN_TRICK): only the electric hero arcs
+		if _shot_shape == "ball" and int(w.get("spark_every", 0)) > 0 and _bolt_set != "scavenger" and _shot_n % int(w.spark_every) == 0:
+			if not (chain_level > 0 and _shot_n % 5 == 0):
+				nb.spark = 0
+			match _bolt_set:
+				"frost":
+					nb.frost = true
+				"solar":
+					nb.burn = true
+				"void":
+					nb["heal"] = 0.004
+				"nightmare":
+					nb["marks"] = 0.7
+				_:   # energy: a sure critical hit
+					if not nb.lucky:
+						nb.lucky = true
+						nb.big = true
+						nb.dmg = float(nb.dmg) * _crit_dmg
 		if int(nb.spark) > 0 and int(w.get("spark_every", 0)) > 0:
 			nb.spark = int(nb.spark) + int(_steps.get("spark_add", 0))
 		# Twin Trigger (Rook card): every Nth bolt brings a twin beside it
@@ -1435,6 +1455,10 @@ func _update_bullets(delta: float) -> void:
 								e.slow = maxf(float(e.get("slow", 0.0)), float(_steps.mark_slow))
 				if float(_steps.get("exec", 0.0)) > 0.0 and b.get("charged", false) and float(e.hp) < 0.5 * float(e.hp_max):
 					dmg *= 1.0 + float(_steps.exec)   # Execution (Nyx's pistol at Lv.30)
+				if float(b.get("heal", 0.0)) > 0.0:   # the void twins' Leech
+					pilot_hp = minf(pilot_hp + pilot_hp_max * float(b.heal), pilot_hp_max)
+				if float(b.get("marks", 0.0)) > 0.0:   # the nightmare twins' Mark
+					e.mark_t = maxf(float(e.get("mark_t", 0.0)), float(b.marks))
 				if float(_steps.get("hit_heal", 0.0)) > 0.0 and b.has("shape"):
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.hit_heal), pilot_hp_max)   # Hunger (Hollow's twins)
 				if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
@@ -4129,6 +4153,14 @@ func _draw_hud() -> void:
 		_hc.draw_string(hud_font, Vector2(wx, y2), "WAVE", HORIZONTAL_ALIGNMENT_LEFT, -1, 10, muted)
 		_hc.draw_string(title_font, Vector2(wx + 38.0, y2), "%d/%d" % [wave_now, waves.size()], HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 		wx += 96.0
+	# how many bugs this wave still holds (waiting to arrive + on the field): the player sees its end coming
+	var left_n: int = wave_queue.size() + enemies.size()
+	if left_n != _hud_left_n:
+		_hud_left_n = left_n
+		_hud_left = "%d left" % left_n
+	if left_n > 0 and not picking:
+		_hc.draw_string(title_font, Vector2(wx + 6.0, y2), _hud_left, HORIZONTAL_ALIGNMENT_LEFT, -1, 12, Color(1, 1, 1, 0.85))
+		wx += 14.0 + 7.0 * _hud_left.length()
 	_hc.draw_string(title_font, Vector2(wx + 6.0, y2), str(score), HORIZONTAL_ALIGNMENT_LEFT, -1, 12, muted)
 	# the pilot's HP bar (dev172: HP instead of hearts): a red pill with the number in it, at the right
 	var bar := Rect2(FIELD_W - 174.0, y2 - 11.0, 160.0, 12.0)

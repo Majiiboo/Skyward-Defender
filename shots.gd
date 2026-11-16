@@ -385,3 +385,18 @@ const FEEL := {
 
 static func feel(sh: String) -> Dictionary:
 	return FEEL.get(sh, FEEL["pellet"])
+
+# THE TWIN PISTOLS' TRICK, by element (2026-11-16). Every 3rd volley does something extra. It was an
+# electric arc for every hero; now only Sparks arcs, the others do what their element does.
+# [chip, line for the Weapons screen]
+const TWIN_TRICK := {
+	"scavenger": ["Arc", "Twin shots; every 3rd arcs to a second bug"],
+	"frost": ["Chill", "Twin snowballs; every 3rd chills the bug it hits"],
+	"solar": ["Ignite", "Twin fireballs; every 3rd sets its bug burning"],
+	"ion": ["Sure shot", "Twin bolts; every 3rd is a sure critical hit"],
+	"void": ["Leech", "Twin shades; every 3rd heals him a little"],
+	"nightmare": ["Mark", "Twin crescents; every 3rd marks its bug so shots crit it"],
+}
+
+static func twin_trick(element: String) -> Array:
+	return TWIN_TRICK.get(element, TWIN_TRICK["scavenger"])

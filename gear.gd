@@ -3079,6 +3079,8 @@ func _weapons_screen() -> void:
 	v.add_child(show_p)
 	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
 	var est: Dictionary = GearData.weapon_style(eq)
+	if eq_cls == "twin":   # the twins trick is by element (Shots.TWIN_TRICK)
+		est = {"style": String(Shots.twin_trick(eq_el)[0]), "text": String(Shots.twin_trick(eq_el)[1])}
 	if not est.is_empty():
 		var srow := HBoxContainer.new()
 		srow.alignment = BoxContainer.ALIGNMENT_CENTER

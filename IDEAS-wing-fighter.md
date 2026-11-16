@@ -29,7 +29,7 @@ or pay screens.
    small shell. The hero's element then decides what the shot is.
 
 ## For the FIGHT screen
-9. **A kill counter per wave** ("5 / 14") beside the wave number. Small, and it tells the player
+9. (done 2026-11-16 as "n left" on the HUD) **A kill counter per wave** ("5 / 14") beside the wave number. Small, and it tells the player
    how close the wave is to ending.
 
 ## For the MENUS (any time, cheap)
@@ -63,7 +63,7 @@ or pay screens.
   whole area, Ember = dragon breath (a wide cone, very short), Sparks = a tesla coil he drops
   that zaps on its own, Rook = an orbital marker that calls a beam down, Hollow = a rift that
   swallows small bugs, Nyx = a thrown glaive that returns.
-- **The twin pistols' basic trick is an electric arc for every hero** (every 3rd shot arcs to a
+- (done 2026-11-16) The twin pistols trick is by element now (Shots.TWIN_TRICK): only Sparks arcs.
   second bug). It suits Sparks; for the penguin's snowballs it is odd. Each element could get
   its own (ice: a small splash of frost, fire: a flare-up...).
 - **Sounds are generated and unheard.** Each class has its own shot and hit sound; a pass per

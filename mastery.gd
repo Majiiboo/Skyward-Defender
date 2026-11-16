@@ -29,7 +29,7 @@ const TRACKS := {
 		{"name": "Fast hands", "text": "Fire rate +8%", "fx": {"rate": 0.08}},
 		{"name": "Sharp eye", "text": "Crit chance +5%", "fx": {"crit": 0.05}},
 		{"name": "Heavy rounds", "text": "Attack +10%", "fx": {"atk": 0.1}},
-		{"name": "Storm link", "text": "The arc comes one shot sooner and both pistols hit 15% harder", "fx": {"spark_minus": 1, "atk": 0.15}},
+		{"name": "Quick trick", "text": "Their every-3rd trick comes one shot sooner and both pistols hit 15% harder", "fx": {"spark_minus": 1, "atk": 0.15}},
 	],
 	"main": [
 		{"name": "Tight grouping", "text": "Attack +8%", "fx": {"atk": 0.08}},
