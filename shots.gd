@@ -217,8 +217,6 @@ static func piece(sh: String, k: String, big: float) -> String:
 static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: int, t: float) -> bool:
 	var k := kind(element)
 	var painted := piece(sh, k, big) != "" and tex(element, piece(sh, k, big)) != null   # Luna has painted this one
-	if k == "energy" and sh == "pellet" and not painted:
-		return false
 	var cols := colours(element)
 	var core: Color = cols[0]
 	var glow: Color = cols[1]
@@ -235,7 +233,11 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 				c.draw_texture_rect(pt, Rect2(-PS * 0.55, -PS * 0.5, PS, PS), false, Color.WHITE)
 				return true
 			c.draw_line(Vector2(-L * 1.7, 0), Vector2(-L * 0.3, 0), Color(glow, 0.35), 2.0)
-			if k == "crystal":   # a sharp shard of ice
+			if k == "energy":   # a clean bolt of energy: a bright dash with a white point
+				c.draw_line(Vector2(-L * 0.9, 0), Vector2(L * 0.5, 0), Color(glow, 0.55), W * 1.1)
+				c.draw_line(Vector2(-L * 0.5, 0), Vector2(L * 0.5, 0), core, W * 0.42)
+				c.draw_circle(Vector2(L * 0.5, 0), W * 0.45, core)
+			elif k == "crystal":   # a sharp shard of ice
 				c.draw_colored_polygon(PackedVector2Array([Vector2(L * 0.55, 0), Vector2(0, -W * 0.5), Vector2(-L * 0.45, 0), Vector2(0, W * 0.5)]), Color(glow, 0.55))
 				c.draw_colored_polygon(PackedVector2Array([Vector2(L * 0.42, 0), Vector2(0, -W * 0.28), Vector2(-L * 0.25, 0), Vector2(0, W * 0.28)]), core)
 			else:                # an ember: a hot head, a tail of flame

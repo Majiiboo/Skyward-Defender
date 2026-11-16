@@ -56,6 +56,7 @@ func _initialize() -> void:
 	_check_mastery()
 	_check_weapon_steps()
 	_check_weapon_reset()
+	_check_specials()
 	_check_four_weapons()
 	_check_store2()
 	_check_talents()
@@ -1302,3 +1303,14 @@ func _check_weapon_reset() -> void:
 	_expect(int(back.coins) == want and int(back.parts.get("alloy", 0)) > 0, "a Lv.12 weapon refunds the coins and parts of 11 upgrades (%d)" % int(back.coins))
 	_expect(Arsenal.reset(s, "frost", "main") and int(s.coins) == 100 + want and Arsenal.level(Arsenal.read(s), "frost", "main") == 1, "reset: Lv.1 again and the coins are back")
 	_expect(not Arsenal.reset(s, "frost", "main"), "a Lv.1 weapon has nothing to reset")
+
+# the Specialty weapons: one per hero, earned with all four weapons at mastery step 3
+func _check_specials() -> void:
+	for hid in Arsenal.SETS:
+		var sp: Dictionary = Arsenal.special(hid)
+		_expect(String(sp.get("name", "")) != "" and String(sp.get("text", "")) != "" and float(sp.get("cd", 0.0)) >= 4.0, "%s has a Specialty weapon with a name, a line and a cooldown" % hid)
+	var s := {"mastery": {}}
+	_expect(not Arsenal.special_earned(s, "frost"), "no mastery: the Specialty is not earned")
+	for c in Arsenal.ORDER:
+		s.mastery[Arsenal.key("frost", c)] = {"kills": 999, "level": Arsenal.SPECIAL_STEP}
+	_expect(Arsenal.special_earned(s, "frost") and not Arsenal.special_earned(s, "rook"), "all four at step 3 earns his own Specialty only")

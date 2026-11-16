@@ -3168,11 +3168,12 @@ func _weapons_screen() -> void:
 	sp_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	sp_ic.modulate = UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT
 	sp_row.add_child(sp_ic)
-	var sp_l := UIKit.label("%s weapon" % Arsenal.SPECIALTY, 12, UIKit.GOLD if sp_n >= sp_all else UIKit.TEXT)
+	var sp_def: Dictionary = Arsenal.special(hid)
+	var sp_l := UIKit.label(String(sp_def.get("name", "%s weapon" % Arsenal.SPECIALTY)), 12, UIKit.GOLD if sp_n >= sp_all else UIKit.TEXT)
 	sp_row.add_child(sp_l)
-	var sp_t := UIKit.label("Earned. Coming in a later update." if sp_n >= sp_all else "All four at mastery step %d" % Arsenal.SPECIAL_STEP, 11, UIKit.MUTED)
+	var sp_t := UIKit.label((String(sp_def.get("text", "Earned")) + ". Fires by itself.") if sp_n >= sp_all else "Specialty: all four at mastery step %d" % Arsenal.SPECIAL_STEP, 11, UIKit.TEXT if sp_n >= sp_all else UIKit.MUTED)
+	sp_t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	sp_t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sp_t.clip_text = true
 	sp_row.add_child(sp_t)
 	sp_row.add_child(UIKit.label("%d / %d" % [sp_n, sp_all], 12, UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT))
 	sp_p.add_child(sp_row)

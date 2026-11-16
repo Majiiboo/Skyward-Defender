@@ -683,6 +683,7 @@ func _start_stage() -> void:
 	_volley_n = 0
 	_ice_patches.clear()
 	_shard_q.clear()
+	_special_setup(sv, String(gs.get("hero", "rook")))   # his Specialty weapon, when earned
 	_wpn_key = ""
 	weapon_form = int(gs.get("weapon_form", 1))
 	PilotSprite.style = gs.thruster
@@ -932,6 +933,7 @@ func _process(delta: float) -> void:
 	_update_runners(delta)
 	_update_strikes(delta)
 	_update_patches(delta)
+	_update_special(delta)
 	_update_supply(delta)
 	_update_support(delta)
 	_update_streak(delta)
@@ -3956,6 +3958,7 @@ func _draw_fx() -> void:
 	_draw_zaps()
 	_draw_drone_light()
 	_draw_patches()
+	_draw_special()
 	for f in fxs:
 		var k: float = 1.0 - f.life / f.max
 		var tex: Texture2D = _fx_tex[f.tex]
@@ -4014,7 +4017,7 @@ func _draw_fx() -> void:
 		# WHAT THE WEAPON FIRES (Shots): pellets, balls, a stream or one big shot, in the hero's element
 		if bl.has("shape"):
 			_fx.draw_set_transform(bl.pos, bl.vel.angle(), Vector2.ONE)
-			if Shots.draw(_fx, String(bl.shape), _bolt_set, (1.0 + (big - 1.0) * 0.7) * (0.9 + 0.1 * bw), int(bl.get("sn", 0)), time_alive):
+			if Shots.draw(_fx, String(bl.shape), _bolt_set, (1.0 + (big - 1.0) * 0.7) * (0.9 + 0.1 * minf(bw, 2.0)), int(bl.get("sn", 0)), time_alive):
 				continue
 		# the cards change how a bolt LOOKS (Luna's bolt designs): a needle with a ring for
 		# rail / piercing shots, a crackling bolt for Chain Spark, a fat slug for Heavy Bolts,
@@ -6037,3 +6040,233 @@ func _base_hit() -> float:
 func _dbg_leave() -> void:   # captures: the pause menu with the "leave the stage?" card over it
 	_toggle_pause()
 	_confirm_leave()
+
+# ---------------------------------------------------------------- SPECIALTY WEAPONS (2026-11-16)
+# The unique weapon of a hero in the extra slot (Arsenal.SPECIALS), earned with all four of his
+# weapons at mastery step 3. It fires BY ITSELF every few seconds beside the weapon in hand.
+# Six of them: Snow Globe (frost), Dragon Breath (ember), Tesla Coil (sparks), Orbital Strike
+# (rook), Rift (hollow), Glaive (nyx). Stand-in looks on the light layer until Luna paints them.
+# Damage is in the units of a weapon row (x damage_mult x the element), sized to about a seventh
+# on top of the weapon in hand.
+var _sp_id := ""            # the hero whose Specialty is live ("" = not earned)
+var _sp_t := 5.0            # seconds to the next one
+var _sp_objs: Array = []    # what is in the air / on the field: {kind, pos, t, ...}
+var _sp_said := false
+
+func _special_setup(sv: Dictionary, hero: String) -> void:
+	_sp_id = hero if Arsenal.SPECIALS.has(hero) and (Arsenal.special_earned(sv, hero) or bool(sv.get("special_test", false))) else ""
+	_sp_t = 5.0
+	_sp_objs.clear()
+	_sp_said = false
+
+func _sp_hit(e: Dictionary, units: float) -> void:
+	if not _can_hurt(e):
+		return
+	var d: float = _through_shield(e, units * damage_mult * _elem_mult)
+	stat_pilot_dmg += minf(d, maxf(float(e.hp), 0.0))
+	_count_dmg("hero", d, e)
+	_show_dmg(e, d, false, _elem_mult)
+	e.hp -= d
+	e.hit_t = HIT_FLINCH_T
+
+# the bug with the most company: where an area weapon does the most
+func _sp_crowd() -> Dictionary:
+	var best := {}
+	var best_n := -1
+	for e in enemies:
+		if not _can_hurt(e) or float(e.pos.y) < 50.0:
+			continue
+		var n := 0
+		for o in enemies:
+			if Vector2(o.pos).distance_to(e.pos) < 100.0:
+				n += 1
+		if n > best_n:
+			best_n = n
+			best = e
+	return best
+
+func _update_special(delta: float) -> void:
+	if _sp_id == "":
+		return
+	var keep: Array = []
+	var born: Array = []
+	for o in _sp_objs:
+		o.t = float(o.t) - delta
+		match String(o.kind):
+			"globe":   # in the air; lands, freezes
+				if float(o.t) <= 0.0:
+					for e in enemies:
+						if Vector2(e.pos).distance_to(o.to) < 95.0 + float(e.r) * 0.5:
+							_sp_hit(e, 2.4)
+							if _is_boss(e):
+								e.slow_t = 2.0
+								e.slow = maxf(float(e.get("slow", 0.0)), 0.4)
+							else:
+								e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 1.6)
+					_ice_patches.append({"pos": Vector2(o.to), "r": 95.0, "t": 2.5, "max": 2.5, "burn": false})
+					var bp := _shot_fx("burst")
+					_fx_add(bp if bp != "" else "nova", o.to, 150.0 if bp != "" else 70.0, 0.45, rng.randf() * TAU, 1.7, Color.WHITE)
+					_shot_bits(o.to, 8, 220.0)
+					Sfx.play("boom", 1.15)
+					shake = maxf(shake, 0.25)
+			"breath":   # a cone of fire in front of him while it lasts
+				o.tick = float(o.tick) - delta
+				if float(o.tick) <= 0.0:
+					o.tick = 0.15
+					var from := _muzzle_world()
+					for e in enemies:
+						var to_e: Vector2 = Vector2(e.pos) - from
+						if to_e.length() < 200.0 + float(e.r) and absf(Vector2(o.dir).angle_to(to_e)) < 0.55:
+							_sp_hit(e, 0.5)
+							if e.type != "spore":
+								e.burn_t = maxf(float(e.get("burn_t", 0.0)), 2.0)
+								e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.025) * float(e.hp_max))
+			"coil":   # sits where he dropped it and zaps the nearest bug
+				o.tick = float(o.tick) - delta
+				if float(o.tick) <= 0.0:
+					o.tick = 0.45
+					var near := {}
+					for e in enemies:
+						if _can_hurt(e) and Vector2(e.pos).distance_to(o.pos) < 165.0 and (near.is_empty() or Vector2(e.pos).distance_to(o.pos) < Vector2(near.pos).distance_to(o.pos)):
+							near = e
+					if not near.is_empty():
+						_sp_hit(near, 0.85)
+						zaps.append({"a": Vector2(o.pos), "b": Vector2(near.pos), "life": 0.2, "seed": rng.randf() * 100.0})
+						Sfx.play("hit_soft", 1.4)
+			"orbital":   # a mark that follows its bug, then the beam
+				for e in enemies:
+					if int(e.id) == int(o.id):
+						o.pos = Vector2(e.pos)
+				if float(o.t) <= 0.0:
+					for e in enemies:
+						if Vector2(e.pos).distance_to(o.pos) < 58.0 + float(e.r) * 0.5:
+							_sp_hit(e, 7.5 if int(e.id) == int(o.id) else 3.0)
+					born.append({"kind": "beam", "pos": Vector2(o.pos), "t": 0.4, "dur": 0.4})
+					Sfx.play("shot_heavy", 1.3)
+					shake = maxf(shake, 0.3)
+			"rift":   # drags bugs in; swallows the weak
+				o.tick = float(o.tick) - delta
+				var bite: bool = float(o.tick) <= 0.0
+				if bite:
+					o.tick = 0.3
+				for e in enemies:
+					var d: float = Vector2(e.pos).distance_to(o.pos)
+					if _is_boss(e) or not _can_hurt(e) or d > 135.0:
+						continue
+					e.pos = Vector2(e.pos) + (Vector2(o.pos) - Vector2(e.pos)).limit_length(70.0 * delta)
+					if bite and d < 60.0:
+						if float(e.hp) < 0.25 * float(e.hp_max) and d < 48.0:
+							_sp_hit(e, 99.0)   # swallowed
+							_fx_add("impact", e.pos, 30.0, 0.3, rng.randf() * TAU, 0.4, Color(0.8, 0.5, 1.0))
+						else:
+							_sp_hit(e, 0.7)
+			"glaive":   # out and back along one line, cutting each bug once each way
+				var k: float = clampf(1.0 - float(o.t) / float(o.dur), 0.0, 1.0)
+				var leg := 0 if k < 0.5 else 1
+				o.pos = (Vector2(o.from) if leg == 0 else _muzzle_world()) + Vector2(o.dir) * 330.0 * sin(PI * k)
+				for e in enemies:
+					var key := "%d_%d" % [int(e.id), leg]
+					if not o.hits.has(key) and Vector2(e.pos).distance_to(o.pos) < 30.0 + float(e.r) * 0.5:
+						o.hits[key] = true
+						_sp_hit(e, 2.0)
+						_fx_add("impact", e.pos, 24.0, 0.2, rng.randf() * TAU, 1.6, Color(1.0, 0.5, 0.5))
+		if float(o.t) > 0.0:
+			keep.append(o)
+	keep.append_array(born)
+	_sp_objs = keep
+	if picking:
+		return
+	_sp_t -= delta
+	if _sp_t > 0.0:
+		return
+	var crowd := _sp_crowd()
+	if crowd.is_empty():
+		_sp_t = 0.5   # nothing to fire at yet
+		return
+	_sp_t = float(Arsenal.SPECIALS[_sp_id].cd)
+	var from0 := _muzzle_world()
+	if not _sp_said:
+		_sp_said = true
+		_float_text(soldier_pos + Vector2(0, -70), String(Arsenal.SPECIALS[_sp_id].name).to_upper(), Color(1.0, 0.85, 0.4))
+	match _sp_id:
+		"frost":
+			_sp_objs.append({"kind": "globe", "pos": from0, "from": from0, "to": Vector2(crowd.pos), "t": 0.5, "dur": 0.5})
+			Sfx.play("shot_ball", 0.8)
+		"ember":
+			_sp_objs.append({"kind": "breath", "pos": from0, "dir": (Vector2(crowd.pos) - from0).normalized(), "t": 1.3, "dur": 1.3, "tick": 0.0})
+			Sfx.play("stream", 0.7, 6.0)
+		"sparks":
+			_sp_objs.append({"kind": "coil", "pos": Vector2(soldier_pos) + Vector2(0, -30), "t": 6.0, "dur": 6.0, "tick": 0.2})
+			Sfx.play("shot_charge", 1.2)
+		"rook":
+			var tough: Dictionary = crowd
+			for e in enemies:
+				if _can_hurt(e) and float(e.hp) > float(tough.hp):
+					tough = e
+			_sp_objs.append({"kind": "orbital", "pos": Vector2(tough.pos), "id": int(tough.id), "t": 0.9, "dur": 0.9})
+			Sfx.play("shot_charge", 0.8)
+		"hollow":
+			_sp_objs.append({"kind": "rift", "pos": Vector2(crowd.pos), "t": 3.0, "dur": 3.0, "tick": 0.2})
+			Sfx.play("shot_heavy", 0.7)
+		"nyx":
+			_sp_objs.append({"kind": "glaive", "pos": from0, "from": from0, "dir": (Vector2(crowd.pos) - from0).normalized(), "t": 1.1, "dur": 1.1, "hits": {}})
+			Sfx.play("shot_ball", 1.3)
+	_kick(1.2)
+
+func _draw_special() -> void:
+	if _sp_objs.is_empty():
+		return
+	var cols: Array = Shots.colours(_bolt_set)
+	var core: Color = cols[0]
+	var glow: Color = cols[1]
+	for o in _sp_objs:
+		_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		var k: float = clampf(1.0 - float(o.t) / maxf(float(o.get("dur", 1.0)), 0.01), 0.0, 1.0)
+		match String(o.kind):
+			"globe":
+				var p: Vector2 = Vector2(o.from).lerp(o.to, k) + Vector2(0, -60.0 * sin(PI * k))
+				_fx.draw_circle(p, 13.0, Color(glow, 0.3))
+				_fx.draw_arc(p, 9.0, 0.0, TAU, 20, core, 2.0, true)
+				_fx.draw_circle(p, 4.0, Color(core, 0.9))
+				_fx.draw_arc(o.to, 95.0, 0.0, TAU, 40, Color(glow, 0.35), 1.5, true)
+			"breath":
+				var from := _muzzle_world()
+				var dir: Vector2 = o.dir
+				var a := clampf(k * 6.0, 0.0, 1.0) * clampf(float(o.t) * 5.0, 0.0, 1.0)
+				var se := Shots.tex(_bolt_set, "stream_end")
+				if se != null:
+					var ex := dir * 230.0
+					var ey := dir.orthogonal() * 125.0 * (0.92 + 0.08 * sin(time_alive * 30.0))
+					var o0 := from - dir * 24.0
+					var c0 := Color(1, 1, 1, a)
+					_fx.draw_polygon(PackedVector2Array([o0 - ey, o0 + ex - ey, o0 + ex + ey, o0 + ey]), PackedColorArray([c0, c0, c0, c0]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), se)
+				else:
+					_fx.draw_colored_polygon(PackedVector2Array([from, from + dir.rotated(-0.55) * 200.0, from + dir * 215.0, from + dir.rotated(0.55) * 200.0]), Color(glow, 0.45 * a))
+			"coil":
+				var pulse := 0.6 + 0.4 * sin(time_alive * 12.0)
+				_fx.draw_circle(o.pos, 14.0, Color(glow, 0.25 * pulse))
+				_fx.draw_arc(o.pos, 8.0, 0.0, TAU, 16, Color(glow.lerp(core, 0.5), 0.9), 2.2, true)
+				_fx.draw_circle(o.pos, 3.5, core)
+				_fx.draw_arc(o.pos, 165.0, 0.0, TAU, 48, Color(glow, 0.1), 1.0, true)
+			"orbital":
+				_fx.draw_arc(o.pos, 58.0 * (1.0 - k) + 14.0, 0.0, TAU, 32, Color(core, 0.5 + 0.5 * k), 2.0, true)
+				_fx.draw_line(Vector2(o.pos) + Vector2(-9, 0), Vector2(o.pos) + Vector2(9, 0), Color(core, 0.9), 1.5)
+				_fx.draw_line(Vector2(o.pos) + Vector2(0, -9), Vector2(o.pos) + Vector2(0, 9), Color(core, 0.9), 1.5)
+			"beam":
+				var fade := clampf(float(o.t) / 0.4, 0.0, 1.0)
+				var px: float = float(o.pos.x)
+				_fx.draw_rect(Rect2(px - 34.0, -20.0, 68.0, float(o.pos.y) + 20.0), Color(glow, 0.3 * fade))
+				_fx.draw_rect(Rect2(px - 15.0, -20.0, 30.0, float(o.pos.y) + 20.0), Color(glow.lerp(core, 0.6), 0.7 * fade))
+				_fx.draw_rect(Rect2(px - 6.0, -20.0, 12.0, float(o.pos.y) + 20.0), Color(1, 1, 1, fade))
+				_fx.draw_circle(o.pos, 58.0 * (1.2 - 0.3 * fade), Color(glow, 0.35 * fade))
+			"rift":
+				var grow := clampf(k * 5.0, 0.0, 1.0) * clampf(float(o.t) * 3.0, 0.0, 1.0)
+				_fx.draw_circle(o.pos, 135.0 * grow, Color(glow, 0.06))
+				for i in 4:
+					var a0 := time_alive * (3.0 + i) + i * 1.6
+					_fx.draw_arc(o.pos, (52.0 - 11.0 * i) * grow, a0, a0 + PI * 1.3, 18, Color(glow.lerp(core, 0.15 * i), 0.85 - 0.12 * i), 2.6, true)
+			"glaive":
+				var sp := time_alive * 22.0
+				_fx.draw_arc(o.pos, 17.0, sp, sp + PI * 1.15, 16, Color(glow, 0.65), 6.0, true)
+				_fx.draw_arc(o.pos, 17.0, sp + 0.15, sp + PI, 16, core, 2.4, true)
+				_fx.draw_arc(o.pos, 17.0, sp + PI, sp + PI * 2.15, 16, Color(glow, 0.35), 4.0, true)

@@ -268,3 +268,19 @@ static func reset(save: Dictionary, hid: String, cls: String) -> bool:
 	a[hid].levels[cls] = 1
 	save["arsenal"] = a
 	return true
+
+# ------------------------------------------------------------------ the Specialty weapons (2026-11-16)
+# Each hero has a unique weapon, earned with all four of his weapons at mastery step SPECIAL_STEP.
+# It rides in the EXTRA slot: it fires by itself every `cd` seconds beside the weapon in hand
+# (battle _update_special). Stand-in looks drawn in code until Luna paints them.
+const SPECIALS := {
+	"frost": {"name": "Snow Globe", "text": "Lobs a globe that freezes every bug where it lands", "cd": 9.0},
+	"ember": {"name": "Dragon Breath", "text": "Breathes a wide cone of fire, very short range", "cd": 8.0},
+	"sparks": {"name": "Tesla Coil", "text": "Drops a coil that zaps nearby bugs on its own", "cd": 12.0},
+	"rook": {"name": "Orbital Strike", "text": "Marks the toughest bug and calls a beam down on it", "cd": 9.0},
+	"hollow": {"name": "Rift", "text": "Opens a rift that drags bugs in and swallows the weak ones", "cd": 12.0},
+	"nyx": {"name": "Glaive", "text": "Throws a glaive that cuts through bugs and flies back", "cd": 6.0},
+}
+
+static func special(hid: String) -> Dictionary:
+	return SPECIALS.get(hid, {})
