@@ -21,7 +21,7 @@ const SAVE := "user://skybound_save.json"
 const WEAPONS := {
 	# WEAPONS THAT PLAY DIFFERENTLY (2026-11-10, step 3 of DESIGN-base-and-helpers.md; texts in GearData.WEAPON_TEXT).
 	# Energy, the all-rounder: every 5th bolt is a CHARGED SHOT (three times the damage)
-	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.72, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
+	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.76, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
 	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
@@ -31,7 +31,7 @@ const WEAPONS := {
 	# Solar set: fast, long-range bolts
 	"laser_rifle": {"name": "Sun Rifle", "interval": 0.3, "speed": 620.0, "damage": 0.62, "projectiles": 3, "spread": 0.5, "hit_radius": 20.0, "range": 340.0},   # Fire: a FAN of three short-range bolts: fly close and it hits hardest
 	# Frost set: rapid small bolts
-	"frost_rifle": {"name": "Frost Rifle", "interval": 0.1, "speed": 620.0, "damage": 0.48, "projectiles": 1, "spread": 0.0, "hit_radius": 18.0, "frost": true, "range": 340.0},   # Ice: a rapid stream that SLOWS what it hits
+	"frost_rifle": {"name": "Frost Rifle", "interval": 0.1, "speed": 620.0, "damage": 0.56, "projectiles": 1, "spread": 0.0, "hit_radius": 20.0, "frost": true, "range": 420.0},   # Ice: a rapid stream that SLOWS what it hits
 }
 var weapon_id := "laser_pistol"
 var weapon_form := 1            # the weapon's shape (GearData.WEAPON_FORMS): II from Lv.10, III from Lv.20

@@ -164,6 +164,19 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 	for s in GearData.SLOTS:
 		lv["ion_" + s.to_lower()] = glv
 	d["gear"] = {"equipped": GearData.DEFAULT.duplicate(), "levels": lv}
+	# SIM_HERO / SIM_WEAPON (2026-11-16, weapons step 6): any hero with any of his four weapon
+	# classes, at the level the kit affords (capped by his step, as in the game)
+	var sim_hero := OS.get_environment("SIM_HERO")
+	var sim_cls := OS.get_environment("SIM_WEAPON")
+	if sim_hero != "" and Heroes.ROSTER.has(sim_hero):
+		d["hero"] = {"selected": sim_hero, "owned": ["rook", sim_hero], "levels": {sim_hero: hl}, "def": {sim_hero: dl}, "tiers": {sim_hero: star}, "shards": {}}
+	if sim_cls != "":
+		var hid := sim_hero if sim_hero != "" else "rook"
+		var wl := mini(wlv, Arsenal.cap(d, hid))
+		if OS.get_environment("SIM_WLV") != "":
+			wl = int(OS.get_environment("SIM_WLV"))
+		d["arsenal"] = {hid: {"equipped": sim_cls, "owned": Arsenal.ORDER.duplicate(), "levels": {sim_cls: wl}}}
+		_wkit = " %s %s Lv.%d" % [hid, sim_cls, wl]
 	var types := ["sentry", "lance", "storm", "gravity"]
 	var lo: Array = ["", "", "", ""]
 	var n := 0
@@ -191,7 +204,8 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 			blv[bid] = bl
 			bi += 1
 	d["base"] = {"slots": bslots, "levels": blv}
-	r_kit = "hero Lv.%d %d-star DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, star, dl, glv, n, tl]
+	r_kit = "hero Lv.%d %d-star DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, star, dl, glv, n, tl] + _wkit
+var _wkit := ""
 var r_kit := ""
 
 func _next() -> void:
