@@ -53,7 +53,7 @@ func _weapon() -> Dictionary:
 	var key := "%s/%d" % [weapon_id, weapon_form]
 	if key != _wpn_key:
 		_wpn = Dictionary(WEAPONS[weapon_id]).duplicate()
-		_wpn.merge(GearData.form_mods(weapon_id, weapon_form), true)
+		_wpn.merge(WeaponSteps.form_mods(weapon_id, _bolt_set, weapon_form), true)   # its shape (by element where the hero has his own)
 		if _wpn.has("rate_per_level"):   # the cannon: slow because it hits hard, a little faster every level
 			_wpn["interval"] = float(_wpn.interval) / (1.0 + float(_wpn.rate_per_level) * (_weapon_lv - 1))
 		if not _steps.is_empty():   # level milestones: reach, blast, the charged shot, a wider stream
@@ -1314,9 +1314,10 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0) or (_mastery_pierce > 0 and _shot_n % _mastery_pierce == 0), "hits": [],
 			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
 			"frost": frost_level > 0 or (bool(w.get("frost", false)) and _stream_fx == "slow"), "rail": rail or rail_gun, "lucky": lucky,
-			"shape": _shot_shape, "sn": _shot_n, "born": time_alive, "lane": i, "burn": bool(w.get("frost", false)) and _stream_fx == "burn",
+			"shape": _shot_shape, "sn": _shot_n, "born": time_alive, "lane": i, "burn": (bool(w.get("frost", false)) and _stream_fx == "burn") or int(_steps.get("burn_hit", 0)) > 0,
 			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
 			"charged": w_charged, "splash_slow": float(w.get("splash_slow", 0.0)),
+			"burn_x": float(w.get("burn_x", 1.0)), "leap": int(w.get("leap_every", 0)) > 0 and _shot_n % int(w.leap_every) == 0,
 			"freeze": int(w.get("freeze_every", 0)) > 0 and _shot_n % int(w.freeze_every) == 0,
 			"splash": float(w.get("splash", 0.0)), "ttl": (float(w.range) / float(w.speed)) if w.has("range") else 99.0,
 			"weld": _weld_count if _weld_count > 0 and _shot_n % _weld_every == 0 else 0})
@@ -1397,6 +1398,8 @@ func _update_bullets(delta: float) -> void:
 				dmg *= emult
 				if float(_steps.get("chill_dmg", 0.0)) > 0.0 and (float(e.get("slow_t", 0.0)) > 0.0 or float(e.get("freeze_t", 0.0)) > 0.0):
 					dmg *= 1.0 + float(_steps.chill_dmg)   # Frostbite (the rifle's Lv.30): chilled bugs take more
+				if float(_steps.get("burn_dmg", 0.0)) > 0.0 and float(e.get("burn_t", 0.0)) > 0.0:
+					dmg *= 1.0 + float(_steps.burn_dmg)   # Scorch (Ember's rifle at Lv.30): burning bugs take more
 				if _frost_bonus and float(e.get("slow_t", 0.0)) > 0.0:
 					dmg *= 1.2
 				if b.get("frost", false):
@@ -1406,7 +1409,16 @@ func _update_bullets(delta: float) -> void:
 						e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 0.9)
 				if b.get("burn", false) and e.type != "spore":   # a fire stream (Shots): a light burn in place of the chill
 					e.burn_t = maxf(float(e.get("burn_t", 0.0)), 1.2)
-					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.02) * float(e.hp_max))
+					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.02) * float(e.hp_max) * float(b.get("burn_x", 1.0)))
+					if b.get("leap", false):   # Flashover (a fire rifle's third shape): the fire leaps to the nearest other bug
+						var near = null
+						for o in enemies:
+							if o != e and o.type != "spore" and _can_hurt(o) and float(o.get("burn_t", 0.0)) <= 0.0 and Vector2(o.pos).distance_to(e.pos) < 110.0 and (near == null or Vector2(o.pos).distance_to(e.pos) < Vector2(near.pos).distance_to(e.pos)):
+								near = o
+						if near != null:
+							near.burn_t = 2.0
+							near.burn_dps = maxf(float(near.get("burn_dps", 0.0)), (0.004 if _is_boss(near) else 0.02) * float(near.hp_max) * float(b.get("burn_x", 1.0)))
+							_fx_add("impact", near.pos, 30.0, 0.3, rng.randf() * TAU, 1.8, Color(1.0, 0.6, 0.2))
 				# hero cards: Deep Freeze slows, Afterburn sets burning
 				if _freeze_level > 0:
 					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
@@ -1473,7 +1485,9 @@ func _update_bullets(delta: float) -> void:
 						_fx_add("nova", b.pos, float(b.splash) * 0.75, 0.34, 0.0, 1.8, Color(hcol, 0.95) if hsh != "" else Color(0.8, 0.5, 1.0))
 					if hsh == "boulder":
 						if float(_steps.get("patch", 0.0)) > 0.0:   # Ice field (the cannon's Lv.30)
-							_ice_patches.append({"pos": Vector2(b.pos), "r": float(b.splash) * 0.95, "t": float(_steps.patch), "max": float(_steps.patch)})
+							_ice_patches.append({"pos": Vector2(b.pos), "r": float(b.splash) * 0.95, "t": float(_steps.patch), "max": float(_steps.patch), "burn": int(_steps.get("patch_burn", 0)) > 0})
+							while _ice_patches.size() > 3:   # never more than three on the field: the oldest goes
+								_ice_patches.pop_front()
 						Sfx.play("boom", rng.randf_range(0.94, 1.06))
 						hitstop = maxf(hitstop, 0.03)
 				if int(b.get("weld", 0)) > 0:   # Arc Weld (Sparks card)
@@ -3836,6 +3850,11 @@ func _update_patches(delta: float) -> void:
 			continue
 		keep.append(p)
 		for e in enemies:
+			if p.get("burn", false):   # Lava pool: it burns in place of slowing (a boss burns a fifth as fast)
+				if e.type != "spore" and Vector2(e.pos).distance_to(p.pos) < float(p.r) + float(e.r) * 0.5:
+					e.burn_t = maxf(float(e.get("burn_t", 0.0)), 0.6)
+					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.008 if _is_boss(e) else 0.04) * float(e.hp_max))
+				continue
 			if not _is_boss(e) and Vector2(e.pos).distance_to(p.pos) < float(p.r) + float(e.r) * 0.5:
 				e.slow_t = maxf(float(e.get("slow_t", 0.0)), 0.3)
 				e.slow = maxf(float(e.get("slow", 0.0)), 0.4)

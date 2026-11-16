@@ -52,8 +52,50 @@ const CAPSTONE := {
 		"main": {"name": "Frostbite", "text": "Bugs the stream has slowed take 25% more damage", "fx": {"chill_dmg": 0.25}},
 		"heavy": {"name": "Ice field", "text": "The blast leaves a patch of ice that slows bugs for 3 seconds", "fx": {"patch": 3.0}},
 	},
+	# Ember (2026-11-16): fire spreads and lingers
+	"solar": {
+		"sidearm": {"name": "Flare", "text": "A bug killed by a charged shot bursts into embers", "fx": {"shatter": 6}},
+		"twin": {"name": "Wildfire", "text": "Every fireball sets the bug it hits burning", "fx": {"burn_hit": 1}},
+		"main": {"name": "Scorch", "text": "Burning bugs take 25% more damage", "fx": {"burn_dmg": 0.25}},
+		"heavy": {"name": "Lava pool", "text": "The blast leaves a pool of fire that burns bugs for 3 seconds", "fx": {"patch": 3.0, "patch_burn": 1}},
+	},
 }
 const PEAK := {"name": "Peak", "text": "Attack +12%", "fx": {"atk": 0.12}}   # an element with no capstone yet
+
+# The two SHAPE changes (Lv.10, Lv.20) are GearData.WEAPON_FORMS by class, written for the first
+# hero who had them (ice). Where an element needs its own (a fire stream burns, it does not chill),
+# FORMS_BY_ELEMENT replaces them: {element: {class: [form II, form III]}}.
+const FORMS_BY_ELEMENT := {
+	"solar": {
+		"twin": [
+			{"name": "Packed shots", "text": "Shots burst and scorch the bugs around the one they hit", "mods": {"splash": 36.0, "splash_share": 0.5}},
+			{"name": "Third hand", "text": "Every other volley throws a third shot", "mods": {"splash": 36.0, "splash_share": 0.5, "extra_every": 2}}],
+		"main": [
+			{"name": "Hotter flame", "text": "Burns twice as hard", "mods": {"burn_x": 2.0}},
+			{"name": "Flashover", "text": "The fire now and then leaps to a bug nearby", "mods": {"burn_x": 2.0, "leap_every": 12}}],
+	},
+}
+
+# {name, text, mods} of shape `f` (2 or 3) of a weapon item for a hero's element
+static func form(item: String, element: String, f: int) -> Dictionary:
+	var cls := GearData.weapon_class(item)
+	var own: Dictionary = FORMS_BY_ELEMENT.get(element, {})
+	if own.has(cls) and f >= 2 and f <= 3:
+		return own[cls][f - 2]
+	var fi: Dictionary = GearData.form_info(item, f)
+	if fi.is_empty():
+		return {}
+	return {"name": String(fi.get("name", "")), "text": String(fi.get("text", "")), "mods": fi.get("mods", {})}
+
+# what battle lays over the weapon's row for its shape (weapon kind `wk`, e.g. "frost_rifle")
+static func form_mods(wk: String, element: String, f: int) -> Dictionary:
+	if f <= 1:
+		return {}
+	var cls := String(GearData.WEAPON_CLASS.get(wk, ""))
+	var own: Dictionary = FORMS_BY_ELEMENT.get(element, {})
+	if own.has(cls):
+		return own[cls][clampi(f, 2, 3) - 2].mods
+	return GearData.form_mods(wk, f)
 
 static func count(lv: int) -> int:
 	var n := 0
@@ -76,14 +118,14 @@ static func step(item: String, element: String, i: int) -> Dictionary:
 		return Dictionary(CAPSTONE.get(element, {})).get(cls, PEAK)
 	var row: Dictionary = STEPS[cls][i]
 	if row.has("form"):
-		var fi: Dictionary = GearData.form_info(item, int(row.form))
+		var fi: Dictionary = form(item, element, int(row.form))
 		return {"name": String(fi.get("name", "")), "text": String(fi.get("text", "")), "fx": {}, "form": int(row.form)}
 	return row
 
 # everything a weapon of class `cls` has earned at level `lv`, for a hero of `element`
 static func bonus(cls: String, element: String, lv: int) -> Dictionary:
 	var out := {"atk": 0.0, "rate": 0.0, "crit": 0.0, "crit_dmg": 0.0, "charge_mult_add": 0.0, "range_x": 1.0,
-		"splash_x": 1.0, "stream_wide": 1.0, "shatter": 0, "fan_every": 0, "fan": 0, "chill_dmg": 0.0, "patch": 0.0}
+		"splash_x": 1.0, "stream_wide": 1.0, "shatter": 0, "fan_every": 0, "fan": 0, "chill_dmg": 0.0, "patch": 0.0, "burn_hit": 0, "burn_dmg": 0.0, "patch_burn": 0}
 	if not STEPS.has(cls):
 		return out
 	for i in count(lv):

@@ -156,7 +156,7 @@ static func draw(c: CanvasItem, sh: String, element: String, big: float, seed: i
 				c.draw_circle(Vector2(L * 0.05, 0), W * 0.5, core)
 		"ball":
 			var r := 5.4 * big
-			var bt := tex(element, "snowball")
+			var bt := tex(element, "fireball" if k == "flame" else "snowball")
 			if bt != null:   # Luna's snowball: its loose flakes trail behind it
 				var S := 21.0 * big / BALL_FILL
 				c.draw_circle(Vector2(-r * 1.9, sin(t * 14.0 + seed) * 1.2), r * 0.7, Color(glow, 0.14))

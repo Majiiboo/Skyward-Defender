@@ -3072,7 +3072,7 @@ func _weapons_screen() -> void:
 	ws.col = Heroes.element_color(eq_el)
 	show_v.add_child(ws)
 	show_v.add_child(UIKit.title(GearData.weapon_name(eq, hid), 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	var show_sub := UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [GearData.class_name_of(eq), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el))
+	var show_sub := UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [Shots.text(eq_el, eq_cls), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el))
 	show_sub.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	show_v.add_child(show_sub)
 	show_p.add_child(show_v)
@@ -3084,7 +3084,7 @@ func _weapons_screen() -> void:
 		srow.alignment = BoxContainer.ALIGNMENT_CENTER
 		srow.add_theme_constant_override("separation", 8)
 		srow.add_child(UIKit.chip(String(est.style), Heroes.element_color(eq_el)))
-		var now_fi: Dictionary = GearData.form_info(eq, GearData.weapon_form(_lvl(eq)))   # form II / III: say what it does NOW
+		var now_fi: Dictionary = WeaponSteps.form(eq, eq_el, GearData.weapon_form(_lvl(eq)))   # form II / III: say what it does NOW
 		srow.add_child(UIKit.label(String(now_fi.get("text", est.text)), 12, UIKit.TEXT))
 		v.add_child(srow)
 	# its SIX LEVEL MILESTONES (WeaponSteps): one every 5 levels, its own by class; Lv.10 and 20
