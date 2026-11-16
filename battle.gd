@@ -23,7 +23,7 @@ const WEAPONS := {
 	# Energy, the all-rounder: every 5th bolt is a CHARGED SHOT (three times the damage)
 	"laser_pistol": {"name": "Laser Pistol", "interval": 0.22, "speed": 520.0, "damage": 0.8, "projectiles": 1, "spread": 0.0, "hit_radius": 22.0, "charge": 5},
 	# Scavenger set: two small bolts side by side (a bit more damage, some misses)
-	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.52, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
+	"dual_minis": {"name": "Dual Minis", "interval": 0.22, "speed": 540.0, "damage": 0.5, "projectiles": 2, "spread": 0.07, "hit_radius": 18.0, "spark_every": 3},   # Electric: twin bolts, every 3rd ARCS to a second bug
 	# Void set: a slow, heavy bolt (same damage per second, more per hit)
 	"pulse_cannon": {"name": "Pulse Cannon", "interval": 0.6, "speed": 430.0, "damage": 2.6, "rate_per_level": 0.012, "projectiles": 1, "spread": 0.0, "hit_radius": 28.0, "big": true, "splash": 62.0},   # Void: slow shells that EXPLODE (the blast hits bugs around the one it struck)
 	# Nightmare set: slow rail bolts that pierce every bug in their line

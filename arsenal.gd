@@ -240,3 +240,31 @@ static func special_count(save: Dictionary, hid: String) -> int:
 
 static func special_earned(save: Dictionary, hid: String) -> bool:
 	return special_count(save, hid) >= classes(hid).size()
+
+# ------------------------------------------------------------------ reset (Rudy's Wing Fighter note, 2026-11-16)
+# A weapon can be taken back to Lv.1 and everything spent on its levels comes back: coins, parts,
+# materials. Trying another weapon costs nothing. Its mastery (earned by kills) and its unlock stay.
+# {coins, parts {id: n}} that a reset of this weapon pays back
+static func refund(save: Dictionary, hid: String, cls: String) -> Dictionary:
+	var out := {"coins": 0, "parts": {}}
+	var lv := level(read(save), hid, cls)
+	var el := String(Heroes.ROSTER[hid].element) if Heroes.ROSTER.has(hid) else "ion"
+	for l in range(1, lv):
+		out.coins += GearData.upgrade_cost(l)
+		var need := Parts.need(l)
+		need.merge(Materials.weapon_need(l, el))
+		for k in need:
+			out.parts[k] = int(out.parts.get(k, 0)) + int(need[k])
+	return out
+
+static func reset(save: Dictionary, hid: String, cls: String) -> bool:
+	var a := read(save)
+	if not Array(a[hid].owned).has(cls) or level(a, hid, cls) <= 1:
+		return false
+	var back := refund(save, hid, cls)
+	save["coins"] = int(save.get("coins", 0)) + int(back.coins)
+	for k in back.parts:
+		Parts.add(save, String(k), int(back.parts[k]))
+	a[hid].levels[cls] = 1
+	save["arsenal"] = a
+	return true

@@ -3201,6 +3201,27 @@ func _weapons_screen() -> void:
 	v.add_child(urow)
 	v.add_child(UIKit.label("A weapon levels as far as its hero's step allows. Ascend him to raise the cap.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
 	v.get_child(v.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	# RESET: back to Lv.1 with everything spent on its levels refunded (Arsenal.reset)
+	if _lvl(eq) > 1:
+		var back: Dictionary = Arsenal.refund(_read(), hid, eq_cls)
+		var rb := UIKit.ghost_button("Reset for a full refund", 11)
+		rb.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+		rb.pressed.connect(func():
+			var lines: Array = ["%s coins" % UIKit.num(int(back.coins))]
+			for k in back.parts:
+				lines.append("%s x%d" % [Parts.kind(String(k)).name, int(back.parts[k])])
+			if not await _confirm("RESET %s?" % GearData.weapon_name(eq, hid).to_upper(), "It goes back to Lv.1. You get back:\n" + ", ".join(lines) + "\nIts mastery stays.", "Reset", true):
+				return
+			var d := _read()
+			if Arsenal.reset(d, hid, eq_cls):
+				_write_data(d)
+				gear = GearData.read(d)
+				coins = int(d.get("coins", 0))
+				Sfx.play("claim")
+			layer.queue_free()
+			_select(selected_slot)
+			_weapons_screen())
+		v.add_child(rb)
 	var close := UIKit.ghost_button("Close", 13)
 	close.custom_minimum_size = Vector2(0, 38)
 	close.pressed.connect(layer.queue_free)

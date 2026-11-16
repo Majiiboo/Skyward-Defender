@@ -55,6 +55,7 @@ func _initialize() -> void:
 	_check_weapon_classes()
 	_check_mastery()
 	_check_weapon_steps()
+	_check_weapon_reset()
 	_check_four_weapons()
 	_check_store2()
 	_check_talents()
@@ -1289,3 +1290,15 @@ func _check_weapon_steps() -> void:
 		for cls2 in GearData.CLASS_ITEM:
 			_expect(WeaponSteps.step(String(GearData.CLASS_ITEM[cls2]), el2, 5) != WeaponSteps.PEAK, "%s %s has its own Lv.30 capstone" % [el2, cls2])
 		_expect(Shots.text(el2, "main") != "" and Shots.stream_fx(el2) != "", "%s has a stream and what it does" % el2)
+
+# a weapon reset pays back exactly what its levels cost (Arsenal.refund / reset)
+func _check_weapon_reset() -> void:
+	var s := {"coins": 100, "hero": {"selected": "frost", "owned": ["frost"], "levels": {"frost": 30}, "tiers": {"frost": 4}},
+		"arsenal": {"frost": {"equipped": "main", "owned": ["sidearm", "main"], "levels": {"main": 12}}}}
+	var back: Dictionary = Arsenal.refund(s, "frost", "main")
+	var want := 0
+	for l in range(1, 12):
+		want += GearData.upgrade_cost(l)
+	_expect(int(back.coins) == want and int(back.parts.get("alloy", 0)) > 0, "a Lv.12 weapon refunds the coins and parts of 11 upgrades (%d)" % int(back.coins))
+	_expect(Arsenal.reset(s, "frost", "main") and int(s.coins) == 100 + want and Arsenal.level(Arsenal.read(s), "frost", "main") == 1, "reset: Lv.1 again and the coins are back")
+	_expect(not Arsenal.reset(s, "frost", "main"), "a Lv.1 weapon has nothing to reset")
