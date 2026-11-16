@@ -30,20 +30,20 @@ const RARITY := {
 
 const ORDER := ["frag", "drill", "cryo", "fire", "sure", "arc", "guard", "bounty", "split", "leech", "mark", "over", "stun", "reaper"]
 const CHIPS := {
-	"frag": {"name": "Frag", "rarity": "common", "every": 8, "icon": "st_atk", "text": "bursts and hurts the bugs around it"},
-	"drill": {"name": "Drill", "rarity": "common", "every": 6, "icon": "st_aim", "text": "flies on through every bug in its way"},
-	"cryo": {"name": "Cryo", "rarity": "common", "every": 8, "icon": "el_ice", "text": "slows the bug it hits"},
-	"fire": {"name": "Incendiary", "rarity": "common", "every": 8, "icon": "el_fire", "text": "sets the bug it hits burning"},
-	"sure": {"name": "Sure Shot", "rarity": "uncommon", "every": 10, "icon": "st_crit", "text": "is a sure critical hit"},
-	"arc": {"name": "Arc", "rarity": "uncommon", "every": 10, "icon": "el_electric", "text": "jumps on to a second bug"},
-	"guard": {"name": "Guard", "rarity": "uncommon", "every": 20, "icon": "st_def", "text": "mends a little of the base shield"},
-	"bounty": {"name": "Bounty", "rarity": "uncommon", "every": 25, "icon": "ic_coin", "text": "knocks coins out of the bug it hits"},
-	"split": {"name": "Splitter", "rarity": "epic", "every": 9, "icon": "st_rate", "text": "brings two smaller shots beside it"},
-	"leech": {"name": "Leech", "rarity": "epic", "every": 15, "icon": "st_hp", "text": "gives the hero 1% of his health back"},
-	"mark": {"name": "Tracer", "rarity": "epic", "every": 12, "icon": "ic_weak", "text": "marks the bug: every hit on it crits for a moment"},
-	"over": {"name": "Overload", "rarity": "legendary", "every": 12, "icon": "st_atk", "text": "hits two and a half times as hard"},
-	"stun": {"name": "Shock", "rarity": "legendary", "every": 14, "icon": "st_rate", "text": "stops the bug dead for a moment"},
-	"reaper": {"name": "Reaper", "rarity": "mythic", "every": 20, "icon": "ic_weak", "text": "finishes a bug that is under a third of its health (not a boss)"},
+	"frag": {"name": "Frag", "rarity": "common", "every": 8, "icon": "chip_frag", "text": "bursts and hurts the bugs around it"},
+	"drill": {"name": "Drill", "rarity": "common", "every": 6, "icon": "chip_drill", "text": "flies on through every bug in its way"},
+	"cryo": {"name": "Cryo", "rarity": "common", "every": 8, "icon": "chip_cryo", "text": "slows the bug it hits"},
+	"fire": {"name": "Incendiary", "rarity": "common", "every": 8, "icon": "chip_fire", "text": "sets the bug it hits burning"},
+	"sure": {"name": "Sure Shot", "rarity": "uncommon", "every": 10, "icon": "chip_sure", "text": "is a sure critical hit"},
+	"arc": {"name": "Arc", "rarity": "uncommon", "every": 10, "icon": "chip_arc", "text": "jumps on to a second bug"},
+	"guard": {"name": "Guard", "rarity": "uncommon", "every": 20, "icon": "chip_guard", "text": "mends a little of the base shield"},
+	"bounty": {"name": "Bounty", "rarity": "uncommon", "every": 25, "icon": "chip_bounty", "text": "knocks coins out of the bug it hits"},
+	"split": {"name": "Splitter", "rarity": "epic", "every": 9, "icon": "chip_split", "text": "brings two smaller shots beside it"},
+	"leech": {"name": "Leech", "rarity": "epic", "every": 15, "icon": "chip_leech", "text": "gives the hero 1% of his health back"},
+	"mark": {"name": "Tracer", "rarity": "epic", "every": 12, "icon": "chip_mark", "text": "marks the bug: every hit on it crits for a moment"},
+	"over": {"name": "Overload", "rarity": "legendary", "every": 12, "icon": "chip_over", "text": "hits two and a half times as hard"},
+	"stun": {"name": "Shock", "rarity": "legendary", "every": 14, "icon": "chip_stun", "text": "stops the bug dead for a moment"},
+	"reaper": {"name": "Reaper", "rarity": "mythic", "every": 20, "icon": "chip_reaper", "text": "finishes a bug that is under a third of its health (not a boss)"},
 }
 
 static func def(id: String) -> Dictionary:

@@ -5046,6 +5046,7 @@ class ChipTile extends Button:
 	var note := ""          # a few characters under the shape (a price, "Lv.20", "IN USE")
 	var note_col := Color(0.6, 0.68, 0.8)
 	var note_tex: Texture2D   # a tiny picture before the note: a coin (for sale) or a padlock (not yet)
+	var tint := false       # Luna s white chip symbols: coloured by the chip s rarity
 	var lit := false        # a chip sits here / you have it
 	var picked := false
 	var plus := false       # an open, empty socket
@@ -5108,10 +5109,11 @@ class ChipTile extends Button:
 			for p in ring:
 				out.append(c + (p - c) * 1.13)
 			draw_polyline(out, Color(1, 1, 1, 0.9), 1.2, true)
-		var s := r * (0.82 if shape == "tri" else 1.0)
+		var s := r * (0.82 if shape == "tri" else 1.0) * (1.45 if tint else 1.0)   # her symbols carry a black margin: drawn larger to fill the shape
 		var ic := c + (Vector2(0, r * 0.14) if shape == "tri" else Vector2.ZERO)
 		if tex != null:
-			draw_texture_rect(tex, Rect2(ic - Vector2(s, s) * 0.5, Vector2(s, s)), false, Color(1, 1, 1, 1.0 if lit else 0.38))
+			var tc: Color = col.lerp(Color.WHITE, 0.45) if tint else Color.WHITE
+			draw_texture_rect(tex, Rect2(ic - Vector2(s, s) * 0.5, Vector2(s, s)), false, Color(tc, 1.0 if lit else 0.38))
 		elif plus:
 			var pc := Color(col, 0.55 + 0.25 * sin(t * 3.0))
 			draw_line(c - Vector2(8, 0), c + Vector2(8, 0), pc, 2.0, true)
@@ -5177,6 +5179,7 @@ func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
 		s.lock = not open
 		if id != "":
 			s.tex = _chip_tex(id, hid)
+			s.tint = id != Chips.SPECIAL
 			s.note = Chips.chip_name(id, hid, item)
 			s.note_col = Chips.color(id).lerp(Color.WHITE, 0.35)
 		elif not open:
@@ -5203,7 +5206,7 @@ func _chip_tex(id: String, hid: String) -> Texture2D:
 	if id == Chips.SPECIAL:
 		return UIKit.ic("ic_rank", "st_atk")
 	if Chips.OWN.has(id):
-		return UIKit.element_icon(Heroes.element_of(hid))
+		return UIKit.ic("chip_core", "st_atk")   # Luna s core symbol for every weapon s own chips
 	return UIKit.ic(String(Chips.def(id).get("icon", "st_atk")), "st_atk")
 
 # the drawer: a grid of chip shapes, and ONE panel under it that says what the tapped chip does
@@ -5234,6 +5237,7 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 		c.shape = Chips.shape(id)
 		c.col = Chips.color(id)
 		c.tex = _chip_tex(id, hid)
+		c.tint = id != Chips.SPECIAL
 		c.lit = lack == ""
 		c.picked = id == pick
 		if now.has(id):
