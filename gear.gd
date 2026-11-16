@@ -3220,8 +3220,8 @@ func _weapons_screen() -> void:
 			ws.chip_ids.append(String(cid))
 	sv.add_child(ws)
 	var shot_b := Button.new()   # what it fires: a tap opens how it works
-	var shot_sb := UIKit.pill(Color(1, 1, 1, 0.06), 12, Vector2(10, 4))   # a faint pill, so it reads as a button
-	shot_sb.border_color = Color(1, 1, 1, 0.12)
+	var shot_sb := UIKit.pill(Color(el_col, 0.14), 12, Vector2(10, 4))   # brighter than the tags beside it and edged in his colour: this one opens something
+	shot_sb.border_color = Color(el_col, 0.6)
 	shot_sb.set_border_width_all(1)
 	for sst in ["normal", "hover", "pressed", "focus"]:
 		shot_b.add_theme_stylebox_override(sst, shot_sb)
@@ -3294,6 +3294,15 @@ func _weapons_screen() -> void:
 			lvp.position = Vector2(6, 5)
 			lvp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			t.add_child(lvp)
+		if id == eq:   # the one in hand: a small green tick, so the outline is not read as only "looking at"
+			var eqp := PanelContainer.new()
+			eqp.add_theme_stylebox_override("panel", UIKit.pill(Color(0.16, 0.55, 0.3, 0.95), 8, Vector2(5, 0)))
+			eqp.add_child(UIKit.label("✓", 11, Color.WHITE))
+			eqp.set_anchors_preset(Control.PRESET_TOP_RIGHT)
+			eqp.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+			eqp.position = Vector2(-26, 5)
+			eqp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			t.add_child(eqp)
 		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
 		var wcls := String(cls)
@@ -3386,7 +3395,7 @@ func _weapon_sheet(wlayer: Control) -> VBoxContainer:
 	v.add_theme_constant_override("separation", 10)
 	sheet.add_child(v)
 	var grip := ColorRect.new()   # the handle: this is a drawer, tap outside it to shut it
-	grip.color = Color(1, 1, 1, 0.22)
+	grip.color = Color(1, 1, 1, 0.5)
 	grip.custom_minimum_size = Vector2(44, 4)
 	grip.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	v.add_child(grip)
