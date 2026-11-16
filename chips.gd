@@ -254,3 +254,11 @@ static func live(save: Dictionary, hid: String, cls: String, level: int) -> Dict
 			_:
 				out.chips.append({"id": String(id), "every": every(String(id), cls)})
 	return out
+
+# the SHAPE a chip is drawn in says what kind it is: hex = the weapon's own (and the Specialty),
+# tri = it hits harder, dia = it changes where the shot goes, circ = a status or a helper
+const SHAPE := {"sure": "tri", "over": "tri", "reaper": "tri", "frag": "tri", "mark": "tri",
+	"drill": "dia", "split": "dia", "arc": "dia",
+	"cryo": "circ", "fire": "circ", "stun": "circ", "leech": "circ", "guard": "circ", "bounty": "circ"}
+static func shape(id: String) -> String:
+	return String(SHAPE.get(id, "hex"))

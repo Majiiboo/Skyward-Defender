@@ -3040,81 +3040,94 @@ func _talents_screen() -> void:
 		sc.scroll_vertical = maxi(0, int(StarMap.node_pos(mini(nxt, Talents.SIZE), w).y - size.y * 0.38))
 
 func _weapons_screen() -> void:
+	# THE WEAPON PAGE in three zones (Rudy s layout notes, 2026-11-16): the weapon big with its
+	# three chip sockets under it, then his four weapons, then ONE wide Upgrade button at the
+	# thumb. Everything else (mastery, how it fires, reset) waits behind the Mastery button.
 	var layer := ColorRect.new()
-	layer.color = Color(0, 0.01, 0.04, 0.78)
+	layer.color = Color(0.027, 0.047, 0.094, 0.985)
 	layer.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	layer.gui_input.connect(func(ev): if (ev is InputEventMouseButton or ev is InputEventScreenTouch) and ev.pressed: layer.queue_free())
 	add_child(layer)
-	var p := UIKit.popup_panel()
-	var w := minf(size.x - 24.0, 420.0)
-	p.custom_minimum_size = Vector2(w, 0)
-	p.position = Vector2((size.x - w) * 0.5, 50.0)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 6)
-	v.add_child(UIKit.title("Weapons", 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
 	Hints.show(self, ["weapon"])
 	var eq: String = gear.equipped["Weapon"]
 	var hid := _hero_id()
 	var eq_el: String = _hero_el()
-	# the showcase: the weapon in hand, big
-	var show_p := UIKit.panel(6)
-	var show_v := VBoxContainer.new()
-	show_v.add_theme_constant_override("separation", 0)
-	var ws := WeaponShow.new()
-	ws.custom_minimum_size = Vector2(0, 168)
-	ws.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var eq_cls := GearData.weapon_class(eq)
+	var el_col := Heroes.element_color(eq_el)
+	var sdata := _read()
+	var m := MarginContainer.new()
+	m.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	m.add_theme_constant_override("margin_left", 14)
+	m.add_theme_constant_override("margin_right", 14)
+	m.add_theme_constant_override("margin_top", 14)
+	m.add_theme_constant_override("margin_bottom", 18)
+	layer.add_child(m)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	m.add_child(v)
+	# ---- the top line: back, the weapon s name, its element, its level
+	var head := HBoxContainer.new()
+	head.add_theme_constant_override("separation", 8)
+	var back := UIKit.ghost_button("Back", 12)
+	back.custom_minimum_size = Vector2(64, 36)
+	back.pressed.connect(layer.queue_free)
+	head.add_child(back)
+	var nm := UIKit.title(GearData.weapon_name(eq, hid), 20, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	nm.clip_text = true
+	head.add_child(nm)
+	var eli := TextureRect.new()
+	eli.texture = UIKit.element_icon(eq_el)
+	eli.custom_minimum_size = Vector2(24, 24)
+	eli.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	eli.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	head.add_child(eli)
+	head.add_child(UIKit.chip("Lv.%d" % _lvl(eq), GearData.rarity_color(GearData.rarity(gear, eq))))
+	v.add_child(head)
+	# ---- ZONE 1, the stage: the weapon big, what it fires, its three chip sockets
+	var stage := UIKit.panel(8)
+	stage.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var sv := VBoxContainer.new()
+	sv.add_theme_constant_override("separation", 0)
+	var ws := WeaponShow.new()
+	ws.custom_minimum_size = Vector2(0, 170)
+	ws.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ws.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var big: Array = _weapon_show_pic(eq)
 	ws.upright = bool(big[1])
 	ws.tex = big[0]
 	ws.twin = eq_cls == "twin" and ws.upright
-	ws.col = Heroes.element_color(eq_el)
-	show_v.add_child(ws)
-	show_v.add_child(UIKit.title(GearData.weapon_name(eq, hid), 22, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER))
-	var show_sub := UIKit.iconed(UIKit.element_icon(eq_el), "%s  ·  Lv.%d  ·  %s" % [Shots.text(eq_el, eq_cls), _lvl(eq), GearData.rarity_name(GearData.rarity(gear, eq))], 12, Heroes.element_color(eq_el))
-	show_sub.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	show_v.add_child(show_sub)
-	show_p.add_child(show_v)
-	v.add_child(show_p)
-	# how the weapon in hand shoots (GearData.WEAPON_STYLE): the six play differently
-	var est: Dictionary = GearData.weapon_style(eq)
-	if eq_cls == "twin":   # the twins trick is by element (Shots.TWIN_TRICK)
-		est = {"style": String(Shots.twin_trick(eq_el)[0]), "text": String(Shots.twin_trick(eq_el)[1])}
-	if not est.is_empty():
-		var srow := HBoxContainer.new()
-		srow.alignment = BoxContainer.ALIGNMENT_CENTER
-		srow.add_theme_constant_override("separation", 8)
-		srow.add_child(UIKit.chip(String(est.style), Heroes.element_color(eq_el)))
-		var now_fi: Dictionary = WeaponSteps.form(eq, eq_el, int(Chips.live(_read(), hid, GearData.weapon_class(eq), _lvl(eq)).form))   # form II / III: say what it does NOW
-		srow.add_child(UIKit.label(String(now_fi.get("text", est.text)), 12, UIKit.TEXT))
-		v.add_child(srow)
-	# CHIP SLOTS (Chips): the level milestones are gone; Lv.10 / 20 / 30 each open a slot, and what
-	# used to arrive by itself (the two shapes, the capstone) is now a chip of this weapon
-	var ms_cap := Arsenal.cap(_read(), hid)
-	v.add_child(_chip_row(layer, hid, eq))
-	var ch_n := Chips.slots(_lvl(eq))
-	if ch_n < Chips.SLOT_LEVELS.size():
-		var nlv := int(Chips.SLOT_LEVELS[ch_n])
-		var own_id: String = Chips.OWN[ch_n]
-		var nl := UIKit.label("Lv.%d opens slot %d and the chip %s" % [nlv, ch_n + 1, Chips.chip_name(own_id, hid, eq)], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
-		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(nl)
-		if nlv > ms_cap:
-			v.add_child(UIKit.label("Ascend %s to level this weapon past Lv.%d" % [String(Heroes.ROSTER[hid].name), ms_cap], 10, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.add_child(_mastery_card(Arsenal.key(hid, GearData.weapon_class(eq)), layer))
+	ws.col = el_col
+	sv.add_child(ws)
+	sv.add_child(UIKit.label(Shots.text(eq_el, eq_cls), 12, el_col, HORIZONTAL_ALIGNMENT_CENTER))
+	sv.add_child(_chip_sockets(layer, hid, eq))
+	stage.add_child(sv)
+	v.add_child(stage)
+	# ---- the one line of numbers, and the door to everything else
+	var bar := HBoxContainer.new()
+	bar.add_theme_constant_override("separation", 8)
+	var atk := UIKit.iconed(UIKit.ic("st_atk"), "ATK %s" % _stat_text("Weapon", _lvl(eq)), 14, UIKit.TEXT)
+	atk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(atk)
+	var mkey := Arsenal.key(hid, eq_cls)
+	var mb := UIKit.ghost_button("Mastery %d / %d" % [Mastery.level(sdata, mkey), Mastery.TRACKS[Mastery.cls_of(mkey)].size()], 12)
+	mb.custom_minimum_size = Vector2(132, 36)
+	UIKit.dot(mb, Mastery.ready(sdata, mkey))
+	mb.pressed.connect(func(): _weapon_info(layer, hid, eq))
+	bar.add_child(mb)
+	v.add_child(bar)
+	# ---- ZONE 2: HIS four weapons (Arsenal), in the order they open
 	var grid := GridContainer.new()
 	grid.columns = 4
 	grid.add_theme_constant_override("h_separation", 6)
 	grid.add_theme_constant_override("v_separation", 6)
-	var sdata := _read()
-	for cls in Arsenal.classes(hid):   # HIS four weapons (Arsenal), in the order they open
+	for cls in Arsenal.classes(hid):
 		var id: String = GearData.CLASS_ITEM[cls]
 		var open := GearData.owned(gear, id)
 		var why := Arsenal.why_not(sdata, hid, String(cls))   # "" = can be unlocked now
-		var sub := ""   # an owned weapon: only its name (class and level are in the showcase box above)
+		var sub := ""   # an owned weapon: only its name
 		if not open:
 			sub = ("%s coins" % UIKit.num(Arsenal.cost(hid, String(cls)))) if why == "" or why == "Not enough coins" else why
-		var t := _pick_square(_weapon_tile_pic(id), GearData.weapon_name(id, hid), 92.0, id == eq, Heroes.element_color(eq_el) if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
+		var t := _pick_square(_weapon_tile_pic(id), GearData.weapon_name(id, hid), 96.0, id == eq, el_col if open else (UIKit.GOLD if why == "" else UIKit.SOFT), not open and why != "", sub)
 		t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		UIKit.dot(t, (open and Mastery.ready(sdata, Arsenal.key(hid, String(cls)))) or (not open and why == ""))
 		var item: String = id
@@ -3141,39 +3154,9 @@ func _weapons_screen() -> void:
 			_weapons_screen())
 		grid.add_child(t)
 	v.add_child(grid)
-	# the Specialty slot: his unique weapon, earned with all four at mastery step SPECIAL_STEP
-	var sp_n := Arsenal.special_count(sdata, hid)
-	var sp_all := Arsenal.classes(hid).size()
-	var sp_p := PanelContainer.new()
-	sp_p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.55), 12, Vector2(12, 7)))
-	var sp_row := HBoxContainer.new()
-	sp_row.add_theme_constant_override("separation", 8)
-	var sp_ic := TextureRect.new()
-	sp_ic.texture = load("res://icons/ui_padlock.png")
-	sp_ic.custom_minimum_size = Vector2(18, 18)
-	sp_ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	sp_ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	sp_ic.modulate = UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT
-	sp_row.add_child(sp_ic)
-	var sp_def: Dictionary = Arsenal.special(hid)
-	var sp_l := UIKit.label(String(sp_def.get("name", "%s weapon" % Arsenal.SPECIALTY)), 12, UIKit.GOLD if sp_n >= sp_all else UIKit.TEXT)
-	sp_row.add_child(sp_l)
-	var sp_t := UIKit.label((String(sp_def.get("text", "Earned")) + ". Put its gold chip in a slot.") if sp_n >= sp_all else "Specialty: all four at mastery step %d" % Arsenal.SPECIAL_STEP, 11, UIKit.TEXT if sp_n >= sp_all else UIKit.MUTED)
-	sp_t.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sp_t.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	sp_row.add_child(sp_t)
-	sp_row.add_child(UIKit.label("%d / %d" % [sp_n, sp_all], 12, UIKit.GOLD if sp_n >= sp_all else UIKit.SOFT))
-	sp_p.add_child(sp_row)
-	v.add_child(sp_p)
-	# the equipped weapon's details and its Upgrade button (the same ones the Hero page kept)
-	var urow := HBoxContainer.new()
-	urow.add_theme_constant_override("separation", 8)
-	var ul := UIKit.label(_detail.text, 11, Color(0.85, 0.92, 1.0))
-	ul.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	ul.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	urow.add_child(ul)
-	var ub := UIKit.gold_button(_upgrade_btn.text, 12)
-	ub.custom_minimum_size = Vector2(110, 46)
+	# ---- ZONE 3: the one big button, where the thumb rests
+	var ub := UIKit.gold_button(_upgrade_btn.text.replace("\n", "  ·  "), 15)
+	ub.custom_minimum_size = Vector2(0, 56)
 	ub.disabled = _upgrade_btn.disabled
 	ub.pressed.connect(func():
 		var item_was: String = gear.equipped["Weapon"]
@@ -3187,10 +3170,59 @@ func _weapons_screen() -> void:
 			Moment.show(self, {"title": "CHIP SLOT %d" % ms_is,
 				"text": "%s Lv.%d. New chip: %s. %s" % [GearData.weapon_name(item_was, _hero_id()), int(Chips.SLOT_LEVELS[ms_is - 1]), Chips.chip_name(own_new, _hero_id(), item_was), Chips.text(own_new, _hero_id(), item_was)], "tex": _weapon_show_pic(item_was)[0],
 				"col": Chips.color(own_new), "chip": "NEW SLOT", "go_text": "GOT IT"}))
-	urow.add_child(ub)
-	v.add_child(urow)
-	v.add_child(UIKit.label("A weapon levels as far as its hero's step allows. Ascend him to raise the cap.", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER))
-	v.get_child(v.get_child_count() - 1).autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(ub)
+
+# a sheet that slides over the lower part of the weapon page (a child of it, so it goes when the page does)
+func _weapon_sheet(wlayer: Control) -> VBoxContainer:
+	var layer := Control.new()
+	layer.name = "WeaponSheet"
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	wlayer.add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.45)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.08), 26)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 16
+	ss.content_margin_right = 16
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 20
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	layer.add_child(sheet)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 10)
+	sheet.add_child(v)
+	return v
+
+# what the Mastery button opens: how it fires, its mastery, the level cap, the reset
+func _weapon_info(wlayer: Control, hid: String, eq: String) -> void:
+	var v := _weapon_sheet(wlayer)
+	var eq_el := _hero_el()
+	var eq_cls := GearData.weapon_class(eq)
+	v.add_child(UIKit.popup_title(GearData.weapon_name(eq, hid)))
+	var est: Dictionary = GearData.weapon_style(eq)
+	if eq_cls == "twin":   # the twins trick is by element (Shots.TWIN_TRICK)
+		est = {"style": String(Shots.twin_trick(eq_el)[0]), "text": String(Shots.twin_trick(eq_el)[1])}
+	if not est.is_empty():
+		var now_fi: Dictionary = WeaponSteps.form(eq, eq_el, int(Chips.live(_read(), hid, eq_cls, _lvl(eq)).form))
+		var sl := UIKit.label("%s: %s" % [String(est.style), String(now_fi.get("text", est.text))], 12, UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
+		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(sl)
+	v.add_child(_mastery_card(Arsenal.key(hid, eq_cls), wlayer))
+	var cap := Arsenal.cap(_read(), hid)
+	if cap < GearData.MAX_LEVEL:
+		var cl := UIKit.label("Lv.%d is as far as it goes for now. Ascend %s to raise the cap." % [cap, String(Heroes.ROSTER[hid].name)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		cl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(cl)
 	# RESET: back to Lv.1 with everything spent on its levels refunded (Arsenal.reset)
 	if _lvl(eq) > 1:
 		var back: Dictionary = Arsenal.refund(_read(), hid, eq_cls)
@@ -3208,16 +3240,10 @@ func _weapons_screen() -> void:
 				gear = GearData.read(d)
 				coins = int(d.get("coins", 0))
 				Sfx.play("claim")
-			layer.queue_free()
+			wlayer.queue_free()
 			_select(selected_slot)
 			_weapons_screen())
 		v.add_child(rb)
-	var close := UIKit.ghost_button("Close", 13)
-	close.custom_minimum_size = Vector2(0, 38)
-	close.pressed.connect(layer.queue_free)
-	v.add_child(close)
-	p.add_child(v)
-	layer.add_child(p)
 
 # ------------------------------------------------------------------ Workshop > CRAFT (materials.gd, dev189)
 # Rudy's crafting bench: what you own, then one card per recipe (what it makes, what it needs
@@ -4806,182 +4832,255 @@ func _mastery_card(cls: String, layer: Control) -> Control:
 	p.add_child(v)
 	return p
 
-# ------------------------------------------------------------------ WEAPON CHIPS on the Weapons screen (Chips, 2026-11-16)
-# three sockets on the weapon in hand; a tap opens the chip list for that socket
-func _chip_row(layer: Control, hid: String, item: String) -> Control:
-	var cls := String(GearData.WEAPON_CLASS.get(item, "main"))
+# ------------------------------------------------------------------ WEAPON CHIPS on the Weapon page (Chips, 2026-11-16)
+# A chip is drawn as a SHAPE with a picture inside and almost no words: the shape says what kind
+# it is (Chips.shape: hex = the weapon s own, triangle = hits harder, diamond = changes the
+# shot s path, circle = a status or a helper), the colour says how rare. Sockets under the weapon
+# and the tiles in the drawer are the same drawing.
+class ChipTile extends Button:
+	var shape := "hex"
+	var col := Color(1, 1, 1)
+	var tex: Texture2D
+	var note := ""          # a few characters under the shape (a price, "Lv.20", "IN USE")
+	var note_col := Color(0.6, 0.68, 0.8)
+	var lit := false        # a chip sits here / you have it
+	var picked := false
+	var plus := false       # an open, empty socket
+	var lock := false
+	var wire := false       # a socket: a thin line up to the weapon
+	var t := 0.0
+
+	func _ready() -> void:
+		focus_mode = Control.FOCUS_NONE
+		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
+			add_theme_stylebox_override(st, StyleBoxEmpty.new())
+		set_process(plus)
+
+	func _process(delta: float) -> void:
+		t += delta
+		queue_redraw()
+
+	func _pts(c: Vector2, r: float) -> PackedVector2Array:
+		var out := PackedVector2Array()
+		var n := 6
+		var a0 := PI / 6.0
+		match shape:
+			"tri":
+				n = 3
+				a0 = -PI / 2.0
+				r *= 1.12
+				c.y += r * 0.14
+			"dia":
+				n = 4
+				a0 = -PI / 2.0
+				r *= 1.05
+			"circ":
+				n = 28
+				a0 = 0.0
+				r *= 0.92
+		for i in n:
+			out.append(c + Vector2.RIGHT.rotated(a0 + TAU * i / float(n)) * r)
+		return out
+
+	func _draw() -> void:
+		var note_h := 15.0 if note != "" else 0.0
+		var c := Vector2(size.x * 0.5, (size.y - note_h) * 0.5)
+		var r := minf(size.x, size.y - note_h) * 0.43
+		if wire:
+			draw_line(Vector2(c.x, 0.0), Vector2(c.x, c.y - r), Color(col, 0.4 if lit else 0.18), 1.0, true)
+			c.y += 4.0
+			r -= 4.0
+		var pts := _pts(c, r)
+		draw_colored_polygon(pts, Color(0.055, 0.085, 0.15))
+		if lit:
+			draw_colored_polygon(pts, Color(col, 0.16))
+		var edge_a := 0.95 if lit else 0.3
+		if plus:
+			edge_a = 0.4 + 0.25 * sin(t * 3.0)
+		var ring := PackedVector2Array(pts)
+		ring.append(pts[0])
+		draw_polyline(ring, Color(col, edge_a), 2.0 if lit else 1.2, true)
+		if picked:
+			var out := PackedVector2Array()
+			for p in ring:
+				out.append(c + (p - c) * 1.13)
+			draw_polyline(out, Color(1, 1, 1, 0.9), 1.2, true)
+		var s := r * (0.82 if shape == "tri" else 1.0)
+		var ic := c + (Vector2(0, r * 0.14) if shape == "tri" else Vector2.ZERO)
+		if tex != null:
+			draw_texture_rect(tex, Rect2(ic - Vector2(s, s) * 0.5, Vector2(s, s)), false, Color(1, 1, 1, 1.0 if lit else 0.38))
+		elif plus:
+			var pc := Color(col, 0.55 + 0.25 * sin(t * 3.0))
+			draw_line(c - Vector2(8, 0), c + Vector2(8, 0), pc, 2.0, true)
+			draw_line(c - Vector2(0, 8), c + Vector2(0, 8), pc, 2.0, true)
+		if note != "":
+			var f := get_theme_default_font()
+			draw_string(f, Vector2(0.0, size.y - 3.0), note, HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, note_col)
+
+var _chip_pop := -1   # the socket a chip was just put into: it snaps in once
+
+# the three sockets under the weapon; a tap opens the drawer for that one
+func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
+	var cls := GearData.weapon_class(item)
 	var lv := _lvl(item)
 	var ids: Array = Chips.fitted(_read(), hid, cls, lv)
 	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	var cap := UIKit.label("Chips", 11, UIKit.MUTED)
-	cap.custom_minimum_size = Vector2(38, 0)
-	row.add_child(cap)
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.add_theme_constant_override("separation", 22)
 	for i in 3:
 		var open: bool = i < Chips.slots(lv)
 		var id := String(ids[i])
-		var col: Color = UIKit.SOFT
-		if id == Chips.SPECIAL:
-			col = Chips.color(id)
-		elif id != "":
-			col = Chips.color(id)
-		var b := Button.new()
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		b.custom_minimum_size = Vector2(0, 40)
-		b.clip_text = true
-		var sb := UIKit.box(Color(UIKit.CARD, 0.94), Color(col, 0.9 if id != "" else 0.22), 12, 2 if id != "" else 1)
-		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-			b.add_theme_stylebox_override(st, sb)
-		b.text = Chips.chip_name(id, hid, item) if id != "" else ("+ Add" if open else "Lv.%d" % int(Chips.SLOT_LEVELS[i]))
-		b.add_theme_font_size_override("font_size", 12)
-		var tc: Color = col.lerp(Color.WHITE, 0.35) if id != "" else (UIKit.TEXT if open else UIKit.MUTED)
-		for st in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
-			b.add_theme_color_override(st, tc)
-		UIKit.press_fx(b)
+		var s := ChipTile.new()
+		s.custom_minimum_size = Vector2(84, 96)
+		s.shape = "hex"
+		s.wire = true
+		s.lit = id != ""
+		s.col = Chips.color(id) if id != "" else UIKit.SOFT
+		s.plus = open and id == ""
+		s.lock = not open
+		if id != "":
+			s.tex = _chip_tex(id, hid)
+			s.note = Chips.chip_name(id, hid, item)
+			s.note_col = Chips.color(id).lerp(Color.WHITE, 0.35)
+		elif not open:
+			s.tex = load("res://icons/ui_padlock.png")
+			s.note = "Lv.%d" % int(Chips.SLOT_LEVELS[i])
 		var slot := i
-		b.pressed.connect(func():
+		s.pressed.connect(func():
 			if open:
-				_chip_sheet(layer, hid, item, slot)
+				_chip_sheet(wlayer, hid, item, slot)
 			else:
 				_milestone_toast("This chip slot opens at weapon Lv.%d" % int(Chips.SLOT_LEVELS[slot])))
-		row.add_child(b)
+		if i == _chip_pop:   # it snaps in
+			s.pivot_offset = Vector2(42, 44)
+			s.scale = Vector2(1.5, 1.5)
+			s.modulate = Color(2.2, 2.2, 2.2)
+			var tw := s.create_tween().set_parallel(true)
+			tw.tween_property(s, "scale", Vector2.ONE, 0.28).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
+			tw.tween_property(s, "modulate", Color.WHITE, 0.35)
+		row.add_child(s)
+	_chip_pop = -1
 	return row
 
-func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int) -> void:
-	var cls := String(GearData.WEAPON_CLASS.get(item, "main"))
+func _chip_tex(id: String, hid: String) -> Texture2D:
+	if id == Chips.SPECIAL:
+		return UIKit.ic("ic_rank", "st_atk")
+	if Chips.OWN.has(id):
+		return UIKit.element_icon(Heroes.element_of(hid))
+	return UIKit.ic(String(Chips.def(id).get("icon", "st_atk")), "st_atk")
+
+# the drawer: a grid of chip shapes, and ONE panel under it that says what the tapped chip does
+func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: String = "-") -> void:
+	var old := wlayer.get_node_or_null("WeaponSheet")
+	if old != null:
+		old.name = "WeaponSheetOld"
+		old.queue_free()
+	var cls := GearData.weapon_class(item)
 	var lv := _lvl(item)
 	var data := _read()
 	var now: Array = Chips.fitted(data, hid, cls, lv)
-	var layer := Control.new()
-	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
-	add_child(layer)
-	var dim := Button.new()
-	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
-	var ds := StyleBoxFlat.new()
-	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
-	for st in ["normal", "hover", "pressed", "focus"]:
-		dim.add_theme_stylebox_override(st, ds)
-	dim.pressed.connect(layer.queue_free)
-	layer.add_child(dim)
-	var sheet := PanelContainer.new()
-	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
-	ss.corner_radius_bottom_left = 0
-	ss.corner_radius_bottom_right = 0
-	ss.content_margin_left = 16
-	ss.content_margin_right = 16
-	ss.content_margin_top = 14
-	ss.content_margin_bottom = 20
-	sheet.add_theme_stylebox_override("panel", ss)
-	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
-	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	layer.add_child(sheet)
-	var v := VBoxContainer.new()
-	v.add_theme_constant_override("separation", 8)
-	sheet.add_child(v)
-	v.add_child(UIKit.popup_title("Chip slot %d" % (slot + 1)))
-	var sub := UIKit.label("%s. Its own chips come with its levels; the others are bought once and fit any weapon." % GearData.weapon_name(item, hid), 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
-	sub.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	v.add_child(sub)
-	var sc := ScrollContainer.new()
-	sc.custom_minimum_size = Vector2(0, 430)
-	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	var list := VBoxContainer.new()
-	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	list.add_theme_constant_override("separation", 6)
-	sc.add_child(list)
-	v.add_child(sc)
-	var all: Array = Chips.offered(data, hid, item)   # his Specialty and this weapon s own chips first, then the general ones by rarity
-	for cid in all:
+	if pick == "-":
+		pick = String(now[slot])
+	var v := _weapon_sheet(wlayer)
+	v.add_child(UIKit.popup_title("Slot %d" % (slot + 1)))
+	var grid := GridContainer.new()
+	grid.columns = 5
+	grid.add_theme_constant_override("h_separation", 4)
+	grid.add_theme_constant_override("v_separation", 4)
+	for cid in Chips.offered(data, hid, item):
 		var id := String(cid)
-		var special: bool = id == Chips.SPECIAL
-		var cdef: Dictionary = Chips.def(id)
-		var col: Color = Chips.color(id)
-		var here: bool = String(now[slot]) == id
-		var other: bool = not here and now.has(id)
-		var lack: String = Chips.why_not_have(data, hid, lv, id)   # "" = you have it
-		var have: bool = lack == ""
+		var lack: String = Chips.why_not_have(data, hid, lv, id)
 		var general: bool = Chips.CHIPS.has(id)
-		var buy_why: String = Chips.why_not_buy(data, id) if general and not have else ""
-		var b := Button.new()
-		b.custom_minimum_size = Vector2(0, 54)
-		b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		var sb := UIKit.box(Color(UIKit.CARD_HI, 0.6), Color(col, 0.9) if here else Color(1, 1, 1, 0.05), 14, 2 if here else 1)
-		for st in ["normal", "hover", "pressed", "focus", "disabled"]:
-			b.add_theme_stylebox_override(st, sb)
-		var m := MarginContainer.new()
-		m.set_anchors_preset(Control.PRESET_FULL_RECT)
-		m.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for side in ["left", "right"]:
-			m.add_theme_constant_override("margin_" + side, 10)
-		var row := HBoxContainer.new()
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_theme_constant_override("separation", 10)
-		var ic := TextureRect.new()
-		ic.texture = UIKit.ic("ic_rank" if special else String(cdef.get("icon", "st_atk")), "st_atk")
-		ic.custom_minimum_size = Vector2(26, 26)
-		ic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		ic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		ic.modulate = col.lerp(Color.WHITE, 0.25)
-		ic.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(ic)
-		var tv := VBoxContainer.new()
-		tv.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		tv.alignment = BoxContainer.ALIGNMENT_CENTER
-		tv.add_theme_constant_override("separation", 0)
-		var nl := UIKit.label("%s  ·  %s" % [Chips.chip_name(id, hid, item), String(Chips.RARITY[Chips.rarity_of(id)].name)], 13, col.lerp(Color.WHITE, 0.3))
-		nl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tv.add_child(nl)
-		var tl := UIKit.label(Chips.text(id, hid, item), 11, UIKit.MUTED)
-		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		tl.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		tv.add_child(tl)
-		row.add_child(tv)
-		var tag := "IN THIS SLOT" if here else ("IN USE" if other else ("FIT" if have else (("%s coins" % UIKit.num(Chips.cost(id))) if general and not buy_why.begins_with("Clear") else (buy_why if general else lack))))
-		var tcol: Color = col if here else (UIKit.MUTED if other or (not have and (not general or buy_why.begins_with("Clear"))) else (UIKit.TEXT if have else UIKit.GOLD))
-		var tg := UIKit.label(tag, 11, tcol)
-		tg.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		row.add_child(tg)
-		m.add_child(row)
-		b.add_child(m)
-		b.pressed.connect(func():
-			var d := _read()
-			if here:
-				Chips.fit(d, hid, cls, lv, slot, "")
-			elif other:
-				_milestone_toast("That chip is already in this weapon")
+		var c := ChipTile.new()
+		c.custom_minimum_size = Vector2(0, 78)
+		c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		c.shape = Chips.shape(id)
+		c.col = Chips.color(id)
+		c.tex = _chip_tex(id, hid)
+		c.lit = lack == ""
+		c.picked = id == pick
+		if now.has(id):
+			c.note = "IN" if String(now[slot]) == id else "USED"
+			c.note_col = Chips.color(id).lerp(Color.WHITE, 0.35)
+		elif lack != "":
+			var bw := Chips.why_not_buy(data, id) if general else lack
+			c.note = ("St.%d" % int(Chips.RARITY[Chips.rarity_of(id)].stage)) if bw.begins_with("Clear") else (UIKit.num(Chips.cost(id)) if general else lack.replace("Weapon ", ""))
+			c.note_col = UIKit.GOLD if general and bw == "" else UIKit.MUTED
+		c.pressed.connect(func(): _chip_sheet(wlayer, hid, item, slot, id))
+		grid.add_child(c)
+	v.add_child(grid)
+	# the one panel of words
+	var info := PanelContainer.new()
+	info.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.6), 16, Vector2(14, 10)))
+	info.custom_minimum_size = Vector2(0, 92)
+	var iv := VBoxContainer.new()
+	iv.add_theme_constant_override("separation", 6)
+	info.add_child(iv)
+	v.add_child(info)
+	if pick == "":
+		var hl := UIKit.label("Tap a chip to see what it does.", 12, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+		hl.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		hl.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		iv.add_child(hl)
+		return
+	var pcol := Chips.color(pick)
+	var top := HBoxContainer.new()
+	top.add_theme_constant_override("separation", 8)
+	var pn := UIKit.title(Chips.chip_name(pick, hid, item), 16, pcol.lerp(Color.WHITE, 0.4))
+	pn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	top.add_child(pn)
+	top.add_child(UIKit.chip(String(Chips.RARITY[Chips.rarity_of(pick)].name), pcol))
+	iv.add_child(top)
+	var pt := UIKit.label(Chips.text(pick, hid, item), 12, UIKit.TEXT)
+	pt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	iv.add_child(pt)
+	# its ONE button
+	var here: bool = String(now[slot]) == pick
+	var other: bool = not here and now.has(pick)
+	var p_lack: String = Chips.why_not_have(data, hid, lv, pick)
+	var p_general: bool = Chips.CHIPS.has(pick)
+	var p_buy: String = Chips.why_not_buy(data, pick) if p_general and p_lack != "" else ""
+	var fit_why: String = Chips.why_not_fit(data, hid, cls, lv, slot, pick) if p_lack == "" and not here else ""
+	var text := "FIT"
+	var can := true
+	if here:
+		text = "TAKE OUT"
+	elif other:
+		text = "IN ANOTHER SLOT"
+		can = false
+	elif p_lack != "" and p_general:
+		text = ("BUY  ·  %s coins" % UIKit.num(Chips.cost(pick))) if p_buy == "" else (p_buy if p_buy.begins_with("Clear") else "NEEDS %s coins" % UIKit.num(Chips.cost(pick)))
+		can = p_buy == ""
+	elif p_lack != "":
+		text = p_lack
+		can = false
+	elif fit_why != "":
+		text = fit_why
+		can = false
+	var go := UIKit.gold_button(text, 14)
+	go.custom_minimum_size = Vector2(0, 48)
+	go.disabled = not can
+	go.pressed.connect(func():
+		var d := _read()
+		if here:
+			Chips.fit(d, hid, cls, lv, slot, "")
+		elif p_lack != "":   # buy it; the drawer stays, the button turns into FIT
+			if not Chips.buy(d, pick):
 				return
-			else:
-				if not have:
-					if not general:
-						_milestone_toast("%s: %s first" % [Chips.chip_name(id, hid, item), lack])
-						return
-					var why := Chips.why_not_buy(d, id)
-					if why != "":
-						_milestone_toast("%s: %s" % [Chips.chip_name(id, hid, item), ("you need " + why) if why.ends_with("coins") else (why + " first")])
-						return
-					if not await _confirm("BUY %s?" % Chips.chip_name(id, hid, item).to_upper(), "%s
-%s coins. Yours for good, for every weapon." % [Chips.text(id, hid, item), UIKit.num(Chips.cost(id))], "Buy", true):
-						return
-					d = _read()
-					if not Chips.buy(d, id):
-						return
-				if not Chips.fit(d, hid, cls, lv, slot, id):
-					_milestone_toast(Chips.why_not_fit(d, hid, cls, lv, slot, id))
-					return
 			_write_data(d)
 			coins = int(d.get("coins", 0))
-			Sfx.play("upgrade")
-			layer.queue_free()
-			if is_instance_valid(wlayer):
-				wlayer.queue_free()
-			_weapons_screen())
-		list.add_child(b)
-	UIKit.smooth_scroll(sc)
-	var close := UIKit.ghost_button("Close", 13)
-	close.custom_minimum_size = Vector2(0, 38)
-	close.pressed.connect(layer.queue_free)
-	v.add_child(close)
+			Sfx.play("claim")
+			_chip_sheet(wlayer, hid, item, slot, pick)
+			return
+		elif not Chips.fit(d, hid, cls, lv, slot, pick):
+			return
+		else:
+			_chip_pop = slot
+		_write_data(d)
+		Sfx.play("upgrade")
+		wlayer.queue_free()
+		_weapons_screen())
+	v.add_child(go)
 
 # capture hook: the chip list for slot 3 on top of the Weapons screen
 func _dbg_chips() -> void:
