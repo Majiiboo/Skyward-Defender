@@ -2532,6 +2532,7 @@ class WeaponShow extends Control:
 	var shot := ""
 	var element := ""
 	var chip_cols: Array = []
+	var chip_ids: Array = []      # the same chips by id: Frag, Splitter, Drill and Arc show what they really do
 	var _fxl: Control
 	var _bolts: Array = []        # {u 0..1 along the way, lane, n}
 	var _hits: Array = []         # {t, col, big}
@@ -2562,18 +2563,27 @@ class WeaponShow extends Control:
 		if _cool <= 0.0:
 			_n += 1
 			var chipped: bool = not chip_cols.is_empty() and _n % 4 == 0
+			var ci: int = (_n / 4) % maxi(chip_cols.size(), 1)
+			var cid: String = String(chip_ids[ci]) if chipped and ci < chip_ids.size() else ""
 			if shot == "stream":   # the stream never stops: only its splashes on the target tick
 				_cool = 0.22
-				_hits.append({"t": 0.0, "big": chipped, "col": chip_cols[(_n / 4) % chip_cols.size()] if chipped else col})
+				_hits.append({"t": 0.0, "big": chipped, "col": chip_cols[ci] if chipped else col, "id": cid})
 			else:
 				_cool = 1.15 if shot == "boulder" else 0.32
-				_bolts.append({"u": 0.0, "lane": _n % 2 if twin else 0, "n": _n, "chip": chipped})
+				var lane: int = _n % 2 if twin else 0
+				_bolts.append({"u": 0.0, "lane": lane, "n": _n, "chip": chipped, "id": cid, "dy": 0.0, "ci": ci, "hit": false})
+				if cid == "split":   # Splitter: two more leave beside it
+					for dy in [-30.0, 30.0]:
+						_bolts.append({"u": 0.0, "lane": lane, "n": _n, "chip": false, "id": "", "dy": dy, "ci": ci, "hit": false})
 		var keep: Array = []
 		for b in _bolts:
 			b.u = float(b.u) + delta * (1.0 if shot == "boulder" else 1.7)
-			if float(b.u) >= 1.0:
-				_hits.append({"t": 0.0, "big": bool(b.chip) or shot == "boulder", "col": chip_cols[(int(b.n) / 4) % chip_cols.size()] if bool(b.chip) else col})
-			else:
+			if float(b.u) >= 1.0 and not bool(b.hit):
+				b.hit = true
+				if absf(float(b.dy)) < 1.0:
+					_hits.append({"t": 0.0, "big": bool(b.chip) or shot == "boulder", "col": chip_cols[int(b.ci)] if bool(b.chip) else col, "id": String(b.id)})
+			# a Drill shot flies on through the target; a split one flies past it; the rest stop there
+			if float(b.u) < (1.45 if (String(b.id) == "drill" or absf(float(b.dy)) > 1.0) else 1.0):
 				keep.append(b)
 		_bolts = keep
 		var hk: Array = []
@@ -2596,7 +2606,8 @@ class WeaponShow extends Control:
 			Shots.draw_stream(_fxl, pts, element, t, a.distance_to(_tgt) * 1.15)
 		for b in _bolts:
 			var a2: Vector2 = _muz[int(b.lane) % _muz.size()]
-			_fxl.draw_set_transform(a2.lerp(_tgt, float(b.u)), 0.0, Vector2(1.25, 1.25))
+			var to: Vector2 = _tgt + Vector2(0.0, float(b.dy))
+			_fxl.draw_set_transform(a2 + (to - a2) * float(b.u), (to - a2).angle(), Vector2(1.25, 1.25))
 			Shots.draw(_fxl, shot, element, 1.5 if bool(b.chip) else 1.0, int(b.n), t)
 		_fxl.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 		for h in _hits:
@@ -2604,6 +2615,19 @@ class WeaponShow extends Control:
 			var r := (10.0 + 30.0 * f2) * (1.7 if bool(h.big) else 1.0)
 			_fxl.draw_arc(_tgt, r, 0.0, TAU, 28, Color(h.col, 1.0 - f2), 2.0, true)
 			_fxl.draw_circle(_tgt, r * 0.45, Color(h.col, (1.0 - f2) * 0.4))
+			match String(h.get("id", "")):
+				"frag":   # Frag: the burst reaches the bugs around it
+					for k in 6:
+						var fp: Vector2 = _tgt + Vector2.RIGHT.rotated(TAU * k / 6.0 + 0.4) * (26.0 + 30.0 * f2)
+						_fxl.draw_arc(fp, 5.0 + 9.0 * f2, 0.0, TAU, 14, Color(h.col, 1.0 - f2), 1.5, true)
+				"arc":   # Arc: it jumps on to a second bug
+					var p2: Vector2 = _tgt + Vector2(-34.0, -62.0)
+					var zig := PackedVector2Array([_tgt])
+					for k in range(1, 5):
+						zig.append(_tgt.lerp(p2, k / 5.0) + Vector2(sin(k * 2.3 + t * 40.0) * 7.0, 0.0))
+					zig.append(p2)
+					_fxl.draw_polyline(zig, Color(h.col, 1.0 - f2), 2.0, true)
+					_fxl.draw_arc(p2, 6.0 + 10.0 * f2, 0.0, TAU, 16, Color(h.col, 1.0 - f2), 1.5, true)
 
 	func _draw() -> void:
 		var live := shot != ""
@@ -3193,6 +3217,7 @@ func _weapons_screen() -> void:
 	for cid in Chips.fitted(sdata, hid, eq_cls, _lvl(eq)):
 		if String(cid) != "":
 			ws.chip_cols.append(Chips.color(String(cid)))
+			ws.chip_ids.append(String(cid))
 	sv.add_child(ws)
 	var shot_b := Button.new()   # what it fires: a tap opens how it works
 	shot_b.flat = true
@@ -3211,8 +3236,23 @@ func _weapons_screen() -> void:
 	var bar := HBoxContainer.new()
 	bar.add_theme_constant_override("separation", 8)
 	var atk := UIKit.iconed(UIKit.ic("st_atk"), "ATK %s" % _stat_text("Weapon", _lvl(eq)), 14, UIKit.TEXT)
-	atk.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	bar.add_child(atk)
+	# does his element help on the stage picked on Home (Heroes.element_mult)
+	var st_mult := Heroes.element_mult(eq_el, int(sdata.get("selected_stage", sdata.get("stage_unlocked", 1))))
+	if st_mult > 1.0:
+		bar.add_child(UIKit.chip("ADVANTAGE", Color(0.45, 0.95, 0.55)))
+	elif st_mult < 1.0:
+		bar.add_child(UIKit.chip("RESISTED", Color(1.0, 0.45, 0.45)))
+	if _chip_note != "":   # a chip just went in or came out: say so once, beside the numbers
+		var cn := UIKit.label(_chip_note, 13, Color(0.5, 1.0, 0.6) if _chip_note.begins_with("+") else UIKit.MUTED)
+		bar.add_child(cn)
+		var ct := cn.create_tween()
+		ct.tween_interval(1.4)
+		ct.tween_property(cn, "modulate:a", 0.0, 0.6)
+		_chip_note = ""
+	var bar_sp := Control.new()
+	bar_sp.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	bar.add_child(bar_sp)
 	var mkey := Arsenal.key(hid, eq_cls)
 	var mb := UIKit.ghost_button("Mastery %d / %d  ›" % [Mastery.level(sdata, mkey), Mastery.TRACKS[Mastery.cls_of(mkey)].size()], 12)
 	mb.custom_minimum_size = Vector2(132, 36)
@@ -3307,6 +3347,7 @@ func _weapons_screen() -> void:
 func _weapon_sheet(wlayer: Control) -> VBoxContainer:
 	var layer := Control.new()
 	layer.name = "WeaponSheet"
+	layer.z_index = 5   # over the weapon tiles and their level pills
 	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
 	wlayer.add_child(layer)
 	var dim := Button.new()
@@ -3354,6 +3395,7 @@ func _weapon_info(wlayer: Control, hid: String, eq: String) -> void:
 		sl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(sl)
 	v.add_child(_mastery_card(Arsenal.key(hid, eq_cls), wlayer))
+	v.add_child(_mastery_track(Arsenal.key(hid, eq_cls)))
 	var cap := Arsenal.cap(_read(), hid)
 	if cap < GearData.MAX_LEVEL:
 		var cl := UIKit.label("Lv.%d is as far as it goes for now. Ascend %s to raise the cap." % [cap, String(Heroes.ROSTER[hid].name)], 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
@@ -5061,6 +5103,34 @@ class ChipTile extends Button:
 				draw_string(f, Vector2(0.0, size.y - 3.0), note, HORIZONTAL_ALIGNMENT_CENTER, size.x, 11, note_col)
 
 var _chip_pop := -1   # the socket a chip was just put into: it snaps in once
+var _chip_note := ""  # "+  Frag": shown once beside ATK after a chip went in or out
+
+# all five mastery steps of a weapon as a short track: done, next (kills to go), later
+func _mastery_track(key: String) -> Control:
+	var data := _read()
+	var lv := Mastery.level(data, key)
+	var kills := Mastery.kills(data, key)
+	var steps: Array = Mastery.TRACKS[Mastery.cls_of(key)]
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 3)
+	for i in steps.size():
+		var done: bool = i < lv
+		var nxt: bool = i == lv
+		var row := HBoxContainer.new()
+		row.add_theme_constant_override("separation", 8)
+		var pip := Panel.new()
+		pip.custom_minimum_size = Vector2(10, 10)
+		pip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		pip.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if done else (UIKit.CYAN if nxt else Color(UIKit.CARD_HI, 0.9)), 5, Vector2.ZERO))
+		row.add_child(pip)
+		var tl := UIKit.label("%s  ·  %s" % [String(steps[i].name), String(steps[i].text)], 11, UIKit.TEXT if done or nxt else UIKit.MUTED)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		tl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(tl)
+		var need := int(Mastery.KILLS[i])
+		row.add_child(UIKit.label("done" if done else ("ready" if kills >= need and nxt else "%s kills" % UIKit.num(need)), 11, UIKit.GOLD if done else (UIKit.CYAN if nxt else UIKit.MUTED)))
+		box.add_child(row)
+	return box
 
 # the three sockets under the weapon; a tap opens the drawer for that one
 func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
@@ -5206,9 +5276,11 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 	go.disabled = not can
 	go.pressed.connect(func():
 		var d := _read()
+		_chip_note = ("−  %s" if here else "+  %s") % Chips.chip_name(pick, hid, item)
 		if here:
 			Chips.fit(d, hid, cls, lv, slot, "")
 		elif p_lack != "":   # buy it; the drawer stays, the button turns into FIT
+			_chip_note = ""
 			if not Chips.buy(d, pick):
 				return
 			_write_data(d)
@@ -5237,3 +5309,7 @@ func _cost_pill(icon: Texture2D, need: int, have: int) -> Control:
 	p.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD_HI, 0.7), 12, Vector2(9, 4)))
 	p.add_child(UIKit.iconed(icon, UIKit.num(need), 13, Color(1.0, 0.42, 0.42) if have < need and not DevTools.on else UIKit.TEXT, 16.0))
 	return p
+
+func _dbg_winfo() -> void:
+	_weapons_screen()
+	_weapon_info(get_child(get_child_count() - 1), _hero_id(), gear.equipped["Weapon"])
