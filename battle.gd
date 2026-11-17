@@ -3744,6 +3744,7 @@ func _draw() -> void:
 			draw_circle(eb.pos, 2.5, Color(1.0, 0.8, 0.9))
 	_draw_fire_patches()   # burning patches under the bugs (dev209)
 	_draw_poison()
+	_draw_special_solid()
 	# enemies
 	for e in enemies:
 		_draw_enemy(e)
@@ -6104,11 +6105,38 @@ var _sp_t := 5.0            # seconds to the next one
 var _sp_objs: Array = []    # what is in the air / on the field: {kind, pos, t, ...}
 var _sp_said := false
 
+const SP_PICS := ["globe", "globe_burst", "coil", "mark", "beam", "beam_hit", "rift", "glaive"]
+
+# one of Luna s Specialty pictures on the light layer, centred, turned; false when it is not painted
+func _sp_pic(name: String, pos: Vector2, size: float, rot: float = 0.0, alpha: float = 1.0) -> bool:
+	if not _fx_tex.has("spec_" + name):
+		return false
+	_fx.draw_set_transform(pos, rot, Vector2.ONE)
+	_fx.draw_texture_rect(_fx_tex["spec_" + name], Rect2(Vector2(-size, -size) * 0.5, Vector2(size, size)), false, Color(1, 1, 1, alpha))
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+	return true
+
+# the Tesla Coil is a solid object, so it is drawn with the bugs, not on the light layer
+func _draw_special_solid() -> void:
+	if not _fx_tex.has("spec_coil"):
+		return
+	for o in _sp_objs:
+		if String(o.kind) != "coil":
+			continue
+		var k: float = clampf(1.0 - float(o.t) / float(o.dur), 0.0, 1.0)
+		var s: float = 88.0 * (0.5 + 0.5 * clampf(k * 14.0, 0.0, 1.0)) * (1.0 + 0.25 * maxf(0.0, 1.0 - k * 10.0))   # lands with a little bounce
+		draw_circle(Vector2(o.pos) + Vector2(0, 5), s * 0.36, Color(0, 0, 0, 0.18))
+		draw_texture_rect(_fx_tex["spec_coil"], Rect2(Vector2(o.pos) - Vector2(s, s) * 0.5, Vector2(s, s)), false, Color(1.6, 1.5, 1.4, clampf(float(o.t) * 4.0, 0.0, 1.0)))   # lifted: her rust is dark against the night sky
+
 func _special_setup(sv: Dictionary, hero: String) -> void:
 	_sp_id = hero if Arsenal.SPECIALS.has(hero) and (_chip_special or bool(sv.get("special_test", false))) else ""   # it fires only when its gold chip sits in the weapon in hand (Chips)
 	_sp_t = 5.0
 	_sp_objs.clear()
 	_sp_said = false
+	for sn in SP_PICS:   # Luna s pictures (fx/special), loaded now and never in the middle of a draw
+		var spath := "res://fx/special/spec_%s.png" % sn
+		if _sp_id != "" and not _fx_tex.has("spec_" + sn) and ResourceLoader.exists(spath):
+			_fx_tex["spec_" + sn] = load(spath)
 
 func _sp_hit(e: Dictionary, units: float) -> void:
 	if not _can_hurt(e):
@@ -6155,8 +6183,11 @@ func _update_special(delta: float) -> void:
 							else:
 								e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 1.6)
 					_ice_patches.append({"pos": Vector2(o.to), "r": 95.0, "t": 2.5, "max": 2.5, "burn": false})
-					var bp := _shot_fx("burst")
-					_fx_add(bp if bp != "" else "nova", o.to, 150.0 if bp != "" else 70.0, 0.45, rng.randf() * TAU, 1.7, Color.WHITE)
+					if _fx_tex.has("spec_globe_burst"):
+						_fx_add("spec_globe_burst", o.to, 150.0, 0.5, rng.randf() * TAU, 1.5, Color.WHITE)
+					else:
+						var bp := _shot_fx("burst")
+						_fx_add(bp if bp != "" else "nova", o.to, 150.0 if bp != "" else 70.0, 0.45, rng.randf() * TAU, 1.7, Color.WHITE)
 					_shot_bits(o.to, 8, 220.0)
 					Sfx.play("boom", 1.15)
 					shake = maxf(shake, 0.25)
@@ -6193,6 +6224,8 @@ func _update_special(delta: float) -> void:
 						if Vector2(e.pos).distance_to(o.pos) < 58.0 + float(e.r) * 0.5:
 							_sp_hit(e, 7.5 if int(e.id) == int(o.id) else 3.0)
 					born.append({"kind": "beam", "pos": Vector2(o.pos), "t": 0.4, "dur": 0.4})
+					if _fx_tex.has("spec_beam_hit"):
+						_fx_add("spec_beam_hit", o.pos, 130.0, 0.45, rng.randf() * TAU, 1.5, Color.WHITE)
 					Sfx.play("shot_heavy", 1.3)
 					shake = maxf(shake, 0.3)
 			"rift":   # drags bugs in; swallows the weak
@@ -6281,9 +6314,10 @@ func _draw_special() -> void:
 		match String(o.kind):
 			"globe":
 				var p: Vector2 = Vector2(o.from).lerp(o.to, k) + Vector2(0, -60.0 * sin(PI * k))
-				_fx.draw_circle(p, 13.0, Color(glow, 0.3))
-				_fx.draw_arc(p, 9.0, 0.0, TAU, 20, core, 2.0, true)
-				_fx.draw_circle(p, 4.0, Color(core, 0.9))
+				if not _sp_pic("globe", p, 56.0 + 18.0 * sin(PI * k), time_alive * 3.0):   # Luna s globe, a little bigger at the top of its arc
+					_fx.draw_circle(p, 13.0, Color(glow, 0.3))
+					_fx.draw_arc(p, 9.0, 0.0, TAU, 20, core, 2.0, true)
+					_fx.draw_circle(p, 4.0, Color(core, 0.9))
 				_fx.draw_arc(o.to, 95.0, 0.0, TAU, 40, Color(glow, 0.35), 1.5, true)
 			"breath":
 				var from := _muzzle_world()
@@ -6301,36 +6335,51 @@ func _draw_special() -> void:
 			"coil":
 				var pulse := 0.6 + 0.4 * sin(time_alive * 12.0)
 				# a coil that can be SEEN: a glowing ball on three stacked rings, its reach marked (was a 14 px dot)
-				_fx.draw_circle(o.pos, 30.0, Color(glow, 0.22 * pulse))
-				for ri in 3:
-					_fx.draw_arc(Vector2(o.pos) + Vector2(0, 10.0 + 9.0 * ri), 13.0 - 2.5 * ri, 0.0, TAU, 20, Color(glow.lerp(core, 0.3), 0.75), 2.0, true)
-				_fx.draw_arc(o.pos, 14.0, 0.0, TAU, 20, Color(glow.lerp(core, 0.5), 0.95), 3.0, true)
-				_fx.draw_circle(o.pos, 6.5, core)
+				_fx.draw_circle(o.pos, 30.0, Color(glow, (0.08 if _fx_tex.has("spec_coil") else 0.22) * pulse))
+				if _fx_tex.has("spec_coil"):   # Luna s coil is drawn solid (_draw_special_solid); here only the light of its ball
+					_fx.draw_circle(o.pos, 9.0, Color(glow, 0.35 * pulse))
+				else:
+					for ri in 3:
+						_fx.draw_arc(Vector2(o.pos) + Vector2(0, 10.0 + 9.0 * ri), 13.0 - 2.5 * ri, 0.0, TAU, 20, Color(glow.lerp(core, 0.3), 0.75), 2.0, true)
+					_fx.draw_arc(o.pos, 14.0, 0.0, TAU, 20, Color(glow.lerp(core, 0.5), 0.95), 3.0, true)
+					_fx.draw_circle(o.pos, 6.5, core)
 				for zi in 3:   # little arcs crackling off the ball
 					var za := time_alive * 9.0 + zi * 2.1
 					_fx.draw_line(Vector2(o.pos) + Vector2.RIGHT.rotated(za) * 14.0, Vector2(o.pos) + Vector2.RIGHT.rotated(za + 0.5) * (24.0 + 6.0 * sin(time_alive * 31.0 + zi)), Color(core, 0.8), 1.5, true)
 				_fx.draw_arc(o.pos, 165.0, 0.0, TAU, 48, Color(glow, 0.22), 1.2, true)
 			"orbital":
-				_fx.draw_arc(o.pos, 58.0 * (1.0 - k) + 14.0, 0.0, TAU, 32, Color(core, 0.5 + 0.5 * k), 2.0, true)
-				_fx.draw_line(Vector2(o.pos) + Vector2(-9, 0), Vector2(o.pos) + Vector2(9, 0), Color(core, 0.9), 1.5)
-				_fx.draw_line(Vector2(o.pos) + Vector2(0, -9), Vector2(o.pos) + Vector2(0, 9), Color(core, 0.9), 1.5)
+				if not _sp_pic("mark", o.pos, 150.0 - 70.0 * k, time_alive * 1.5, 0.6 + 0.4 * k):   # Luna s reticle closes on the bug
+					_fx.draw_arc(o.pos, 58.0 * (1.0 - k) + 14.0, 0.0, TAU, 32, Color(core, 0.5 + 0.5 * k), 2.0, true)
+					_fx.draw_line(Vector2(o.pos) + Vector2(-9, 0), Vector2(o.pos) + Vector2(9, 0), Color(core, 0.9), 1.5)
+					_fx.draw_line(Vector2(o.pos) + Vector2(0, -9), Vector2(o.pos) + Vector2(0, 9), Color(core, 0.9), 1.5)
 			"beam":
 				var fade := clampf(float(o.t) / 0.4, 0.0, 1.0)
 				var px: float = float(o.pos.x)
-				_fx.draw_rect(Rect2(px - 34.0, -20.0, 68.0, float(o.pos.y) + 20.0), Color(glow, 0.3 * fade))
-				_fx.draw_rect(Rect2(px - 15.0, -20.0, 30.0, float(o.pos.y) + 20.0), Color(glow.lerp(core, 0.6), 0.7 * fade))
-				_fx.draw_rect(Rect2(px - 6.0, -20.0, 12.0, float(o.pos.y) + 20.0), Color(1, 1, 1, fade))
-				_fx.draw_circle(o.pos, 58.0 * (1.2 - 0.3 * fade), Color(glow, 0.35 * fade))
+				if _fx_tex.has("spec_beam"):   # Luna s strip repeated up to the top of the screen, sliding down
+					var bw := 84.0 * (0.8 + 0.2 * fade)
+					var bh := bw * 512.0 / 150.0
+					var by: float = float(o.pos.y) - bh + fposmod(time_alive * 900.0, bh)
+					while by > -bh - 20.0:
+						_fx.draw_texture_rect(_fx_tex["spec_beam"], Rect2(px - bw * 0.5, by, bw, bh), false, Color(1, 1, 1, fade))
+						by -= bh
+				else:
+					_fx.draw_rect(Rect2(px - 34.0, -20.0, 68.0, float(o.pos.y) + 20.0), Color(glow, 0.3 * fade))
+					_fx.draw_rect(Rect2(px - 15.0, -20.0, 30.0, float(o.pos.y) + 20.0), Color(glow.lerp(core, 0.6), 0.7 * fade))
+					_fx.draw_rect(Rect2(px - 6.0, -20.0, 12.0, float(o.pos.y) + 20.0), Color(1, 1, 1, fade))
+					_fx.draw_circle(o.pos, 58.0 * (1.2 - 0.3 * fade), Color(glow, 0.35 * fade))
 			"rift":
 				var grow := clampf(k * 5.0, 0.0, 1.0) * clampf(float(o.t) * 3.0, 0.0, 1.0)
 				_fx.draw_circle(o.pos, 135.0 * grow, Color(glow, 0.06))
-				for i in 4:
-					var a0 := time_alive * (3.0 + i) + i * 1.6
-					_fx.draw_arc(o.pos, (52.0 - 11.0 * i) * grow, a0, a0 + PI * 1.3, 18, Color(glow.lerp(core, 0.15 * i), 0.85 - 0.12 * i), 2.6, true)
+				if not _sp_pic("rift", o.pos, 190.0 * grow, time_alive * 1.6, minf(grow * 1.3, 1.0)):   # Luna s spiral, turning slowly
+					for i in 4:
+						var a0 := time_alive * (3.0 + i) + i * 1.6
+						_fx.draw_arc(o.pos, (52.0 - 11.0 * i) * grow, a0, a0 + PI * 1.3, 18, Color(glow.lerp(core, 0.15 * i), 0.85 - 0.12 * i), 2.6, true)
 			"glaive":
 				var sp := time_alive * 22.0
 				# a glaive that can be SEEN: twice the size, two blades and a faint disc (was 17 px)
 				_fx.draw_circle(o.pos, 34.0, Color(glow, 0.14))
+				if _sp_pic("glaive", o.pos, 84.0, -sp * 0.8):   # Luna s three blades, spun fast (cutting edges leading)
+					continue
 				_fx.draw_arc(o.pos, 32.0, sp, sp + PI * 0.9, 20, Color(glow, 0.7), 9.0, true)
 				_fx.draw_arc(o.pos, 32.0, sp + 0.12, sp + PI * 0.8, 20, core, 3.4, true)
 				_fx.draw_arc(o.pos, 32.0, sp + PI, sp + PI * 1.9, 20, Color(glow, 0.7), 9.0, true)
