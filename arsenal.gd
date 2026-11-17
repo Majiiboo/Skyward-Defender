@@ -276,7 +276,7 @@ static func reset(save: Dictionary, hid: String, cls: String) -> bool:
 const SPECIALS := {
 	"frost": {"name": "Snow Globe", "text": "Lobs a globe that freezes every bug where it lands", "cd": 9.0},
 	"ember": {"name": "Dragon Breath", "text": "Breathes a wide cone of fire, very short range", "cd": 8.0},
-	"sparks": {"name": "Tesla Coil", "text": "Drops a coil that zaps nearby bugs on its own", "cd": 12.0},
+	"sparks": {"name": "Tesla Coil", "text": "Tosses a coil under the bugs that zaps them on its own", "cd": 12.0},
 	"rook": {"name": "Orbital Strike", "text": "Marks the toughest bug and calls a beam down on it", "cd": 9.0},
 	"hollow": {"name": "Rift", "text": "Opens a rift that drags bugs in and swallows the weak ones", "cd": 12.0},
 	"nyx": {"name": "Glaive", "text": "Throws a glaive that cuts through bugs and flies back", "cd": 6.0},

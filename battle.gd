@@ -6247,7 +6247,12 @@ func _update_special(delta: float) -> void:
 			_sp_objs.append({"kind": "breath", "pos": from0, "dir": (Vector2(crowd.pos) - from0).normalized(), "t": 1.3, "dur": 1.3, "tick": 0.0})
 			Sfx.play("stream", 0.7, 6.0)
 		"sparks":
-			_sp_objs.append({"kind": "coil", "pos": Vector2(soldier_pos) + Vector2(0, -30), "t": 6.0, "dur": 6.0, "tick": 0.2})
+			var coil_at: Vector2 = Vector2(soldier_pos) + Vector2(0, -30)
+			var coil_crowd: Dictionary = _sp_crowd()   # tossed under the thickest group, so its 165 px reach has bugs in it (it used to land beside him, often out of reach)
+			if not coil_crowd.is_empty():
+				coil_at = Vector2(coil_crowd.pos) + Vector2(0, 80)
+				coil_at.y = minf(coil_at.y, soldier_pos.y - 30.0)
+			_sp_objs.append({"kind": "coil", "pos": coil_at, "t": 6.0, "dur": 6.0, "tick": 0.2})
 			Sfx.play("shot_charge", 1.2)
 		"rook":
 			var tough: Dictionary = crowd
@@ -6295,10 +6300,16 @@ func _draw_special() -> void:
 					_fx.draw_colored_polygon(PackedVector2Array([from, from + dir.rotated(-0.55) * 200.0, from + dir * 215.0, from + dir.rotated(0.55) * 200.0]), Color(glow, 0.45 * a))
 			"coil":
 				var pulse := 0.6 + 0.4 * sin(time_alive * 12.0)
-				_fx.draw_circle(o.pos, 14.0, Color(glow, 0.25 * pulse))
-				_fx.draw_arc(o.pos, 8.0, 0.0, TAU, 16, Color(glow.lerp(core, 0.5), 0.9), 2.2, true)
-				_fx.draw_circle(o.pos, 3.5, core)
-				_fx.draw_arc(o.pos, 165.0, 0.0, TAU, 48, Color(glow, 0.1), 1.0, true)
+				# a coil that can be SEEN: a glowing ball on three stacked rings, its reach marked (was a 14 px dot)
+				_fx.draw_circle(o.pos, 30.0, Color(glow, 0.22 * pulse))
+				for ri in 3:
+					_fx.draw_arc(Vector2(o.pos) + Vector2(0, 10.0 + 9.0 * ri), 13.0 - 2.5 * ri, 0.0, TAU, 20, Color(glow.lerp(core, 0.3), 0.75), 2.0, true)
+				_fx.draw_arc(o.pos, 14.0, 0.0, TAU, 20, Color(glow.lerp(core, 0.5), 0.95), 3.0, true)
+				_fx.draw_circle(o.pos, 6.5, core)
+				for zi in 3:   # little arcs crackling off the ball
+					var za := time_alive * 9.0 + zi * 2.1
+					_fx.draw_line(Vector2(o.pos) + Vector2.RIGHT.rotated(za) * 14.0, Vector2(o.pos) + Vector2.RIGHT.rotated(za + 0.5) * (24.0 + 6.0 * sin(time_alive * 31.0 + zi)), Color(core, 0.8), 1.5, true)
+				_fx.draw_arc(o.pos, 165.0, 0.0, TAU, 48, Color(glow, 0.22), 1.2, true)
 			"orbital":
 				_fx.draw_arc(o.pos, 58.0 * (1.0 - k) + 14.0, 0.0, TAU, 32, Color(core, 0.5 + 0.5 * k), 2.0, true)
 				_fx.draw_line(Vector2(o.pos) + Vector2(-9, 0), Vector2(o.pos) + Vector2(9, 0), Color(core, 0.9), 1.5)
@@ -6318,9 +6329,13 @@ func _draw_special() -> void:
 					_fx.draw_arc(o.pos, (52.0 - 11.0 * i) * grow, a0, a0 + PI * 1.3, 18, Color(glow.lerp(core, 0.15 * i), 0.85 - 0.12 * i), 2.6, true)
 			"glaive":
 				var sp := time_alive * 22.0
-				_fx.draw_arc(o.pos, 17.0, sp, sp + PI * 1.15, 16, Color(glow, 0.65), 6.0, true)
-				_fx.draw_arc(o.pos, 17.0, sp + 0.15, sp + PI, 16, core, 2.4, true)
-				_fx.draw_arc(o.pos, 17.0, sp + PI, sp + PI * 2.15, 16, Color(glow, 0.35), 4.0, true)
+				# a glaive that can be SEEN: twice the size, two blades and a faint disc (was 17 px)
+				_fx.draw_circle(o.pos, 34.0, Color(glow, 0.14))
+				_fx.draw_arc(o.pos, 32.0, sp, sp + PI * 0.9, 20, Color(glow, 0.7), 9.0, true)
+				_fx.draw_arc(o.pos, 32.0, sp + 0.12, sp + PI * 0.8, 20, core, 3.4, true)
+				_fx.draw_arc(o.pos, 32.0, sp + PI, sp + PI * 1.9, 20, Color(glow, 0.7), 9.0, true)
+				_fx.draw_arc(o.pos, 32.0, sp + PI + 0.12, sp + PI * 1.8, 20, core, 3.4, true)
+				_fx.draw_circle(o.pos, 5.0, core)
 
 # ------------------------------------------------------------------ WEAPON CHIPS (Chips, 2026-11-16)
 # Up to three chips sit in the weapon in hand; each makes every Nth shot do something more.
