@@ -221,6 +221,7 @@ var _fx: Node2D                   # additive effect layer
 var _hc: Node2D                   # top bar layer (_draw_hud draws on it)
 var _fx_tex := {}
 var stat_pilot_dmg := 0.0
+var stat_special_dmg := 0.0   # the share of it the Specialty weapon did (for the sim)
 var stat_turret_dmg := 0.0
 var _dmg_by := {}                 # damage by source this run: "hero", "drone", each turret type (the pause + clear stats, dev199)
 var _coin_refreshes := 0          # card refreshes bought with run coins after the free ones (dev199)
@@ -549,6 +550,7 @@ func _start_stage() -> void:
 	sparks.clear(); rings.clear(); floaters.clear()
 	fxs.clear()
 	stat_pilot_dmg = 0.0
+	stat_special_dmg = 0.0
 	stat_turret_dmg = 0.0
 	_dmg_by = {}
 	_coin_refreshes = 0
@@ -6143,6 +6145,7 @@ func _sp_hit(e: Dictionary, units: float) -> void:
 		return
 	var d: float = _through_shield(e, units * damage_mult * _elem_mult)
 	stat_pilot_dmg += minf(d, maxf(float(e.hp), 0.0))
+	stat_special_dmg += minf(d, maxf(float(e.hp), 0.0))
 	_count_dmg("hero", d, e)
 	_show_dmg(e, d, false, _elem_mult)
 	e.hp -= d
@@ -6176,7 +6179,7 @@ func _update_special(delta: float) -> void:
 				if float(o.t) <= 0.0:
 					for e in enemies:
 						if Vector2(e.pos).distance_to(o.to) < 95.0 + float(e.r) * 0.5:
-							_sp_hit(e, 2.4)
+							_sp_hit(e, 3.5)
 							if _is_boss(e):
 								e.slow_t = 2.0
 								e.slow = maxf(float(e.get("slow", 0.0)), 0.4)
@@ -6198,8 +6201,8 @@ func _update_special(delta: float) -> void:
 					var from := _muzzle_world()
 					for e in enemies:
 						var to_e: Vector2 = Vector2(e.pos) - from
-						if to_e.length() < 200.0 + float(e.r) and absf(Vector2(o.dir).angle_to(to_e)) < 0.55:
-							_sp_hit(e, 0.5)
+						if to_e.length() < 300.0 + float(e.r) and absf(Vector2(o.dir).angle_to(to_e)) < 0.55:
+							_sp_hit(e, 1.1)
 							if e.type != "spore":
 								e.burn_t = maxf(float(e.get("burn_t", 0.0)), 2.0)
 								e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.025) * float(e.hp_max))
@@ -6212,7 +6215,7 @@ func _update_special(delta: float) -> void:
 						if _can_hurt(e) and Vector2(e.pos).distance_to(o.pos) < 165.0 and (near.is_empty() or Vector2(e.pos).distance_to(o.pos) < Vector2(near.pos).distance_to(o.pos)):
 							near = e
 					if not near.is_empty():
-						_sp_hit(near, 0.85)
+						_sp_hit(near, 1.05)
 						zaps.append({"a": Vector2(o.pos), "b": Vector2(near.pos), "life": 0.2, "seed": rng.randf() * 100.0})
 						Sfx.play("hit_soft", 1.4)
 			"orbital":   # a mark that follows its bug, then the beam
@@ -6222,7 +6225,7 @@ func _update_special(delta: float) -> void:
 				if float(o.t) <= 0.0:
 					for e in enemies:
 						if Vector2(e.pos).distance_to(o.pos) < 58.0 + float(e.r) * 0.5:
-							_sp_hit(e, 7.5 if int(e.id) == int(o.id) else 3.0)
+							_sp_hit(e, 14.0 if int(e.id) == int(o.id) else 5.5)
 					born.append({"kind": "beam", "pos": Vector2(o.pos), "t": 0.4, "dur": 0.4})
 					if _fx_tex.has("spec_beam_hit"):
 						_fx_add("spec_beam_hit", o.pos, 130.0, 0.45, rng.randf() * TAU, 1.5, Color.WHITE)
@@ -6243,16 +6246,16 @@ func _update_special(delta: float) -> void:
 							_sp_hit(e, 99.0)   # swallowed
 							_fx_add("impact", e.pos, 30.0, 0.3, rng.randf() * TAU, 0.4, Color(0.8, 0.5, 1.0))
 						else:
-							_sp_hit(e, 0.7)
+							_sp_hit(e, 0.8)
 			"glaive":   # out and back along one line, cutting each bug once each way
 				var k: float = clampf(1.0 - float(o.t) / float(o.dur), 0.0, 1.0)
 				var leg := 0 if k < 0.5 else 1
 				o.pos = (Vector2(o.from) if leg == 0 else _muzzle_world()) + Vector2(o.dir) * 330.0 * sin(PI * k)
 				for e in enemies:
 					var key := "%d_%d" % [int(e.id), leg]
-					if not o.hits.has(key) and Vector2(e.pos).distance_to(o.pos) < 30.0 + float(e.r) * 0.5:
+					if not o.hits.has(key) and Vector2(e.pos).distance_to(o.pos) < 44.0 + float(e.r) * 0.5:   # as wide as the blade is drawn
 						o.hits[key] = true
-						_sp_hit(e, 2.0)
+						_sp_hit(e, 6.0)
 						_fx_add("impact", e.pos, 24.0, 0.2, rng.randf() * TAU, 1.6, Color(1.0, 0.5, 0.5))
 		if float(o.t) > 0.0:
 			keep.append(o)
@@ -6325,8 +6328,8 @@ func _draw_special() -> void:
 				var a := clampf(k * 6.0, 0.0, 1.0) * clampf(float(o.t) * 5.0, 0.0, 1.0)
 				var se := Shots.tex(_bolt_set, "stream_end")
 				if se != null:
-					var ex := dir * 230.0
-					var ey := dir.orthogonal() * 125.0 * (0.92 + 0.08 * sin(time_alive * 30.0))
+					var ex := dir * 330.0
+					var ey := dir.orthogonal() * 170.0 * (0.92 + 0.08 * sin(time_alive * 30.0))
 					var o0 := from - dir * 24.0
 					var c0 := Color(1, 1, 1, a)
 					_fx.draw_polygon(PackedVector2Array([o0 - ey, o0 + ex - ey, o0 + ex + ey, o0 + ey]), PackedColorArray([c0, c0, c0, c0]), PackedVector2Array([Vector2(0, 0), Vector2(1, 0), Vector2(1, 1), Vector2(0, 1)]), se)

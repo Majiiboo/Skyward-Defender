@@ -189,6 +189,8 @@ func _auto_kit(d: Dictionary, stage: int) -> void:
 					if Chips.CHIPS.has(String(parts[i])):
 						own.append(String(parts[i]))
 			d["chips"] = {"owned": own, "fit": {Arsenal.key(hid, sim_cls): row}}
+			if row.has("special"):
+				d["special_test"] = true   # the Specialty chip without earning the mastery
 		_wkit = " %s %s Lv.%d" % [hid, sim_cls, wl]
 	var types := ["sentry", "lance", "storm", "gravity"]
 	var lo: Array = ["", "", "", ""]
@@ -408,6 +410,8 @@ func _finish() -> void:
 	r.lvl = b.run_level
 	r.pilot_dmg = b.stat_pilot_dmg
 	r.turret_dmg = b.stat_turret_dmg
+	if b.stat_special_dmg > 0.0:
+		print("    specialty: %.1f%% of the hero damage" % (100.0 * b.stat_special_dmg / maxf(b.stat_pilot_dmg, 0.001)))
 	r.hit_bullet = b.stat_hit_bullet
 	r.hit_diver = b.stat_hit_diver
 	r.pxp = b._xp_gain

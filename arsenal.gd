@@ -275,7 +275,7 @@ static func reset(save: Dictionary, hid: String, cls: String) -> bool:
 # (battle _update_special). Stand-in looks drawn in code until Luna paints them.
 const SPECIALS := {
 	"frost": {"name": "Snow Globe", "text": "Lobs a globe that freezes every bug where it lands", "cd": 9.0},
-	"ember": {"name": "Dragon Breath", "text": "Breathes a wide cone of fire, very short range", "cd": 8.0},
+	"ember": {"name": "Dragon Breath", "text": "Breathes a wide cone of fire, short range", "cd": 8.0},
 	"sparks": {"name": "Tesla Coil", "text": "Tosses a coil under the bugs that zaps them on its own", "cd": 12.0},
 	"rook": {"name": "Orbital Strike", "text": "Marks the toughest bug and calls a beam down on it", "cd": 9.0},
 	"hollow": {"name": "Rift", "text": "Opens a rift that drags bugs in and swallows the weak ones", "cd": 12.0},
