@@ -1162,7 +1162,7 @@ func _check_store2() -> void:
 # the hero rebuilt for the fight (HeroFight, 2026-11-12): the pieces exist, the pose stays sane
 func _check_hero_fight() -> void:
 	_expect(HeroFight.has("frost"), "Frost has his fight pieces")
-	_expect(not HeroFight.has("rook"), "Rook is held back until his art from behind arrives")
+	_expect(HeroFight.has("rook"), "Rook has his fight pieces")
 	_expect(not HeroFight.has("sparks"), "a hero without fight pieces keeps the old look")
 	for p in ["body", "helmet", "flipper", "arm", "leg_l", "leg_r", "flame"]:
 		_expect(ResourceLoader.exists("res://heroes/frost/fight/%s.png" % p), "fight piece %s is cut" % p)

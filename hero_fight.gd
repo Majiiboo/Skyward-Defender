@@ -29,20 +29,19 @@ const SETS := {
 		"rifle_len": 250.0,
 		"flap": 1.0,                       # how hard the flipper works (each hero flies his own way)
 	},
-	# Rook (2026-11-17): Luna s pieces, his own whole picture: neck, length and places measured on rookfight_whole
+	# Rook (2026-11-17): Luna s pieces SEEN FROM BEHIND like the penguin; neck, length and places measured on rookfight_whole
 	"rook": {
-		"hold": true,                      # HELD BACK: these pieces face the player (my brief was wrong); he keeps his old look until the art from behind arrives
-		"origin": Vector2(500, 585), "len": 685.0,
-		"body":    {"at": Vector2(515, 545), "pv": Vector2(0.5, 0.0)},
-		"helmet":  {"at": Vector2(490, 400), "pv": Vector2(0.5, 0.5)},
-		"flipper": {"at": Vector2(378, 592), "pv": Vector2(0.9, 0.5)},        # his left arm, out to the side
-		"arm":     {"at": Vector2(662, 596), "pv": Vector2(0.5, 0.86), "rot": 0.73, "hand": 0.76, "top_rot": 0.73},
-		"leg_l":   {"at": Vector2(440, 750), "pv": Vector2(0.5, 0.12)},
-		"leg_r":   {"at": Vector2(615, 750), "pv": Vector2(0.5, 0.12)},
-		"jets":    [Vector2(403, 728), Vector2(640, 728)],
+		"origin": Vector2(520, 530), "len": 637.0,
+		"body":    {"at": Vector2(530, 518), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(519, 400), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(428, 590), "pv": Vector2(0.9, 0.5)},        # his left arm, out to the side
+		"arm":     {"at": Vector2(640, 548), "pv": Vector2(0.5, 0.86), "rot": 0.57, "hand": 0.76, "top_rot": 0.57},
+		"leg_l":   {"at": Vector2(483, 712), "pv": Vector2(0.5, 0.1)},
+		"leg_r":   {"at": Vector2(600, 712), "pv": Vector2(0.5, 0.1)},
+		"jets":    [Vector2(425, 722), Vector2(650, 722)],
 		"rifle_len": 250.0,
 		"flap": 0.2,                       # an arm, not a wing: it only sways
-		"top_grip": {"main": 0.76},
+		"top_grip": {"main": 0.72},
 		"tuck": 0.25,                      # his free arm stays out to the side
 	},
 }

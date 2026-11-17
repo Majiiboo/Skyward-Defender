@@ -27,16 +27,16 @@ const SETS := {
 	},
 	# Rook (2026-11-17): Luna s second round of pieces; his left arm plays the part of the flipper
 	"rook": {
-		"prefix": "front/rookfight_",          # the front-facing round, held back (HeroFight "hold")
+		"prefix": "rookfight_",               # the round seen from behind (2026-11-17); painted at the whole s size
 		"pieces": {
-			"body":    ["body", 0.95, false],
-			"helmet":  ["helmet", 1.03, false],
+			"body":    ["body", 1.07, false],
+			"helmet":  ["helmet", 1.04, false],
 			"flipper": ["arm_l", 1.05, false],
-			"arm":     ["arm_r", 1.25, false],
-			"leg_r":   ["leg_r", 0.95, false],
-			"leg_l":   ["leg_r", 0.95, true],             # leg_l came as a boot from the side: the right one mirrored
-			"flame":   ["flame", 1.0, false],
-			"top_main": ["rifle", 1.03, false],
+			"arm":     ["arm_r", 0.95, false],
+			"leg_l":   ["leg_l", 1.0, false],
+			"leg_r":   ["leg_l", 1.0, true],              # leg_l shows the sole, as on the whole; leg_r came from another angle
+			"flame":   ["flame", 1.6, false],
+			"top_main": ["rifle", 1.0, false],
 			"whole":   ["whole", 1.0, false],
 		},
 	},
