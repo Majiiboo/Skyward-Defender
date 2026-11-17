@@ -27,6 +27,7 @@ const STREAM_CROP := {"solar": [372, 280], "void": [382, 260], "ion": [392, 240]
 const STREAM_BLEND := 200    # rows cross-faded so the top joins the bottom
 const STREAM_OUT_W := 160
 const FLOOR := 0.045         # the render's background grey, taken off
+const LAUNCHER_TOP := {"rook": 238, "sparks": 200, "hollow": 224, "nyx": 208, "ember": 212}   # the row of each launcher s rim in its 1024 picture
 const SIDES := {"frost": {"prefix": "frostfight_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "streamer": "main"}},
 	"rook": {"prefix": "rook_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "rifle": "main"}},
 	"sparks": {"prefix": "sparks_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}},
@@ -69,6 +70,8 @@ func _initialize() -> void:
 			var img := _open("res://art_src/heroes/%s/%s%s.webp" % [id, spec.prefix, f])
 			if img == null:
 				continue
+			if f == "launcher" and LAUNCHER_TOP.has(id):   # the plume Luna painted rising from the muzzle keys out as a smudge, and the gun is not firing on the Weapon page: painted away above the rim
+				img.fill_rect(Rect2i(0, 0, 1024, int(LAUNCHER_TOP[id])), Color.BLACK)
 			if f == "streamer":   # the mist Luna painted round the nozzle keys out as a dark smudge: painted away first
 				img.fill_rect(Rect2i(0, 0, 1024, 214), Color.BLACK)
 				img.fill_rect(Rect2i(0, 0, 410, 345), Color.BLACK)
