@@ -15,7 +15,7 @@ const HINTS := {
 	# Heroes
 	"ability":   {"title": "Ability upgrades", "text": "The Ability square: three upgrades for his special move, bought with his own shards."},
 	"wingmate":  {"title": "Wingmate", "text": "A second hero you own flies in support: half his passive, and his ability fires by itself."},
-	"weapon":    {"title": "Weapon shapes", "text": "A weapon changes shape at Lv.10 and Lv.20. Each shape fires differently."},
+	"weapon":    {"title": "Chip slots", "text": "Lv.10, 20 and 30 each open a slot under the weapon. Tap one to fit a chip; Try shows it at work."},
 	"base":      {"title": "Your base", "text": "Field four buildings. Each gives a bonus, a perk at Lv.5, and some pairs link for more."},
 	"research":  {"title": "Research Lab", "text": "One project at a time. It keeps running while the game is closed."},
 	"support":   {"title": "Support drone", "text": "With a Hangar on the base, a second drone guards, heals or collects for you."},

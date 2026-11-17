@@ -262,3 +262,15 @@ const SHAPE := {"sure": "tri", "over": "tri", "reaper": "tri", "frag": "tri", "m
 	"cryo": "circ", "fire": "circ", "stun": "circ", "leech": "circ", "guard": "circ", "bounty": "circ"}
 static func shape(id: String) -> String:
 	return String(SHAPE.get(id, "hex"))
+
+# is there an open, empty slot on this weapon AND a chip that could go into it right now
+static func can_fill(save: Dictionary, hid: String, item: String, level: int) -> bool:
+	var cls := GearData.weapon_class(item)
+	var row: Array = fitted(save, hid, cls, level)
+	for i in slots(level):
+		if String(row[i]) != "":
+			continue
+		for id in offered(save, hid, item):
+			if why_not_fit(save, hid, cls, level, i, String(id)) == "":
+				return true
+	return false

@@ -5239,6 +5239,7 @@ func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
 	var cls := GearData.weapon_class(item)
 	var lv := _lvl(item)
 	var ids: Array = Chips.fitted(_read(), hid, cls, lv)
+	var can_fill := Chips.can_fill(_read(), hid, item, lv)
 	var row := HBoxContainer.new()
 	row.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_theme_constant_override("separation", 22)
@@ -5261,6 +5262,7 @@ func _chip_sockets(wlayer: Control, hid: String, item: String) -> Control:
 		elif not open:
 			s.tex = load("res://icons/ui_padlock.png")
 			s.note = "Lv.%d" % int(Chips.SLOT_LEVELS[i])
+		UIKit.dot(s, s.plus and can_fill)   # an empty socket you could fill right now
 		var slot := i
 		s.pressed.connect(func():
 			if open:

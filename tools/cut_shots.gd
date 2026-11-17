@@ -27,7 +27,12 @@ const STREAM_CROP := {"solar": [372, 280], "void": [382, 260], "ion": [392, 240]
 const STREAM_BLEND := 200    # rows cross-faded so the top joins the bottom
 const STREAM_OUT_W := 160
 const FLOOR := 0.045         # the render's background grey, taken off
-const SIDES := {"frost": {"prefix": "frostfight_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "streamer": "main"}}}
+const SIDES := {"frost": {"prefix": "frostfight_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "streamer": "main"}},
+	"rook": {"prefix": "rook_side_", "files": {"pistol": "sidearm", "launcher": "heavy", "rifle": "main"}},
+	"sparks": {"prefix": "sparks_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}},
+	"hollow": {"prefix": "hollow_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}},
+	"nyx": {"prefix": "nyx_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}},
+	"ember": {"prefix": "ember_side_", "files": {"pistol": "sidearm", "launcher": "heavy"}}}   # LUNA-BRIEF-hero-side-weapons.md
 
 func _initialize() -> void:
 	for el in ELEMENTS:
