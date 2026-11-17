@@ -31,6 +31,7 @@ const SETS := {
 	},
 	# Rook (2026-11-17): Luna s pieces, his own whole picture: neck, length and places measured on rookfight_whole
 	"rook": {
+		"hold": true,                      # HELD BACK: these pieces face the player (my brief was wrong); he keeps his old look until the art from behind arrives
 		"origin": Vector2(500, 585), "len": 685.0,
 		"body":    {"at": Vector2(515, 545), "pv": Vector2(0.5, 0.0)},
 		"helmet":  {"at": Vector2(490, 400), "pv": Vector2(0.5, 0.5)},
@@ -58,7 +59,7 @@ static func apply_from(save: Dictionary) -> void:
 	on = bool(save.get("hero_new", true))
 
 static func has(id: String) -> bool:
-	return SETS.has(id) and ResourceLoader.exists("res://heroes/%s/fight/body.png" % id)
+	return SETS.has(id) and not bool(SETS[id].get("hold", false)) and ResourceLoader.exists("res://heroes/%s/fight/body.png" % id)
 
 static func ready() -> bool:
 	return on and has(PilotRig.hero)

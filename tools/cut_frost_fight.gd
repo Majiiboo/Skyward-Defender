@@ -27,7 +27,7 @@ const SETS := {
 	},
 	# Rook (2026-11-17): Luna s second round of pieces; his left arm plays the part of the flipper
 	"rook": {
-		"prefix": "rookfight_",
+		"prefix": "front/rookfight_",          # the front-facing round, held back (HeroFight "hold")
 		"pieces": {
 			"body":    ["body", 0.95, false],
 			"helmet":  ["helmet", 1.03, false],
