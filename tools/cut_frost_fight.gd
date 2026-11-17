@@ -25,6 +25,21 @@ const SETS := {
 			"whole":   ["whole", 1.0, false],
 		},
 	},
+	# Rook (2026-11-17): Luna s second round of pieces; his left arm plays the part of the flipper
+	"rook": {
+		"prefix": "rookfight_",
+		"pieces": {
+			"body":    ["body", 0.95, false],
+			"helmet":  ["helmet", 1.03, false],
+			"flipper": ["arm_l", 1.05, false],
+			"arm":     ["arm_r", 1.25, false],
+			"leg_r":   ["leg_r", 0.95, false],
+			"leg_l":   ["leg_r", 0.95, true],             # leg_l came as a boot from the side: the right one mirrored
+			"flame":   ["flame", 1.0, false],
+			"top_main": ["rifle", 1.03, false],
+			"whole":   ["whole", 1.0, false],
+		},
+	},
 }
 
 func _initialize() -> void:

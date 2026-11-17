@@ -29,9 +29,30 @@ const SETS := {
 		"rifle_len": 250.0,
 		"flap": 1.0,                       # how hard the flipper works (each hero flies his own way)
 	},
+	# Rook (2026-11-17): Luna s pieces, his own whole picture: neck, length and places measured on rookfight_whole
+	"rook": {
+		"origin": Vector2(500, 585), "len": 685.0,
+		"body":    {"at": Vector2(515, 545), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(490, 400), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(378, 592), "pv": Vector2(0.9, 0.5)},        # his left arm, out to the side
+		"arm":     {"at": Vector2(662, 596), "pv": Vector2(0.5, 0.86), "rot": 0.73, "hand": 0.76, "top_rot": 0.73},
+		"leg_l":   {"at": Vector2(440, 750), "pv": Vector2(0.5, 0.12)},
+		"leg_r":   {"at": Vector2(615, 750), "pv": Vector2(0.5, 0.12)},
+		"jets":    [Vector2(403, 728), Vector2(640, 728)],
+		"rifle_len": 250.0,
+		"flap": 0.2,                       # an arm, not a wing: it only sways
+		"top_grip": {"main": 0.76},
+		"tuck": 0.25,                      # his free arm stays out to the side
+	},
 }
 
 static var _tex := {}
+static var _org := ORIGIN                  # the hero being drawn: his neck and his length on his own whole picture
+static var _len := BODY_LEN
+
+static func _use(kit: Dictionary) -> void:
+	_org = kit.get("origin", ORIGIN)
+	_len = float(kit.get("len", BODY_LEN))
 
 static func apply_from(save: Dictionary) -> void:
 	on = bool(save.get("hero_new", true))
@@ -169,7 +190,7 @@ static func wclass() -> String:
 # ------------------------------------------------------------------ the pose
 
 static func _k(height: float) -> float:
-	return height * SIZE / BODY_LEN
+	return height * SIZE / _len
 
 # the whole figure: where he is, his lean, the jolt of a hit, the pop of the ability
 static func _root(s: State, pos: Vector2, height: float) -> Transform2D:
@@ -181,7 +202,7 @@ static func _root(s: State, pos: Vector2, height: float) -> Transform2D:
 	return Transform2D(s.lean * 0.15 + jolt, squash * k, 0.0, pos + back)
 
 static func _local(at: Vector2, rot: float, scl: Vector2 = Vector2.ONE) -> Transform2D:
-	return Transform2D(rot, scl, 0.0, at - ORIGIN)
+	return Transform2D(rot, scl, 0.0, at - _org)
 
 static func _put(c: CanvasItem, m: Transform2D, tx: Texture2D, pv: Vector2, col: Color) -> void:
 	var size := Vector2(tx.get_size()) * 2.0     # the pieces are saved at half the whole picture
@@ -189,7 +210,7 @@ static func _put(c: CanvasItem, m: Transform2D, tx: Texture2D, pv: Vector2, col:
 	c.draw_texture_rect(tx, Rect2(-pv * size, size), false, col)
 
 static func _arm_rot(s: State, kit: Dictionary, aim: float) -> float:
-	return (0.33 if _top() != null else float(kit.arm.rot)) + aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
+	return (float(kit.arm.get("top_rot", 0.33)) if _top() != null else float(kit.arm.rot)) + aim * 0.45 - 0.5 * sin(clampf(s.cast, 0.0, 1.0) * PI)
 
 # the weapon in a mitten, for the RIGHT hand (the left is this, mirrored, with the aim turned round):
 # [transform inside the figure, texture, grip (0..1), muzzle (0..1), drawn size]
@@ -209,7 +230,7 @@ static func _rifle(s: State, kit: Dictionary, aim: float, kick: float) -> Array:
 	var top := _top()
 	if top != null:
 		tx = top
-		grip = Vector2(0.5, TOP_GRIP.get(wclass(), 0.45))
+		grip = Vector2(0.5, float((kit.get("top_grip", {}) as Dictionary).get(wclass(), TOP_GRIP.get(wclass(), 0.45))))
 		muz = Vector2(0.5, 0.0)
 	var turn_over := top == null and HELD_FIX.has(PilotRig.held)
 	if turn_over:
@@ -238,6 +259,7 @@ static func _draw_rifle(c: CanvasItem, m: Transform2D, rf: Array, col: Color) ->
 static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: float = 1.0, lift: Color = PilotRig.LIFT) -> void:
 	var id := PilotRig.hero
 	var kit: Dictionary = SETS[id]
+	_use(kit)
 	var root := _root(s, pos, height)
 	var cls := wclass()
 	var flash := 1.0 + 1.1 * s.flinch
@@ -266,7 +288,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 		var fl: Dictionary = kit.flipper
 		var amt := float(kit.flap)
 		var stroke := sin(s.flap)
-		var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting - (0.7 if _top() != null else 0.0) * (1.0 - s.speed) * (1.0 - casting)   # tucked back along his side while he hangs still with a rifle under the other arm
+		var f_rot := amt * (0.1 + 0.2 * s.speed) * stroke - 0.45 * reach - 0.4 * maxf(-s.lean, 0.0) + 0.2 * tuck + 0.85 * casting - (float(kit.get("tuck", 0.7)) if _top() != null else 0.0) * (1.0 - s.speed) * (1.0 - casting)   # tucked back along his side while he hangs still with a rifle under the other arm
 		var f_len := 1.0 - 0.14 * amt * (0.5 + 0.5 * cos(s.flap)) * (0.4 + 0.6 * s.speed)
 		_put(c, root * _local(fl.at, f_rot, Vector2(f_len, 1.0)), tex(id, "flipper"), fl.pv, col)
 	# the weapon, then the arm over its grip (a heavy one rides the shoulder, over the body)
@@ -289,6 +311,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 static func draw_flames(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: float = 1.0) -> void:
 	var id := PilotRig.hero
 	var kit: Dictionary = SETS[id]
+	_use(kit)
 	var root := _root(s, pos, height)
 	var tx := tex(id, "flame")
 	for i in (kit.jets as Array).size():
@@ -303,6 +326,7 @@ static func draw_flames(c: CanvasItem, s: State, pos: Vector2, height: float, al
 # the one whose turn it is)
 static func muzzle(s: State, pos: Vector2, height: float) -> Vector2:
 	var kit: Dictionary = SETS[PilotRig.hero]
+	_use(kit)
 	var left := wclass() == "twin" and s.hand == 1
 	var rf := _rifle(s, kit, -s.aim if left else s.aim, s.kick2 if left else s.kick)
 	var rsize: Vector2 = rf[4]
