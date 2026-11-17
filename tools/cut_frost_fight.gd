@@ -36,7 +36,10 @@ const SETS := {
 			"leg_l":   ["leg_l", 1.0, false],
 			"leg_r":   ["leg_l", 1.0, true],              # leg_l shows the sole, as on the whole; leg_r came from another angle
 			"flame":   ["flame", 1.6, false],
-			"top_main": ["rifle", 1.0, false],
+			"top_main": ["top_rifle", 2.2, false],            # the top-view weapons came at 498 px = half size
+			"top_sidearm": ["top_pistol", 2.0, false],
+			"top_heavy": ["top_launcher_mouth", 2.0, false],
+			"top_heavy_flat": ["top_launcher_flat", 2.0, false],
 			"whole":   ["whole", 1.0, false],
 		},
 	},
@@ -105,7 +108,10 @@ const SETS := {
 }
 
 func _initialize() -> void:
+	var only := OS.get_environment("CUT_ONLY")   # CUT_ONLY=rook cuts one hero (a full run takes minutes)
 	for id in SETS:
+		if only != "" and only != String(id):
+			continue
 		var spec: Dictionary = SETS[id]
 		var src := "res://art_src/heroes/%s/fight/" % id
 		var out := "res://heroes/%s/fight/" % id
