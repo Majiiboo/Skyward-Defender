@@ -44,6 +44,75 @@ const SETS := {
 		"top_grip": {"main": 0.72},
 		"tuck": 0.25,                      # his free arm stays out to the side
 	},
+	# The other four (2026-11-17), each from behind on his own whole picture, each flying his own way.
+	# Sparks: one thruster under the body, the welder s hose swinging at his side, the antenna on his head.
+	"sparks": {
+		"origin": Vector2(570, 545), "len": 650.0,
+		"body":    {"at": Vector2(575, 540), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(555, 387), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(476, 590), "pv": Vector2(0.93, 0.5)},
+		"arm":     {"at": Vector2(696, 568), "pv": Vector2(0.5, 0.86), "rot": 0.55, "hand": 0.76, "top_rot": 0.55},
+		"leg_l":   {"at": Vector2(473, 728), "pv": Vector2(0.5, 0.1)},
+		"leg_r":   {"at": Vector2(678, 728), "pv": Vector2(0.5, 0.1)},
+		"jets":    [Vector2(584, 765)],
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"top_grip": {"main": 0.88},
+		"extras": [
+			{"p": "hose", "at": Vector2(768, 482), "pv": Vector2(0.6, 0.0), "layer": "top", "kind": "trail", "amt": 0.35},
+			{"p": "antenna", "at": Vector2(532, 238), "pv": Vector2(0.5, 1.0), "layer": "head", "kind": "fixed"},
+		],
+	},
+	# Hollow: no jets, he drifts; the cloak s long tatters trail under him.
+	"hollow": {
+		"origin": Vector2(535, 500), "len": 620.0,
+		"body":    {"at": Vector2(535, 485), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(535, 384), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(430, 535), "pv": Vector2(0.92, 0.5)},
+		"arm":     {"at": Vector2(655, 492), "pv": Vector2(0.5, 0.86), "rot": 0.31, "hand": 0.76, "top_rot": 0.31},
+		"leg_l":   {"at": Vector2(490, 668), "pv": Vector2(0.5, 0.1)},
+		"leg_r":   {"at": Vector2(568, 668), "pv": Vector2(0.5, 0.1)},
+		"jets":    [],
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"top_grip": {"main": 0.75},
+		"extras": [
+			{"p": "tatters", "at": Vector2(535, 505), "pv": Vector2(0.5, 0.0), "layer": "under", "kind": "trail", "amt": 1.0, "sc": 0.82},
+		],
+	},
+	# Nyx: a jetpack under the cape; the cape and the tail swing behind her.
+	"nyx": {
+		"origin": Vector2(560, 530), "len": 620.0,
+		"body":    {"at": Vector2(560, 530), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(561, 397), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(466, 580), "pv": Vector2(0.92, 0.5)},
+		"arm":     {"at": Vector2(671, 532), "pv": Vector2(0.5, 0.86), "rot": 0.46, "hand": 0.76, "top_rot": 0.46},
+		"leg_l":   {"at": Vector2(507, 752), "pv": Vector2(0.5, 0.1)},
+		"leg_r":   {"at": Vector2(590, 762), "pv": Vector2(0.5, 0.1)},
+		"jets":    [Vector2(502, 707), Vector2(614, 707)],
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"top_grip": {"main": 0.86},
+		"extras": [
+			{"p": "cape", "at": Vector2(562, 570), "pv": Vector2(0.5, 0.0), "layer": "back", "kind": "trail", "amt": 0.6},
+			{"p": "tail", "at": Vector2(545, 715), "pv": Vector2(0.97, 0.36), "layer": "back", "kind": "trail", "amt": 0.7},
+		],
+	},
+	# Ember: no jets, she flies on her wings; they beat, and the tail swings.
+	"ember": {
+		"origin": Vector2(517, 500), "len": 560.0,
+		"body":    {"at": Vector2(517, 488), "pv": Vector2(0.5, 0.0)},
+		"helmet":  {"at": Vector2(515, 377), "pv": Vector2(0.5, 0.5)},
+		"flipper": {"at": Vector2(430, 590), "pv": Vector2(0.92, 0.5)},
+		"arm":     {"at": Vector2(614, 502), "pv": Vector2(0.5, 0.86), "rot": 0.27, "hand": 0.76, "top_rot": 0.27},
+		"leg_l":   {"at": Vector2(447, 700), "pv": Vector2(0.5, 0.1)},
+		"leg_r":   {"at": Vector2(584, 700), "pv": Vector2(0.5, 0.1)},
+		"jets":    [],
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.3,
+		"top_grip": {"main": 0.83},
+		"extras": [
+			{"p": "tail", "at": Vector2(505, 672), "pv": Vector2(0.3, 0.05), "layer": "top", "kind": "trail", "amt": 0.6, "sc": 0.85},
+			{"p": "wing_l", "at": Vector2(450, 530), "pv": Vector2(0.93, 0.72), "layer": "top", "kind": "wing", "side": -1.0, "amt": 1.0},
+			{"p": "wing_r", "at": Vector2(585, 530), "pv": Vector2(0.07, 0.72), "layer": "top", "kind": "wing", "side": 1.0, "amt": 1.0},
+		],
+	},
 }
 
 static var _tex := {}
@@ -72,9 +141,49 @@ static func tex(id: String, piece: String) -> Texture2D:
 # load every picture before the first draw (a texture first loaded inside _draw shows white)
 static func warm(id: String) -> void:
 	if has(id):
-		for p in ["body", "helmet", "flipper", "arm", "leg_l", "leg_r", "flame"]:
+		for p in ["body", "helmet", "flipper", "arm", "leg_l", "leg_r"]:
 			tex(id, p)
+		if not (SETS[id].get("jets", []) as Array).is_empty():
+			tex(id, "flame")
+		for ex in SETS[id].get("extras", []):
+			tex(id, String(ex.p))
 		_top()
+
+# A hero s EXTRA pieces (kit "extras"): what makes him fly his own way (Rudy 2026-11-12).
+#   {"p": piece, "at": pivot on the whole picture, "pv": pivot in the piece, "layer", "kind", "amt", "side"}
+#   layer: "under" = under everything (a long cloak), "back" = over the legs and under the body (a cape, cloak tatters, a tail),
+#          "top"  = over the body and under the head (wings, a hose), "head" = rides the head (an antenna)
+#   kind:  "trail" = hangs and swings behind a sideways move, stretches in a climb
+#          "wing"  = beats (side -1 left, 1 right), sweeps back in a climb, flings wide on the ability
+#          "fixed" = only follows what it sits on
+static func _draw_extras(c: CanvasItem, s: State, kit: Dictionary, base: Transform2D, layer: String, col: Color, head_at: Vector2 = Vector2.ZERO) -> void:
+	var reach := maxf(s.trail, 0.0)
+	var tuck := maxf(-s.trail, 0.0)
+	var casting := sin(clampf(s.cast, 0.0, 1.0) * PI)
+	var n := 0
+	for ex in kit.get("extras", []):
+		n += 1
+		if String(ex.layer) != layer:
+			continue
+		var amt := float(ex.get("amt", 1.0))
+		var rot := 0.0
+		var scl := Vector2.ONE
+		match String(ex.kind):
+			"trail":
+				rot = (s.leg[n % 2] * 0.8 + sin(s.t * 2.1 + n * 1.7) * 0.06 * (1.0 - s.speed)) * amt
+				scl = Vector2(1.0 + 0.1 * tuck * amt, 1.0 + (0.14 * reach - 0.12 * tuck) * amt)
+			"wing":
+				var side := float(ex.get("side", 1.0))
+				var beat := sin(s.flap * 0.9)
+				rot = side * amt * ((0.1 + 0.16 * s.speed) * beat + 0.3 * reach - 0.12 * tuck - 0.45 * casting) - s.lean * 0.08
+				scl = Vector2(1.0 - 0.12 * amt * (0.5 + 0.5 * cos(s.flap * 0.9)) * (0.5 + 0.5 * s.speed), 1.0)
+		scl *= float(ex.get("sc", 1.0))
+		var m: Transform2D
+		if layer == "head":
+			m = base * Transform2D(rot, scl, 0.0, (ex.at as Vector2) - head_at)
+		else:
+			m = base * _local(ex.at, rot, scl)
+		_put(c, m, tex(PilotRig.hero, String(ex.p)), ex.pv, col)
 
 class State:
 	var t := 0.0
@@ -267,6 +376,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 	var tuck := maxf(-s.trail, 0.0)             # backing up
 	var reach := maxf(s.trail, 0.0)             # flying forward
 	var casting := sin(clampf(s.cast, 0.0, 1.0) * PI)
+	_draw_extras(c, s, kit, root, "under", col)
 	# the legs, under everything: they swing behind a sideways move, stretch out behind a climb,
 	# tuck and splay when he backs up; a slow paddle when he hangs still
 	for i in 2:
@@ -276,6 +386,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 		var rot: float = s.leg[i] + paddle - side * (0.34 * tuck + 0.3 * casting) + side * 0.05 * reach
 		var ln := 1.0 + 0.16 * reach - 0.2 * tuck
 		_put(c, root * _local(p.at + Vector2(0, 14.0 * reach - 6.0 * tuck), rot, Vector2(1.0, ln)), tex(id, "leg_l" if i == 0 else "leg_r"), p.pv, col)
+	_draw_extras(c, s, kit, root, "back", col)
 	var arm: Dictionary = kit.arm
 	if cls == "twin":
 		# two pistols: the left arm is the right one mirrored, with its own weapon and its own kick
@@ -301,9 +412,12 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 	_put(c, root * _local(kit.body.at, 0.0), tex(id, "body"), kit.body.pv, col)
 	if cls == "heavy":
 		_draw_rifle(c, root, rf, col)
+	_draw_extras(c, s, kit, root, "top", col)
 	var hm: Dictionary = kit.helmet
 	var h_at: Vector2 = hm.at + Vector2(s.lean * 9.0 + s.head * 10.0, s.nod - 8.0 * casting - 10.0 * sin(s.flinch * PI))
-	_put(c, root * _local(h_at, s.head * 0.8 - s.lean * 0.1 + s.flinch * 0.2 * s.flinch_dir), tex(id, "helmet"), hm.pv, col)
+	var h_m := root * _local(h_at, s.head * 0.8 - s.lean * 0.1 + s.flinch * 0.2 * s.flinch_dir)
+	_draw_extras(c, s, kit, h_m, "head", col, hm.at)
+	_put(c, h_m, tex(id, "helmet"), hm.pv, col)
 	c.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # the two jets, drawn as light over him: longer when he climbs, short when he backs up, flickering,
@@ -312,6 +426,8 @@ static func draw_flames(c: CanvasItem, s: State, pos: Vector2, height: float, al
 	var id := PilotRig.hero
 	var kit: Dictionary = SETS[id]
 	_use(kit)
+	if (kit.get("jets", []) as Array).is_empty():   # a hero who drifts or flies on wings has no jets
+		return
 	var root := _root(s, pos, height)
 	var tx := tex(id, "flame")
 	for i in (kit.jets as Array).size():
