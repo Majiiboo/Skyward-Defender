@@ -784,7 +784,8 @@ func _start_wave() -> void:
 		else:
 			wave_queue.append(bid)
 	wave_spawn_t = 0.6
-	_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
+	if not _preview:
+		_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 	if not wk.is_empty():
 		_float_text(Vector2(FIELD_W * 0.5, 190), "%s  ·  %s" % [String(wk.name), String(wk.text)], wk.col, true)
 		Sfx.play("boss", 1.3)
@@ -961,13 +962,15 @@ func _process(delta: float) -> void:
 	_update_fire_patches(delta)
 	_update_enemies(delta)
 	_update_gems(delta)
+	if _preview:
+		_range_step(delta)   # the Try window: targets on a range in place of waves
 	_update_shards(delta)
 	_step_effects(delta)
 	_pilot_motion(delta)
 	anim.update(_wanted_pose(), delta)
 	if pilot_hp <= 0.0 or hull <= 0.0:
 		_end_run(false)
-	elif wave_queue.is_empty() and enemies.is_empty() and _lanes.is_empty() and not stage_cleared and _outro_t < 0.0:
+	elif wave_queue.is_empty() and enemies.is_empty() and _lanes.is_empty() and not stage_cleared and _outro_t < 0.0 and not _preview:
 		wave_index += 1
 		if horde or wave_index < waves.size():
 			_vacuum_t = 1.4   # between waves what is left flies to him (gems feed the next cards)
@@ -983,6 +986,8 @@ func _process(delta: float) -> void:
 	queue_redraw()
 
 func _spawn_step(delta: float) -> void:
+	if _preview:
+		return
 	if wave_queue.is_empty():
 		return
 	wave_spawn_t -= delta
@@ -1665,7 +1670,9 @@ func _update_enemies(delta: float) -> void:
 			e.vel.y += 90.0 * delta
 			if e.t > 0.7:
 				e.state = "fly"
-		match ("runner" if e.has("runner") else String(def.move)):
+		match ("dummy" if e.has("dummy") else ("runner" if e.has("runner") else String(def.move))):
+			"dummy":   # a target on the Try window s range: it drops into its place and sways there
+				e.pos = Vector2(e.pos).lerp(Vector2(e.home) + Vector2(sin(e.t * 1.3 + float(e.ph)) * 7.0, cos(e.t * 0.9 + float(e.ph)) * 4.0), minf(delta * 7.0, 1.0))
 			"crate":
 				# a supply drop: drifts down, hangs and sways, then lifts away if nobody opens it
 				if e.t > SUPPLY_STAY:
@@ -4861,6 +4868,8 @@ func _runners_for(stage_n: int, wave_n: int) -> int:
 	return 1 + (1 if stage_n >= 11 else 0) + (1 if stage_n >= 31 and wave_n >= 3 else 0)
 
 func _plan_runners() -> void:
+	if _preview:
+		return
 	_runner_due.clear()
 	for i in _runners_for(stage, wave_index):
 		_runner_due.append(rng.randf_range(3.0, 7.0) + 5.0 * i)
@@ -6388,3 +6397,44 @@ func _chip_hit(b: Dictionary, e: Dictionary) -> void:
 	# a small flash in the chip s own colour, so a trigger can be seen
 	_fx_add("impact", b.pos, 30.0, 0.26, rng.randf() * TAU, 1.9, Chips.color(String(ids[0])))
 	b.chip = []   # once per shot, also when it flies on through
+
+# ------------------------------------------------------------------ THE TRY WINDOW AS A FIRING RANGE (2026-11-16)
+# Rudy: a short preview of how it shoots, not a whole fight. In the Try window (_preview) no wave
+# ever arrives: five target bugs hold a formation, sway a little and come back a moment after
+# they are shot down. The hero, his weapon, its chips and every hit are the real fight s own.
+const RANGE_SLOTS := [Vector2(0.28, 0.36), Vector2(0.5, 0.3), Vector2(0.72, 0.36), Vector2(0.39, 0.45), Vector2(0.61, 0.45)]
+var _range_t: Array = [0.2, 0.35, 0.5, 0.65, 0.8]
+
+func _range_step(delta: float) -> void:
+	var kept: Array = []
+	var bounty := false
+	for ch in _chips:
+		bounty = bounty or String(ch.id) == "bounty"
+	_streak = 0   # no streak shouts on the range
+	for g in gems:   # nothing to pick up on the range, except the coins a Bounty chip knocks loose
+		if bounty and g.get("coin", false):
+			kept.append(g)
+	gems = kept
+	for i in RANGE_SLOTS.size():
+		var here := false
+		for e in enemies:
+			if int(e.get("dummy", -1)) == i:
+				here = true
+				break
+		if here:
+			continue
+		_range_t[i] = float(_range_t[i]) - delta
+		if float(_range_t[i]) > 0.0:
+			continue
+		_range_t[i] = 1.1
+		var home := Vector2(FIELD_W * RANGE_SLOTS[i].x, FIELD_H * RANGE_SLOTS[i].y)
+		var e := _make_enemy("scout", home - Vector2(0, 70))
+		for tries in 8:   # a plain target: no armoured or shielded variant
+			if not e.has("variant"):
+				break
+			e = _make_enemy("scout", home - Vector2(0, 70))
+		e["dummy"] = i
+		e["home"] = home
+		e.hp = float(e.hp) * 3.0   # tough enough that a chip s trick is seen landing
+		e.hp_max = e.hp
+		enemies.append(e)
