@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev335 (version/code=335 and version/name="1.0-dev335" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev338 (version/code=338 and version/name="1.0-dev338" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,42 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev338: you build the base during the fight (3 updates since dev335)
+
+Built overnight on your go-ahead. Not on a phone yet.
+
+WHAT TO LOOK AT FIRST
+- BUILDINGS ARE CARDS NOW. A stage starts with empty pods. The buildings you own come up among
+  the three cards (teal). Take one and it lands on the next free pod. Take its card again later
+  to strengthen it, up to four times; the fourth brings its special upgrade.
+- ANY THREE BUILDING CARDS earn a BUILDING EVOLUTION: pick one building that stands; it gives as
+  much again and its special power switches on (Aegis Dome, Nanoforge, War Forge...).
+- Two buildings that work together light their gold link the moment the second one stands.
+- THE CARDS PAGE. Heroes > the new Cards square: each hero's basic cards and evolutions in two
+  rows, the locked ones showing the level that opens them.
+
+TWO RULES I ADDED, TO KEEP IT WINNABLE (tell me if you want them changed)
+- A building you OWN always gives HALF its help, even before you build it. Without this the
+  test player lost every stage from 20 up by wave 5: the bugs are tuned against a base that is
+  there from the first second.
+- Placing a NEW building is a FREE pick: you place it and at once choose a hero card as well.
+  Upgrading a building that stands still costs the pick. Without this, runs that spent their
+  first picks on buildings fell behind and lost stages 30 and 45.
+- With both: the test player won stages 20, 30 and 45 nine times out of nine, with the shield
+  dropping as low as 4%.
+
+ALSO
+- The first pick of a stage always includes a building while a pod is free. After that
+  buildings come up by chance, with one protection: a pod free and none offered for two picks
+  means one is put in.
+- The Base page still shows the four slots. They no longer decide anything: owning and
+  levelling a building is what counts. The page says so; tidying it is still to do.
+
+NOT DONE
+- The Base page layout, the support drone still looks at the old slots for its Hangar, and an
+  Expedition stop starts with an empty base.
+- Building cards and evolutions use the building pictures; no emblem art yet.
 
 ## dev335: the power cards are rebuilt (10 updates since dev325)
 

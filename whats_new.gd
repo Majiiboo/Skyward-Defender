@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["New power cards", "The cards are rebuilt: a colour that says the kind (orange attack, blue defence, green passive), the picture, a dot per level, one line. A tap takes the card. Hold a card to read more."],
-	["Evolutions", "Take any three hero cards in a fight and an Evolution pick opens: choose one of the gold cards your hero has unlocked. His own comes first; more open at hero Lv.5, 10, 15, 20, 25 and 30."],
-	["Cards unlock as he levels", "A new hero starts with a few basic cards. More join his picks as he levels up, so a build comes together fast early on."],
-	["No free healing", "The base shield no longer mends after a wave and the hero's health does not come back. Earn it: the Field Medic card, a Repair Bay or Med Bay, Shield Recharge."],
+	["Build the base in the fight", "A stage starts with empty pods. Your buildings come up as teal cards: take one and it lands on a pod. Take it again to strengthen it. Placing a new one also gives you a hero card."],
+	["Building evolutions", "Any three building cards earn one: pick a building that stands, it gives as much again and its special power switches on."],
+	["The Cards page", "Heroes > Cards: each hero's basic cards and his evolutions in two rows. Locked ones show the hero level that opens them."],
+	["New power cards", "A colour says the kind (orange attack, blue defence, green passive, teal base). A tap takes the card. Hold a card to read more."],
+	["Evolutions", "Take any three hero cards in a fight and an Evolution pick opens: choose one of the gold cards your hero has unlocked."],
+	["No free healing", "The shield no longer mends after a wave and health does not come back. Earn it: the Field Medic card, a Repair Bay or Med Bay, Shield Recharge."],
 	["Longer stages", "About a third more waves per stage, so a build has time to grow. Stages 1 to 3 are as short as before."],
-	["Five new cards", "Split Shot, Seeker, Drone Barrage, Killer Instinct and Field Medic. Attack cards now have five levels."],
-	["Burst Fire per weapon", "The pistol fires follow-up shots, twin pistols throw their extra balls together, the rifle's stream fires faster, the launcher adds small shells."],
-	["Every hero moves", "Rook, Sparks, Hollow, Nyx and Ember are rebuilt for the fight like the penguin, each with his own pistol, rifle and launcher. Settings > New hero motion switches back."],
+	["Every hero moves", "Rook, Sparks, Hollow, Nyx and Ember are rebuilt for the fight like the penguin, each with his own pistol, rifle and launcher."],
 ]
 
 static func due(save: Dictionary) -> bool:

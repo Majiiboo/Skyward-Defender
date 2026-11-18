@@ -4251,7 +4251,7 @@ func _refresh_base() -> void:
 		rb.pressed.connect(func(): get_tree().change_scene_to_file("res://research_page.tscn"))
 		box.add_child(rb)
 		UIKit.dot(rb, lleft <= 0)
-	var intro := UIKit.label("The base never shoots. Each building gives one kind of help. Field four.", 12, UIKit.SOFT)
+	var intro := UIKit.label("You BUILD the base during a fight now: your buildings come up as cards. Every building you own gives half its help from the start; building it in the fight gives the rest and its special. Level them here to make them stronger.", 12, UIKit.SOFT)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(intro)
 	# the four slots
