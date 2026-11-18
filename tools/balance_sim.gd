@@ -48,6 +48,10 @@ var human_x := -1.0
 
 func _initialize() -> void:
 	Promotion.TWISTS = false   # no daily stage twists in a sweep: the numbers must not change with the date
+	if OS.get_environment("SIM_WAVES") != "":   # what-if dials for the card rework
+		StageData.WAVE_MULT = float(OS.get_environment("SIM_WAVES"))
+	if OS.get_environment("SIM_STEEP") != "":
+		load("res://battle.gd").XP_STEEP = int(OS.get_environment("SIM_STEEP"))
 	if not OS.get_user_data_dir().to_lower().contains("sim"):
 		push_error("balance_sim: user data dir is %s; use tools/sim_override.cfg as override.cfg so the real save is not touched" % OS.get_user_data_dir())
 		quit(1)

@@ -275,6 +275,7 @@ var _drone_aim := -PI / 2.0
 var _drone_flash := 0.0
 var _drone_guard := 0.0
 var _drone_beam := {}
+static var XP_STEEP := 14           # past this run level each pick costs half as much again (a dial for the simulator: SIM_STEEP)
 var _xp_cut := 1.0                # Quick Study overcharged: levels need less XP
 var _aegis_heal := false
 var _railstorm := false
@@ -2166,8 +2167,8 @@ func _xp_need() -> float:
 	# for more gem XP and the climb steepens past 14: a short stage ends near level 7, a long
 	# late one near 13-14, and each pick matters more.
 	var base := 8.0 + 7.0 * (run_level - 1)
-	if run_level > 14:
-		base *= pow(1.5, run_level - 14)
+	if run_level > XP_STEEP:
+		base *= pow(1.5, run_level - XP_STEEP)
 	return base * _xp_cut
 
 

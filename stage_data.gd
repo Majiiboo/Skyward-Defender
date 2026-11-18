@@ -229,7 +229,12 @@ static func group_size(stage: int) -> int:
 static func spawn_gap(stage: int) -> float:
 	return 2.0 if stage == 1 else (1.8 if stage <= 5 else 1.7)
 
+static var WAVE_MULT := 1.0   # a dial for the simulator (SIM_WAVES): what if a stage had more waves?
+
 static func wave_count(stage: int) -> int:
+	return maxi(1, roundi(_wave_count(stage) * WAVE_MULT))
+
+static func _wave_count(stage: int) -> int:
 	# the first planet is the tutorial (5 then 8 waves); later planets 10 waves in zone A,
 	# 12 in zone B, so a stage stays a few minutes long
 	if stage <= 5:
