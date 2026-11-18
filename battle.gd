@@ -2840,9 +2840,9 @@ func _open_cards() -> void:
 	sub.size = Vector2(FIELD_W, 20)
 	_card_panel.add_child(sub)
 	var picks := _offer()
-	var cw := 136.0
-	var ch := 228.0   # room for three lines of the bolder text (dev172)
-	var gap := 10.0
+	var cw := 144.0
+	var ch := 238.0
+	var gap := 8.0
 	var x0 := FIELD_W * 0.5 - (cw * 3.0 + gap * 2.0) * 0.5
 	for i in picks.size():
 		var id: String = picks[i]
@@ -2850,7 +2850,7 @@ func _open_cards() -> void:
 		_card_panel.add_child(card)
 		# the three cards rise in one after another and settle with a small overshoot
 		card.pivot_offset = Vector2(cw, ch) * 0.5
-		card.scale = Vector2(0.82, 0.82)
+		card.scale = Vector2(0.6, 0.6)   # they POP in: small to full size with an overshoot
 		card.modulate.a = 0.0
 		card.position.y += 26.0
 		var tw := card.create_tween().set_parallel(true)
@@ -2863,7 +2863,11 @@ func _open_cards() -> void:
 	var coins_now: int = int(_coins_f)
 	var txt: String = ("Refresh (%d left)" % refreshes) if refreshes > 0 else ("Refresh  ·  %d coins" % coin_cost)
 	var refresh := UIKit.ghost_button(txt, 13)
-	refresh.position = Vector2(FIELD_W * 0.5 - 90, FIELD_H * 0.5 + 50)
+	refresh.position = Vector2(FIELD_W * 0.5 - 90, FIELD_H * 0.5 + 62)
+	var hold_hint := UIKit.label("Tap a card to take it  ·  hold to read more", 11, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	hold_hint.position = Vector2(0, FIELD_H * 0.5 + 100)
+	hold_hint.size = Vector2(FIELD_W, 16)
+	_card_panel.add_child(hold_hint)
 	refresh.size = Vector2(180, 34)
 	refresh.disabled = refreshes <= 0 and coins_now < coin_cost
 	refresh.pressed.connect(func():
@@ -2952,86 +2956,144 @@ func _card_pic(id: String, h: float) -> Control:
 	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return icon
 
+# THE CARD, REBUILT (Rudy 2026-11-17: the old cards never looked good; make them pop, and a tap takes
+# the card at once). Mostly picture: a band in the colour of its TYPE (offence, defence, passive), the
+# picture, the name, a pip per level, ONE short line. Gold when the pick is the card's top level, pink
+# for an evolution. Tap = taken. HOLD a card = a panel under the three with everything about it.
 func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	var def: Dictionary = Cards.def(id)
 	var fusion := Cards.FUSIONS.has(id)
 	var lvl: int = int(card_levels.get(id, 0))
-	var col: Color = Cards.COLOR[def.rarity]
+	var over := not fusion and Cards.overcharges(id, lvl)
+	var ty := Cards.type_of(id)
+	var gold := Color(1.0, 0.82, 0.32)
+	var edge: Color = Cards.COLOR.fusion if fusion else (gold if over else Cards.TYPE_COLOR[ty])
+	var ink := Color(0.05, 0.07, 0.13)
 	var b := Button.new()
 	b.position = pos
 	b.size = size
-	for st in ["normal", "hover", "pressed", "focus"]:
-		b.add_theme_stylebox_override(st, StyleBoxEmpty.new())
-	var over := not fusion and Cards.overcharges(id, lvl)
-	var frame := TextureRect.new()
-	# Luna's fusion and overcharge frames; the rarity frame otherwise
-	var special := "res://cards/frame_fusion.png" if fusion else ("res://cards/frame_overcharge.png" if over else "")
-	var own_frame := special != "" and ResourceLoader.exists(special)
-	var fpath: String = special if own_frame else Cards.FRAME[def.rarity]
-	frame.texture = load(fpath)
-	frame.set_anchors_preset(Control.PRESET_FULL_RECT)
-	frame.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	frame.stretch_mode = TextureRect.STRETCH_SCALE
-	frame.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	b.add_child(frame)
+	b.clip_contents = true
+	b.add_theme_stylebox_override("normal", UIKit.box(Color(0.055, 0.09, 0.16), Color(edge, 0.9), 16.0, 2))
+	b.add_theme_stylebox_override("hover", UIKit.box(Color(0.07, 0.115, 0.2), edge, 16.0, 2))
+	b.add_theme_stylebox_override("pressed", UIKit.box(Color(0.09, 0.14, 0.24), Color.WHITE, 16.0, 2))
+	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
+	# the band: what kind of card this is, readable before anything else
+	var band := Panel.new()
+	var bsb := StyleBoxFlat.new()
+	bsb.bg_color = edge
+	bsb.corner_radius_top_left = 14
+	bsb.corner_radius_top_right = 14
+	band.add_theme_stylebox_override("panel", bsb)
+	band.position = Vector2(2, 2)
+	band.size = Vector2(size.x - 4.0, 24.0)
+	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(band)
+	var word: String = "EVOLVE" if fusion else (String(Cards.TYPE_NAME[ty]) + ("  ·  MAX" if over else ""))
+	var bl := UIKit.label(word, 11, ink, HORIZONTAL_ALIGNMENT_CENTER)
+	bl.add_theme_font_override("font", title_font)
+	bl.position = Vector2(0, 3)
+	bl.size = Vector2(size.x, 20)
+	bl.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.add_child(bl)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 24; v.offset_right = -24; v.offset_top = 24; v.offset_bottom = -22   # text kept well inside the frame
-	v.alignment = BoxContainer.ALIGNMENT_CENTER
-	b.clip_contents = true   # nothing ever drawn outside the card (dev209: text spilled past the frame)
-	v.add_theme_constant_override("separation", 6)
+	v.offset_left = 10; v.offset_right = -10; v.offset_top = 32; v.offset_bottom = -10
+	v.alignment = BoxContainer.ALIGNMENT_BEGIN
+	v.add_theme_constant_override("separation", 5)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_card_pic(id, 50.0 if fusion or over else 54.0))   # a little smaller since the type line came in
-	if not fusion:   # the card s TYPE, in its colour: offence, defence or passive
-		var ty := Cards.type_of(id)
-		v.add_child(UIKit.label(String(Cards.TYPE_NAME[ty]), 9, Cards.TYPE_COLOR[ty], HORIZONTAL_ALIGNMENT_CENTER))
-	var name_l := UIKit.label(def.name, 12, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	v.add_child(_card_pic(id, 78.0 if fusion else 92.0))
+	var name_l := UIKit.label(def.name, 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
+	name_l.add_theme_font_override("font", title_font)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
-	var gold := Color(1.0, 0.82, 0.32)
-	# the frame already shows the rarity: the tag is just NEW or the level, in the rarity colour
-	var tag := "EVOLVE" if fusion else ("OVERCHARGE" if over else ("NEW" if lvl == 0 else "Lv.%d" % (lvl + 1)))
-	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
-	# a card that leads to a fusion carries a small link badge in its corner (was a CHAIN line)
-	if Cards.chain_of(id) != "" and not fusion and not over:
-		var link := Control.new()
-		link.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		link.position = Vector2(size.x - 34.0, 12.0)
-		link.size = Vector2(22, 22)
-		var lc: Color = Cards.COLOR.fusion
-		link.draw.connect(func():
-			link.draw_circle(Vector2(11, 11), 11.0, Color(0.05, 0.03, 0.08, 0.85))
-			link.draw_arc(Vector2(8, 11), 4.5, 0.0, TAU, 16, lc, 2.0, true)
-			link.draw_arc(Vector2(14, 11), 4.5, 0.0, TAU, 16, lc, 2.0, true))
-		b.add_child(link)
-	# an overcharge card shows only its new bonus (the card itself is known by now)
-	if not over:
-		var d := UIKit.label(Cards.pick_text(id, lvl, _shot_shape) if not fusion else String(def.desc), 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
-		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(d)
-	if over:
-		var od := UIKit.label("+ " + Cards.over_text(id, _shot_shape), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
-		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		v.add_child(od)
-	if (over or fusion) and not own_frame:
-		# without its own frame: a thin edge that breathes, on top of the rarity frame
-		var edge := Panel.new()
-		var sb := StyleBoxFlat.new()
-		sb.bg_color = Color(0, 0, 0, 0)
-		sb.border_color = gold if over else col
-		sb.set_border_width_all(1)
-		sb.set_corner_radius_all(6)
-		edge.add_theme_stylebox_override("panel", sb)
-		edge.set_anchors_preset(Control.PRESET_FULL_RECT)
-		edge.offset_left = 5; edge.offset_right = -5; edge.offset_top = 5; edge.offset_bottom = -5
-		edge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		b.add_child(edge)
-		var tw := edge.create_tween().set_loops()
-		tw.tween_property(edge, "modulate:a", 0.35, 0.6).set_trans(Tween.TRANS_SINE)
-		tw.tween_property(edge, "modulate:a", 1.0, 0.6).set_trans(Tween.TRANS_SINE)
+	if not fusion:
+		# a pip per level: the ones held in the type colour, the one this pick adds in gold
+		var mx: int = int(def.max)
+		var pips := Control.new()
+		pips.custom_minimum_size = Vector2(0, 8)
+		pips.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var tc: Color = Cards.TYPE_COLOR[ty]
+		pips.draw.connect(func():
+			var pw := 16.0
+			var gp := 4.0
+			var x0 := (pips.size.x - (pw * mx + gp * (mx - 1))) * 0.5
+			for k in mx:
+				var c: Color = tc if k < lvl else (gold if k == lvl else Color(1, 1, 1, 0.14))
+				pips.draw_style_box(UIKit.box(c, Color(0, 0, 0, 0), 3.0, 0), Rect2(x0 + k * (pw + gp), 1.0, pw, 6.0)))
+		v.add_child(pips)
+	var line: String = String(def.desc) if fusion else (Cards.over_text(id, _shot_shape) if over else Cards.pick_text(id, lvl, _shot_shape))
+	var d := UIKit.label(line, 11, gold if over else Color(0.82, 0.89, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(d)
 	b.add_child(v)
-	b.pressed.connect(func(): _pick_card(id))
+	if fusion or over:
+		# the special picks breathe, so the eye goes to them first
+		var tw := band.create_tween().set_loops()
+		tw.tween_property(band, "modulate", Color(1.35, 1.35, 1.35), 0.55).set_trans(Tween.TRANS_SINE)
+		tw.tween_property(band, "modulate", Color.WHITE, 0.55).set_trans(Tween.TRANS_SINE)
+	# a tap takes it; a hold (0.4 s) opens what it does instead, and letting go then takes nothing
+	var st := {"down": false, "held": false}
+	b.button_down.connect(func():
+		st.down = true
+		st.held = false
+		get_tree().create_timer(0.4).timeout.connect(func():
+			if st.down and is_instance_valid(b):
+				st.held = true
+				_card_info(id)))
+	b.button_up.connect(func(): st.down = false)
+	b.pressed.connect(func():
+		if not st.held:
+			_pick_card(id))
 	return b
+
+# everything about one card, under the three (a held card): what it does, where it stands, and
+# what it can become
+func _card_info(id: String) -> void:
+	var old := _card_panel.get_node_or_null("CardInfo")
+	if old:
+		old.free()
+	var def: Dictionary = Cards.def(id)
+	var fusion := Cards.FUSIONS.has(id)
+	var p := PanelContainer.new()
+	p.name = "CardInfo"
+	p.add_theme_stylebox_override("panel", UIKit.box(Color(0.055, 0.09, 0.16, 0.97), Color(1, 1, 1, 0.12), 14.0, 1))
+	p.position = Vector2(24, FIELD_H * 0.5 + 118)
+	p.custom_minimum_size = Vector2(FIELD_W - 48, 0)
+	p.size = Vector2(FIELD_W - 48, 0)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var m := MarginContainer.new()
+	for side in ["left", "right"]:
+		m.add_theme_constant_override("margin_" + side, 14)
+	for side in ["top", "bottom"]:
+		m.add_theme_constant_override("margin_" + side, 10)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 4)
+	var ty := Cards.type_of(id)
+	var head: String = String(def.name) + ("   ·   EVOLUTION" if fusion else "   ·   %s   ·   Lv.%d / %d" % [String(Cards.TYPE_NAME[ty]), int(card_levels.get(id, 0)), int(def.max)])
+	var hl := UIKit.label(head, 13, Color.WHITE)
+	hl.add_theme_font_override("font", title_font)
+	v.add_child(hl)
+	var lines: Array = [String(def.desc) + "."]
+	if fusion:
+		lines.append("Made from %s at its top level and one level of %s." % [String(Cards.CARDS[def.parts[0]].name), String(Cards.CARDS[def.parts[1]].name)])
+	else:
+		var evo := Cards.evolves_to(id)
+		if evo != "":
+			lines.append("At Lv.%d with one level of %s it can EVOLVE into %s." % [int(def.max), String(Cards.CARDS[Cards.partner_of(id)].name), String(Cards.FUSIONS[evo].name)])
+		for f in Cards.FUSIONS:
+			if String(Cards.FUSIONS[f].parts[1]) == id:
+				var off: String = Cards.FUSIONS[f].parts[0]
+				if not Cards.CARDS[off].has("hero") or String(Cards.CARDS[off].hero) == _hero_id:
+					lines.append("Partner of %s: one level of this lets it evolve into %s." % [String(Cards.CARDS[off].name), String(Cards.FUSIONS[f].name)])
+	for ln in lines:
+		var l := UIKit.label(String(ln), 12, Color(0.8, 0.87, 1.0))
+		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		v.add_child(l)
+	m.add_child(v)
+	p.add_child(m)
+	_card_panel.add_child(p)
+	p.modulate.a = 0.0
+	p.create_tween().tween_property(p, "modulate:a", 1.0, 0.15)
 
 func _pick_card(id: String) -> void:
 	var cs := _read_save()   # the collection book (Codex): a card picked for the first time ever goes in
