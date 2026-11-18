@@ -247,6 +247,15 @@ func _check_cards() -> void:
 	_expect(Cards.fusions_ready({"burst_fire": 5, "rapid_pulse": 1}).has("storm_volley"), "a maxed card with its partner offers Evolve")
 	_expect(Cards.fusions_ready({"burst_fire": 4, "rapid_pulse": 3}).is_empty() and Cards.fusions_ready({"burst_fire": 5}).is_empty(), "no Evolve without the top level and the partner")
 	_expect(Cards.fusions_ready({"burst_fire": 5, "rapid_pulse": 1, "storm_volley": 1}).is_empty(), "an evolution is offered once")
+	# any three hero cards earn an evolution, from those the hero has unlocked (2026-11-18)
+	_expect(Cards.evos_open("rook", 1, {}) == ["sig_rook"], "a new hero has one evolution: his own")
+	_expect(Cards.evos_open("rook", 10, {}).has("storm_volley") and Cards.evos_open("rook", 10, {}).has("railstorm") and not Cards.evos_open("rook", 10, {}).has("sig_nyx"), "more evolutions open with his level, never another hero s")
+	_expect(not Cards.evos_open("rook", 99, {"sig_rook": 1}).has("sig_rook") and not Cards.evos_open("rook", 99, {}, false).has("guardian_wing"), "an evolution is taken once, and the drone one needs a drone")
+	_expect(Cards.is_hero_card("heavy_bolts") and not Cards.is_hero_card("shield_surge"), "a base card is not a hero card")
+	var early: Array = []
+	for i in 30:
+		early.append_array(Cards.draw({}, 3, null, 99, false, [], "rook", 0, 1))
+	_expect(not early.has("seeker") and not early.has("chain_spark") and early.has("heavy_bolts"), "a level-1 hero only draws his first cards")
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("building"):   # base cards: a real building, a picture, an overcharge and a step text
 			_expect(ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "base card picture missing: " + id)

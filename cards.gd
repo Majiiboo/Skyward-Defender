@@ -283,6 +283,37 @@ static func over_text(id: String, shape: String = "") -> String:
 		return String(CLASS_OVER[id][shape])
 	return String(OVERCHARGE5.get(id, OVERCHARGE.get(id, "")))
 
+# UNLOCKED OVER THE GAME (Rudy 2026-11-18): a new hero starts with a few basic cards and ONE
+# evolution, his own; more open as HE levels up. A card not listed is open from level 1 (the
+# hero s own card, and the base and talent cards, which have their own conditions).
+const UNLOCK := {
+	"burst_fire": 2, "magnet": 3, "reinforced_hull": 3, "piercing_rounds": 5, "field_medic": 8, "chain_spark": 8,
+	"split_shot": 10, "killer_instinct": 12, "shield_recharge": 12, "seeker": 15, "frost_rounds": 18, "drone_barrage": 18, "nova_burst": 20,
+}
+const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "guardian_wing": 30}
+const EVO_EVERY := 3   # every third hero card taken in a fight earns an evolution pick
+
+static func unlock_level(id: String) -> int:
+	return int(EVO_UNLOCK.get(id, 1)) if FUSIONS.has(id) else int(UNLOCK.get(id, 1))
+
+# a HERO card = anything that is not a building s card; three of them earn an evolution
+static func is_hero_card(id: String) -> bool:
+	return CARDS.has(id) and not CARDS[id].has("building") or id == "drone_barrage"
+
+# the evolutions this hero can be offered now: unlocked at his level, his own signature only,
+# the drone one only with a drone, none twice in a fight
+static func evos_open(hero: String, hero_level: int, levels: Dictionary, has_drone: bool = true) -> Array:
+	var out: Array = []
+	for f in FUSIONS:
+		if levels.has(f) or unlock_level(f) > hero_level:
+			continue
+		if String(f).begins_with("sig_") and String(f) != "sig_" + hero:
+			continue
+		if String(f) == "guardian_wing" and not has_drone:
+			continue
+		out.append(f)
+	return out
+
 # the evolution this card is the offensive part of ("" when none), and its partner
 static func evolves_to(id: String) -> String:
 	for f in FUSIONS:
@@ -309,22 +340,19 @@ static func _weight(levels: Dictionary, id: String) -> float:
 	var w := float(WEIGHTS[CARDS[id].rarity])
 	if int(levels.get(id, 0)) > 0:
 		w *= 3.0 if type_of(id) == "off" else 1.6
-	for f in FUSIONS:
-		if String(FUSIONS[f].parts[1]) == id and int(levels.get(FUSIONS[f].parts[0], 0)) > 0 and int(levels.get(id, 0)) == 0:
-			w = maxf(w, float(WEIGHTS.common)) * 1.5
 	return w
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 # run_level: cards with "from_level" only show up from that run level on.
 # mounted: the turret types on the base (turret cards need theirs). hero: the hero on duty
 # (his own card only shows up for him).
-static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = [], hero: String = "", talents: int = 99) -> Array:
+static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator = null, run_level: int = 99, has_turret: bool = true, mounted: Array = [], hero: String = "", talents: int = 99, hero_level: int = 99) -> Array:
 	if rng == null:
 		rng = RandomNumberGenerator.new()
 		rng.randomize()
 	var pool: Array = []
 	for id in CARDS:
-		if int(levels.get(id, 0)) < int(CARDS[id].max) and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("building") or mounted.has(CARDS[id].building)) and (not CARDS[id].has("hero") or String(CARDS[id].hero) == hero) and talents >= int(CARDS[id].get("talent", 0)):   # talent cards: the map's node must be bought (dev197)
+		if int(levels.get(id, 0)) < int(CARDS[id].max) and unlock_level(id) <= hero_level and run_level >= int(CARDS[id].get("from_level", 1)) and (has_turret or not CARDS[id].get("needs_turret", false)) and (not CARDS[id].has("building") or mounted.has(CARDS[id].building)) and (not CARDS[id].has("hero") or String(CARDS[id].hero) == hero) and talents >= int(CARDS[id].get("talent", 0)):   # talent cards: the map's node must be bought (dev197)
 			pool.append(id)
 	var picks: Array = []
 	while picks.size() < count and pool.size() > 0:

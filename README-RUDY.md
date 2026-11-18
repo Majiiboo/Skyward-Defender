@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev325 (version/code=325 and version/name="1.0-dev325" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev335 (version/code=335 and version/name="1.0-dev335" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,48 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev335: the power cards are rebuilt (10 updates since dev325)
+
+This is a WORK-IN-PROGRESS build of the card rework, pushed so you can feel it. It is harder
+than dev325 on purpose (no free healing), and none of it has been on a phone.
+
+WHAT TO LOOK AT FIRST
+- THE CARD PICK. Cards are drawn by the game now, not on the old painted frames: a colour that
+  glows at the top and sinks into navy (orange = attack, blue = defence, green = passive), the
+  picture, the name, a dot per level, one line. A TAP TAKES THE CARD. HOLD a card to read more.
+  The pictures are still the old ones; Luna's new emblems are briefed, not painted.
+- EVOLUTIONS. Take ANY THREE hero cards in a fight and an EVOLUTION pick opens at once: gold and
+  pink cards with a glow. You choose one of the evolutions your hero has unlocked.
+- UNLOCKED OVER THE GAME. A level-1 hero has a few basic cards and one evolution, his own. More
+  cards open as HE levels up (Lv.2, 3, 5, 8, 10, 12, 15, 18, 20) and more evolutions at Lv.5, 10,
+  15, 20, 25, 30.
+
+WHAT ELSE CHANGED
+- LONGER STAGES. About a third more waves: stages 1-3 keep 5, stages 4-5 have 7, stages 6-10
+  have 11, later planets 13 and 16. A late stage runs 6 to 7 minutes.
+- NO FREE HEALING. The base shield no longer mends after a wave and the hero never got health
+  back. Healing is earned: the new FIELD MEDIC card (1% health every 5 s, faster per level), a
+  Repair Bay or Med Bay on the base, or cards like Shield Recharge.
+- NEW CARDS: Split Shot, Seeker, Drone Barrage, Killer Instinct, Field Medic.
+- ATTACK CARDS HAVE FIVE LEVELS (Burst Fire, Piercing Rounds, Chain Spark, the new ones, each
+  hero's own card).
+- BURST FIRE DIFFERS PER WEAPON: the pistol fires follow-up shots, twin pistols throw their
+  extra balls together, the rifle's stream fires faster, the launcher adds small shells.
+- The dead turret code is gone from the project (about 900 lines; nothing changes on screen).
+
+KNOWN, NOT FIXED
+- It may be TOO HARD in the middle. In my test runs the base often loses its whole shield by
+  wave 8 from stage 12 on. A 520-fight study (REVIEW-base-collapse.md in the project) found the
+  hero kills too slowly in waves 2-6, before he has cards; my test player's kit was also out of
+  date, so the real picture is better than the tests, but the margin is thin.
+- Only Burst Fire differs per weapon; the other attack cards behave the same on every weapon.
+- The hold-to-read panel has not been seen on a screen by me.
+- NOT BUILT YET, agreed with you: buildings as cards you place during the fight, a building's
+  own evolution after three building cards, the card page per hero in the menu, the active deck.
+
+FOR LUNA: the folder "Luna card pictures 3" on the Desktop is a style check of four card
+emblems. Not sent yet.
 
 ## dev325: every hero moves, and the weapons are rebuilt (49 updates since dev276)
 

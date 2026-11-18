@@ -269,6 +269,9 @@ var _hull_rate := 0.0              # its overcharge: share of the max hull per s
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
 var _chain_every := 5             # Chain Spark: every Nth shot chains (4 from its third level)
+var _hero_lv := 1                 # the hero s level: which cards and evolutions he has unlocked (Cards.UNLOCK)
+var _hero_picks := 0              # hero cards taken this stage: every third earns an evolution pick
+var _evo_due := 0                 # evolution picks owed
 var _burst_pen := 0.35            # how much each extra burst shot slows the trigger (Burst Fire level 3: 0.28)
 var _twin_dmg := 1.0               # Twin Trigger: how hard the twin hits (1.4 from its third level, 1.8 at the top)
 var _split_n := 0                 # Split Shot: side shots thrown...
@@ -533,6 +536,8 @@ func _start_stage() -> void:
 	_hull_rate = 0.0
 	_chain_mult = 1.0
 	_chain_every = 5
+	_hero_picks = 0
+	_evo_due = 0
 	_burst_pen = 0.35
 	_split_n = 0
 	_twin_dmg = 1.0
@@ -594,6 +599,7 @@ func _start_stage() -> void:
 	HeroFight.warm(PilotRig.hero)
 	_elem_mult = Heroes.element_mult(String(gs.element), stage)   # his element against this planet's family
 	_hero_id = String(gs.get("hero", "rook"))
+	_hero_lv = 99 if DevTools.on else Heroes.level(Heroes.read(sv), _hero_id)
 	_drone_mult = Heroes.element_mult(DroneData.body_element(String(DroneData.read(sv).body)), stage)
 	# the trial twists (Promotion.MODS): advantages and disadvantages of this fight
 	_mods = Promotion.mods_for(promo, etrial)
@@ -2830,12 +2836,13 @@ func _open_cards() -> void:
 	dim.size = Vector2(FIELD_W, FIELD_H)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_card_panel.add_child(dim)
-	var title := UIKit.label("LEVEL %d" % run_level, 20, Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+	var evo_pick: bool = _evo_due > 0 and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty()
+	var title := UIKit.label("EVOLUTION" if evo_pick else "LEVEL %d" % run_level, 20, Color(1.0, 0.82, 0.32) if evo_pick else Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", title_font)
 	title.position = Vector2(0, FIELD_H * 0.5 - 250)
 	title.size = Vector2(FIELD_W, 30)
 	_card_panel.add_child(title)
-	var sub := UIKit.label("Choose a power card", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var sub := UIKit.label("Three hero cards earned it  ·  choose one" if evo_pick else "Choose a power card", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	sub.position = Vector2(0, FIELD_H * 0.5 - 222)
 	sub.size = Vector2(FIELD_W, 20)
 	_card_panel.add_child(sub)
@@ -3131,16 +3138,9 @@ func _card_info(id: String) -> void:
 	v.add_child(hl)
 	var lines: Array = [String(def.desc) + "."]
 	if fusion:
-		lines.append("Made from %s at its top level and one level of %s." % [String(Cards.CARDS[def.parts[0]].name), String(Cards.CARDS[def.parts[1]].name)])
+		lines.append("An evolution. Every third hero card you take in a fight earns one.")
 	else:
-		var evo := Cards.evolves_to(id)
-		if evo != "":
-			lines.append("At Lv.%d with one level of %s it can EVOLVE into %s." % [int(def.max), String(Cards.CARDS[Cards.partner_of(id)].name), String(Cards.FUSIONS[evo].name)])
-		for f in Cards.FUSIONS:
-			if String(Cards.FUSIONS[f].parts[1]) == id:
-				var off: String = Cards.FUSIONS[f].parts[0]
-				if not Cards.CARDS[off].has("hero") or String(Cards.CARDS[off].hero) == _hero_id:
-					lines.append("Partner of %s: one level of this lets it evolve into %s." % [String(Cards.CARDS[off].name), String(Cards.FUSIONS[f].name)])
+		pass
 	for ln in lines:
 		var l := UIKit.label(String(ln), 12, Color(0.8, 0.87, 1.0))
 		l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3160,6 +3160,7 @@ func _pick_card(id: String) -> void:
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
 		_fuse(id)
+		_evo_due = maxi(_evo_due - 1, 0)
 		_card_panel.visible = false
 		picking = false
 		return
@@ -3281,6 +3282,12 @@ func _pick_card(id: String) -> void:
 		_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
 	_card_panel.visible = false
 	picking = false
+	# any three hero cards earn an evolution: its pick opens at once, on top of this one
+	if Cards.is_hero_card(id):
+		_hero_picks += 1
+		if _hero_picks % Cards.EVO_EVERY == 0 and not _replaying and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty():
+			_evo_due += 1
+			_open_cards()
 
 func _overcharge(id: String) -> void:
 	match id:
@@ -3338,7 +3345,9 @@ func _fuse(id: String) -> void:
 			burst_count += 2
 			fire_rate_mult *= 1.15
 		"railstorm": _railstorm = true
-		"thunder_lance": _thunder = true
+		"thunder_lance":
+			_thunder = true
+			pierce_level += 1   # it works through bugs a shot passes, so it brings a pierce of its own
 		"flak_wall":
 			_split_n += 2
 			_mirror = maxi(_mirror, 3)
@@ -3376,15 +3385,20 @@ func _offer() -> Array:
 		fielded.append("*drone")
 	if _pulse_open():
 		fielded.append("*pulse")
-	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents)
-	var ready := Cards.fusions_ready(card_levels)
-	if not ready.is_empty():
-		var f: String = ready[rng.randi() % ready.size()]
-		if picks.size() >= 2:
-			picks[1] = f
+	# AN EVOLUTION PICK (Rudy 2026-11-18): any three hero cards earn one; the three on offer are
+	# evolutions this hero has unlocked and not taken in this fight
+	if _evo_due > 0:
+		var evos := Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on)
+		if evos.is_empty():
+			_evo_due = 0
 		else:
-			picks.append(f)
-	return picks
+			for i in range(evos.size() - 1, 0, -1):
+				var j: int = rng.randi() % (i + 1)
+				var tmp = evos[i]
+				evos[i] = evos[j]
+				evos[j] = tmp
+			return evos.slice(0, 3)
+	return Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents, _hero_lv)
 
 # Chain Spark: lightning jumps from a hit bug to the nearest others.
 func _chain(from: Dictionary, count: int, dmg: float) -> void:
