@@ -349,40 +349,16 @@ func _check_heroes() -> void:
 	var drop := GearData.roll_drop(7, RandomNumberGenerator.new())
 	_expect(String(GearData.ITEMS[drop.id].slot) == "Weapon", "drops are weapons only")
 
-# turrets and drones (dev172): bought by grade, elements, support pods
+# old turret saves (only what Base.migrate still reads for the one-time refund) and drones (dev172)
 func _check_turrets() -> void:
-	for id in Turrets.TURRETS:
-		_expect(Heroes.ELEMENTS.has(Turrets.element(id)) and Turrets.role(id) != "" and Turrets.grade(id) >= 1, "turret %s: element, role, grade" % id)
 	var s := {"coins": 5000, "crystals": 300, "stage_unlocked": 1, "pilot_xp": 0, "parts": {"alloy": 15}}
 	var t := Turrets.read(s)
 	_expect(Turrets.owned(t, "sentry") and not Turrets.owned(t, "lance"), "fresh save: Sentry only")
-	_expect(Turrets.unlock(s, t, "lance", false) == "" and Turrets.owned(t, "lance") and int(s.coins) == 2000 and int(Parts.read(s).alloy) == 0, "Lance for 3000 coins + 15 alloy")
-	_expect(Turrets.unlock(s, t, "prism", true) == "Not enough crystals" and not Turrets.owned(t, "prism"), "no stage gate on the Prism (stars are earned); 500 crystals needed")
-	s["crystals"] = 600
-	_expect(Turrets.unlock(s, t, "prism", true) == "" and int(s.crystals) == 600 - Turrets.crystal_price("prism"), "Prism for crystals")
-	s["turrets"] = {"loadout": ["sentry", "lance", "", ""], "tracks": {}, "owned": t.owned}
+	s["turrets"] = {"loadout": ["sentry", "lance", "", ""], "tracks": {}, "owned": ["sentry", "lance", "prism"]}
 	_expect(Turrets.owned(Turrets.read(s), "prism") and Turrets.owned(Turrets.read(s), "lance"), "owned list round trip")
 	var old := {"pilot_xp": Turrets.xp_for_level(11), "turrets": {"loadout": ["sentry", "", "", ""], "levels": {"sentry": 3}}}
 	var ot := Turrets.read(old)
 	_expect(Turrets.owned(ot, "lance") and Turrets.owned(ot, "storm") and not Turrets.owned(ot, "gravity") and not Turrets.owned(ot, "tesla"), "an old save keeps the turrets its pilot level had (Lv.11: Sentry, Lance, Storm), never a round 2 turret")
-	# round 2 (dev196): two turrets per element, Luna's pieces cut, firing heads for the first six
-	var per_el := {}
-	for id in Turrets.TURRETS:
-		per_el[Turrets.element(id)] = int(per_el.get(Turrets.element(id), 0)) + 1
-		for k in Turrets.REACH.get(id, []):
-			_expect(Turrets.TURRETS[id].has(k), "turret %s: Range track key %s exists" % [id, k])
-	for el in Heroes.ELEMENTS:
-		_expect(int(per_el.get(el, 0)) == 2, "two turrets for %s (got %d)" % [el, int(per_el.get(el, 0))])
-	for id in Turrets.ROUND2:
-		for n in ["base", "head", "idle", "light"]:
-			_expect(ResourceLoader.exists("res://turrets/%s_%s.png" % [id, n]), "turret %s: %s picture cut" % [id, n])
-		_expect(ResourceLoader.exists("res://fx/shot_%s.png" % id), "turret %s: shot sprite" % id)
-	for id in ["sentry", "lance", "storm", "gravity", "swarm", "prism"]:
-		_expect(ResourceLoader.exists("res://turrets/%s_head_fire.png" % id) and ResourceLoader.exists("res://turrets/%s_fire_light.png" % id), "turret %s: firing head + its light" % id)
-	var rs := Turrets.stats("repair", {"atk": 6, "rate": 1, "range": 1})
-	_expect(is_equal_approx(float(rs.heal), 2.5 * Turrets.atk_mult(6) * Turrets.milestone_mult(6)) and is_zero_approx(float(rs.damage)), "Repair Node: ATK scales the mend, no damage")
-	_expect(Turrets.parts_needed("beacon").has("ess_nightmare") and Turrets.cost_text("beacon").contains("Dark Ember"), "Dread Beacon asks for Dark Embers (materials in a turret price)")
-	_expect(is_equal_approx(Turrets.element_mult("prism", 25), Heroes.WEAK_MULT) and is_equal_approx(Turrets.element_mult("lance", 25), Heroes.RESIST_MULT), "Magma World: Ice Prism strong, Fire Lance weak")
 	_expect(DroneData.body_element("striker") == "solar" and DroneData.body_element("scout") == "ion" and Heroes.ELEMENTS.has(DroneData.body_element("warden")), "drone bodies have their own element")
 	_expect(DroneData.pod_job("repair") == "repair" and DroneData.pod_job("blaster") == "attack" and DroneData.pod_art("magnet") == "magnet", "support pods: job and their own art")
 	var ds := {"coins": 7000, "crystals": 0, "stage_unlocked": 11, "parts": {"alloy": 20, "cell": 4}}
@@ -528,18 +504,6 @@ func _check_gates() -> void:
 	for i in 25:
 		Heroes.level_up(s, h, "rook")
 	_expect(Heroes.level(h, "rook") == 10, "1 star: Rook stops at Lv.10 (got %d)" % Heroes.level(h, "rook"))
-	# a turret: every track at the cap, then essences and coins
-	var ts := {"pilot_xp": Turrets.xp_for_level(5), "coins": 5000, "materials": {"ess_ion": 2}}
-	var t := Turrets.read(ts)
-	_expect(Turrets.star(t, "sentry") == 1 and Turrets.track_cap(1) == 4, "a fresh Sentry: 1 star, tracks capped at 4")
-	_expect(Turrets.why_not_star(ts, t, "sentry") == "Lv.4 first", "the tracks must reach the cap first (got %s)" % Turrets.why_not_star(ts, t, "sentry"))
-	t.tracks["sentry"] = {"atk": 4, "rate": 4, "range": 3}
-	_expect(Turrets.why_not_star(ts, t, "sentry") == "Lv.4 first", "every track, the lowest counts (got %s)" % Turrets.why_not_star(ts, t, "sentry"))
-	t.tracks["sentry"] = {"atk": 4, "rate": 4, "range": 4}
-	_expect(Turrets.star_up(ts, t, "sentry") == "" and Turrets.star(t, "sentry") == 2 and int(ts.coins) == 3500 and int(Materials.read(ts).ess_ion) == 0, "Sentry to 2 stars: 2 Energy Sparks + 1,500 coins")
-	_expect(Turrets.track_cap(2) == 8 and is_equal_approx(float(Turrets.stats("sentry", t.tracks["sentry"], 2).damage), float(Turrets.stats("sentry", t.tracks["sentry"], 1).damage) * 1.08), "2 stars: tracks to 8, damage +8%")
-	ts["turrets"] = {"loadout": ["sentry", "", "", ""], "tracks": t.tracks, "owned": t.owned, "stars": t.stars}
-	_expect(Turrets.star(Turrets.read(ts), "sentry") == 2, "turret stars round trip")
 	# a drone body: level at the cap, essences, rotors, coins
 	var ds := {"pilot_xp": Turrets.xp_for_level(5), "coins": 5000, "materials": {"ess_ion": 2, "rotor": 2}, "drone": {"body": "scout", "pod": "blaster", "level": 1}}
 	var dr := DroneData.read(ds)

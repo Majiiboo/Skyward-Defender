@@ -2,7 +2,7 @@ class_name AfkWallpaper
 extends Control
 # The "live wallpaper" behind the Home screen.
 # A fake battle for atmosphere: the soldier sways above his base and shoots
-# incoming enemies, small turrets on the base help, enemies burst on the shield,
+# incoming enemies, enemies burst on the shield,
 # asteroids and a distant ship drift by. It cannot be touched, deals no damage,
 # awards nothing and writes no saves.
 #
@@ -10,16 +10,15 @@ extends Control
 # use (set_elite). When a menu view opens, hub.gd hides and pauses this node.
 
 const PILOT_H := 60.0
-const STRIP_DROP := 16.0       # base strip bottom, below the horizon line
-const WALL_TURRET_H := 64.0
-const SHOW_TURRETS := true   # set to false to hide the turrets on the base strip
+const STRIP_DROP := 16.0       # the world s bottom edge, below the horizon line (full-size scene only)
 
 const CYAN := Color(0.18, 0.9, 1.0)
 const PURPLE := Color(0.71, 0.55, 1.0)
 
 # The clean Home (Rudy, 2026-11-09): the fight plays SMALL and SHADOWED far away over the
 # horizon, so the menu stays calm. The world is drawn full size here; the fight (bugs, bolts,
-# pilot) is drawn by a child layer, scaled down and darkened. DISTANT false = the old full-size scene.
+# pilot) is drawn by a child layer, scaled down and darkened. DISTANT false = the old full-size scene
+# (it has no base: the turret strip went with the turrets, 2026-11-18).
 const DISTANT := true
 const FAR_SCALE := 0.34              # the fight's size on screen
 const FAR_FLOOR := 0.93              # the world's bottom edge (hidden behind the nav), share of the screen height
@@ -58,10 +57,6 @@ var _soldier_vx := 0.0
 var _bank := 0.0
 var _aim := Vector2.ZERO
 var _has_aim := false
-var _wall_turrets: Array = []
-var _turret_cd: Array[float] = [0.5, 1.1, 0.8, 1.4]
-var _turret_ang: Array[float] = [-PI / 2.0, -PI / 2.0, -PI / 2.0, -PI / 2.0]
-var _wall_unlocked := 1
 var _facing := 1.0
 var _facing_s := 1.0   # eases toward _facing so turning round squeezes, not snaps
 var _anim := PilotSprite.Anim.new()
@@ -72,9 +67,9 @@ var _hit_t := 9.0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	PilotSprite.load_style()
-	_load_wall_turrets()
-	# Gear opens over Home: re-read the loadout when Home shows again
-	visibility_changed.connect(func(): if is_visible_in_tree(): _load_wall_turrets())
+	_load_pilot()
+	# Gear opens over Home: re-read the hero when Home shows again
+	visibility_changed.connect(func(): if is_visible_in_tree(): _load_pilot())
 	for k in ["scout_up", "scout_down", "drifter_up", "drifter_down"]:
 		_etex[k] = load("res://enemies/%s.png" % k)
 	_stars = Backdrop.make_stars(80, 3)
@@ -232,18 +227,6 @@ func _shoot(dt: float) -> void:
 		_flash = 0.07
 		if _rig_view:
 			_rig_view.fire()
-	if SHOW_TURRETS and not DISTANT:   # the far fight has no base: the pilot fights alone
-		for i in _wall_turrets.size():
-			var base := _wall_turret_tip(i)
-			var ti := _nearest_enemy(base, 420.0)
-			if ti >= 0:
-				var tp: Vector2 = _enemies[ti].pos
-				_turret_ang[i] = lerp_angle(_turret_ang[i], (tp - base).angle(), 0.12)
-				_turret_cd[i] -= dt
-				if _turret_cd[i] <= 0.0:
-					_turret_cd[i] = randf_range(0.8, 1.2)
-					var dir := Vector2.from_angle(_turret_ang[i])
-					_bullets.append({"pos": base + dir * 16.0, "vel": dir * 320.0, "col": PURPLE})
 
 func _step_world(dt: float) -> void:
 	for e in _enemies:
@@ -371,10 +354,6 @@ func _draw() -> void:
 	_draw_boss(self)
 	if _world == "":
 		Backdrop.draw_horizon(self, size, _horizon_y(), elite, _city, _t)
-	Backdrop.draw_strip(self, size.x, _horizon_y() + STRIP_DROP)
-	Backdrop.draw_base_lights(self, size.x, _horizon_y() + STRIP_DROP, _t)
-	if SHOW_TURRETS:
-		_draw_turrets()
 	draw_fight(self, false)
 
 # The fight itself (bugs, bolts, hits, the pilot) onto canvas c: this node, or the FarFight layer.
@@ -416,12 +395,8 @@ func _draw_rocks() -> void:
 		edge.append(pts[0])
 		draw_polyline(edge, Color(CYAN, 0.18), 1.2, true)
 
-# The player's own turrets on the mounts they have opened (Turrets.mount_open), the
-# same pictures the battle uses; closed mounts show a lock. Read from the save on Home.
-const WALL_CX := {"lance": 0.481, "storm": 0.479, "gravity": 0.435, "swarm": 0.501, "prism": 0.441, "sentry": 0.5}
-
-func _load_wall_turrets() -> void:
-	_wall_turrets.clear()
+# The hero on duty, read from the save on Home: his weapon, look and build.
+func _load_pilot() -> void:
 	var d := {}
 	if FileAccess.file_exists("user://skybound_save.json"):
 		var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
@@ -429,138 +404,11 @@ func _load_wall_turrets() -> void:
 			var parsed = JSON.parse_string(f.get_as_text())
 			if typeof(parsed) == TYPE_DICTIONARY:
 				d = parsed
-	_wall_unlocked = int(d.get("stage_unlocked", 1))
 	PilotRig.set_gear(d)   # his weapon, visor and orb follow the gear (re-read when Home shows)
 	HeroFight.apply_from(d)
 	HeroFight.warm(PilotRig.hero)
 	if _rig_view:
 		_rig_view.height = PILOT_H * float(Heroes.ROSTER[Heroes.selected(Heroes.read(d))].build.scale)   # his build (heroes)
-	var tdat := Turrets.read(d)
-	var loadout: Array = tdat.loadout
-	for i in Turrets.MOUNTS:
-		var id: String = loadout[i]
-		if id != "" and Turrets.mount_open(i, _wall_unlocked) and Turrets.owned(tdat, id):   # bought (dev172)
-			_wall_turrets.append({"socket": i, "id": id, "tex": load("res://turrets/%s_idle.png" % Turrets.TURRETS[id].art), "cx": float(WALL_CX.get(id, 0.5))})
-
-func _draw_turrets() -> void:
-	var bottom := _horizon_y() + STRIP_DROP
-	for i in Turrets.MOUNTS:
-		if not Turrets.mount_open(i, _wall_unlocked):
-			Backdrop.draw_socket_lock(self, i, size.x, bottom)
-	for i in _wall_turrets.size():
-		var w: Dictionary = _wall_turrets[i]
-		if w.id == "sentry":
-			_draw_wall_sentry(i, bottom)
-			continue
-		if WALL_SPLIT.has(w.id):
-			_draw_wall_split(i, bottom)
-			continue
-		var tex: Texture2D = w.tex
-		var s: float = _wall_turret_h() / tex.get_height()
-		var sz := tex.get_size() * s
-		var p := Backdrop.socket_pos(int(w.socket), size.x, bottom)
-		draw_texture_rect(tex, Rect2(p + Vector2(-sz.x * float(w.cx), -sz.y + 6.0 * size.x / 480.0), sz), false)
-		Backdrop.draw_socket_lip(self, int(w.socket), size.x, bottom)
-
-# The Sentry as in battle: Luna's base ring centred on the socket, the gun head floating
-# just above it and turning to its target (mirrored for targets on the right).
-const SENTRY_BASE_W := 58.0
-const SENTRY_HEAD_H := 66.0
-const SENTRY_HEAD_CX := 0.498
-const SENTRY_ART_DIR := -PI / 2.0 - 0.26
-var _sentry_tex := {"base": preload("res://turrets/sentry_base.png"), "head": preload("res://turrets/sentry_head.png")}
-
-func _sentry_pivot(i: int, bottom: float) -> Vector2:
-	var k := size.x / 480.0
-	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
-	var bt: Texture2D = _sentry_tex.base
-	var base_h: float = bt.get_height() * (SENTRY_BASE_W * k / bt.get_width())
-	return p + Vector2(0, -base_h * 0.42)   # seated on its base, no hover (Rudy, dev209)
-
-func _draw_wall_sentry(i: int, bottom: float) -> void:
-	var k := size.x / 480.0
-	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
-	Backdrop.draw_socket_shadow(self, int(_wall_turrets[i].socket), size.x, bottom)
-	var bt: Texture2D = _sentry_tex.base
-	var bs := bt.get_size() * (SENTRY_BASE_W * k / bt.get_width())
-	draw_texture_rect(bt, Rect2(p - bs * 0.5, bs), false)
-	Backdrop.draw_socket_lip(self, int(_wall_turrets[i].socket), size.x, bottom)   # seated in the ring (dev149)
-	var ang: float = _turret_ang[i]
-	var face := -1.0 if cos(ang) > 0.1 else 1.0
-	var art_dir: float = SENTRY_ART_DIR if face > 0.0 else PI - SENTRY_ART_DIR
-	var rot: float = clampf(angle_difference(art_dir, ang), -1.1, 1.1)
-	var ht: Texture2D = _sentry_tex.head
-	var hsz := ht.get_size() * (SENTRY_HEAD_H * k / ht.get_height())
-	draw_set_transform(_sentry_pivot(i, bottom), rot, Vector2(face, 1.0))
-	draw_texture_rect(ht, Rect2(Vector2(-hsz.x * SENTRY_HEAD_CX, -hsz.y * 0.9), hsz), false)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-# Luna's two-piece turrets (same sizes as battle.gd SPLIT_LOOK): the base on the socket,
-# the head floating above it; the Lance cannon turns to its target.
-const WALL_SPLIT := {
-	"lance":   {"base_w": 60.0, "head_h": 34.0, "gap": 2.0, "art_dir": 2.68},
-	"storm":   {"base_w": 58.0, "head_h": 50.0, "gap": -18.0, "art_dir": 0.0},
-	"gravity": {"base_w": 60.0, "head_h": 36.0, "gap": -12.0, "art_dir": 0.0},
-	"prism":   {"base_w": 0.0, "head_h": 78.0, "gap": 0.0, "art_dir": 0.0},
-	# round 2 (dev196), battle's SPLIT_LOOK x0.83; a negative gap sinks the head into its base
-	"repair":  {"base_w": 38.0, "head_h": 38.0, "gap": -13.0, "art_dir": 0.0},
-	"tesla":   {"base_w": 48.0, "head_h": 46.0, "gap": -12.0, "art_dir": 0.0},
-	"cryo":    {"base_w": 53.0, "head_h": 41.0, "gap": -8.0, "art_dir": 0.0},
-	"mines":   {"base_w": 61.0, "head_h": 33.0, "gap": -10.0, "art_dir": 0.0},
-	"beacon":  {"base_w": 51.0, "head_h": 63.0, "gap": -10.0, "art_dir": 0.0},
-	"flak":    {"base_w": 53.0, "head_h": 28.0, "gap": -8.0, "art_dir": 0.0},
-}
-var _split_tex := {}
-
-func _split_head_centre(i: int, bottom: float) -> Vector2:
-	var id: String = _wall_turrets[i].id
-	var look: Dictionary = WALL_SPLIT[id]
-	var k := size.x / 480.0
-	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
-	if id == "prism":
-		return p + Vector2(0, (6.0 - float(look.head_h) * 0.5) * k)
-	var bt: Texture2D = _split_tex[id + "_base"]
-	var base_h: float = bt.get_height() * float(look.base_w) * k / bt.get_width()
-	return p + Vector2(0, -base_h * 0.55 - (float(look.gap) + float(look.head_h) * 0.5) * k)   # no bob: seated (dev209)
-
-func _draw_wall_split(i: int, bottom: float) -> void:
-	var id: String = _wall_turrets[i].id
-	var look: Dictionary = WALL_SPLIT[id]
-	var k := size.x / 480.0
-	for n in [id + "_base", id + "_head"]:
-		if not _split_tex.has(n) and ResourceLoader.exists("res://turrets/%s.png" % n):
-			_split_tex[n] = load("res://turrets/%s.png" % n)
-	Backdrop.draw_socket_shadow(self, int(_wall_turrets[i].socket), size.x, bottom)
-	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, bottom)
-	if float(look.base_w) > 0.0:
-		var bt: Texture2D = _split_tex[id + "_base"]
-		var bs := bt.get_size() * (float(look.base_w) * k / bt.get_width())
-		draw_texture_rect(bt, Rect2(p + Vector2(-bs.x * 0.5, -bs.y * 0.55), bs), false)
-		Backdrop.draw_socket_lip(self, int(_wall_turrets[i].socket), size.x, bottom)
-	var ht: Texture2D = _split_tex[id + "_head"]
-	var hh: float = float(look.head_h) * k
-	var hw: float = ht.get_width() * hh / ht.get_height()
-	var rot := 0.0
-	var sx := 1.0
-	if id == "lance":
-		var ang: float = clampf(_turret_ang[i], -PI + 0.15, -0.15)
-		sx = -1.0 if cos(ang) > 0.05 else 1.0
-		rot = angle_difference(float(look.art_dir) if sx > 0.0 else PI - float(look.art_dir), ang)
-	draw_set_transform(_split_head_centre(i, bottom), rot, Vector2(sx, 1.0))
-	draw_texture_rect(ht, Rect2(-hw * 0.5, -hh * 0.5, hw, hh), false)
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-func _wall_turret_tip(i: int) -> Vector2:
-	if WALL_SPLIT.has(_wall_turrets[i].id):
-		return _split_head_centre(i, _horizon_y() + STRIP_DROP)
-	if _wall_turrets[i].id == "sentry":
-		return _sentry_pivot(i, _horizon_y() + STRIP_DROP) + Vector2(0, -SENTRY_HEAD_H * 0.6 * size.x / 480.0)
-	var p := Backdrop.socket_pos(int(_wall_turrets[i].socket), size.x, _horizon_y() + STRIP_DROP)
-	return p + Vector2(0, 6.0 * size.x / 480.0 - _wall_turret_h() * 0.9)
-
-# turrets keep their size relative to the base strip, whatever the screen width
-func _wall_turret_h() -> float:
-	return WALL_TURRET_H * size.x / 480.0
 
 # On a boss stage the Hive Mother hangs high in the sky, out of reach, drifting slowly.
 func _draw_boss(c: CanvasItem) -> void:
