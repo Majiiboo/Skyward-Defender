@@ -339,7 +339,7 @@ func _pick() -> void:
 	var best: String = offer[0]
 	var bi := 99
 	for id in offer:
-		if Cards.FUSIONS.has(id):
+		if Cards.is_evo(id):
 			best = id   # a fusion always wins
 			break
 		var k := CARD_PRIORITY.find(id)
@@ -348,7 +348,7 @@ func _pick() -> void:
 			best = id
 	# a player building toward an evolution: Evolve first, then deepen the offensive card already
 	# held, then take its partner; only then the old priority list
-	if not Cards.FUSIONS.has(best):
+	if not Cards.is_evo(best):
 		var held := ""
 		for id in offer:
 			if Cards.CARDS.has(id) and Cards.type_of(id) == "off" and int(b.card_levels.get(id, 0)) > 0 and Cards.evolves_to(id) != "" and (held == "" or int(b.card_levels.get(id, 0)) > int(b.card_levels.get(held, 0))):
@@ -368,6 +368,10 @@ func _pick() -> void:
 			var dk := DMG_FIRST.find(id)
 			if dk >= 0 and dk < di:
 				di = dk
+				best = id
+	if not Cards.is_evo(best):   # a new building for a free pod is always worth it; an upgrade when nothing better is on offer
+		for id in offer:
+			if Cards.is_bld(String(id)) and int(b.card_levels.get(id, 0)) == 0:
 				best = id
 	r.cards.append(best)
 	b._pick_card(best)
