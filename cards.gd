@@ -45,6 +45,8 @@ const CARDS := {
 		"desc": "Base shield +30 and hull +20, repaired now"},
 	"shield_recharge": {"name": "Shield Recharge", "family": "base",   "rarity": "uncommon",  "max": 3, "icon": "chest", "from_level": 4,
 		"desc": "Shield recharges 1%/s, more per level"},
+	"field_medic":     {"name": "Field Medic",     "family": "pilot",  "rarity": "uncommon",  "max": 3, "pic": "res://icons/st_hp.png",
+		"desc": "The hero slowly gets health back"},
 	# utility
 	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Pulls gems and coins from further, +10% XP"},
@@ -107,7 +109,7 @@ const CARDS := {
 const TYPE := {
 	"burst_fire": "off", "piercing_rounds": "off", "chain_spark": "off", "frost_rounds": "off", "split_shot": "off", "seeker": "off", "drone_barrage": "off",
 	"rook_twin": "off", "sparks_weld": "off", "frost_freeze": "off", "hollow_phase": "off", "nyx_mark": "off", "ember_burn": "off", "nova_burst": "off",
-	"aegis": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
+	"aegis": "def", "field_medic": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
 	"core_overload": "def", "second_wind": "def", "mirror_shell": "def",
 }
 const TYPE_NAME := {"off": "OFFENSE", "def": "DEFENSE", "pas": "PASSIVE"}
@@ -125,6 +127,7 @@ const OVERCHARGE := {
 	"chain_spark":     "Sparks hit twice as hard",
 	"frost_rounds":    "Slowed bugs take +20% damage",
 	"aegis":           "Heals 25 HP each new wave",
+	"field_medic":     "1% health back every 1.5 s",
 	"reinforced_hull": "Base shield +40",
 	"shield_recharge": "Also slowly repairs the hull",
 	"magnet":          "Each gem repairs 1 shield",
@@ -209,6 +212,7 @@ const STEPS := {
 	"chain_spark": ["Every 5th bolt chains to 1 bug", "Chains to 2 bugs", "Chains to 3 bugs"],
 	"frost_rounds": ["Hits slow bugs 15%", "Hits slow bugs 30%", "Hits slow bugs 45%"],
 	"aegis": ["+30 HP and a light shield"],
+	"field_medic": ["1% health back every 5 s", "1% health back every 3 s"],
 	"reinforced_hull": ["Base shield +30, hull +20"],
 	"shield_recharge": ["Shield heals 1% a second", "Shield heals 2% a second", "Shield heals 3% a second"],
 	"magnet": ["Wider magnet, XP +10%"],
@@ -226,7 +230,24 @@ const STEPS := {
 	"nyx_mark": ["Crit rate +10%"], "ember_burn": ["Hits set bugs burning", "Burns last longer", "Burns last even longer"],
 }
 
-static func pick_text(id: String, picks_so_far: int) -> String:
+# AN OFFENSIVE CARD READS DIFFERENTLY PER WEAPON (agreed with Rudy 2026-11-13). Keyed by the shot
+# shape of the weapon in hand (Shots.SHAPE: ball = twin pistols, stream = rifle, boulder = launcher;
+# the pistol s pellet uses the plain lines above). battle.gd does the same split in _fire.
+const CLASS_STEPS := {
+	"burst_fire": {
+		"ball": ["Both pistols throw a 2nd ball", "A 3rd ball each volley", "Volleys come faster", "A 4th ball each volley"],
+		"stream": ["The stream surges: fire rate +48%", "Fire rate +19% more", "Fire rate +9% more", "Fire rate +13% more"],
+		"boulder": ["A small second shell", "A third small shell", "Small shells hit harder", "A fourth small shell"],
+	},
+}
+const CLASS_OVER := {
+	"burst_fire": {"ball": "The extra balls pierce", "stream": "Every 4th stream shot pierces", "boulder": "The small shells pierce"},
+}
+
+static func pick_text(id: String, picks_so_far: int, shape: String = "") -> String:
+	if CLASS_STEPS.has(id) and CLASS_STEPS[id].has(shape):
+		var sc: Array = CLASS_STEPS[id][shape]
+		return String(sc[mini(picks_so_far, sc.size() - 1)])
 	if STEPS5.has(id):
 		var s5: Array = STEPS5[id]
 		return String(s5[mini(picks_so_far, s5.size() - 1)])
@@ -257,7 +278,9 @@ static func def(id: String) -> Dictionary:
 	return CARDS[id] if CARDS.has(id) else FUSIONS[id]
 
 # the line the top pick of a card shows
-static func over_text(id: String) -> String:
+static func over_text(id: String, shape: String = "") -> String:
+	if CLASS_OVER.has(id) and CLASS_OVER[id].has(shape):
+		return String(CLASS_OVER[id][shape])
 	return String(OVERCHARGE5.get(id, OVERCHARGE.get(id, "")))
 
 # the evolution this card is the offensive part of ("" when none), and its partner

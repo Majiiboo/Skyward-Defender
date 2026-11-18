@@ -258,6 +258,8 @@ var _base_dr := 0.0               # the base takes this much less damage
 var _burst_pierce := false
 var _gem_shield := false
 var _shield_rate := 0.0            # Shield Recharge card: share of the max shield restored per second
+var _regen_every := 0.0           # Field Medic card: the hero gets 1% of his health back every this many seconds (0 = never)
+var _regen_t := 0.0
 var _shield_dr := 0.0              # Shield Surge overcharged: hits on the shield this much weaker
 var _radar_heal := false           # Radar Sweep overcharged: a caught runner mends the shield
 var _wave_coins := false           # Rich Seam overcharged: a pile of coins after every wave
@@ -522,6 +524,8 @@ func _start_stage() -> void:
 	_dmg_acc = {}
 	_variants_seen = {}
 	_shield_rate = 0.0
+	_regen_every = 0.0
+	_regen_t = 0.0
 	_shield_dr = 0.0
 	_radar_heal = false
 	_wave_coins = false
@@ -947,6 +951,13 @@ func _process(delta: float) -> void:
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
+	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
+		_regen_t += delta
+		if _regen_t >= _regen_every:
+			_regen_t = 0.0
+			if pilot_hp < pilot_hp_max:
+				pilot_hp = minf(pilot_hp + pilot_hp_max * 0.01, pilot_hp_max)
+				_float_text(soldier_pos + Vector2(0, -44), "+%d" % maxi(1, roundi(pilot_hp_max * 0.01)), Color(0.5, 1.0, 0.6))
 	if hit_t > 2.5:
 		if _shield_rate > 0.0:
 			shield = minf(shield + shield_max * _shield_rate * delta, shield_max)
@@ -1175,7 +1186,15 @@ func _aim_and_fire(delta: float) -> void:
 			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid, _burst_pierce and burst_left == 0)
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
-		interval *= 1.0 + _burst_pen * (burst_count - 1)
+		# BURST FIRE BY CLASS (the card rework): the pistol taps again and again, the twins throw their extra
+		# balls together, the rifle s stream simply surges, the launcher adds small shells to each shot
+		match _shot_shape:
+			"stream":
+				interval *= (1.0 + _burst_pen * (burst_count - 1)) / float(burst_count)
+			"boulder":
+				pass
+			_:
+				interval *= 1.0 + _burst_pen * (burst_count - 1)
 	if _ult_live > 0.0:
 		interval *= 0.7 if _ult_kind == "phase" else 0.4   # Phase Storm / Volley (hero abilities)
 	if _overdrive and fmod(time_alive, 8.0) < 3.0:
@@ -1187,7 +1206,7 @@ func _aim_and_fire(delta: float) -> void:
 			var shot_ang := idle_aim_ang + rng.randf_range(-aim_error, aim_error)
 			var d2 := Vector2(cos(shot_ang), sin(shot_ang))
 			_fire(muzzle_base + d2 * 4.0, d2, int(target.get("id", -2)))
-			burst_left = burst_count - 1
+			burst_left = (burst_count - 1) if _shot_shape == "pellet" else 0   # only the pistol fires its burst one after another
 			burst_timer = 0.07
 			burst_dir = d2
 			burst_tid = int(target.get("id", -2))
@@ -1205,7 +1224,7 @@ func _aim_and_fire(delta: float) -> void:
 			tid = int(help.id)
 		var dir := Vector2(cos(ang), sin(ang))
 		_fire(muzzle_base + dir * 4.0, dir, tid)
-		burst_left = burst_count - 1
+		burst_left = (burst_count - 1) if _shot_shape == "pellet" else 0
 		burst_timer = 0.07
 		burst_dir = dir
 		burst_tid = tid
@@ -1325,6 +1344,11 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 	shake = maxf(shake, float(feel.shake))
 	var count: int = int(w.projectiles) + extra_projectiles
 	var spread: float = float(w.spread) + 0.18 * extra_projectiles
+	var burst_extra := 0   # Burst Fire on the twins: the extra balls leave together, side by side
+	if burst_count > 1 and _shot_shape == "ball":
+		burst_extra = burst_count - 1
+		count += burst_extra
+		spread = maxf(spread, 0.11 * float(count - 1))
 	# level milestones: the twins' third shot every other volley, the Blizzard fan every 10th
 	_volley_n += 1
 	if int(w.get("extra_every", 0)) > 0 and _volley_n % int(w.extra_every) == 0:
@@ -1390,6 +1414,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 						nb.dmg = float(nb.dmg) * _crit_dmg
 		if _seek > 0.0:   # Seeker (card): the shot curves toward the nearest bug ahead of it
 			nb["seek"] = _seek
+		if _burst_pierce and ((_shot_shape == "ball" and i >= count - burst_extra) or (_shot_shape == "stream" and burst_count > 1 and _shot_n % 4 == 0)):
+			nb.pierce = true   # Burst Fire at its top level: the extra balls pierce / every 4th stream shot pierces
 		_chip_shot(nb)   # WEAPON CHIPS: every Nth shot carries its chip s trick
 		if int(nb.spark) > 0 and int(w.get("spark_every", 0)) > 0:
 			nb.spark = int(nb.spark) + int(_steps.get("spark_add", 0))
@@ -1401,6 +1427,20 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			tw.dmg = float(tw.dmg) * _twin_dmg
 			bullets.append(tw)
 		stat_shots += 1
+	# Burst Fire on the launcher: small shells beside the big one
+	if burst_count > 1 and _shot_shape == "boulder" and not bullets.is_empty():
+		var big_b: Dictionary = bullets[-1]
+		for k in burst_count - 1:
+			var small_b: Dictionary = big_b.duplicate(true)
+			var s_side := -1.0 if k % 2 == 0 else 1.0
+			small_b.vel = (dir * Vector2(big_b.vel).length() * 1.1).rotated(s_side * 0.13 * float(1 + k / 2))
+			small_b.dmg = float(small_b.dmg) * (0.45 if _burst_pen > 0.3 else 0.6)
+			small_b.shape = "ball"
+			small_b.big = false
+			small_b.splash = float(small_b.splash) * 0.6
+			small_b.pierce = bool(small_b.pierce) or _burst_pierce
+			small_b["lane"] = 30 + k
+			bullets.append(small_b)
 	# Split Shot (card): some volleys throw extra shots out to the sides
 	if _split_n > 0 and _volley_n % _split_every == 0 and not bullets.is_empty():
 		var main_b: Dictionary = bullets[-1]
@@ -2966,11 +3006,11 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 		b.add_child(link)
 	# an overcharge card shows only its new bonus (the card itself is known by now)
 	if not over:
-		var d := UIKit.label(Cards.pick_text(id, lvl) if not fusion else String(def.desc), 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
+		var d := UIKit.label(Cards.pick_text(id, lvl, _shot_shape) if not fusion else String(def.desc), 10, Color(0.8, 0.88, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(d)
 	if over:
-		var od := UIKit.label("+ " + Cards.over_text(id), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
+		var od := UIKit.label("+ " + Cards.over_text(id, _shot_shape), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(od)
 	if (over or fusion) and not own_frame:
@@ -3071,6 +3111,7 @@ func _pick_card(id: String) -> void:
 		"second_wind": _second_wind = int(card_levels[id])
 		"mirror_shell": _mirror = int(card_levels[id])
 		"shield_recharge": _shield_rate += 0.01
+		"field_medic": _regen_every = [5.0, 3.0, 1.5][clampi(lv - 1, 0, 2)]
 		# base cards (Cards "building"): more of what the building does
 		"shield_surge":
 			shield_max += 25.0
@@ -4961,8 +5002,7 @@ const RUNNER_WARN := 1.1        # seconds the lane shows before the runner
 const RUNNER_SPEED := 165.0
 const RUNNER_HP := 2.4          # stage-1 health (a Scout has 1.6)
 const RUNNER_DMG := 6.0
-const WAVE_REST := 0.04         # share of the hero s health that comes back after each wave
-const WAVE_PATCH := 0.06        # share of the shield mended after each wave
+const WAVE_PATCH := 0.0         # the shield no longer mends by itself after a wave (Rudy 2026-11-17: defending it IS the challenge); only a Repair Bay on the base or a card brings it back
 var _runner_due: Array = []     # seconds from now, one per runner still to come this wave
 var _lanes: Array = []          # {x, t}: lanes lit, counting down to the runner
 
@@ -5066,12 +5106,13 @@ func _wave_patch() -> void:
 	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
 	if _base_repair > 0.0 and hull < hull_max:
 		hull = minf(hull + hull_max * _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0), hull_max)
-	# the hero catches his breath after every wave (2026-11-17: stages are a third longer and his health did not come back, so he ran dry near the end of stage 20); the Med Bay adds to it
-	if pilot_hp < pilot_hp_max and pilot_hp > 0.0:
-		pilot_hp = minf(pilot_hp + pilot_hp_max * (WAVE_REST + _base_heal), pilot_hp_max)
+	if _base_heal > 0.0 and pilot_hp < pilot_hp_max:   # the Med Bay mends the hero after a wave; nothing else does (Rudy 2026-11-17: his health not coming back IS the challenge; the Field Medic card is the way to earn it)
+		pilot_hp = minf(pilot_hp + pilot_hp_max * _base_heal, pilot_hp_max)
 	if shield >= shield_max or shield_max <= 0.0:
 		return
 	var add: float = shield_max * (WAVE_PATCH + _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0))
+	if add <= 0.0:
+		return
 	shield = minf(shield + add, shield_max)
 	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(add), Color(0.4, 0.9, 1.0))
 
