@@ -3163,11 +3163,8 @@ func _pick_card(id: String) -> void:
 		picking = false
 		_bld_picks += 1
 		if _bld_picks % Cards.EVO_EVERY == 0 and not _replaying:
-			for sid in _base_slots:
-				if String(sid) != "" and not card_levels.has("bevo:" + String(sid)):
-					_bevo_due += 1
-					_open_cards()
-					break
+			_bevo_due += 1
+		_owed_pick()
 		return
 	if Cards.is_bevo(id):
 		card_levels[id] = 1
@@ -3175,6 +3172,7 @@ func _pick_card(id: String) -> void:
 		_bld_evolve(Cards.bld_id(id))
 		_card_panel.visible = false
 		picking = false
+		_owed_pick()
 		return
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
@@ -3182,6 +3180,7 @@ func _pick_card(id: String) -> void:
 		_evo_due = maxi(_evo_due - 1, 0)
 		_card_panel.visible = false
 		picking = false
+		_owed_pick()
 		return
 	var over := Cards.overcharges(id, int(card_levels.get(id, 0)))
 	card_levels[id] = int(card_levels.get(id, 0)) + 1
@@ -3394,6 +3393,23 @@ func _dbg_cards(ids: String) -> void:
 	_dbg_offer = Array(ids.split(","))
 	_open_cards()
 
+# a pick the player is still owed after the one just taken: a building evolution, a hero evolution,
+# or the second pick after a new building. Opens it; an evolution with nothing left to offer is dropped.
+func _owed_pick() -> void:
+	if _replaying:
+		return
+	if _bevo_due > 0:
+		var any := false
+		for sid in _base_slots:
+			if String(sid) != "" and not card_levels.has("bevo:" + String(sid)):
+				any = true
+		if not any:
+			_bevo_due = 0
+	if _evo_due > 0 and Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty():
+		_evo_due = 0
+	if _bevo_due > 0 or _evo_due > 0 or _bld_bonus:
+		_open_cards()
+
 func _offer() -> Array:
 	if not _dbg_offer.is_empty():
 		var forced := _dbg_offer
@@ -3428,6 +3444,9 @@ func _offer() -> Array:
 				evos[j] = tmp
 			return evos.slice(0, 3)
 	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents, _hero_lv)
+	if _bld_bonus:   # the pick that follows a new building: hero cards only
+		_bld_bonus = false
+		return picks
 	# all three by chance; a building card can take any of them. One protection only (Rudy): while a
 	# pod stands free and no building has been on offer for two picks, one is put among them.
 	var cands := _bld_cands()
@@ -5934,12 +5953,14 @@ var _dome_used := false      # the Shield Generator's emergency shield went up t
 # free pod at its Base-page level, and its later cards strengthen it (Cards.BLD_MAX picks in all: the
 # last brings the old base card's special). Any three building cards earn a building evolution.
 const BLD_CHANCE := 0.28           # the chance that one of the three cards is a building, each card on its own
+const BLD_OWNED_SHARE := 0.5      # what an owned building gives before it is built in the fight
 var _bld_owned: Array = []        # the buildings that can come up as cards this fight
 var _bld_menu := {}               # their levels from the Base page
 var _bld_picks := 0               # building cards taken this stage: every third earns a building evolution
 var _bevo_due := 0                # building evolution picks owed
-var _bld_dry := 1                 # picks since a building card was on offer while a pod stood free
+var _bld_dry := 2                 # picks since a building card was on offer while a pod stood free
 var _links_on: Array = []         # the links (Base.LINKS) already live this fight
+var _bld_bonus := false           # a NEW building was just placed: the player picks again at once (placing must not cost a hero card)
 
 func _apply_base(sv: Dictionary) -> void:
 	_base_links = []
@@ -5952,7 +5973,8 @@ func _apply_base(sv: Dictionary) -> void:
 	_bld_menu = {}
 	_bld_picks = 0
 	_bevo_due = 0
-	_bld_dry = 1
+	_bld_dry = 2   # the first pick of a stage brings a building when a pod is free
+	_bld_bonus = false
 	for i in Base.SLOTS:
 		_base_slots[i] = ""
 		_base_levels[i] = 0
@@ -5968,6 +5990,15 @@ func _apply_base(sv: Dictionary) -> void:
 			_bld_owned.append(String(id))
 			_bld_menu[String(id)] = maxi(Base.level(b, String(id)), 1)
 			_tex["bld_" + String(id)] = Base.pic(String(id))   # loaded now: a texture first loaded while drawing shows white
+	# A building you OWN always gives HALF of what it gives at its level, standing or not (the first
+	# sweep with a bare base lost every stage from 20 up by wave 5: the bugs are tuned against a
+	# base that is there from the first second). Building it in the fight brings the other half,
+	# its special and its upgrades.
+	for oid in _bld_owned:
+		_bld_apply(String(oid), BLD_OWNED_SHARE)
+	shield = shield_max   # the fight starts with everything full, as it always did
+	hull = hull_max
+	pilot_hp = pilot_hp_max
 
 func _bld_free_pod() -> int:
 	for i in Base.SLOTS:
@@ -6074,10 +6105,12 @@ func _bld_pick(id: String) -> void:
 		_base_slots[pod] = id
 		_base_levels[pod] = int(_bld_menu.get(id, 1))
 		_pods.append({"mount": pod, "pos": Backdrop.pod_pos(pod, FIELD_W, BASE_Y), "drop": 1.0, "held_by": -1})
-		_bld_apply(id, 1.0)
+		_bld_apply(id, 1.0 - BLD_OWNED_SHARE)   # the half it did not give yet
 		if int(_bld_menu.get(id, 1)) >= Base.PERK_LEVEL:
 			_bld_perk(id)
 		_bld_links()
+		if not _replaying:
+			_bld_bonus = true   # second sweep: runs that spent their first picks on buildings fell behind and lost by wave 5
 		if not _replaying:
 			var at: Vector2 = Backdrop.pod_pos(pod, FIELD_W, BASE_Y)
 			_float_text(at + Vector2(0, -36), String(Base.BUILDINGS[id].name), Base.BUILDINGS[id].col, true)
