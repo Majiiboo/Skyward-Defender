@@ -259,6 +259,9 @@ func _process(_d: float) -> bool:
 			return false
 	return false
 
+var _pk_lvl := 1
+var _pk_log: Array = []
+
 func _step() -> bool:
 	steps += 1
 	if b._supply_open:   # a supply drop: the bot takes the first offer
@@ -287,6 +290,12 @@ func _step() -> bool:
 		if human_x >= 0.0:
 			b._drag_by(Vector2(clampf(human_x - b.soldier_pos.x, -SPEED * DT, SPEED * DT), 0))
 	b._process(DT)
+	if b.run_level < _pk_lvl or b.time_alive < 1.0:   # a new run: start the pick log over
+		_pk_lvl = 1
+		_pk_log = []
+	if b.run_level > _pk_lvl:   # when each card pick lands (for the card rework: when would an evolution arrive?)
+		_pk_lvl = b.run_level
+		_pk_log.append("%d:%ds/w%d" % [b.run_level - 1, int(b.time_alive), b.wave_index + 1])
 	if b.pilot_hp < hp_before:
 		r.hearts_lost += hp_before - b.pilot_hp   # HP lost (the column keeps its name)
 		if r.first_heart_wave < 0:
@@ -408,6 +417,7 @@ func _finish() -> void:
 	r.waves = b.waves.size()
 	r.kills = b.kills
 	r.lvl = b.run_level
+	print("    picks (n:time/wave): " + " ".join(_pk_log))
 	r.pilot_dmg = b.stat_pilot_dmg
 	r.turret_dmg = b.stat_turret_dmg
 	if b.stat_special_dmg > 0.0:
