@@ -2976,14 +2976,46 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.position = pos
 	b.size = size
 	b.clip_contents = true
-	b.add_theme_stylebox_override("normal", UIKit.box(Color(0.055, 0.09, 0.16), Color(edge, 0.9), 16.0, 2))
-	b.add_theme_stylebox_override("hover", UIKit.box(Color(0.07, 0.115, 0.2), edge, 16.0, 2))
-	b.add_theme_stylebox_override("pressed", UIKit.box(Color(0.09, 0.14, 0.24), Color.WHITE, 16.0, 2))
+	# THE BOX IS A GRADIENT, not a flat colour (Rudy 2026-11-18): the card s own colour glowing at the top,
+	# sinking through a deep shade of it into navy at the foot. Drawn in thin rows, pulled in at the
+	# rounded corners; the button itself only keeps the coloured edge.
+	b.add_theme_stylebox_override("normal", UIKit.box(Color(0, 0, 0, 0), Color(edge, 0.95), 16.0, 2))
+	b.add_theme_stylebox_override("hover", UIKit.box(Color(1, 1, 1, 0.04), edge, 16.0, 2))
+	b.add_theme_stylebox_override("pressed", UIKit.box(Color(1, 1, 1, 0.12), Color.WHITE, 16.0, 2))
+	var grad := Control.new()
+	grad.set_anchors_preset(Control.PRESET_FULL_RECT)
+	grad.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	grad.show_behind_parent = true
+	var g_foot := Color(0.09, 0.05, 0.15) if fusion else Color(0.04, 0.065, 0.12)
+	var g_stops: Array = [[0.0, (gold if fusion else edge).lerp(Color.WHITE, 0.1)], [0.2, edge.darkened(0.42)], [0.55, g_foot.lerp(edge, 0.16)], [1.0, g_foot]]
+	grad.draw.connect(func():
+		var w: float = grad.size.x
+		var h: float = grad.size.y
+		var rad := 15.0
+		var row := 3.0
+		var y := 1.0
+		while y < h - 1.0:
+			var y2: float = minf(y + row, h - 1.0)
+			var cols: Array = []
+			for yy in [y, y2]:
+				var u: float = yy / h
+				var c: Color = g_stops[-1][1]
+				for k in g_stops.size() - 1:
+					if u <= float(g_stops[k + 1][0]):
+						c = (g_stops[k][1] as Color).lerp(g_stops[k + 1][1], (u - float(g_stops[k][0])) / (float(g_stops[k + 1][0]) - float(g_stops[k][0])))
+						break
+				cols.append(c)
+			var ym: float = (y + y2) * 0.5
+			var dy: float = maxf(rad - ym, ym - (h - rad))   # how far into a rounded corner this row sits
+			var inset: float = 1.0 + (rad - sqrt(maxf(rad * rad - dy * dy, 0.0)) if dy > 0.0 else 0.0)
+			grad.draw_polygon(PackedVector2Array([Vector2(inset, y), Vector2(w - inset, y), Vector2(w - inset, y2), Vector2(inset, y2)]), PackedColorArray([cols[0], cols[0], cols[1], cols[1]]))
+			y = y2)
+	b.add_child(grad)
 	b.add_theme_stylebox_override("focus", StyleBoxEmpty.new())
 	# the band: what kind of card this is, readable before anything else
 	var band := Panel.new()
 	var bsb := StyleBoxFlat.new()
-	bsb.bg_color = edge
+	bsb.bg_color = Color(0, 0, 0, 0)   # the gradient is the colour now; the band only places the MAX / EVOLVE word
 	bsb.corner_radius_top_left = 14
 	bsb.corner_radius_top_right = 14
 	band.add_theme_stylebox_override("panel", bsb)
@@ -3034,8 +3066,8 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 		# AN EVOLUTION STANDS OUT: a soft halo round its box that swells and fades, pink into gold,
 		# and a bright edge. It is drawn outside the card, so the card must not clip it.
 		b.clip_contents = false
-		b.add_theme_stylebox_override("normal", UIKit.box(Color(0.09, 0.07, 0.15), gold, 16.0, 3))
-		b.add_theme_stylebox_override("hover", UIKit.box(Color(0.11, 0.09, 0.18), Color.WHITE, 16.0, 3))
+		b.add_theme_stylebox_override("normal", UIKit.box(Color(0, 0, 0, 0), gold, 16.0, 3))
+		b.add_theme_stylebox_override("hover", UIKit.box(Color(1, 1, 1, 0.05), Color.WHITE, 16.0, 3))
 		var halo := Control.new()
 		halo.set_anchors_preset(Control.PRESET_FULL_RECT)
 		halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -3046,6 +3078,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 				var hc: Color = (Cards.COLOR.fusion as Color).lerp(gold, float(k) / 6.0)
 				halo.draw_style_box(UIKit.box(Color(hc, 0.16 - 0.018 * k), Color(0, 0, 0, 0), 16.0 + grow, 0), Rect2(Vector2(-grow, -grow), halo.size + Vector2(grow, grow) * 2.0)))
 		b.add_child(halo)
+		b.move_child(halo, 0)   # first, so the gradient covers its middle: the glow only shows round the box
 		var htw := halo.create_tween().set_loops()
 		htw.tween_property(halo, "modulate:a", 0.45, 0.7).set_trans(Tween.TRANS_SINE)
 		htw.tween_property(halo, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
