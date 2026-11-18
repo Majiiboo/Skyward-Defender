@@ -5960,7 +5960,7 @@ var _bld_picks := 0               # building cards taken this stage: every third
 var _bevo_due := 0                # building evolution picks owed
 var _bld_dry := 2                 # picks since a building card was on offer while a pod stood free
 var _links_on: Array = []         # the links (Base.LINKS) already live this fight
-var _bld_bonus := false           # a NEW building was just placed: the player picks again at once (placing must not cost a hero card)
+var _bld_bonus := false           # UNUSED since 2026-11-18: Rudy took out the free pick after a new building (nothing sets it now)
 
 func _apply_base(sv: Dictionary) -> void:
 	_base_links = []
@@ -6109,8 +6109,6 @@ func _bld_pick(id: String) -> void:
 		if int(_bld_menu.get(id, 1)) >= Base.PERK_LEVEL:
 			_bld_perk(id)
 		_bld_links()
-		if not _replaying:
-			_bld_bonus = true   # second sweep: runs that spent their first picks on buildings fell behind and lost by wave 5
 		if not _replaying:
 			var at: Vector2 = Backdrop.pod_pos(pod, FIELD_W, BASE_Y)
 			_float_text(at + Vector2(0, -36), String(Base.BUILDINGS[id].name), Base.BUILDINGS[id].col, true)
