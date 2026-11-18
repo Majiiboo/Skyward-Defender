@@ -5953,7 +5953,7 @@ var _dome_used := false      # the Shield Generator's emergency shield went up t
 # free pod at its Base-page level, and its later cards strengthen it (Cards.BLD_MAX picks in all: the
 # last brings the old base card's special). Any three building cards earn a building evolution.
 const BLD_CHANCE := 0.28           # the chance that one of the three cards is a building, each card on its own
-const BLD_OWNED_SHARE := 0.5      # what an owned building gives before it is built in the fight
+const BLD_OWNED_SHARE := 0.0      # Rudy 2026-11-18: an owned building gives NOTHING until it is built in the fight (0.5 was my softening rule; he did not want it)
 var _bld_owned: Array = []        # the buildings that can come up as cards this fight
 var _bld_menu := {}               # their levels from the Base page
 var _bld_picks := 0               # building cards taken this stage: every third earns a building evolution
