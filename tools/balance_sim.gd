@@ -431,6 +431,8 @@ func _next() -> void:
 	b.auto_on = pilot == "auto"   # AUTO only for the "auto" pilot; every other bot plays in MANUAL
 	b.set_process(false)
 	b.set_process_input(false)
+	_evo_seen = 0
+	_evo_taken = 0
 	steps = 0
 	r = {"stage": cur[0], "won": false, "t": 0.0, "wave": 0, "waves": 0, "hearts_lost": 0.0, "min_hull": 100.0,
 		"first_heart_wave": -1, "first_base_wave": -1, "kills": 0, "lvl": 1, "cards": [], "pilot_dmg": 0.0, "turret_dmg": 0.0,
@@ -448,6 +450,12 @@ func _process(_d: float) -> bool:
 			return false
 	return false
 
+# what-if switches for the evolutions (sim only): SIM_EVO_ONE_IN=2 takes only every second evolution pick
+# earned (as if it took six hero cards, not three), SIM_EVO_MAX=n takes at most n in a stage
+var _evo_one_in := maxi(int(OS.get_environment("SIM_EVO_ONE_IN")), 1)
+var _evo_max := int(OS.get_environment("SIM_EVO_MAX")) if OS.get_environment("SIM_EVO_MAX") != "" else 99
+var _evo_seen := 0
+var _evo_taken := 0
 var _pk_lvl := 1
 var _pk_log: Array = []
 
@@ -499,6 +507,7 @@ func _step() -> bool:
 			r.first_base_wave = b.wave_index + 1
 	r.min_hull = minf(r.min_hull, b.hull)
 	r["min_shield"] = minf(float(r.get("min_shield", 100.0)), 100.0 * b.shield / maxf(b.shield_max, 1.0))
+	r["min_hp"] = minf(float(r.get("min_hp", 100.0)), 100.0 * maxf(b.pilot_hp, 0.0) / maxf(b.pilot_hp_max, 1.0))   # the lowest his health got, as a share
 	if b.game_over or b.stage_cleared:
 		return false
 	return b.time_alive < MAX_T
@@ -575,6 +584,14 @@ func _pick() -> void:
 		if s > top:
 			top = s
 			best = id
+	if evo:   # the what-if switches SIM_EVO_ONE_IN / SIM_EVO_MAX: this evolution pick is passed over, as if it had not been earned
+		_evo_seen += 1
+		if _evo_seen % _evo_one_in != 0 or _evo_taken >= _evo_max:
+			b._evo_due = maxi(b._evo_due - 1, 0)
+			b._card_panel.visible = false
+			b.picking = false
+			return
+		_evo_taken += 1
 	if Cards.FUSIONS.has(best):
 		_pk_log.append("EVOLVE %s at %ds/w%d" % [best, int(b.time_alive), b.wave_index + 1])
 	if _pick_mode == "dmg" and not Cards.FUSIONS.has(best):
@@ -704,7 +721,7 @@ func _finish() -> void:
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
-	print("    shield min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), b._runners_caught, r.base_hits])
+	print("    shield min %3.0f%%  hero health min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), float(r.get("min_hp", 100.0)), b._runners_caught, r.base_hits])
 	r["kit"] = r_kit
 	r["evos"] = 0
 	for c in r.cards:
@@ -742,11 +759,13 @@ func _summary() -> void:
 		total_xp += avg_xp
 		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%  %8.0f  (%5.0f, Lv %d)" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n, avg_xp, total_xp, Turrets.pilot_level(int(total_xp))])
 		var sm := 0.0; var sw := 100.0; var hw := 100.0; var ev := 0.0; var lh := 0; var lb := 0
+		var hm2 := 0.0; var hw2 := 100.0
 		for x in rs:
 			sm += float(x.get("min_shield", 100.0)); sw = minf(sw, float(x.get("min_shield", 100.0))); hw = minf(hw, x.min_hull); ev += float(x.get("evos", 0))
+			hm2 += float(x.get("min_hp", 100.0)); hw2 = minf(hw2, float(x.get("min_hp", 100.0)))
 			lh += 1 if String(x.get("why", "")) == "hp" else 0
 			lb += 1 if String(x.get("why", "")) == "hull" else 0
-		print("       shield min avg %3.0f%% (worst %3.0f%%)  hull worst %3.0f  evolutions avg %.1f  lost: hero %d, base %d  kit: %s" % [sm / n, sw, hw, ev / n, lh, lb, String(rs[0].get("kit", ""))])
+		print("       shield min avg %3.0f%% (worst %3.0f%%)  hull worst %3.0f  hero health min avg %3.0f%% (worst %3.0f%%)  evolutions avg %.1f  lost: hero %d, base %d  kit: %s" % [sm / n, sw, hw, hm2 / n, hw2, ev / n, lh, lb, String(rs[0].get("kit", ""))])
 
 # ---- per-wave log (SIM_WAVELOG=1), written for REVIEW-base-collapse.md: what arrived in each wave,
 # how fast the hero dealt with it, where he stood, and what the base and he had left at its end.
