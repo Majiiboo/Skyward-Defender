@@ -266,6 +266,13 @@ var _hull_rate := 0.0              # its overcharge: share of the max hull per s
 # new cards and fusions
 var chain_level := 0              # Chain Spark: every 5th bolt sparks to this many bugs
 var _chain_mult := 1.0
+var _chain_every := 5             # Chain Spark: every Nth shot chains (4 from its third level)
+var _burst_pen := 0.35            # how much each extra burst shot slows the trigger (Burst Fire level 3: 0.28)
+var _twin_dmg := 1.0               # Twin Trigger: how hard the twin hits (1.4 from its third level, 1.8 at the top)
+var _split_n := 0                 # Split Shot: side shots thrown...
+var _split_every := 4             # ...every Nth volley...
+var _split_dmg := 0.6             # ...each hitting this share of the main shot
+var _seek := 0.0                  # Seeker: how hard a shot turns toward the nearest bug, radians a second
 var _parts_got := {}              # upgrade parts picked up this run (Parts)
 var _gear_got := {}               # the gear copy this clear dropped ({id, rarity}, GearData)
 var _drone := {}                  # the sidekick from Gear (DroneData.read): body, pod, level
@@ -521,6 +528,13 @@ func _start_stage() -> void:
 	_pulse_bonus = 0.0
 	_hull_rate = 0.0
 	_chain_mult = 1.0
+	_chain_every = 5
+	_burst_pen = 0.35
+	_split_n = 0
+	_twin_dmg = 1.0
+	_split_every = 4
+	_split_dmg = 0.6
+	_seek = 0.0
 	_xp_cut = 1.0
 	_aegis_heal = false
 	_railstorm = false
@@ -1161,7 +1175,7 @@ func _aim_and_fire(delta: float) -> void:
 			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid, _burst_pierce and burst_left == 0)
 	var interval: float = float(weapon.interval) / fire_rate_mult
 	if burst_count > 1:
-		interval *= 1.0 + 0.35 * (burst_count - 1)
+		interval *= 1.0 + _burst_pen * (burst_count - 1)
 	if _ult_live > 0.0:
 		interval *= 0.7 if _ult_kind == "phase" else 0.4   # Phase Storm / Volley (hero abilities)
 	if _overdrive and fmod(time_alive, 8.0) < 3.0:
@@ -1340,7 +1354,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			"dmg": float(w.damage) * damage_mult * (1.3 if _ult_live > 0.0 and _live_ups >= 2 else 1.0) * ((float(w.get("charge_mult", 3.0)) if w_charged else 3.0) if crit else 1.0) * (2.0 if rail else 1.0) * (_crit_dmg if lucky else 1.0),
 			"r": float(w.hit_radius), "tid": target_id, "col": "cyan", "big": w.get("big", false) or crit or rail or lucky,
 			"pierce": pierce or rail or rail_gun or (w_charged and bool(w.get("charge_pierce", false))) or (_ult_live > 0.0 and (_ult_kind == "phase" or _live_ups >= 3)) or (_pierce5 and _shot_n % maxi(_pierce_every, 2) == 0) or (_mastery_pierce > 0 and _shot_n % _mastery_pierce == 0), "hits": [],
-			"spark": chain_level if chain_level > 0 and _shot_n % 5 == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
+			"spark": chain_level if chain_level > 0 and _shot_n % _chain_every == 0 else (1 if int(w.get("spark_every", 0)) > 0 and _shot_n % int(w.spark_every) == 0 else 0), "pierce_left": pierce_level,
 			"frost": frost_level > 0 or (bool(w.get("frost", false)) and _stream_fx == "slow"), "rail": rail or rail_gun, "lucky": lucky,
 			"shape": _shot_shape, "sn": _shot_n, "born": time_alive, "lane": i, "burn": (bool(w.get("frost", false)) and _stream_fx == "burn") or int(_steps.get("burn_hit", 0)) > 0,
 			"splash_share": float(w.get("splash_share", 0.6)), "fslow": float(w.get("frost_slow", 0.0)),
@@ -1358,7 +1372,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			nb.spark = maxi(int(nb.spark), 1)
 		# the twins' every-3rd trick by element (Shots.TWIN_TRICK): only the electric hero arcs
 		if _shot_shape == "ball" and int(w.get("spark_every", 0)) > 0 and _bolt_set != "scavenger" and _shot_n % int(w.spark_every) == 0:
-			if not (chain_level > 0 and _shot_n % 5 == 0):
+			if not (chain_level > 0 and _shot_n % _chain_every == 0):
 				nb.spark = 0
 			match _bolt_set:
 				"frost":
@@ -1374,6 +1388,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 						nb.lucky = true
 						nb.big = true
 						nb.dmg = float(nb.dmg) * _crit_dmg
+		if _seek > 0.0:   # Seeker (card): the shot curves toward the nearest bug ahead of it
+			nb["seek"] = _seek
 		_chip_shot(nb)   # WEAPON CHIPS: every Nth shot carries its chip s trick
 		if int(nb.spark) > 0 and int(w.get("spark_every", 0)) > 0:
 			nb.spark = int(nb.spark) + int(_steps.get("spark_add", 0))
@@ -1382,9 +1398,19 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			var tw: Dictionary = bullets[-1].duplicate(true)
 			tw.vel = Vector2(tw.vel).rotated(0.09)
 			tw.pos = Vector2(tw.pos) + Vector2(10.0, 0.0)
-			tw.dmg = float(tw.dmg) * (1.15 if _twin_bonus else 1.0)
+			tw.dmg = float(tw.dmg) * _twin_dmg
 			bullets.append(tw)
 		stat_shots += 1
+	# Split Shot (card): some volleys throw extra shots out to the sides
+	if _split_n > 0 and _volley_n % _split_every == 0 and not bullets.is_empty():
+		var main_b: Dictionary = bullets[-1]
+		for k in _split_n:
+			var side_b: Dictionary = main_b.duplicate(true)
+			var side := -1.0 if k % 2 == 0 else 1.0
+			side_b.vel = (dir * Vector2(main_b.vel).length()).rotated(side * 0.2 * float(1 + k / 2))
+			side_b.dmg = float(side_b.dmg) * _split_dmg
+			side_b["lane"] = 20 + k
+			bullets.append(side_b)
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
 	return current + clampf(angle_difference(current, goal), -max_step, max_step)
@@ -1434,6 +1460,18 @@ func _update_bullets(delta: float) -> void:
 					var want: Vector2 = (Vector2(e.pos) - Vector2(b.pos)).normalized() * 300.0
 					b.vel = Vector2(b.vel).lerp(want, minf(1.0, delta * 4.0))
 					break
+		if float(b.get("seek", 0.0)) > 0.0:   # Seeker: turn toward the nearest bug ahead, a little each frame
+			var s_best = null
+			var s_d := 240.0
+			for e in enemies:
+				var s_v: Vector2 = Vector2(e.pos) - Vector2(b.pos)
+				if s_v.y < 20.0 and s_v.length() < s_d and float(e.hp) > 0.0:
+					s_d = s_v.length()
+					s_best = e
+			if s_best != null:
+				var s_vel: Vector2 = b.vel
+				var s_max: float = float(b.seek) * delta
+				b.vel = s_vel.rotated(clampf(s_vel.angle_to(Vector2(s_best.pos) - Vector2(b.pos)), -s_max, s_max))
 		b.pos += b.vel * delta
 		var hit := false
 		if b.has("ttl"):   # a short-range bolt (the Sun Rifle's fan) fades out
@@ -1512,7 +1550,7 @@ func _update_bullets(delta: float) -> void:
 				# hero cards: Deep Freeze slows, Afterburn sets burning
 				if _freeze_level > 0:
 					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 1.5)
-					e.slow = maxf(float(e.get("slow", 0.0)), minf(0.2 * _freeze_level, 0.6))
+					e.slow = maxf(float(e.get("slow", 0.0)), minf(0.12 * _freeze_level, 0.6))
 					# at full strength a hit can freeze a bug solid for a moment (dev209: ice must SHOW)
 					if float(e.slow) >= 0.6 and not _is_boss(e) and rng.randf() < 0.25:
 						e.freeze_t = 0.9
@@ -2903,13 +2941,16 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.clip_contents = true   # nothing ever drawn outside the card (dev209: text spilled past the frame)
 	v.add_theme_constant_override("separation", 6)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_card_pic(id, 50.0 if fusion or over else 62.0))
+	v.add_child(_card_pic(id, 50.0 if fusion or over else 54.0))   # a little smaller since the type line came in
+	if not fusion:   # the card s TYPE, in its colour: offence, defence or passive
+		var ty := Cards.type_of(id)
+		v.add_child(UIKit.label(String(Cards.TYPE_NAME[ty]), 9, Cards.TYPE_COLOR[ty], HORIZONTAL_ALIGNMENT_CENTER))
 	var name_l := UIKit.label(def.name, 12, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(name_l)
 	var gold := Color(1.0, 0.82, 0.32)
 	# the frame already shows the rarity: the tag is just NEW or the level, in the rarity colour
-	var tag := "FUSION" if fusion else ("OVERCHARGE" if over else ("NEW" if lvl == 0 else "Lv.%d" % (lvl + 1)))
+	var tag := "EVOLVE" if fusion else ("OVERCHARGE" if over else ("NEW" if lvl == 0 else "Lv.%d" % (lvl + 1)))
 	v.add_child(UIKit.label(tag, 10, gold if over else col, HORIZONTAL_ALIGNMENT_CENTER))
 	# a card that leads to a fusion carries a small link badge in its corner (was a CHAIN line)
 	if Cards.chain_of(id) != "" and not fusion and not over:
@@ -2929,7 +2970,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 		d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(d)
 	if over:
-		var od := UIKit.label("+ " + String(Cards.OVERCHARGE[id]), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
+		var od := UIKit.label("+ " + Cards.over_text(id), 10, gold, HORIZONTAL_ALIGNMENT_CENTER)
 		od.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		v.add_child(od)
 	if (over or fusion) and not own_frame:
@@ -2978,10 +3019,15 @@ func _pick_card(id: String) -> void:
 			shake = maxf(shake, 0.35)
 		if not _replaying:
 			Sfx.play("level", 1.3)
+	var lv: int = int(card_levels[id])   # the level this pick brought the card to (a five-level card s fifth pick is its overcharge)
 	match id:
 		"rapid_pulse": fire_rate_mult *= 1.10
 		"heavy_bolts": damage_mult *= 1.15
-		"burst_fire": burst_count += 1
+		"burst_fire":
+			if lv == 1 or lv == 2 or lv == 4:
+				burst_count += 1
+			elif lv == 3:
+				_burst_pen = 0.28
 		"aegis":
 			pilot_hp_max += 30.0   # Aegis: +30 max HP, healed now
 			_aegis_flash = 1.0
@@ -2997,8 +3043,27 @@ func _pick_card(id: String) -> void:
 			shield = minf(shield + 30.0, shield_max)
 			hull_max += 20.0
 			hull = minf(hull + 20.0, hull_max)
-		"chain_spark": chain_level += 1
-		"piercing_rounds": pierce_level += 1
+		"chain_spark":
+			if lv == 1 or lv == 2 or lv == 4:
+				chain_level += 1
+			elif lv == 3:
+				_chain_every = 4
+		"piercing_rounds", "hollow_phase":
+			if lv == 1 or lv == 2 or lv == 4:
+				pierce_level += 1
+			elif lv == 3:
+				damage_mult *= 1.06
+		"split_shot":
+			_split_n = [1, 1, 2, 2, 2][clampi(lv - 1, 0, 4)]
+			_split_every = [4, 3, 3, 2, 2][clampi(lv - 1, 0, 4)]
+		"seeker":
+			_seek = [1.2, 1.8, 2.4, 3.0, 3.6][clampi(lv - 1, 0, 4)]
+			if lv < 5:
+				damage_mult *= 1.05   # never a dead pick: a little damage with every level
+		"drone_barrage":
+			if lv < 5:
+				_drone_mult *= float(1 + lv) / float(lv)   # +100% of the drone s own damage a level (x2, x3, x4, x5): a real share of the fight, not a rounding error
+		"killer_instinct": _crit_dmg += 0.2
 		"frost_rounds": frost_level += 1
 		# talent cards (Talents.CARD_AT, dev197)
 		"focus_fire": damage_mult *= 1.06
@@ -3029,11 +3094,20 @@ func _pick_card(id: String) -> void:
 			_pulse_cd_mult *= 0.8
 			_pulse_t *= 0.8
 		# hero cards (Cards "hero"): the build-up over the three picks
-		"rook_twin": _twin_every = [4, 3, 2][clampi(int(card_levels[id]) - 1, 0, 2)]
-		"sparks_weld": _weld_count += 1
+		"rook_twin":
+			_twin_every = [4, 3, 3, 2, 2][clampi(lv - 1, 0, 4)]
+			if lv >= 3:
+				_twin_dmg = maxf(_twin_dmg, 1.4)
+		"sparks_weld":
+			if lv == 1 or lv == 2 or lv == 4:
+				_weld_count += 1
+			elif lv == 3:
+				_weld_every = 2
 		"frost_freeze": _freeze_level += 1
-		"hollow_phase": pierce_level += 1
-		"nyx_mark": _crit_rate += 0.10
+		"nyx_mark":
+			if lv < 5:
+				_crit_rate += 0.08
+				_crit_dmg += 0.15
 		"ember_burn": _burn_level += 1
 		"nova_burst":
 			for e in enemies.duplicate():
@@ -3051,6 +3125,10 @@ func _pick_card(id: String) -> void:
 
 func _overcharge(id: String) -> void:
 	match id:
+		"split_shot": _split_dmg = 0.85
+		"seeker": _crit_rate += 0.10
+		"drone_barrage": _drone_mult *= 1.6
+		"killer_instinct": _crit_rate += 0.08
 		"focus_fire": _crit_rate += 0.10
 		"salvage": _salvage = true
 		"mirror_shell": _mirror_through = true
@@ -3079,7 +3157,10 @@ func _overcharge(id: String) -> void:
 		"radar_sweep": _radar_heal = true
 		"rich_seam": _wave_coins = true
 		"core_overload": _pulse_bonus = 2.0
-		"rook_twin": _twin_bonus = true
+		"rook_twin":
+			_twin_bonus = true
+			_twin_dmg = 1.8
+			_twin_every = 2
 		"sparks_weld": _weld_every = 1
 		"frost_freeze": _shatter = true
 		"hollow_phase": _phase_bonus = true
@@ -3090,15 +3171,31 @@ func _overcharge(id: String) -> void:
 	_burst(soldier_pos, 34.0, gold, 18)
 	_fx_add("nova", soldier_pos, 40.0, 0.5, 0.0, 1.6, gold)
 
-# A fusion card (Cards.FUSIONS): both parts were overcharged; it adds its own power.
+# EVOLVE (Cards.FUSIONS): an offensive card at its top level with one level of its partner becomes
+# a new named form. The card itself stays; this adds the evolved power on top.
 func _fuse(id: String) -> void:
 	match id:
+		"storm_volley":
+			burst_count += 2
+			fire_rate_mult *= 1.15
 		"railstorm": _railstorm = true
-		"gem_barrage": _barrage = true
-		"bastion": _bastion = true
 		"thunder_lance": _thunder = true
+		"flak_wall":
+			_split_n += 2
+			_mirror = maxi(_mirror, 3)
+		"gem_barrage": _barrage = true
+		"guardian_wing":
+			_drone_mult *= 1.6
+			_shield_rate += 0.01
+		_:
+			if id.begins_with("sig_"):   # a hero s signature: he hits harder and is harder to hurt
+				damage_mult *= 1.25
+				_def = minf(_def + 0.15, 0.75)
+	if _replaying:
+		return
 	var pink: Color = Cards.COLOR.fusion
-	_float_text(soldier_pos + Vector2(0, -80), "FUSION!", pink, true)
+	_float_text(soldier_pos + Vector2(0, -80), "EVOLVED!", pink, true)
+	_float_text(soldier_pos + Vector2(0, -56), String(Cards.FUSIONS[id].name), pink)
 	_burst(soldier_pos, 46.0, pink, 26)
 	_fx_add("nova", soldier_pos, 60.0, 0.6, 0.0, 2.2, pink)
 	shake = maxf(shake, 0.35)
@@ -3116,6 +3213,8 @@ func _offer() -> Array:
 		_dbg_offer = []
 		return forced
 	var fielded: Array = _base_slots.filter(func(sid): return String(sid) != "")   # base cards need their building (Cards "building")
+	if _drone_on:   # Drone Barrage needs a drone (Cards "building": "*drone")
+		fielded.append("*drone")
 	if _pulse_open():
 		fielded.append("*pulse")
 	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents)
@@ -4397,7 +4496,7 @@ func _toggle_cards() -> void:
 		var nl := UIKit.label(def.name, 11, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		cell.add_child(nl)
-		var lv_text := "FUSION" if Cards.FUSIONS.has(id) else "Lv.%d / %d" % [int(card_levels[id]), int(def.max)]
+		var lv_text := "EVOLVED" if Cards.FUSIONS.has(id) else "Lv.%d / %d" % [int(card_levels[id]), int(def.max)]
 		cell.add_child(UIKit.label(lv_text, 10, Cards.COLOR[def.rarity], HORIZONTAL_ALIGNMENT_CENTER))
 		if Cards.CARDS.has(id) and Cards.overcharged(card_levels, id):
 			cell.add_child(UIKit.label("OVERCHARGED", 9, Color(1.0, 0.82, 0.32), HORIZONTAL_ALIGNMENT_CENTER))
@@ -4847,7 +4946,7 @@ func _start_hero_card() -> void:
 		"sparks_weld": _weld_count += 1
 		"frost_freeze": _freeze_level += 1
 		"hollow_phase": pierce_level += 1
-		"nyx_mark": _crit_rate += 0.10
+		"nyx_mark": _crit_rate += 0.08
 		"ember_burn": _burn_level += 1
 
 # ------------------------------------------------------------------ RUNNERS + the wave patch (2026-11-10)
@@ -4862,6 +4961,7 @@ const RUNNER_WARN := 1.1        # seconds the lane shows before the runner
 const RUNNER_SPEED := 165.0
 const RUNNER_HP := 2.4          # stage-1 health (a Scout has 1.6)
 const RUNNER_DMG := 6.0
+const WAVE_REST := 0.04         # share of the hero s health that comes back after each wave
 const WAVE_PATCH := 0.06        # share of the shield mended after each wave
 var _runner_due: Array = []     # seconds from now, one per runner still to come this wave
 var _lanes: Array = []          # {x, t}: lanes lit, counting down to the runner
@@ -4966,8 +5066,9 @@ func _wave_patch() -> void:
 	# the Repair Bay mends the hull too, the Med Bay the hero (Base)
 	if _base_repair > 0.0 and hull < hull_max:
 		hull = minf(hull + hull_max * _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0), hull_max)
-	if _base_heal > 0.0 and pilot_hp < pilot_hp_max:
-		pilot_hp = minf(pilot_hp + pilot_hp_max * _base_heal, pilot_hp_max)
+	# the hero catches his breath after every wave (2026-11-17: stages are a third longer and his health did not come back, so he ran dry near the end of stage 20); the Med Bay adds to it
+	if pilot_hp < pilot_hp_max and pilot_hp > 0.0:
+		pilot_hp = minf(pilot_hp + pilot_hp_max * (WAVE_REST + _base_heal), pilot_hp_max)
 	if shield >= shield_max or shield_max <= 0.0:
 		return
 	var add: float = shield_max * (WAVE_PATCH + _base_repair * (2.0 if _base_perks.has("repair_bay") and hull < hull_max * 0.5 else 1.0))

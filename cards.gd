@@ -21,14 +21,23 @@ const CARDS := {
 		"desc": "Fire rate +10%"},
 	"heavy_bolts":     {"name": "Heavy Bolts",     "family": "pilot",  "rarity": "common",    "max": 3, "icon": "nav_battle",
 		"desc": "Bolt damage +15%: bigger, hotter bolts"},
-	"burst_fire":      {"name": "Burst Fire",      "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
+	"burst_fire":      {"name": "Burst Fire",      "family": "pilot",  "rarity": "uncommon",  "max": 5, "icon": "nav_battle",
 		"desc": "Fires bursts of 2, then 3, then 4 bolts"},
-	"piercing_rounds": {"name": "Piercing Rounds", "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "nav_battle",
+	"piercing_rounds": {"name": "Piercing Rounds", "family": "pilot",  "rarity": "uncommon",  "max": 5, "icon": "nav_battle",
 		"desc": "Bolts pass through 1 more bug per level"},
-	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
+	"chain_spark":     {"name": "Chain Spark",     "family": "pilot",  "rarity": "uncommon",  "max": 5, "icon": "event",
 		"desc": "Every 5th bolt sparks to 1 more bug per level"},
 	"frost_rounds":    {"name": "Frost Rounds",    "family": "pilot",  "rarity": "uncommon",  "max": 3, "icon": "event",
 		"desc": "Hits slow bugs by 15% (more each level)"},
+	"split_shot":      {"name": "Split Shot",      "family": "pilot",  "rarity": "uncommon",  "max": 5, "pic": "res://icons/chip_split.png",
+		"desc": "Some volleys throw extra shots to the sides"},
+	"seeker":          {"name": "Seeker",          "family": "pilot",  "rarity": "uncommon",  "max": 5, "pic": "res://icons/st_aim.png",
+		"desc": "Your shots curve toward the nearest bug"},
+	"drone_barrage":   {"name": "Drone Barrage",   "family": "pilot",  "rarity": "uncommon",  "max": 5, "building": "*drone", "pic": "res://drone/body_scout.png",
+		"desc": "The drone hits harder"},
+	# passive, open to everyone: the partner that evolves Piercing Rounds
+	"killer_instinct": {"name": "Killer Instinct", "family": "pilot",  "rarity": "common",    "max": 3, "pic": "res://icons/st_crit.png",
+		"desc": "Critical hits hit 20% harder"},
 	# defence
 	"aegis":           {"name": "Aegis",           "family": "pilot",  "rarity": "uncommon",  "max": 2, "icon": "nav_gear",
 		"desc": "+30 max HP, healed now, and a shield of light"},
@@ -75,17 +84,17 @@ const CARDS := {
 	# hero cards (Rudy, dev172): one per hero, offered only while he is on duty ("hero" key).
 	# They BUILD UP like every card: pick 1 the basic form, pick 2 more of it, pick 3 (the
 	# overcharge) his max specialty. Not a legendary handed over: earned in the run.
-	"rook_twin":    {"name": "Twin Trigger",  "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "rook", "pic": "res://gear/ion_weapon_t1.png",
+	"rook_twin":    {"name": "Twin Trigger",  "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "rook", "pic": "res://gear/ion_weapon_t1.png",
 		"desc": "Every 4th bolt fires a twin (then every 3rd, then every 2nd)"},
-	"sparks_weld":  {"name": "Arc Weld",      "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "sparks", "pic": "res://gear/scavenger_weapon_t1.png",
+	"sparks_weld":  {"name": "Arc Weld",      "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "sparks", "pic": "res://gear/scavenger_weapon_t1.png",
 		"desc": "Every 3rd bolt arcs to 1 more bug per level"},
-	"frost_freeze": {"name": "Deep Freeze",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "frost", "pic": "res://gear/frost_weapon_t1.png",
+	"frost_freeze": {"name": "Deep Freeze",   "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "frost", "pic": "res://gear/frost_weapon_t1.png",
 		"desc": "Hits slow bugs 20% (more per level)"},
-	"hollow_phase": {"name": "Phase Bolts",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "hollow", "pic": "res://gear/void_weapon_t1.png",
+	"hollow_phase": {"name": "Phase Bolts",   "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "hollow", "pic": "res://gear/void_weapon_t1.png",
 		"desc": "Bolts pass through 1 more bug per level"},
-	"nyx_mark":     {"name": "Marked Prey",   "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "nyx", "pic": "res://gear/nightmare_weapon_t1.png",
+	"nyx_mark":     {"name": "Marked Prey",   "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "nyx", "pic": "res://gear/nightmare_weapon_t1.png",
 		"desc": "Crit rate +10% per level"},
-	"ember_burn":   {"name": "Afterburn",     "family": "pilot", "rarity": "uncommon", "max": 3, "hero": "ember", "pic": "res://gear/solar_weapon_t1.png",
+	"ember_burn":   {"name": "Afterburn",     "family": "pilot", "rarity": "uncommon", "max": 5, "hero": "ember", "pic": "res://gear/solar_weapon_t1.png",
 		"desc": "Hits set bugs burning: 5% HP a second, longer per level"},
 	# one-shot
 	"nova_burst":      {"name": "Nova Burst",      "family": "wild",   "rarity": "legendary", "max": 1, "icon": "event",
@@ -93,6 +102,20 @@ const CARDS := {
 }
 
 # Overcharge (battle.gd _overcharge).
+# THE THREE TYPES (Rudy 2026-11-17). "off" = changes how you shoot (five levels, can EVOLVE),
+# "def" = keeps the hero or the base alive, "pas" = a plain number. A card not listed is passive.
+const TYPE := {
+	"burst_fire": "off", "piercing_rounds": "off", "chain_spark": "off", "frost_rounds": "off", "split_shot": "off", "seeker": "off", "drone_barrage": "off",
+	"rook_twin": "off", "sparks_weld": "off", "frost_freeze": "off", "hollow_phase": "off", "nyx_mark": "off", "ember_burn": "off", "nova_burst": "off",
+	"aegis": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
+	"core_overload": "def", "second_wind": "def", "mirror_shell": "def",
+}
+const TYPE_NAME := {"off": "OFFENSE", "def": "DEFENSE", "pas": "PASSIVE"}
+const TYPE_COLOR := {"off": Color(1.0, 0.5, 0.35), "def": Color(0.4, 0.75, 1.0), "pas": Color(0.55, 0.95, 0.6)}
+
+static func type_of(id: String) -> String:
+	return String(TYPE.get(id, "pas"))
+
 const OVER_AT := 3
 const OVERCHARGE := {
 	"rapid_pulse":     "Overdrive: every 8 s, 3 s at double speed",
@@ -125,19 +148,56 @@ const OVERCHARGE := {
 	"hollow_phase":    "+30% damage per bug passed",
 	"nyx_mark":        "Crits hit x2.5",
 	"ember_burn":      "A burning bug that dies spreads the fire",
+	"split_shot":      "Side shots hit almost as hard as the main one",
+	"seeker":          "Crit rate +10%",
+	"drone_barrage":   "Drone damage +60% more",
+	"killer_instinct": "Crit rate +8%",
 }
 
-# Fusions: both parts overcharged -> offered once per run (battle.gd _fuse).
+# EVOLUTIONS (Rudy 2026-11-17, in place of the fusions; the table keeps its old name because the
+# fight, the HUD row and the pause list already treat its entries as the special gold cards).
+# "parts" = [the offensive card, its PARTNER]. The offensive card at its top level plus ONE level
+# of the partner (a passive OR a defensive card, mixed so both kinds get picked) puts EVOLVE in the
+# next pick: a new named form on top of the card (battle.gd _fuse). Defensive cards do not evolve.
 const FUSIONS := {
-	"railstorm":   {"name": "Railstorm",   "parts": ["rapid_pulse", "heavy_bolts"], "rarity": "fusion", "max": 1,
-		"desc": "Every 4th bolt: a piercing rail shot, x2"},
-	"gem_barrage": {"name": "Gem Barrage", "parts": ["burst_fire", "magnet"], "rarity": "fusion", "max": 1,
-		"desc": "Every 10 gems fire 6 bolts at the nearest bugs"},
-	"bastion":     {"name": "Bastion",     "parts": ["reinforced_hull", "aegis"], "rarity": "fusion", "max": 1,
-		"desc": "A breaking shield blasts bugs back"},
-	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "piercing_rounds"], "rarity": "fusion", "max": 1,
-		"desc": "Bugs a bolt passes through throw sparks"},
+	"storm_volley":  {"name": "Storm Volley",  "parts": ["burst_fire", "rapid_pulse"], "rarity": "fusion", "max": 1,
+		"desc": "Bursts grow by two shots and fire faster"},
+	"railstorm":     {"name": "Railshot",      "parts": ["piercing_rounds", "killer_instinct"], "rarity": "fusion", "max": 1,
+		"desc": "Every 4th shot is a rail: through the whole line, twice as hard"},
+	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "heavy_bolts"], "rarity": "fusion", "max": 1,
+		"desc": "Every bug a shot passes through throws sparks"},
+	"flak_wall":     {"name": "Flak Wall",     "parts": ["split_shot", "reinforced_hull"], "rarity": "fusion", "max": 1,
+		"desc": "Two more side shots, and shots you stop fly back at the bugs"},
+	"gem_barrage":   {"name": "Hunter Swarm",  "parts": ["seeker", "magnet"], "rarity": "fusion", "max": 1,
+		"desc": "Every 10 gems fire 6 shots at the nearest bugs"},
+	"guardian_wing": {"name": "Guardian Wing", "parts": ["drone_barrage", "shield_recharge"], "rarity": "fusion", "max": 1,
+		"desc": "The drone hits far harder and its fire mends the shield"},
+	# the six heroes: his own card with Aegis becomes his signature
+	"sig_rook":   {"name": "Crossfire",     "parts": ["rook_twin", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
+	"sig_sparks": {"name": "Storm Coil",    "parts": ["sparks_weld", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
+	"sig_frost":  {"name": "Absolute Zero", "parts": ["frost_freeze", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
+	"sig_hollow": {"name": "Event Horizon", "parts": ["hollow_phase", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
+	"sig_nyx":    {"name": "Blood Moon",    "parts": ["nyx_mark", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on her are 15% weaker"},
+	"sig_ember":  {"name": "Inferno",       "parts": ["ember_burn", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on her are 15% weaker"},
 }
+
+# what each pick of a FIVE-LEVEL card gives (index = picks so far); the fifth shows its OVERCHARGE line
+const STEPS5 := {
+	"burst_fire": ["2-shot bursts", "3-shot bursts", "Bursts fire closer together", "4-shot bursts"],
+	"piercing_rounds": ["Shots pierce 1 bug", "Shots pierce 2 bugs", "Shot damage +6%", "Shots pierce 3 bugs"],
+	"chain_spark": ["Every 5th shot chains to 1 bug", "Chains to 2 bugs", "Every 4th shot chains", "Chains to 3 bugs"],
+	"split_shot": ["A side shot every 4th volley", "Every 3rd volley", "2 side shots", "Every 2nd volley"],
+	"seeker": ["Shots curve toward bugs, damage +5%", "Curve harder, damage +5%", "Curve harder, damage +5%", "Curve harder, damage +5%"],
+	"drone_barrage": ["Drone damage x2", "Drone damage x3", "Drone damage x4", "Drone damage x5"],
+	"rook_twin": ["Every 4th shot fires twice", "Every 3rd shot fires twice", "Twins hit 40% harder", "Every 2nd shot fires twice"],
+	"sparks_weld": ["Every 3rd shot arcs to 1 bug", "Arcs to 2 bugs", "Every 2nd shot arcs", "Arcs to 3 bugs"],
+	"frost_freeze": ["Hits slow bugs 12%", "Hits slow bugs 24%", "Hits slow bugs 36%", "Hits slow bugs 48%"],
+	"hollow_phase": ["Shots pierce 1 bug", "Shots pierce 2 bugs", "Shot damage +6%", "Shots pierce 3 bugs"],
+	"nyx_mark": ["Crit rate +8%, crits 15% harder", "Crit rate +8%, crits 15% harder", "Crit rate +8%, crits 15% harder", "Crit rate +8%, crits 15% harder"],
+	"ember_burn": ["Hits set bugs burning", "Burns last longer", "Burns last longer", "Burns last longer"],
+}
+const OVERCHARGE5 := {"burst_fire": "The last shot of a burst pierces", "rook_twin": "Twins hit 80% harder", "frost_freeze": "Slow 60%, and a slowed bug that dies blasts its neighbours"}
+
 
 # the fusion a card is a part of ("" when none): the CHAIN tag on its card (dev199)
 # What THIS pick gives, in one short line (Rudy, dev209: no "then 3, then 4", nothing about later
@@ -167,6 +227,9 @@ const STEPS := {
 }
 
 static func pick_text(id: String, picks_so_far: int) -> String:
+	if STEPS5.has(id):
+		var s5: Array = STEPS5[id]
+		return String(s5[mini(picks_so_far, s5.size() - 1)])
 	if STEPS.has(id):
 		var s: Array = STEPS[id]
 		return String(s[mini(picks_so_far, s.size() - 1)])
@@ -180,7 +243,7 @@ static func chain_of(id: String) -> String:
 
 # the pick on which a card overcharges: the 3rd, or the last for cards that stop sooner
 static func over_level(id: String) -> int:
-	return mini(OVER_AT, int(CARDS[id].max))
+	return int(CARDS[id].max)   # the LAST pick: the 3rd for a three-level card, the 5th for an offensive one
 
 # true when picking this card now (it has `lvl` picks so far) overcharges it
 static func overcharges(id: String, lvl: int) -> bool:
@@ -193,13 +256,40 @@ static func overcharged(levels: Dictionary, id: String) -> bool:
 static func def(id: String) -> Dictionary:
 	return CARDS[id] if CARDS.has(id) else FUSIONS[id]
 
-# fusions whose two parts are overcharged and that this run hasn't taken yet
+# the line the top pick of a card shows
+static func over_text(id: String) -> String:
+	return String(OVERCHARGE5.get(id, OVERCHARGE.get(id, "")))
+
+# the evolution this card is the offensive part of ("" when none), and its partner
+static func evolves_to(id: String) -> String:
+	for f in FUSIONS:
+		if String(FUSIONS[f].parts[0]) == id:
+			return f
+	return ""
+
+static func partner_of(id: String) -> String:
+	var f := evolves_to(id)
+	return String(FUSIONS[f].parts[1]) if f != "" else ""
+
+# evolutions on offer: the offensive card at its top level, one level of the partner, not taken yet
 static func fusions_ready(levels: Dictionary) -> Array:
 	var out: Array = []
 	for f in FUSIONS:
-		if not levels.has(f) and overcharged(levels, FUSIONS[f].parts[0]) and overcharged(levels, FUSIONS[f].parts[1]):
+		var off: String = FUSIONS[f].parts[0]
+		if not levels.has(f) and CARDS.has(off) and int(levels.get(off, 0)) >= int(CARDS[off].max) and int(levels.get(FUSIONS[f].parts[1], 0)) >= 1:
 			out.append(f)
 	return out
+
+# A card you already hold comes up more often, and so does the partner of an offensive card you
+# hold: with about 19 picks a stage, a build has to be able to come together.
+static func _weight(levels: Dictionary, id: String) -> float:
+	var w := float(WEIGHTS[CARDS[id].rarity])
+	if int(levels.get(id, 0)) > 0:
+		w *= 3.0 if type_of(id) == "off" else 1.6
+	for f in FUSIONS:
+		if String(FUSIONS[f].parts[1]) == id and int(levels.get(FUSIONS[f].parts[0], 0)) > 0 and int(levels.get(id, 0)) == 0:
+			w = maxf(w, float(WEIGHTS.common)) * 1.5
+	return w
 
 # Pick `count` distinct cards from the pool, weighted by rarity, skipping maxed ones.
 # run_level: cards with "from_level" only show up from that run level on.
@@ -217,11 +307,11 @@ static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator 
 	while picks.size() < count and pool.size() > 0:
 		var total := 0.0
 		for id in pool:
-			total += float(WEIGHTS[CARDS[id].rarity])
+			total += _weight(levels, id)
 		var r := rng.randf() * total
 		var chosen: String = pool[pool.size() - 1]
 		for id in pool:
-			r -= float(WEIGHTS[CARDS[id].rarity])
+			r -= _weight(levels, id)
 			if r <= 0.0:
 				chosen = id
 				break

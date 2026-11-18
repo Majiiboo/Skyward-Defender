@@ -326,6 +326,22 @@ func _pick() -> void:
 		if k >= 0 and k < bi:
 			bi = k
 			best = id
+	# a player building toward an evolution: Evolve first, then deepen the offensive card already
+	# held, then take its partner; only then the old priority list
+	if not Cards.FUSIONS.has(best):
+		var held := ""
+		for id in offer:
+			if Cards.CARDS.has(id) and Cards.type_of(id) == "off" and int(b.card_levels.get(id, 0)) > 0 and Cards.evolves_to(id) != "" and (held == "" or int(b.card_levels.get(id, 0)) > int(b.card_levels.get(held, 0))):
+				held = id
+		if held != "":
+			best = held
+		else:
+			for id in offer:
+				for f in Cards.FUSIONS:
+					if String(Cards.FUSIONS[f].parts[1]) == id and int(b.card_levels.get(id, 0)) == 0 and int(b.card_levels.get(Cards.FUSIONS[f].parts[0], 0)) > 0:
+						best = id
+	else:
+		_pk_log.append("EVOLVE %s at %ds/w%d" % [best, int(b.time_alive), b.wave_index + 1])
 	r.cards.append(best)
 	b._pick_card(best)
 

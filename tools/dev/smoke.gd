@@ -238,18 +238,27 @@ func _check_repeat() -> void:
 	_expect(Progress.attention({"stats": {"kills": 400.0}}).quests_tabs.size() == 5, "five quest tabs for the dots (the fifth is the Collection)")
 
 func _check_cards() -> void:
+	# THE CARD REWORK (2026-11-17): every evolution has a five-level offensive card and a partner anyone can draw
+	for f in Cards.FUSIONS:
+		var off: String = Cards.FUSIONS[f].parts[0]
+		var par: String = Cards.FUSIONS[f].parts[1]
+		_expect(Cards.CARDS.has(off) and Cards.type_of(off) == "off" and int(Cards.CARDS[off].max) == 5, "evolution %s starts from a five-level offensive card" % f)
+		_expect(Cards.CARDS.has(par) and Cards.type_of(par) != "off" and not Cards.CARDS[par].has("building") and not Cards.CARDS[par].has("talent"), "evolution %s has a partner open to everyone" % f)
+	_expect(Cards.fusions_ready({"burst_fire": 5, "rapid_pulse": 1}).has("storm_volley"), "a maxed card with its partner offers Evolve")
+	_expect(Cards.fusions_ready({"burst_fire": 4, "rapid_pulse": 3}).is_empty() and Cards.fusions_ready({"burst_fire": 5}).is_empty(), "no Evolve without the top level and the partner")
+	_expect(Cards.fusions_ready({"burst_fire": 5, "rapid_pulse": 1, "storm_volley": 1}).is_empty(), "an evolution is offered once")
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("building"):   # base cards: a real building, a picture, an overcharge and a step text
 			_expect(ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "base card picture missing: " + id)
-			_expect(Cards.OVERCHARGE.has(id) and Cards.STEPS.has(id), "base card overcharge and step text: " + id)
-			_expect(Base.BUILDINGS.has(String(Cards.CARDS[id].building)) or String(Cards.CARDS[id].building) == "*pulse", "base card for a real building: " + id)
+			_expect(Cards.OVERCHARGE.has(id) and (Cards.STEPS.has(id) or Cards.STEPS5.has(id)), "base card overcharge and step text: " + id)
+			_expect(Base.BUILDINGS.has(String(Cards.CARDS[id].building)) or String(Cards.CARDS[id].building) == "*pulse" or String(Cards.CARDS[id].building) == "*drone", "base card for a real building: " + id)
 	# hero cards (dev172): one per hero, only offered while he is on duty, three picks each
 	for id in Heroes.ORDER:
 		var found := ""
 		for cid in Cards.CARDS:
 			if String(Cards.CARDS[cid].get("hero", "")) == id:
 				found = cid
-		_expect(found != "" and int(Cards.CARDS[found].max) == 3 and Cards.OVERCHARGE.has(found), "hero %s has a 3-pick card with an overcharge" % id)
+		_expect(found != "" and int(Cards.CARDS[found].max) == 5 and Cards.OVERCHARGE.has(found) and Cards.STEPS5.has(found) and Cards.evolves_to(found) != "", "hero %s has a five-level card that evolves" % id)
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 7
 	var seen_other := false
