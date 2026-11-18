@@ -432,6 +432,9 @@ func _next() -> void:
 	b.set_process(false)
 	b.set_process_input(false)
 	_evo_seen = 0
+	_sim_bonus = false
+	_sim_owed = false
+	_dry_snap = 2
 	_evo_taken = 0
 	steps = 0
 	r = {"stage": cur[0], "won": false, "t": 0.0, "wave": 0, "waves": 0, "hearts_lost": 0.0, "min_hull": 100.0,
@@ -465,6 +468,8 @@ func _step() -> bool:
 		b._supply_pick(0)
 	if b.picking:
 		_pick()
+	if not b.picking:
+		_dry_snap = b._bld_dry
 	var hp_before: float = b.pilot_hp
 	var hull_before: float = b.hull
 	var shield_before: float = b.shield
@@ -571,30 +576,88 @@ func _card_score(id: String) -> float:
 		v += 1.5    # the third hero card brings an evolution pick
 	return v
 
+# BUILDING CARDS (dev338: the base is built during the fight). "bld:<id>" places a building the
+# save owns on a free pod (a free pick: another one follows at once) or strengthens the one that
+# stands; "bevo:<id>" is a building evolution (any three building cards earn one).
+const BLD_VALUE := {"armory": 7.0, "repair_bay": 4.0, "shield_gen": 3.5, "medbay": 3.5, "plating": 3.0}
+
+# [need_hp, need_sh, need_hu]: 0 = fine, 1 = urgent
+func _needs() -> Array:
+	var hp: float = b.pilot_hp / maxf(b.pilot_hp_max, 1.0)
+	var sh: float = b.shield / maxf(b.shield_max, 1.0)
+	var hu: float = b.hull / maxf(b.hull_max, 1.0)
+	return [clampf((0.8 - hp) / 0.5, 0.0, 1.0), clampf((0.6 - sh) / 0.5, 0.0, 1.0), clampf((1.0 - hu) / 0.5, 0.0, 1.0)]
+
+func _bld_score(cid: String) -> float:
+	var id := Cards.bld_id(cid)
+	var n := int(b.card_levels.get(cid, 0))
+	if n == 0 and not Cards.is_bevo(cid):
+		return 100.0   # a new building for a free pod: always, it costs no hero card
+	var nd := _needs()
+	var v := float(BLD_VALUE.get(id, 3.0))
+	match id:
+		"shield_gen": v += 9.0 * float(nd[1])
+		"repair_bay": v += 6.0 * maxf(float(nd[1]), float(nd[2]))
+		"medbay": v += 8.0 * float(nd[0])
+		"plating": v += 8.0 * float(nd[2])
+	if Cards.is_bevo(cid):
+		return v
+	if n == Cards.BLD_MAX - 1:
+		v += 1.5   # its last upgrade brings its special
+	if b._bld_picks % Cards.EVO_EVERY == Cards.EVO_EVERY - 1:
+		v += 1.5   # the third building card brings a building evolution
+	return v
+
+# The fight draws the three cards itself when a pick opens, and that draw uses up two things: the
+# "hero cards only" rule after a new building (_bld_bonus) and the count of picks without a
+# building on offer (_bld_dry). The test player draws again to see an offer, so both are put
+# back first; without this a new building would cost a hero card and the first pick of a stage
+# would not bring a building.
+var _sim_bonus := false   # the last card taken was a new building: this pick is hero cards only
+var _sim_owed := false    # this pick opened inside the last one (an evolution, the pick after a building)
+var _dry_snap := 2
+
 func _pick() -> void:
+	if _sim_bonus:
+		b._bld_bonus = true
+	elif not _sim_owed:
+		b._bld_dry = _dry_snap
+	_sim_bonus = false
+	_sim_owed = false
 	var offer: Array = b._offer()
 	var best: String = offer[0]
 	var top := -1e9
 	var evo := false
+	var hero_evo := false
 	for id in offer:
-		if Cards.FUSIONS.has(id):
+		if Cards.is_evo(id):
 			evo = true
+		if Cards.FUSIONS.has(id):
+			hero_evo = true
 	for id in offer:
-		var s := _evo_score(id) if Cards.FUSIONS.has(id) else (-1.0 if evo else _card_score(id))
+		var s := -1.0
+		if Cards.FUSIONS.has(id):
+			s = _evo_score(id)
+		elif Cards.is_bevo(id) or Cards.is_bld(id):
+			s = _bld_score(id) if (Cards.is_bevo(id) or not evo) else -1.0
+		elif not evo:
+			s = _card_score(id)
 		if s > top:
 			top = s
 			best = id
-	if evo:   # the what-if switches SIM_EVO_ONE_IN / SIM_EVO_MAX: this evolution pick is passed over, as if it had not been earned
+	if hero_evo:   # the what-if switches SIM_EVO_ONE_IN / SIM_EVO_MAX: this evolution pick is passed over, as if it had not been earned
 		_evo_seen += 1
 		if _evo_seen % _evo_one_in != 0 or _evo_taken >= _evo_max:
 			b._evo_due = maxi(b._evo_due - 1, 0)
 			b._card_panel.visible = false
 			b.picking = false
+			b._owed_pick()
+			_sim_owed = b.picking
 			return
 		_evo_taken += 1
-	if Cards.FUSIONS.has(best):
+	if Cards.is_evo(best):
 		_pk_log.append("EVOLVE %s at %ds/w%d" % [best, int(b.time_alive), b.wave_index + 1])
-	if _pick_mode == "dmg" and not Cards.FUSIONS.has(best):
+	if _pick_mode == "dmg" and not Cards.is_evo(best) and top < 100.0:
 		var di := 99
 		for id in offer:
 			var dk := DMG_FIRST.find(id)
@@ -602,7 +665,9 @@ func _pick() -> void:
 				di = dk
 				best = id
 	r.cards.append(best)
+	_sim_bonus = Cards.is_bld(best) and int(b.card_levels.get(best, 0)) == 0
 	b._pick_card(best)
+	_sim_owed = b.picking
 
 # A human-ish player: lets auto-aim work, and when an enemy shot or a diving bug will
 # come close in the next 0.7 s, puts a finger down and slides sideways to the safest
@@ -723,10 +788,15 @@ func _finish() -> void:
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
 	print("    shield min %3.0f%%  hero health min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), float(r.get("min_hp", 100.0)), b._runners_caught, r.base_hits])
 	r["kit"] = r_kit
+	r["built"] = b._base_slots.filter(func(sid): return String(sid) != "").size()   # buildings standing at the end
 	r["evos"] = 0
 	for c in r.cards:
 		if Cards.FUSIONS.has(c):
 			r.evos += 1
+		if Cards.is_bevo(c):
+			r["bevos"] = int(r.get("bevos", 0)) + 1
+		if Cards.is_bld(c):
+			r["bcards"] = int(r.get("bcards", 0)) + 1
 	# what the stage paid (the save the fight wrote, against what the sim put in it): the income
 	# table INCOME below was measured from these lines
 	var after := _read_sim_save()
@@ -760,12 +830,14 @@ func _summary() -> void:
 		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%  %8.0f  (%5.0f, Lv %d)" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n, avg_xp, total_xp, Turrets.pilot_level(int(total_xp))])
 		var sm := 0.0; var sw := 100.0; var hw := 100.0; var ev := 0.0; var lh := 0; var lb := 0
 		var hm2 := 0.0; var hw2 := 100.0
+		var bc := 0.0; var be := 0.0; var bs := 0.0
 		for x in rs:
 			sm += float(x.get("min_shield", 100.0)); sw = minf(sw, float(x.get("min_shield", 100.0))); hw = minf(hw, x.min_hull); ev += float(x.get("evos", 0))
 			hm2 += float(x.get("min_hp", 100.0)); hw2 = minf(hw2, float(x.get("min_hp", 100.0)))
+			bc += float(x.get("bcards", 0)); be += float(x.get("bevos", 0)); bs += float(x.get("built", 0))
 			lh += 1 if String(x.get("why", "")) == "hp" else 0
 			lb += 1 if String(x.get("why", "")) == "hull" else 0
-		print("       shield min avg %3.0f%% (worst %3.0f%%)  hull worst %3.0f  hero health min avg %3.0f%% (worst %3.0f%%)  evolutions avg %.1f  lost: hero %d, base %d  kit: %s" % [sm / n, sw, hw, hm2 / n, hw2, ev / n, lh, lb, String(rs[0].get("kit", ""))])
+		print("       shield min avg %3.0f%% (worst %3.0f%%)  hull worst %3.0f  hero health min avg %3.0f%% (worst %3.0f%%)  evolutions avg %.1f  buildings built avg %.1f, building cards %.1f, building evolutions %.1f  lost: hero %d, base %d  kit: %s" % [sm / n, sw, hw, hm2 / n, hw2, ev / n, bs / n, bc / n, be / n, lh, lb, String(rs[0].get("kit", ""))])
 
 # ---- per-wave log (SIM_WAVELOG=1), written for REVIEW-base-collapse.md: what arrived in each wave,
 # how fast the hero dealt with it, where he stood, and what the base and he had left at its end.

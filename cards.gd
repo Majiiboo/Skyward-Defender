@@ -112,10 +112,38 @@ const TYPE := {
 	"aegis": "def", "field_medic": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
 	"core_overload": "def", "second_wind": "def", "mirror_shell": "def",
 }
-const TYPE_NAME := {"off": "OFFENSE", "def": "DEFENSE", "pas": "PASSIVE"}
-const TYPE_COLOR := {"off": Color(1.0, 0.5, 0.35), "def": Color(0.4, 0.75, 1.0), "pas": Color(0.55, 0.95, 0.6)}
+const TYPE_NAME := {"off": "OFFENSE", "def": "DEFENSE", "pas": "PASSIVE", "base": "BASE"}
+const TYPE_COLOR := {"off": Color(1.0, 0.5, 0.35), "def": Color(0.4, 0.75, 1.0), "pas": Color(0.55, 0.95, 0.6), "base": Color(0.36, 0.9, 0.92)}
+
+# BUILDINGS AS CARDS (Rudy 2026-11-18): the base is built DURING the fight. A building the player owns
+# comes up as the card "bld:<id>": the first pick places it on the next free pod, each further pick
+# strengthens it (BLD_MAX picks in all). Any three building cards earn a building evolution,
+# "bevo:<id>", for a building that stands. These ids are not in CARDS; def() answers for them.
+const BLD_MAX := 4
+const BLD_COLOR := Color(0.36, 0.9, 0.92)
+const BEVO := {
+	"shield_gen": "Aegis Dome", "repair_bay": "Nanoforge", "armory": "War Forge", "medbay": "Trauma Ward", "plating": "Bastion Plate",
+	"hangar": "Carrier Deck", "reactor": "Overdrive Core", "radar": "Deep Scan", "refinery": "Mother Lode",
+}
+# the old base card whose top-level effect a building s last upgrade brings (battle.gd _overcharge)
+const BLD_OVER := {"shield_gen": "shield_surge", "repair_bay": "nanobots", "armory": "hot_rounds", "medbay": "stim_pack", "plating": "plate_up",
+	"hangar": "drone_uplink", "reactor": "reactor_surge", "radar": "radar_sweep", "refinery": "rich_seam"}
+
+static func is_bld(id: String) -> bool:
+	return id.begins_with("bld:")
+
+static func is_bevo(id: String) -> bool:
+	return id.begins_with("bevo:")
+
+static func is_evo(id: String) -> bool:
+	return FUSIONS.has(id) or is_bevo(id)
+
+static func bld_id(id: String) -> String:
+	return id.get_slice(":", 1)
 
 static func type_of(id: String) -> String:
+	if is_bld(id) or is_bevo(id):
+		return "base"
 	return String(TYPE.get(id, "pas"))
 
 const OVER_AT := 3
@@ -268,13 +296,18 @@ static func over_level(id: String) -> int:
 
 # true when picking this card now (it has `lvl` picks so far) overcharges it
 static func overcharges(id: String, lvl: int) -> bool:
-	return OVERCHARGE.has(id) and lvl + 1 == over_level(id)
+	return CARDS.has(id) and OVERCHARGE.has(id) and lvl + 1 == over_level(id)
 
 static func overcharged(levels: Dictionary, id: String) -> bool:
-	return OVERCHARGE.has(id) and int(levels.get(id, 0)) >= over_level(id)
+	return CARDS.has(id) and OVERCHARGE.has(id) and int(levels.get(id, 0)) >= over_level(id)
 
 # a card or a fusion
 static func def(id: String) -> Dictionary:
+	if is_bld(id):
+		var b: Dictionary = Base.BUILDINGS[bld_id(id)]
+		return {"name": String(b.name), "desc": String(b.kind) + " building", "max": BLD_MAX, "rarity": "uncommon", "pic": "res://base/bld_%s.png" % bld_id(id)}
+	if is_bevo(id):
+		return {"name": String(BEVO[bld_id(id)]), "desc": "Gives twice as much, and its special power is on", "max": 1, "rarity": "fusion", "pic": "res://base/bld_%s.png" % bld_id(id)}
 	return CARDS[id] if CARDS.has(id) else FUSIONS[id]
 
 # the line the top pick of a card shows
