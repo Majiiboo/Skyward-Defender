@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev276 (version/code=276 and version/name="1.0-dev276" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev325 (version/code=325 and version/name="1.0-dev325" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,58 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev325: every hero moves, and the weapons are rebuilt (49 updates since dev276)
+
+A very big build: everything made since dev276. Start with the heroes in a fight, then
+Heroes > the weapon tile.
+
+WHAT TO LOOK AT FIRST
+- EVERY HERO MOVES IN THE FIGHT. Rook, Sparks, Hollow, Nyx and Ember are rebuilt from Luna's
+  pieces like the penguin, seen from behind. Each flies his own way: Rook on his jetpack,
+  Sparks on one thruster with his welder's hose swinging from the gun, Hollow drifting with his
+  cloak trailing, Nyx with her cape and tail swinging, Ember beating her wings.
+  Settings > "New hero motion" switches back to the old look, to compare.
+- EACH HERO CARRIES HIS OWN WEAPONS, seen from above: a pistol (one in each hand for twins), a
+  rifle and a launcher on the shoulder.
+- NOT YET JUDGED ON A PHONE: any of the above. Things I expect you may notice: pistols on Nyx
+  and Ember sit mostly behind the head; Hollow's and Ember's launchers are big; Hollow is dark
+  on a dark sky; up close the bodies show a dark round socket where an arm joins.
+
+WEAPONS (the area we have been finishing)
+- EVERY HERO HAS FOUR WEAPONS OF HIS OWN, in one order: pistol, twin pistols, rifle, launcher.
+  They open at hero Lv.1 / 5 / 10 / 15 for 0 / 2,000 / 5,000 / 10,000 coins. Weapon copies and
+  merging are gone; a copy you would have found now pays coins.
+- EACH WEAPON FIRES ITS OWN THING, in the hero's element: the pistol small pellets with every
+  fifth one charged, the twins balls with a trick every third shot, the rifle a steady stream
+  with a range, the launcher one big slow shot that bursts. All six heroes have Luna's shot
+  art (ice, fire, energy, lightning, void, shade).
+- CHIPS replace the level milestones. A weapon has three slots, open at Lv.10 / 20 / 30. Its
+  own two shapes and its Lv.30 capstone are chips, and there are 14 general chips to buy with
+  coins, by rarity. Tap a slot on the Weapon page.
+- THE TRY BUTTON on the Weapon page opens a small firing range: your hero shooting at five
+  targets with the chips you picked, before you fit or buy anything.
+- SPECIALTY WEAPONS. Each hero has one that fires by itself beside the weapon in hand, once all
+  four of his weapons reach mastery step 3 and its gold chip is fitted: Snow Globe, Dragon
+  Breath, Tesla Coil, Orbital Strike, Rift, Glaive. Luna's art is in.
+- MASTERY is now per weapon: kills 60 / 200 / 500 / 1,200 / 3,000, coins 400 to 15,000.
+- A weapon can be RESET for a full refund of its levels (Weapon page > Mastery > Reset).
+- THE WEAPON PAGE is a full page in three parts: the weapon on show with its chip slots, his
+  four weapons, one gold Upgrade button.
+- In the fight the top bar now shows how many bugs are left in the wave.
+
+NUMBERS
+- Frost's rifle reaches further and hits harder (it was losing stage 20); the pistol is a
+  little stronger. At weapon Lv.20 every class wins stages 20 and 30 with every hero in my
+  runs. The Specialty weapons each do about 5 to 8% of the hero's damage.
+
+NOT DONE, OR NOT CHECKED
+- Nothing in this build has been on a phone. No sound in it has been heard by anyone.
+- Chips are not balanced as a whole; I only measured the strongest few.
+- Heat with the Try window open (a second fight runs inside it) is not measured.
+- The legs and packs of the five new heroes are fitted by eye against Luna's pictures.
+
+FOR LUNA: no brief is open. The flat launcher remakes are kept in the project, unused.
 
 ## dev276: weapons from above, and weapon mastery (three updates since dev273)
 

@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["Weapon mastery", "Each weapon class has five steps. Kills with that class open a step, coins unlock it, and the fifth is the big one. Heroes > the weapon tile."],
-	["Weapons from above", "The penguin carries his own ice rifle, pistol and launcher, seen from above: the rifle under his arm, the launcher on his shoulder."],
-	["Weapon classes", "Sidearm, twin pistols, rifle and heavy. The penguin carries each differently: a pistol in each hand for the Arc Welder, the Pulse Cannon on his shoulder."],
-	["Tougher bugs", "Bugs have more health and their hits hurt: watch your health bar. Weapons are sized to the hero, Settings fits the screen again, and the Base page scrolls."],
-	["The penguin moves", "Captain Frost is rebuilt for the fight: he leans into a turn, his legs drag behind him, his flipper works and his weapon kicks. Settings > New hero motion switches back to the old look."],
-	["Hold to fire", "In MANUAL he now fires only while your finger is down. Lift it and he stops. AUTO still aims and fires for you."],
-	["The Hive Mother fights back", "She shoots between broods: a fan of goo, a quick burst, and a slow green poison glob. Her mouth lights up first. Her shots cannot be shot down: move."],
-	["A new Store", "Three tabs. Store: chests as big cards, coins, crystals, supplies. Offers: daily, weekly, monthly and one for every fifth stage you clear. Event: trade event tokens."],
+	["Every hero moves", "Rook, Sparks, Hollow, Nyx and Ember are rebuilt for the fight like the penguin, seen from behind. Each flies his own way: jetpack, thruster, drifting cloak, cape and tail, beating wings. Settings > New hero motion switches back."],
+	["Their own weapons", "Each hero carries his own pistol, rifle and launcher, seen from above: the launcher rides the shoulder, twin pistols sit one in each hand."],
+	["Four weapons a hero", "Pistol, twin pistols, rifle and launcher, each his own. They open at hero Lv.1, 5, 10 and 15. Weapon copies and merging are gone: a copy now pays coins."],
+	["What each weapon fires", "Pellets with a charged fifth shot, balls with a trick every third, a steady stream with a range, one big shot that bursts. All in the hero's own element."],
+	["Weapon chips", "Three slots per weapon, open at Lv.10, 20 and 30. Fit the weapon's own shapes and capstone, or chips you buy with coins. Heroes > the weapon tile > tap a slot."],
+	["Try before you fit", "The Try button on the Weapon page opens a small firing range with the chips you picked, before you fit or buy them."],
+	["Specialty weapons", "Each hero has one that fires by itself: Snow Globe, Dragon Breath, Tesla Coil, Orbital Strike, Rift, Glaive. Earned with all four weapons at mastery step 3."],
+	["Mastery and reset", "Mastery is per weapon now, five steps each. A weapon can be reset for a full refund of its levels from the Mastery sheet."],
 ]
 
 static func due(save: Dictionary) -> bool:
