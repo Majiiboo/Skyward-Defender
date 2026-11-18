@@ -2929,6 +2929,9 @@ func _draw_card_row(at: Vector2) -> void:
 
 func _card_pic(id: String, h: float) -> Control:
 	if Cards.FUSIONS.has(id) and not ResourceLoader.exists("res://cards/pic_%s.png" % id):
+		# until its own picture is painted, an evolution shows the picture of the card it grew from, alone
+		# (Rudy 2026-11-18: not the two parts side by side)
+		return _card_pic(String(Cards.FUSIONS[id].parts[0]), h)
 		var row := HBoxContainer.new()
 		row.alignment = BoxContainer.ALIGNMENT_CENTER
 		row.add_theme_constant_override("separation", -int(h * 0.3))
@@ -2985,10 +2988,11 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	bsb.corner_radius_top_right = 14
 	band.add_theme_stylebox_override("panel", bsb)
 	band.position = Vector2(2, 2)
-	band.size = Vector2(size.x - 4.0, 24.0)
+	var worded := fusion or over   # only the special picks carry a word; a normal card s colour says its kind (Rudy 2026-11-18: no OFFENSE / DEFENSE / PASSIVE written on it)
+	band.size = Vector2(size.x - 4.0, 24.0 if worded else 10.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(band)
-	var word: String = "EVOLVE" if fusion else (String(Cards.TYPE_NAME[ty]) + ("  ·  MAX" if over else ""))
+	var word: String = "EVOLVE" if fusion else ("MAX" if over else "")
 	var bl := UIKit.label(word, 11, ink, HORIZONTAL_ALIGNMENT_CENTER)
 	bl.add_theme_font_override("font", title_font)
 	bl.position = Vector2(0, 3)
@@ -2997,11 +3001,11 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.add_child(bl)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 10; v.offset_right = -10; v.offset_top = 32; v.offset_bottom = -10
+	v.offset_left = 10; v.offset_right = -10; v.offset_top = 32 if worded else 20; v.offset_bottom = -10
 	v.alignment = BoxContainer.ALIGNMENT_BEGIN
 	v.add_theme_constant_override("separation", 5)
 	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	v.add_child(_card_pic(id, 78.0 if fusion else 92.0))
+	v.add_child(_card_pic(id, 96.0))
 	var name_l := UIKit.label(def.name, 14, Color.WHITE, HORIZONTAL_ALIGNMENT_CENTER)
 	name_l.add_theme_font_override("font", title_font)
 	name_l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -3026,6 +3030,25 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(d)
 	b.add_child(v)
+	if fusion:
+		# AN EVOLUTION STANDS OUT: a soft halo round its box that swells and fades, pink into gold,
+		# and a bright edge. It is drawn outside the card, so the card must not clip it.
+		b.clip_contents = false
+		b.add_theme_stylebox_override("normal", UIKit.box(Color(0.09, 0.07, 0.15), gold, 16.0, 3))
+		b.add_theme_stylebox_override("hover", UIKit.box(Color(0.11, 0.09, 0.18), Color.WHITE, 16.0, 3))
+		var halo := Control.new()
+		halo.set_anchors_preset(Control.PRESET_FULL_RECT)
+		halo.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		halo.show_behind_parent = true
+		halo.draw.connect(func():
+			for k in 7:
+				var grow := 3.0 + 3.5 * k
+				var hc: Color = (Cards.COLOR.fusion as Color).lerp(gold, float(k) / 6.0)
+				halo.draw_style_box(UIKit.box(Color(hc, 0.16 - 0.018 * k), Color(0, 0, 0, 0), 16.0 + grow, 0), Rect2(Vector2(-grow, -grow), halo.size + Vector2(grow, grow) * 2.0)))
+		b.add_child(halo)
+		var htw := halo.create_tween().set_loops()
+		htw.tween_property(halo, "modulate:a", 0.45, 0.7).set_trans(Tween.TRANS_SINE)
+		htw.tween_property(halo, "modulate:a", 1.0, 0.7).set_trans(Tween.TRANS_SINE)
 	if fusion or over:
 		# the special picks breathe, so the eye goes to them first
 		var tw := band.create_tween().set_loops()
@@ -3069,7 +3092,7 @@ func _card_info(id: String) -> void:
 	var v := VBoxContainer.new()
 	v.add_theme_constant_override("separation", 4)
 	var ty := Cards.type_of(id)
-	var head: String = String(def.name) + ("   ·   EVOLUTION" if fusion else "   ·   %s   ·   Lv.%d / %d" % [String(Cards.TYPE_NAME[ty]), int(card_levels.get(id, 0)), int(def.max)])
+	var head: String = String(def.name) + ("   ·   EVOLUTION" if fusion else "   ·   Lv.%d / %d" % [int(card_levels.get(id, 0)), int(def.max)])
 	var hl := UIKit.label(head, 13, Color.WHITE)
 	hl.add_theme_font_override("font", title_font)
 	v.add_child(hl)
