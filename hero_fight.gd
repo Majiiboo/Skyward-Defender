@@ -43,6 +43,7 @@ const SETS := {
 		"flap": 0.2,                       # an arm, not a wing: it only sways
 		"top_grip": {"main": 0.72},
 		"tuck": 0.25,                      # his free arm stays out to the side
+		"splay": 0.16,                     # his legs hang a little apart, as on the whole picture
 	},
 	# The other four (2026-11-17), each from behind on his own whole picture, each flying his own way.
 	# Sparks: one thruster under the body, the welder s hose swinging at his side, the antenna on his head.
@@ -55,10 +56,10 @@ const SETS := {
 		"leg_l":   {"at": Vector2(473, 728), "pv": Vector2(0.5, 0.1)},
 		"leg_r":   {"at": Vector2(678, 728), "pv": Vector2(0.5, 0.1)},
 		"jets":    [Vector2(584, 765)],
-		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2, "splay": 0.2,
 		"top_grip": {"main": 0.72},
 		"extras": [
-			{"p": "hose", "at": Vector2(768, 482), "pv": Vector2(0.6, 0.0), "layer": "top", "kind": "trail", "amt": 0.35},
+			{"p": "hose", "at": Vector2(768, 482), "pv": Vector2(0.6, 0.0), "layer": "top", "kind": "trail", "amt": 0.35, "on": "gun"},
 			{"p": "antenna", "at": Vector2(532, 238), "pv": Vector2(0.5, 1.0), "layer": "head", "kind": "fixed"},
 		],
 	},
@@ -72,7 +73,7 @@ const SETS := {
 		"leg_l":   {"at": Vector2(490, 668), "pv": Vector2(0.5, 0.1)},
 		"leg_r":   {"at": Vector2(568, 668), "pv": Vector2(0.5, 0.1)},
 		"jets":    [],
-		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2, "splay": 0.06,
 		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "tatters", "at": Vector2(535, 505), "pv": Vector2(0.5, 0.0), "layer": "under", "kind": "trail", "amt": 1.0, "sc": 0.82},
@@ -88,7 +89,7 @@ const SETS := {
 		"leg_l":   {"at": Vector2(507, 752), "pv": Vector2(0.5, 0.1)},
 		"leg_r":   {"at": Vector2(590, 762), "pv": Vector2(0.5, 0.1)},
 		"jets":    [Vector2(502, 707), Vector2(614, 707)],
-		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2, "splay": 0.1,
 		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "cape", "at": Vector2(562, 570), "pv": Vector2(0.5, 0.0), "layer": "back", "kind": "trail", "amt": 0.6},
@@ -105,7 +106,7 @@ const SETS := {
 		"leg_l":   {"at": Vector2(447, 700), "pv": Vector2(0.5, 0.1)},
 		"leg_r":   {"at": Vector2(584, 700), "pv": Vector2(0.5, 0.1)},
 		"jets":    [],
-		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.3,
+		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.3, "splay": 0.2,
 		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "tail", "at": Vector2(505, 672), "pv": Vector2(0.3, 0.05), "layer": "top", "kind": "trail", "amt": 0.6, "sc": 0.85},
@@ -179,7 +180,10 @@ static func _draw_extras(c: CanvasItem, s: State, kit: Dictionary, base: Transfo
 				scl = Vector2(1.0 - 0.12 * amt * (0.5 + 0.5 * cos(s.flap * 0.9)) * (0.5 + 0.5 * s.speed), 1.0)
 		scl *= float(ex.get("sc", 1.0))
 		var m: Transform2D
-		if layer == "head":
+		if String(ex.get("on", "")) == "gun":   # hangs from the back end of the weapon in his right hand, wherever the pose has put it
+			var rf := _rifle(s, kit, s.aim, s.kick)
+			m = base * Transform2D(rot, scl, 0.0, (rf[0] as Transform2D) * ((Vector2(0.5, float(ex.get("grip", 0.95))) - (rf[2] as Vector2)) * (rf[4] as Vector2)))
+		elif layer == "head":
 			m = base * Transform2D(rot, scl, 0.0, (ex.at as Vector2) - head_at)
 		else:
 			m = base * _local(ex.at, rot, scl)
@@ -383,7 +387,7 @@ static func draw(c: CanvasItem, s: State, pos: Vector2, height: float, alpha: fl
 		var p: Dictionary = kit["leg_l" if i == 0 else "leg_r"]
 		var side := -1.0 if i == 0 else 1.0
 		var paddle := sin(s.t * 2.6 + i * PI) * 0.07 * (1.0 - s.speed)
-		var rot: float = s.leg[i] + paddle - side * (0.34 * tuck + 0.3 * casting) + side * 0.05 * reach
+		var rot: float = s.leg[i] + paddle - side * float(kit.get("splay", 0.0)) * (1.0 - 0.6 * reach) - side * (0.34 * tuck + 0.3 * casting) + side * 0.05 * reach
 		var ln := 1.0 + 0.16 * reach - 0.2 * tuck
 		_put(c, root * _local(p.at + Vector2(0, 14.0 * reach - 6.0 * tuck), rot, Vector2(1.0, ln)), tex(id, "leg_l" if i == 0 else "leg_r"), p.pv, col)
 	_draw_extras(c, s, kit, root, "back", col)
