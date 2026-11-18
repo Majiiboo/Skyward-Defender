@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://ciwk65av6xbg5"
-path="res://.godot/imported/show_heavy_flat.png-51d386b812d5e5b66b10c0688bdb172e.ctex"
+uid="uid://c21x6eqmsgr72"
+path="res://.godot/imported/top_sidearm.png-2a266b31eefdc3c8e396c890b85f4b33.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://heroes/rook/fight/show_heavy_flat.png"
-dest_files=["res://.godot/imported/show_heavy_flat.png-51d386b812d5e5b66b10c0688bdb172e.ctex"]
+source_file="res://heroes/nyx/fight/top_sidearm.png"
+dest_files=["res://.godot/imported/top_sidearm.png-2a266b31eefdc3c8e396c890b85f4b33.ctex"]
 
 [params]
 

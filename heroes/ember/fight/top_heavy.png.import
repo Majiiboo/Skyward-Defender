@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://mfk3pvdnufwg"
-path="res://.godot/imported/top_heavy_flat.png-ba74bfe4f892fade5d3abd04a81f9bb4.ctex"
+uid="uid://yrgnx5vcaofn"
+path="res://.godot/imported/top_heavy.png-cb078c35f92b5b6b23f7232d431ed365.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://heroes/rook/fight/top_heavy_flat.png"
-dest_files=["res://.godot/imported/top_heavy_flat.png-ba74bfe4f892fade5d3abd04a81f9bb4.ctex"]
+source_file="res://heroes/ember/fight/top_heavy.png"
+dest_files=["res://.godot/imported/top_heavy.png-cb078c35f92b5b6b23f7232d431ed365.ctex"]
 
 [params]
 

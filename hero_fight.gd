@@ -56,7 +56,7 @@ const SETS := {
 		"leg_r":   {"at": Vector2(678, 728), "pv": Vector2(0.5, 0.1)},
 		"jets":    [Vector2(584, 765)],
 		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
-		"top_grip": {"main": 0.88},
+		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "hose", "at": Vector2(768, 482), "pv": Vector2(0.6, 0.0), "layer": "top", "kind": "trail", "amt": 0.35},
 			{"p": "antenna", "at": Vector2(532, 238), "pv": Vector2(0.5, 1.0), "layer": "head", "kind": "fixed"},
@@ -73,7 +73,7 @@ const SETS := {
 		"leg_r":   {"at": Vector2(568, 668), "pv": Vector2(0.5, 0.1)},
 		"jets":    [],
 		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
-		"top_grip": {"main": 0.75},
+		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "tatters", "at": Vector2(535, 505), "pv": Vector2(0.5, 0.0), "layer": "under", "kind": "trail", "amt": 1.0, "sc": 0.82},
 		],
@@ -89,7 +89,7 @@ const SETS := {
 		"leg_r":   {"at": Vector2(590, 762), "pv": Vector2(0.5, 0.1)},
 		"jets":    [Vector2(502, 707), Vector2(614, 707)],
 		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.2,
-		"top_grip": {"main": 0.86},
+		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "cape", "at": Vector2(562, 570), "pv": Vector2(0.5, 0.0), "layer": "back", "kind": "trail", "amt": 0.6},
 			{"p": "tail", "at": Vector2(545, 715), "pv": Vector2(0.97, 0.36), "layer": "back", "kind": "trail", "amt": 0.7},
@@ -106,7 +106,7 @@ const SETS := {
 		"leg_r":   {"at": Vector2(584, 700), "pv": Vector2(0.5, 0.1)},
 		"jets":    [],
 		"rifle_len": 250.0, "flap": 0.25, "tuck": 0.3,
-		"top_grip": {"main": 0.83},
+		"top_grip": {"main": 0.72},
 		"extras": [
 			{"p": "tail", "at": Vector2(505, 672), "pv": Vector2(0.3, 0.05), "layer": "top", "kind": "trail", "amt": 0.6, "sc": 0.85},
 			{"p": "wing_l", "at": Vector2(450, 530), "pv": Vector2(0.93, 0.72), "layer": "top", "kind": "wing", "side": -1.0, "amt": 1.0},
