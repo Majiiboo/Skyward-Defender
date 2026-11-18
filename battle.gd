@@ -278,6 +278,18 @@ var _split_n := 0                 # Split Shot: side shots thrown...
 var _split_every := 4             # ...every Nth volley...
 var _split_dmg := 0.6             # ...each hitting this share of the main shot
 var _seek := 0.0                  # Seeker: how hard a shot turns toward the nearest bug, radians a second
+# FIVE NEW CARDS (Rudy 2026-11-18)
+var _od_need := 0                 # Overdrive: kills that fill the meter (0 = the card is not held)
+var _od_len := 4.0                # seconds of charged shots when it is full
+var _od_k := 0                    # kills in the meter
+var _od_t := 0.0                  # seconds of Overdrive left
+var _od_pierce := false           # its top level: the charged shots pierce
+var _rico_n := 0                  # Ricochet: how many times a shot bounces on to another bug
+var _rico_keep := 0.6             # the share of its hit a bounce keeps
+var _shrap_n := 0                 # Shrapnel: shards a killed bug throws
+var _shrap_dmg := 0.35            # the hit of a shard, as a share of one of your shots
+var _shrap_chain := false         # its top level: bugs killed by shards burst too
+var _shove := false               # Heavy Caliber at its top level: hits shove bugs back
 var _parts_got := {}              # upgrade parts picked up this run (Parts)
 var _gear_got := {}               # the gear copy this clear dropped ({id, rarity}, GearData)
 var _drone := {}                  # the sidekick from Gear (DroneData.read): body, pod, level
@@ -544,6 +556,17 @@ func _start_stage() -> void:
 	_split_every = 4
 	_split_dmg = 0.6
 	_seek = 0.0
+	_od_need = 0
+	_od_len = 4.0
+	_od_k = 0
+	_od_t = 0.0
+	_od_pierce = false
+	_rico_n = 0
+	_rico_keep = 0.6
+	_shrap_n = 0
+	_shrap_dmg = 0.35
+	_shrap_chain = false
+	_shove = false
 	_xp_cut = 1.0
 	_aegis_heal = false
 	_railstorm = false
@@ -951,6 +974,7 @@ func _process(delta: float) -> void:
 		if _intro.t > 4.0:
 			_intro = {}
 	inv_t = maxf(inv_t - delta, 0.0)
+	_od_t = maxf(_od_t - delta, 0.0)   # Overdrive (card) runs down
 	_boss_flash = maxf(_boss_flash - delta * 2.5, 0.0)
 	_aegis_flash = maxf(_aegis_flash - delta * 1.2, 0.0)
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
@@ -1418,6 +1442,13 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 						nb.lucky = true
 						nb.big = true
 						nb.dmg = float(nb.dmg) * _crit_dmg
+		if _od_t > 0.0:   # Overdrive (card): the meter is full, every shot is a charged one
+			nb.dmg = float(nb.dmg) * 2.0
+			nb.big = true
+			if _od_pierce:
+				nb.pierce = true
+		if _rico_n > 0 and (_shot_shape != "stream" or _shot_n % 3 == 0):   # Ricochet (card): the rifle bounces every 3rd shot of its stream
+			nb["rico"] = _rico_n
 		if _seek > 0.0:   # Seeker (card): the shot curves toward the nearest bug ahead of it
 			nb["seek"] = _seek
 		if _burst_pierce and ((_shot_shape == "ball" and i >= count - burst_extra) or (_shot_shape == "stream" and burst_count > 1 and _shot_n % 4 == 0)):
@@ -1627,6 +1658,10 @@ func _update_bullets(delta: float) -> void:
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
+				if b.get("shrap", false):
+					e["by_shrap"] = true
+				if _shove and not _is_boss(e) and not b.get("drone", false) and not b.get("shrap", false):   # Heavy Caliber: the hit shoves it back up
+					e.pos = Vector2(e.pos) + Vector2(0.0, -10.0)
 				if float(_steps.get("kill_heal", 0.0)) > 0.0 and String(b.get("shape", "")) == "stream" and float(e.hp) <= 0.0:
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.kill_heal), pilot_hp_max)   # Devour (Hollow's rifle)
 				if int(_steps.get("shatter", 0)) > 0 and b.get("charged", false) and float(e.hp) <= 0.0:   # Shatter (the pistol's Lv.30)
@@ -1684,6 +1719,29 @@ func _update_bullets(delta: float) -> void:
 						b.dmg = float(b.dmg) * 1.3
 					if _pierce_bonus:
 						b.dmg = float(b.dmg) * 1.25
+				# Ricochet (card): the shot that stops here bounces on to the nearest bug it has not hit
+				if hit and int(b.get("rico", 0)) > 0:
+					var r_best = null
+					var r_d := 190.0
+					for o in enemies:
+						if o != e and float(o.hp) > 0.0 and _can_hurt(o) and not b.hits.has(o.id) and Vector2(o.pos).distance_to(e.pos) < r_d:
+							r_d = Vector2(o.pos).distance_to(e.pos)
+							r_best = o
+					if r_best != null:
+						var rb: Dictionary = b.duplicate(true)
+						rb.rico = int(b.rico) - 1
+						rb.dmg = float(b.dmg) * _rico_keep
+						rb.pos = Vector2(e.pos)
+						rb.vel = (Vector2(r_best.pos) - Vector2(e.pos)).normalized() * maxf(Vector2(b.vel).length(), 520.0)
+						rb.tid = int(r_best.id)
+						rb.hits.append(e.id)
+						rb["ttl"] = 0.6
+						rb["lane"] = 60 + int(b.rico)
+						rb.erase("seek")
+						if String(rb.get("shape", "")) == "stream":   # a bounce is a single bolt, not part of the ribbon
+							rb.shape = "pellet"
+						bounced.append(rb)
+						zaps.append({"a": Vector2(e.pos), "b": Vector2(r_best.pos), "life": 0.1, "seed": rng.randf() * 100.0})
 				if not hit:
 					b.hits.append(e.id)
 					if _thunder and not b.has("src"):
@@ -2146,6 +2204,23 @@ func _kill(e: Dictionary) -> void:
 		# and it leaves a burning patch that sets bugs passing through it alight
 		if _fire_patches.size() < 8:
 			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
+	# Shrapnel (card): the bug bursts into shards that hit its neighbours
+	if _shrap_n > 0 and not _is_boss(e) and e.type != "spore" and (_shrap_chain or not e.get("by_shrap", false)) and _shard_q.size() < 40:
+		var s_dmg: float = float(_weapon().damage) * damage_mult * _shrap_dmg
+		var s_turn: float = rng.randf() * TAU
+		for si in _shrap_n:
+			_shard_q.append({"pos": Vector2(e.pos), "vel": Vector2.RIGHT.rotated(s_turn + TAU * si / float(_shrap_n)) * 440.0, "dmg": s_dmg, "r": 9.0, "tid": -2, "col": "cyan",
+				"big": false, "pierce": false, "hits": [e.id], "spark": 0, "pierce_left": 0, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": si,
+				"born": time_alive, "lane": 70 + si, "ttl": 0.3, "weld": 0, "shrap": true})
+	# Overdrive (card): kills fill the meter; full, it fires charged shots for a few seconds
+	if _od_need > 0 and _od_t <= 0.0:
+		_od_k += 1
+		if _od_k >= _od_need:
+			_od_k = 0
+			_od_t = _od_len
+			_float_text(soldier_pos + Vector2(0, -84), "OVERDRIVE!", Color(1.0, 0.6, 0.3), true)
+			_fx_add("nova", soldier_pos, 80.0, 0.4, 0.0, 2.0, Color(1.0, 0.6, 0.3))
+			Sfx.play("level", 1.4)
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
 	kills += 1
 	if String(def.move) != "spore":
@@ -3199,6 +3274,24 @@ func _pick_card(id: String) -> void:
 	var lv: int = int(card_levels[id])   # the level this pick brought the card to (a five-level card s fifth pick is its overcharge)
 	match id:
 		"rapid_pulse": fire_rate_mult *= 1.10
+		"hair_trigger":   # a trade: much faster fire, a little less a shot (nothing lost on its last pick)
+			fire_rate_mult *= 1.20
+			if lv < 3:
+				damage_mult *= 0.92
+		"heavy_caliber":   # the other trade: much bigger hits, a little slower fire
+			damage_mult *= 1.28
+			if lv < 3:
+				fire_rate_mult *= 0.90
+		"overdrive":
+			_od_need = [30, 25, 25, 20, 20][clampi(lv - 1, 0, 4)]
+			_od_len = 5.5 if lv >= 3 else 4.0
+		"ricochet":
+			_rico_n = [1, 2, 2, 3, 3][clampi(lv - 1, 0, 4)]
+			if lv >= 3:
+				_rico_keep = maxf(_rico_keep, 0.8)
+		"shrapnel":
+			_shrap_n = 6 if lv >= 3 else 4
+			_shrap_dmg = [0.35, 0.5, 0.5, 0.65, 0.65][clampi(lv - 1, 0, 4)]
 		"heavy_bolts": damage_mult *= 1.15
 		"burst_fire":
 			if lv == 1 or lv == 2 or lv == 4:
@@ -3310,6 +3403,10 @@ func _pick_card(id: String) -> void:
 func _overcharge(id: String) -> void:
 	match id:
 		"split_shot": _split_dmg = 0.85
+		"overdrive": _od_pierce = true
+		"ricochet": _rico_keep = 1.0
+		"shrapnel": _shrap_chain = true
+		"heavy_caliber": _shove = true
 		"seeker": _crit_rate += 0.10
 		"drone_barrage": _drone_mult *= 1.6
 		"killer_instinct": _crit_rate += 0.08
@@ -4591,6 +4688,7 @@ func _draw_hud() -> void:
 	_draw_ult_btn()
 	_draw_wing_chip()
 	_draw_streak()
+	_draw_overdrive()
 	_draw_move_tip()
 	for e in enemies:
 		if _is_boss(e):
@@ -5581,6 +5679,16 @@ func _update_streak(delta: float) -> void:
 			_streak_break()
 
 # top right, under the HP bar: the count, a small "+n% coins", and a line that drains
+# Overdrive (card): a thin meter under the hero that fills with kills, and runs down in gold while it is live
+func _draw_overdrive() -> void:
+	if _od_need <= 0:
+		return
+	var at: Vector2 = soldier_pos + Vector2(-22.0, 40.0)
+	var live: bool = _od_t > 0.0
+	var k: float = (_od_t / maxf(_od_len, 0.1)) if live else float(_od_k) / float(_od_need)
+	_hc.draw_rect(Rect2(at, Vector2(44.0, 4.0)), Color(0.03, 0.05, 0.1, 0.75))
+	_hc.draw_rect(Rect2(at, Vector2(44.0 * clampf(k, 0.0, 1.0), 4.0)), Color(1.0, 0.82, 0.3) if live else Color(1.0, 0.55, 0.3, 0.9))
+
 func _draw_streak() -> void:
 	if _streak < 3:
 		return

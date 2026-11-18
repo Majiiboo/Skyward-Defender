@@ -35,6 +35,17 @@ const CARDS := {
 		"desc": "Your shots curve toward the nearest bug"},
 	"drone_barrage":   {"name": "Drone Barrage",   "family": "pilot",  "rarity": "uncommon",  "max": 5, "building": "*drone", "pic": "res://drone/body_scout.png",
 		"desc": "The drone hits harder"},
+	# FIVE NEW CARDS (Rudy 2026-11-18, from his ideas): a kill meter, a bouncing shot, a bursting kill, and two trade-offs
+	"overdrive":       {"name": "Overdrive",       "family": "pilot",  "rarity": "uncommon",  "max": 5, "pic": "res://icons/chip_over.png",
+		"desc": "Kills fill a meter; when it is full you fire charged shots for a few seconds"},
+	"ricochet":        {"name": "Ricochet",        "family": "pilot",  "rarity": "uncommon",  "max": 5, "pic": "res://icons/chip_arc.png",
+		"desc": "A shot that hits bounces on to the next bug"},
+	"shrapnel":        {"name": "Shrapnel",        "family": "pilot",  "rarity": "uncommon",  "max": 5, "pic": "res://icons/chip_frag.png",
+		"desc": "A bug you kill bursts into shards that hit its neighbours"},
+	"hair_trigger":    {"name": "Hair Trigger",    "family": "pilot",  "rarity": "common",    "max": 3, "pic": "res://icons/st_rate.png",
+		"desc": "Much faster fire, a little less damage a shot"},
+	"heavy_caliber":   {"name": "Heavy Caliber",   "family": "pilot",  "rarity": "common",    "max": 3, "pic": "res://icons/st_atk.png",
+		"desc": "Much bigger hits, a little slower fire"},
 	# passive, open to everyone: the partner that evolves Piercing Rounds
 	"killer_instinct": {"name": "Killer Instinct", "family": "pilot",  "rarity": "common",    "max": 3, "pic": "res://icons/st_crit.png",
 		"desc": "Critical hits hit 20% harder"},
@@ -107,7 +118,7 @@ const CARDS := {
 # THE THREE TYPES (Rudy 2026-11-17). "off" = changes how you shoot (five levels, can EVOLVE),
 # "def" = keeps the hero or the base alive, "pas" = a plain number. A card not listed is passive.
 const TYPE := {
-	"burst_fire": "off", "piercing_rounds": "off", "chain_spark": "off", "frost_rounds": "off", "split_shot": "off", "seeker": "off", "drone_barrage": "off",
+	"burst_fire": "off", "piercing_rounds": "off", "chain_spark": "off", "frost_rounds": "off", "split_shot": "off", "seeker": "off", "drone_barrage": "off", "overdrive": "off", "ricochet": "off", "shrapnel": "off",
 	"rook_twin": "off", "sparks_weld": "off", "frost_freeze": "off", "hollow_phase": "off", "nyx_mark": "off", "ember_burn": "off", "nova_burst": "off",
 	"aegis": "def", "field_medic": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
 	"core_overload": "def", "second_wind": "def", "mirror_shell": "def",
@@ -148,7 +159,7 @@ static func type_of(id: String) -> String:
 
 const OVER_AT := 3
 const OVERCHARGE := {
-	"rapid_pulse":     "Overdrive: every 8 s, 3 s at double speed",
+	"rapid_pulse":     "Surge: every 8 s, 3 s at double speed",
 	"heavy_bolts":     "6th bolt hits x3",
 	"burst_fire":      "Last burst bolt pierces",
 	"piercing_rounds": "+25% damage per bug pierced",
@@ -183,6 +194,11 @@ const OVERCHARGE := {
 	"seeker":          "Crit rate +10%",
 	"drone_barrage":   "Drone damage +60% more",
 	"killer_instinct": "Crit rate +8%",
+	"overdrive":       "Charged shots pierce",
+	"ricochet":        "Bounces lose no damage",
+	"shrapnel":        "Bugs killed by shards burst too",
+	"hair_trigger":    "Fire rate +20%, nothing lost",
+	"heavy_caliber":   "Damage +28%, and hits shove bugs back",
 }
 
 # EVOLUTIONS (Rudy 2026-11-17, in place of the fusions; the table keeps its old name because the
@@ -220,6 +236,9 @@ const STEPS5 := {
 	"split_shot": ["A side shot every 4th volley", "Every 3rd volley", "2 side shots", "Every 2nd volley"],
 	"seeker": ["Shots curve toward bugs, damage +5%", "Curve harder, damage +5%", "Curve harder, damage +5%", "Curve harder, damage +5%"],
 	"drone_barrage": ["Drone damage x2", "Drone damage x3", "Drone damage x4", "Drone damage x5"],
+	"overdrive": ["30 kills charge 4 s of double-damage shots", "Charges in 25 kills", "Lasts 5.5 s", "Charges in 20 kills"],
+	"ricochet": ["Shots bounce on to 1 more bug", "Bounce on to 2 bugs", "Bounces keep more of their hit", "Bounce on to 3 bugs"],
+	"shrapnel": ["A kill throws 4 shards", "Shards hit harder", "6 shards", "Shards hit harder"],
 	"rook_twin": ["Every 4th shot fires twice", "Every 3rd shot fires twice", "Twins hit 40% harder", "Every 2nd shot fires twice"],
 	"sparks_weld": ["Every 3rd shot arcs to 1 bug", "Arcs to 2 bugs", "Every 2nd shot arcs", "Arcs to 3 bugs"],
 	"frost_freeze": ["Hits slow bugs 12%", "Hits slow bugs 24%", "Hits slow bugs 36%", "Hits slow bugs 48%"],
@@ -235,6 +254,7 @@ const OVERCHARGE5 := {"burst_fire": "The last shot of a burst pierces", "rook_tw
 # picks). Index = picks taken so far. The overcharge pick shows its OVERCHARGE line instead.
 const STEPS := {
 	"rapid_pulse": ["Fire rate +10%"], "heavy_bolts": ["Bolt damage +15%"],
+	"hair_trigger": ["Fire rate +20%, damage -8%"], "heavy_caliber": ["Damage +28%, fire rate -10%"],
 	"burst_fire": ["2-bolt bursts", "3-bolt bursts", "4-bolt bursts"],
 	"piercing_rounds": ["Bolts pierce 1 bug", "Bolts pierce 2 bugs", "Bolts pierce 3 bugs"],
 	"chain_spark": ["Every 5th bolt chains to 1 bug", "Chains to 2 bugs", "Chains to 3 bugs"],
@@ -262,6 +282,7 @@ const STEPS := {
 # shape of the weapon in hand (Shots.SHAPE: ball = twin pistols, stream = rifle, boulder = launcher;
 # the pistol s pellet uses the plain lines above). battle.gd does the same split in _fire.
 const CLASS_STEPS := {
+	"ricochet": {"stream": ["Every 3rd stream shot bounces to 1 more bug", "Bounces on to 2 bugs", "Bounces keep more of their hit", "Bounces on to 3 bugs"]},
 	"burst_fire": {
 		"ball": ["Both pistols throw a 2nd ball", "A 3rd ball each volley", "Volleys come faster", "A 4th ball each volley"],
 		"stream": ["The stream surges: fire rate +48%", "Fire rate +19% more", "Fire rate +9% more", "Fire rate +13% more"],
@@ -321,6 +342,7 @@ static func over_text(id: String, shape: String = "") -> String:
 # hero s own card, and the base and talent cards, which have their own conditions).
 const UNLOCK := {
 	"burst_fire": 2, "magnet": 3, "reinforced_hull": 3, "piercing_rounds": 5, "field_medic": 8, "chain_spark": 8,
+	"hair_trigger": 6, "heavy_caliber": 9, "overdrive": 14, "ricochet": 20, "shrapnel": 25,
 	"split_shot": 10, "killer_instinct": 12, "shield_recharge": 12, "seeker": 15, "frost_rounds": 18, "drone_barrage": 18, "nova_burst": 20,
 }
 const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "guardian_wing": 30}

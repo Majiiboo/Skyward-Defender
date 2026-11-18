@@ -1,4 +1,4 @@
-# Luna brief: power card EMBLEMS, a style check first (4 pictures, then 34 more)
+# Luna brief: power card EMBLEMS, a style check first (4 pictures, then 39 more)
 
 Hi Luna! This brief has everything you need; no earlier brief or message is required.
 
@@ -17,7 +17,7 @@ Rudy wants ALL the card pictures repainted as **sculpted emblems**: one bold sym
 that belongs to the card it sits on.
 
 **Please paint only the 4 pictures of the STYLE CHECK first.** Rudy looks at them on the
-cards on his phone. When he says yes, you paint the other 34 the same way (they are listed at
+cards on his phone. When he says yes, you paint the other 39 the same way (they are listed at
 the end so you can see what is coming).
 
 ## What a sculpted emblem is
@@ -66,7 +66,7 @@ Send these four and stop. If one comes out in an interesting different way, send
 
 Listed so you can see the whole set. Same style, the colour family of its group.
 
-**Attack cards (orange), 13 more:** `pic_piercing_rounds` (one long bolt passing through a
+**Attack cards (orange), 16 more:** `pic_overdrive` (a thick ring that is almost full, with a lightning bolt inside), `pic_ricochet` (one bolt bouncing off a ball in a sharp V), `pic_shrapnel` (a ball bursting into six thick shards), `pic_piercing_rounds` (one long bolt passing through a
 ring), `pic_chain_spark` (a lightning bolt jumping between three dots), `pic_frost_rounds` (a
 bolt with a snowflake tip), `pic_split_shot` (one bolt splitting into three arrows),
 `pic_seeker` (a bolt on a curved hook path into a small target), `pic_drone_barrage` (a round
@@ -80,7 +80,7 @@ crescent), `pic_nyx_mark` (a targeting reticle with a slash), `pic_ember_burn` (
 with a circling arrow), `pic_second_wind` (a heart with a spark), `pic_mirror_shell` (a shield
 with an arrow bouncing off it).
 
-**Passive cards (green), 5 more:** `pic_heavy_bolts` (one very fat bolt), `pic_magnet` (a
+**Passive cards (green), 7 more:** `pic_hair_trigger` (three thin bolts stacked, streaking fast), `pic_heavy_caliber` (one huge blunt shell), `pic_heavy_bolts` (one very fat bolt), `pic_magnet` (a
 horseshoe magnet), `pic_killer_instinct` (a sharp four-pointed star), `pic_focus_fire` (a
 crosshair), `pic_salvage` (a thick coin with a wrench).
 
