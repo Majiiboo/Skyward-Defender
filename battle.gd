@@ -557,6 +557,7 @@ func _start_stage() -> void:
 	_split_dmg = 0.6
 	_seek = 0.0
 	_od_need = 0
+	_bc_reset()
 	_od_len = 4.0
 	_od_k = 0
 	_od_t = 0.0
@@ -793,6 +794,7 @@ func _start_stage() -> void:
 	_maybe_brief()
 
 func _start_wave() -> void:
+	_bc_lock = 3 if _bcards.has("target_lock") else 0
 	wave_queue.clear()
 	if wave_index > 0 and wave_index < waves.size():
 		Sfx.play("wave")
@@ -842,6 +844,9 @@ func _start_wave() -> void:
 
 func _spawn(id: String) -> void:
 	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
+	if _bc_lock > 0 and not _is_boss_id(id) and id != "crate":   # base card (Radar): the first three of a wave are marked
+		_bc_lock -= 1
+		e["mark_t"] = 45.0
 	if _is_boss_id(id):
 		e.pos = Vector2(FIELD_W * 0.5, 40.0)
 		# bosses last much longer (Rudy, dev209: a strong kit went straight through the Hive Mother):
@@ -980,6 +985,7 @@ func _process(delta: float) -> void:
 	var vy: float = (soldier_pos.y - prev_soldier_y) / maxf(delta, 0.001)
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
+	_bc_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
 		_regen_t += delta
@@ -1214,7 +1220,7 @@ func _aim_and_fire(delta: float) -> void:
 			burst_left -= 1
 			_kick(0.9)
 			_fire(_muzzle_world() + burst_dir * 4.0, burst_dir, burst_tid, _burst_pierce and burst_left == 0)
-	var interval: float = float(weapon.interval) / fire_rate_mult
+	var interval: float = float(weapon.interval) / (fire_rate_mult * (1.12 if _bcards.has("arc_tether") and _near_base() else 1.0))
 	if burst_count > 1:
 		# BURST FIRE BY CLASS (the card rework): the pistol taps again and again, the twins throw their extra
 		# balls together, the rifle s stream simply surges, the launcher adds small shells to each shot
@@ -1442,6 +1448,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 						nb.lucky = true
 						nb.big = true
 						nb.dmg = float(nb.dmg) * _crit_dmg
+		if _bcards.has("full_magazine") and shield > shield_max * 0.8:   # base card (Armory)
+			nb.dmg = float(nb.dmg) * 1.15
 		if _od_t > 0.0:   # Overdrive (card): the meter is full, every shot is a charged one
 			nb.dmg = float(nb.dmg) * 2.0
 			nb.big = true
@@ -2109,6 +2117,8 @@ func _update_enemies(delta: float) -> void:
 			continue
 		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
 			_hurt_base((RUNNER_DMG * (0.5 if _base_perks.has("plating") else 1.0)) if e.has("runner") else float(def.get("base_dmg", 10.0)))
+			if _bcards.has("spiked_hull"):
+				_bc_spikes(e.pos)
 			if _is_diver(e):
 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
 				shake = maxf(shake, 0.55)
@@ -2204,6 +2214,13 @@ func _kill(e: Dictionary) -> void:
 		# and it leaves a burning patch that sets bugs passing through it alight
 		if _fire_patches.size() < 8:
 			_fire_patches.append({"pos": e.pos, "life": 2.6, "max": 2.6, "r": 44.0, "ph": rng.randf() * TAU})
+	if _bcards.has("field_repairs"):   # base card: every 25 kills mend a little of the shield
+		_bc_kills += 1
+		if _bc_kills >= 25:
+			_bc_kills = 0
+			if shield > 0.0 and shield < shield_max:
+				shield = minf(shield + shield_max * 0.02, shield_max)
+				_pod_ping("repair_bay")
 	# Shrapnel (card): the bug bursts into shards that hit its neighbours
 	if _shrap_n > 0 and not _is_boss(e) and e.type != "spore" and (_shrap_chain or not e.get("by_shrap", false)) and _shard_q.size() < 40:
 		var s_dmg: float = float(_weapon().damage) * damage_mult * _shrap_dmg
@@ -2341,6 +2358,8 @@ func _hurt_base(amount: float) -> void:
 		_pulse_flash = maxf(_pulse_flash, 0.35)
 		return
 	amount *= (1.0 - _base_dr) * _base_hit()   # gear milestones (Chest); bugs hit the base harder (dev272)
+	if _bcards.has("reflective_barrier") and shield > 0.0:
+		_bc_reflect()
 	hit_t = 0.0
 	_took_damage = true
 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)
@@ -3325,25 +3344,9 @@ func _pick_card(id: String) -> void:
 		"mirror_shell": _mirror = int(card_levels[id])
 		"shield_recharge": _shield_rate += 0.01
 		"field_medic": _regen_every = [5.0, 3.0, 1.5][clampi(lv - 1, 0, 2)]
-		# base cards (Cards "building"): more of what the building does
-		"shield_surge":
-			shield_max += 25.0
-			shield = minf(shield + 25.0, shield_max)
-		"nanobots": _hull_rate += 0.004
-		"hot_rounds": damage_mult *= 1.08
-		"stim_pack":
-			pilot_hp_max += 15.0
-			pilot_hp = minf(pilot_hp + 25.0, pilot_hp_max)
-		"plate_up":
-			hull_max += 25.0
-			hull = minf(hull + 25.0, hull_max)
-			_base_dr = clampf(_base_dr + 0.04, 0.0, 0.6)
-		"drone_uplink": _drone_mult *= 1.2
-		"reactor_surge":
-			_ult_cd *= 0.9
-			_ult_t *= 0.9
-		"radar_sweep": _crit_rate += 0.05
-		"rich_seam": _coin_mult += 0.15
+		# base cards (Cards "bcard"): one per building, taken once; what each does is in _bc_* below
+		"reflective_barrier", "field_repairs", "full_magazine", "low_orbit_care", "spiked_hull", "guard_wing", "arc_tether", "target_lock", "coolant_vent":
+			_bc_take(id)
 		"core_overload":
 			_pulse_cd_mult *= 0.8
 			_pulse_t *= 0.8
@@ -3409,17 +3412,6 @@ func _overcharge(id: String) -> void:
 		"chain_spark": _chain_mult = 2.0
 		"shield_recharge": _hull_rate = 0.004
 		# base cards: the third pick adds something new
-		"shield_surge": _shield_dr = 0.15
-		"nanobots": _base_repair = maxf(_base_repair * 2.0, 0.03)
-		"hot_rounds": _crit_dmg += 0.3
-		"stim_pack": _second_wind = maxi(_second_wind, 1)
-		"plate_up":
-			if not _base_perks.has("plating"):
-				_base_perks.append("plating")
-		"drone_uplink": _drone_mult *= 1.4
-		"reactor_surge": _ult_t = 0.0
-		"radar_sweep": _radar_heal = true
-		"rich_seam": _wave_coins = true
 		"core_overload": _pulse_bonus = 2.0
 		"rook_twin":
 			_twin_bonus = true
@@ -6227,11 +6219,121 @@ func _draw_core_base() -> void:
 	for i in Base.SLOTS:
 		var id: String = _base_slots[i]
 		var pd := {"open": _base_open[i], "level": _base_levels[i], "flash": 1.0 - (time_alive - float(_pod_ping_t[i])) / 0.7}
+		pd["gold"] = id != "" and _bc_of.has(id)
 		if id != "":
 			pd["col"] = Color(1.0, 0.35, 0.3) if _pod_held(i) else Base.BUILDINGS[id].col
 			pd["tex"] = _tex.get("bld_" + id)
 		pods.append(pd)
 	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0), _base_links)
+	if _bcards.has("arc_tether") and _near_base():   # Arc Tether: a thin gold line from the core to the hero while it is live
+		draw_line(Vector2(FIELD_W * 0.5, BASE_Y - 34.0), soldier_pos, Color(1.0, 0.85, 0.4, 0.3 + 0.15 * sin(time_alive * 9.0)), 1.5, true)
+
+# ------------------------------------------------------------------ BASE CARDS (Rudy 2026-11-18)
+# One card per building on the base (Cards "bcard"), taken once, from in-fight level 4. Each changes
+# what its building DOES in the fight, and its pod turns gold. The numbers are first guesses.
+const BC_NEAR := 170.0      # "close to the base": the hero this far above the base line or lower
+const BC_ZONE := 230.0      # Coolant Vent / Guard Wing: bugs this far above the base line or lower
+var _bcards: Array = []     # base cards taken this stage
+var _bc_of := {}            # building -> its card, once taken
+var _bc_kills := 0          # Field Repairs: kills toward the next mend
+var _bc_lock := 0           # Target Lock: marks left to hand out this wave
+var _bc_heal_t := 0.0
+var _bc_gun_t := 0.0
+var _bc_ref_t := 0.0
+
+func _bc_reset() -> void:
+	_bcards = []
+	_bc_of = {}
+	_bc_kills = 0
+	_bc_lock = 0
+	_bc_heal_t = 0.0
+	_bc_gun_t = 0.0
+	_bc_ref_t = 0.0
+
+func _near_base() -> bool:
+	return soldier_pos.y > BASE_Y - BC_NEAR
+
+func _bc_take(id: String) -> void:
+	if _bcards.has(id):
+		return
+	_bcards.append(id)
+	var bid := String(Cards.CARDS[id].building)
+	_bc_of[bid] = id
+	_pod_ping(bid)
+	var pod := _base_slots.find(bid)
+	if pod >= 0 and not _replaying:
+		var at: Vector2 = Backdrop.pod_pos(pod, FIELD_W, BASE_Y)
+		_float_text(at + Vector2(0, -38), String(Cards.CARDS[id].name), Color(1.0, 0.82, 0.32), true)
+		_fx_add("nova", at, 24.0, 0.5, 0.0, 2.4, Color(1.0, 0.82, 0.32))
+
+# a shot the base fires by itself (Reflective Barrier, Guard Wing)
+func _bc_shot(from: Vector2, e: Dictionary, dmg: float, drone: bool, big: bool) -> void:
+	var dir: Vector2 = (Vector2(e.pos) - from).normalized()
+	_shard_q.append({"pos": from, "vel": dir * 760.0, "dmg": dmg, "r": 10.0, "tid": -2, "col": "cyan",
+		"big": big, "pierce": false, "hits": [], "spark": 0, "pierce_left": 0, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": 0,
+		"born": time_alive, "lane": 80, "ttl": 1.2, "weld": 0, "drone": drone})
+
+# Reflective Barrier (Shield Generator): a hit on the shield fires a bolt back at the bug nearest the base
+func _bc_reflect() -> void:
+	if time_alive - _bc_ref_t < 0.2:
+		return
+	var from := Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY)
+	var best = null
+	var bd := 460.0
+	for o in enemies:
+		if float(o.hp) > 0.0 and _can_hurt(o) and o.type != "crate" and Vector2(o.pos).distance_to(from) < bd:
+			bd = Vector2(o.pos).distance_to(from)
+			best = o
+	if best == null:
+		return
+	_bc_ref_t = time_alive
+	_bc_shot(from, best, float(_weapon().damage) * damage_mult * 2.0, false, true)
+	_pod_ping("shield_gen")
+
+# Spiked Hull (Hull Plating): the bug that hit the base blasts the bugs near it
+func _bc_spikes(at: Vector2) -> void:
+	var dmg: float = float(_weapon().damage) * damage_mult * 3.0
+	for o in enemies:
+		var d: float = Vector2(o.pos).distance_to(at)
+		if d > 1.0 and d < 110.0 and float(o.hp) > 0.0 and _can_hurt(o) and o.type != "crate":
+			o.hp -= dmg
+			o.hit_t = HIT_FLINCH_T
+			stat_pilot_dmg += dmg
+	_fx_add("nova", at, 60.0, 0.4, 0.0, 2.0, Color(1.0, 0.7, 0.35))
+	_pod_ping("plating")
+
+func _bc_tick(delta: float) -> void:
+	if _bcards.is_empty() or _preview:
+		return
+	if _bcards.has("low_orbit_care") and pilot_hp > 0.0:   # Med Bay: health while he stays close to the base
+		if _near_base():
+			_bc_heal_t += delta
+			if _bc_heal_t >= 2.0:
+				_bc_heal_t = 0.0
+				if pilot_hp < pilot_hp_max:
+					pilot_hp = minf(pilot_hp + pilot_hp_max * 0.01, pilot_hp_max)
+					_float_text(soldier_pos + Vector2(0, -44), "+%d" % maxi(1, roundi(pilot_hp_max * 0.01)), Color(0.5, 1.0, 0.6))
+					_pod_ping("medbay")
+		else:
+			_bc_heal_t = 0.0
+	if _bcards.has("coolant_vent"):   # Refinery: bugs close to the base are slowed
+		for e in enemies:
+			if Vector2(e.pos).y > BASE_Y - BC_ZONE and not _is_boss(e):
+				e["slow_t"] = maxf(float(e.get("slow_t", 0.0)), 0.3)
+				e["slow"] = maxf(float(e.get("slow", 0.0)), 0.25)
+	if _bcards.has("guard_wing"):   # Hangar: it shoots the lowest bug that comes near the base
+		_bc_gun_t += delta
+		if _bc_gun_t >= 0.55:
+			var low = null
+			var ly: float = BASE_Y - BC_ZONE
+			for e in enemies:
+				if float(e.hp) > 0.0 and _can_hurt(e) and e.type != "crate" and Vector2(e.pos).y > ly:
+					ly = Vector2(e.pos).y
+					low = e
+			if low != null:
+				_bc_gun_t = 0.0
+				var pod := _base_slots.find("hangar")
+				_bc_shot(Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y), low, float(_weapon().damage) * damage_mult * 0.6 * _drone_mult, true, false)
 
 # ------------------------------------------------------------------ CORE PULSE (2026-11-10)
 # The base's own button (Rudy: "the base as a whole, one can act like a shield"). Tap the core:

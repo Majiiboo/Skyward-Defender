@@ -526,7 +526,7 @@ func _step() -> bool:
 #   any more), minus a little for each level already held, so he spreads; one more nudge toward a
 #   hero card when it is the third one (it brings the evolution pick).
 const CARD_VALUE := {
-	"heavy_bolts": 9.0, "burst_fire": 9.0, "rapid_pulse": 8.5, "split_shot": 7.5, "hot_rounds": 7.5, "focus_fire": 7.0,
+	"heavy_bolts": 9.0, "burst_fire": 9.0, "rapid_pulse": 8.5, "split_shot": 7.5, "full_magazine": 7.5, "arc_tether": 6.0, "target_lock": 5.5, "guard_wing": 5.0, "reflective_barrier": 4.0, "spiked_hull": 3.0, "coolant_vent": 4.0, "field_repairs": 3.5, "low_orbit_care": 3.0, "focus_fire": 7.0,
 	"piercing_rounds": 7.0, "chain_spark": 6.5, "killer_instinct": 5.5, "radar_sweep": 5.5, "seeker": 5.5, "frost_rounds": 5.0,
 	"drone_barrage": 4.5, "drone_uplink": 4.0, "magnet": 4.0, "nova_burst": 4.0, "reactor_surge": 3.5, "core_overload": 3.0, "mirror_shell": 3.0,
 	"aegis": 3.5, "shield_recharge": 3.5, "field_medic": 3.0, "reinforced_hull": 3.0, "shield_surge": 3.0, "stim_pack": 3.0, "second_wind": 3.0,

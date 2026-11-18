@@ -487,6 +487,9 @@ static func _draw_core_art(c: CanvasItem, width: float, base_y: float, t: float,
 			c.draw_line(p - Vector2(0, 6 * k), p + Vector2(0, 6 * k), Color(0.6, 0.68, 0.82), 2.0, true)
 			continue
 		var col: Color = pd.col
+		var gold: bool = bool(pd.get("gold", false))   # its base card was taken this fight
+		if gold:
+			col = Color(1.0, 0.82, 0.32)
 		var fl: float = clampf(float(pd.get("flash", 0.0)), 0.0, 1.0)
 		var lv: int = int(pd.get("level", 1))
 		var look := "pod_3" if lv >= 10 else ("pod_2" if lv >= 5 else "pod_1")
@@ -494,6 +497,10 @@ static func _draw_core_art(c: CanvasItem, width: float, base_y: float, t: float,
 		c.draw_texture_rect(ptex, rect, false, col.lerp(Color.WHITE, 0.4 + 0.6 * fl))
 		var half := POD_D * k * 0.31 * (1.0 + 0.12 * fl)
 		var tx: Texture2D = pd.tex
+		if gold:   # a gold ring that turns round the pod
+			for gi in 3:
+				var ga: float = t * 1.4 + TAU * gi / 3.0
+				c.draw_arc(p, POD_D * k * 0.54, ga, ga + 1.25, 14, Color(1.0, 0.85, 0.4, 0.85), 2.0, true)
 		c.draw_texture_rect(tx, Rect2(p - Vector2(half, half), Vector2(half, half) * 2.0), false)
 		if fl > 0.0:
 			c.draw_arc(p, POD_D * k * 0.5 + (4.0 + 14.0 * (1.0 - fl)) * k, 0.0, TAU, 40, Color(col, 0.7 * fl), 1.5, true)

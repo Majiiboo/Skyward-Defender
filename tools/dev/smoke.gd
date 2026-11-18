@@ -252,7 +252,7 @@ func _check_cards() -> void:
 	_expect(Cards.evos_open("rook", 1, {}) == ["sig_rook"], "a new hero has one evolution: his own")
 	_expect(Cards.evos_open("rook", 10, {}).has("storm_volley") and Cards.evos_open("rook", 10, {}).has("railstorm") and not Cards.evos_open("rook", 10, {}).has("sig_nyx"), "more evolutions open with his level, never another hero s")
 	_expect(not Cards.evos_open("rook", 99, {"sig_rook": 1}).has("sig_rook") and not Cards.evos_open("rook", 99, {}, false).has("guardian_wing"), "an evolution is taken once, and the drone one needs a drone")
-	_expect(Cards.is_hero_card("heavy_bolts") and not Cards.is_hero_card("shield_surge"), "a base card is not a hero card")
+	_expect(Cards.is_hero_card("heavy_bolts") and not Cards.is_hero_card("reflective_barrier"), "a base card is not a hero card")
 	var early: Array = []
 	for i in 30:
 		early.append_array(Cards.draw({}, 3, null, 99, false, [], "rook", 0, 1))
@@ -260,7 +260,7 @@ func _check_cards() -> void:
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].has("building"):   # base cards: a real building, a picture, an overcharge and a step text
 			_expect(ResourceLoader.exists(String(Cards.CARDS[id].get("pic", ""))), "base card picture missing: " + id)
-			_expect(Cards.OVERCHARGE.has(id) and (Cards.STEPS.has(id) or Cards.STEPS5.has(id)), "base card overcharge and step text: " + id)
+			_expect(Cards.CARDS[id].get("bcard", false) or (Cards.OVERCHARGE.has(id) and (Cards.STEPS.has(id) or Cards.STEPS5.has(id))), "base card overcharge and step text: " + id)
 			_expect(Base.BUILDINGS.has(String(Cards.CARDS[id].building)) or String(Cards.CARDS[id].building) == "*pulse" or String(Cards.CARDS[id].building) == "*drone", "base card for a real building: " + id)
 	# hero cards (dev172): one per hero, only offered while he is on duty, three picks each
 	for id in Heroes.ORDER:
@@ -990,7 +990,26 @@ func _check_base_cards() -> void:
 	for i in 300:
 		for id in Cards.draw({}, 3, rng, 99, false, ["armory", "*pulse"], "rook", 0):
 			seen[id] = true
-	_expect(seen.has("hot_rounds") and seen.has("core_overload") and not seen.has("shield_surge"), "with the Armory and the Core Pulse: their cards, not the Shield Generator's")
+	_expect(seen.has("full_magazine") and seen.has("core_overload") and not seen.has("reflective_barrier"), "with the Armory and the Core Pulse: their cards, not the Shield Generator's")
+	var two := 0   # base cards: taken once, from in-fight level 4, never two in one pick
+	var early_b := 0
+	for i in 300:
+		var nb := 0
+		for id in Cards.draw({}, 3, rng, 99, false, ["armory", "medbay", "radar", "reactor"], "rook", 0):
+			if Cards.CARDS[id].get("bcard", false):
+				nb += 1
+		if nb > 1:
+			two += 1
+		for id in Cards.draw({}, 3, rng, 3, false, ["armory", "medbay", "radar", "reactor"], "rook", 0):
+			if Cards.CARDS[id].get("bcard", false):
+				early_b += 1
+	_expect(two == 0 and early_b == 0, "base cards: one a pick at most (%d), none before in-fight level 4 (%d)" % [two, early_b])
+	for bid in Base.ORDER:
+		var n_b := 0
+		for id in Cards.CARDS:
+			if Cards.CARDS[id].get("bcard", false) and String(Cards.CARDS[id].building) == String(bid) and int(Cards.CARDS[id].max) == 1:
+				n_b += 1
+		_expect(n_b == 1, "building %s has exactly one base card" % bid)
 	for dead in ["turret_overclock", "sentry_ricochet", "flak_shrapnel"]:
 		_expect(not Cards.CARDS.has(dead), "the turret card %s is gone" % dead)
 

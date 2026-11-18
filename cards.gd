@@ -61,27 +61,27 @@ const CARDS := {
 	# utility
 	"magnet":          {"name": "Magnet",          "family": "pilot",  "rarity": "common",    "max": 3, "icon": "gem",
 		"desc": "Pulls gems and coins from further, +10% XP"},
-	# BASE CARDS (2026-11-10, in place of the turret cards): one per building, offered only while
-	# that building stands on the base ("building"; "*pulse" = the Core Pulse is open). Picks 1-2
-	# give more of what the building does, the 3rd (overcharge) adds something new.
-	"shield_surge":   {"name": "Shield Surge",   "family": "base", "rarity": "uncommon", "max": 3, "building": "shield_gen", "pic": "res://base/bld_shield_gen.png",
-		"desc": "Base shield +25, repaired now"},
-	"nanobots":       {"name": "Nanobots",       "family": "base", "rarity": "uncommon", "max": 3, "building": "repair_bay", "pic": "res://base/bld_repair_bay.png",
-		"desc": "The hull mends itself, 0.4% a second per level"},
-	"hot_rounds":     {"name": "Hot Rounds",     "family": "base", "rarity": "uncommon", "max": 3, "building": "armory", "pic": "res://base/bld_armory.png",
-		"desc": "Bolt damage +8% per level"},
-	"stim_pack":      {"name": "Stim Pack",      "family": "base", "rarity": "uncommon", "max": 3, "building": "medbay", "pic": "res://base/bld_medbay.png",
-		"desc": "+15 max HP and 25 HP healed now"},
-	"plate_up":       {"name": "Plate Up",       "family": "base", "rarity": "uncommon", "max": 3, "building": "plating", "pic": "res://base/bld_plating.png",
-		"desc": "Base hull +25, hits on the base 4% weaker"},
-	"drone_uplink":   {"name": "Drone Uplink",   "family": "base", "rarity": "uncommon", "max": 3, "building": "hangar", "pic": "res://base/bld_hangar.png",
-		"desc": "Drone damage +20% per level"},
-	"reactor_surge":  {"name": "Reactor Surge",  "family": "base", "rarity": "uncommon", "max": 3, "building": "reactor", "pic": "res://base/bld_reactor.png",
-		"desc": "The ability charges 10% faster per level"},
-	"radar_sweep":    {"name": "Radar Sweep",    "family": "base", "rarity": "uncommon", "max": 3, "building": "radar", "pic": "res://base/bld_radar.png",
-		"desc": "Crit rate +5% per level"},
-	"rich_seam":      {"name": "Rich Seam",      "family": "base", "rarity": "uncommon", "max": 3, "building": "refinery", "pic": "res://base/bld_refinery.png",
-		"desc": "Coins +15% per level"},
+	# BASE CARDS (Rudy 2026-11-18): ONE per building, taken ONCE ("max": 1, "bcard"), offered only while
+	# that building stands ("building"), from in-fight level 4 ("from_level"), never two in one pick
+	# (draw). Each changes what the building DOES; no "+5%" filler. "*pulse" = the Core Pulse is open.
+	"reflective_barrier": {"name": "Reflective Barrier", "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "shield_gen", "pic": "res://base/bld_shield_gen.png",
+		"desc": "Each hit the shield takes fires a bolt back"},
+	"field_repairs":      {"name": "Field Repairs",      "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "repair_bay", "pic": "res://base/bld_repair_bay.png",
+		"desc": "Every 25 kills mend 2% of the shield"},
+	"full_magazine":      {"name": "Full Magazine",      "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "armory", "pic": "res://base/bld_armory.png",
+		"desc": "+15% damage while the shield is above 80%"},
+	"low_orbit_care":     {"name": "Low Orbit Care",     "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "medbay", "pic": "res://base/bld_medbay.png",
+		"desc": "Fly close to the base: 1% health every 2 s"},
+	"spiked_hull":        {"name": "Spiked Hull",        "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "plating", "pic": "res://base/bld_plating.png",
+		"desc": "A bug that hits the base blasts the bugs near it"},
+	"guard_wing":         {"name": "Guard Wing",         "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "hangar", "pic": "res://base/bld_hangar.png",
+		"desc": "The Hangar shoots bugs that come near the base"},
+	"arc_tether":         {"name": "Arc Tether",         "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "reactor", "pic": "res://base/bld_reactor.png",
+		"desc": "Fly close to the base: fire rate +12%"},
+	"target_lock":        {"name": "Target Lock",        "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "radar", "pic": "res://base/bld_radar.png",
+		"desc": "The first 3 bugs of a wave are marked: every hit crits"},
+	"coolant_vent":       {"name": "Coolant Vent",       "family": "base", "rarity": "epic", "max": 1, "bcard": true, "from_level": 4, "building": "refinery", "pic": "res://base/bld_refinery.png",
+		"desc": "Bugs close to the base are slowed 25%"},
 	"core_overload":  {"name": "Core Overload",  "family": "base", "rarity": "epic", "max": 2, "building": "*pulse", "pic": "res://base/core_light.png",
 		"desc": "The Core Pulse recharges 20% faster"},
 	# talent cards (dev197, Talents.CARD_AT): the talent map's 10th / 20th / 30th / 40th node
@@ -120,7 +120,7 @@ const CARDS := {
 const TYPE := {
 	"burst_fire": "off", "piercing_rounds": "off", "chain_spark": "off", "frost_rounds": "off", "split_shot": "off", "seeker": "off", "drone_barrage": "off", "overdrive": "off", "ricochet": "off", "shrapnel": "off",
 	"rook_twin": "off", "sparks_weld": "off", "frost_freeze": "off", "hollow_phase": "off", "nyx_mark": "off", "ember_burn": "off", "nova_burst": "off",
-	"aegis": "def", "field_medic": "def", "reinforced_hull": "def", "shield_recharge": "def", "shield_surge": "def", "nanobots": "def", "stim_pack": "def", "plate_up": "def",
+	"aegis": "def", "field_medic": "def", "reinforced_hull": "def", "shield_recharge": "def", "reflective_barrier": "def", "field_repairs": "def", "low_orbit_care": "def", "spiked_hull": "def", "coolant_vent": "def",
 	"core_overload": "def", "second_wind": "def", "mirror_shell": "def",
 }
 const TYPE_NAME := {"off": "OFFENSE", "def": "DEFENSE", "pas": "PASSIVE", "base": "BASE"}
@@ -170,15 +170,6 @@ const OVERCHARGE := {
 	"reinforced_hull": "Base shield +40",
 	"shield_recharge": "Also slowly repairs the hull",
 	"magnet":          "Each gem repairs 1 shield",
-	"shield_surge":    "Hits on the shield are 15% weaker",
-	"nanobots":        "Mending after a wave is doubled",
-	"hot_rounds":      "Crit damage +30%",
-	"stim_pack":       "Once a fight, a blow that would down you leaves you standing",
-	"plate_up":        "Runners that get through do half damage",
-	"drone_uplink":    "Drone damage +40% more",
-	"reactor_surge":   "The ability is ready right now",
-	"radar_sweep":     "A caught runner mends 3% of the shield",
-	"rich_seam":       "Every wave cleared drops a pile of coins",
 	"core_overload":   "The Core Pulse lasts 2 seconds longer",
 	"focus_fire":      "Crit rate +10%",
 	"salvage":         "Every 10th kill drops a part",
@@ -264,10 +255,7 @@ const STEPS := {
 	"reinforced_hull": ["Base shield +30, hull +20"],
 	"shield_recharge": ["Shield heals 1% a second", "Shield heals 2% a second", "Shield heals 3% a second"],
 	"magnet": ["Wider magnet, XP +10%"],
-	"shield_surge": ["Base shield +25, repaired now"], "nanobots": ["Hull mends 0.4% a second", "Hull mends 0.8% a second"],
-	"hot_rounds": ["Bolt damage +8%"], "stim_pack": ["+15 max HP, 25 HP healed"], "plate_up": ["Hull +25, base hits 4% weaker"],
-	"drone_uplink": ["Drone damage +20%"], "reactor_surge": ["Ability charges 10% faster"], "radar_sweep": ["Crit rate +5%"],
-	"rich_seam": ["Coins +15%"], "core_overload": ["Core Pulse recharges 20% faster"],
+	"core_overload": ["Core Pulse recharges 20% faster"],
 	"focus_fire": ["Bolt damage +6%"], "salvage": ["Bugs drop +25% coins"],
 	"second_wind": ["Once a run: survive a hit at 50% HP", "Survive at 75% HP", "Survive at full HP"],
 	"mirror_shell": ["Stopped shots fly back (50%)", "Fly back at 75%", "Fly back at full damage"],
@@ -423,6 +411,8 @@ static func draw(levels: Dictionary, count: int = 3, rng: RandomNumberGenerator 
 				break
 		picks.append(chosen)
 		pool.erase(chosen)
+		if CARDS[chosen].get("bcard", false):   # never two base cards in one pick
+			pool = pool.filter(func(c): return not CARDS[c].get("bcard", false))
 	return picks
 
 # the hero's own card ("" when he has none)
