@@ -1,69 +1,100 @@
-# Luna brief: pictures for the new power cards (14 pictures)
+# Luna brief: power card EMBLEMS, a style check first (4 pictures, then 34 more)
 
 Hi Luna! This brief has everything you need; no earlier brief or message is required.
 
 ## What this is for
 
-The power cards have been rebuilt. During a fight the player is offered three cards and taps
-one. `cards_now.png` in this folder shows how a card looks in the game today: a coloured strip
-on top, **your picture big in the middle**, the name, small level dots and one line of text.
-The game draws the card itself; you only paint the picture in the middle.
+The power cards have been rebuilt. `cards_now.png` in this folder shows them in the game: each
+card is a box with a colour that glows at the top and sinks into dark navy, with ONE picture
+big in the middle, the name, small level dots and one line of text. The game draws the box;
+you paint only the picture.
 
-Five cards are new and have no picture of their own yet (they borrow small icons). And there
-is a new kind of card, the EVOLUTION: when a card reaches its top level it can turn into a
-stronger, named form. Nine evolutions need a picture.
+The pictures on those cards today are your older ones: small realistic 3D scenes (crystals, a
+heart, a rifle). On the new coloured cards they look out of place: each has its own lighting
+and its own colours, and they fight the card.
 
-## The style to match
+Rudy wants ALL the card pictures repainted as **sculpted emblems**: one bold symbol per card
+that belongs to the card it sits on.
 
-The `STYLE_...png` pictures in this folder are card pictures you already painted. Match them:
+**Please paint only the 4 pictures of the STYLE CHECK first.** Rudy looks at them on the
+cards on his phone. When he says yes, you paint the other 34 the same way (they are listed at
+the end so you can see what is coming).
 
-- ONE object (or one tight group), glossy rendered 3D, seen a little from above and the side.
-- Plain BLACK background. No frame, no card, no text, no ground, no hero, no bugs.
-- The object fills about 75% of the picture, centred, nothing cut off.
-- Bold and simple: on a phone the picture is about as big as a thumbnail.
-- Glowing parts in the colour given for each picture.
+## What a sculpted emblem is
+
+Think of a chunky enamel pin, or a symbol cast in thick frosted glass and metal.
+
+- **ONE symbol**, seen straight from the front. Not a scene, not a realistic object, no
+  perspective.
+- **Thick and solid.** It has depth: bevelled edges, a lit top face, a darker underside, as if
+  it were about as thick as a finger. NOT a flat drawing, and not a thin outline.
+- **Lit from above**, with one bright highlight along its upper edge and a crisp pale rim.
+- **A soft round glow behind it**, in the same colour, fading to nothing. No hard ring, no
+  plate, no medal, no frame.
+- **One colour family per picture**, the one given below, from nearly white on the lit faces
+  to a deep shade on the underside. No second colour, except where a picture says so.
+- **Simple enough for a thumbnail.** On a phone the picture is about as big as a thumbnail: a
+  shape you can name in half a second. No small details, no text, no numbers.
+- Plain **BLACK** background. The symbol fills about 70% of the picture, centred, nothing cut
+  off. 1024 x 1024, `.webp`, the exact file name given.
 - Our own designs; never another game's.
 
-1024 x 1024, `.webp`, the exact file name given.
+## The three colour families
 
-## Part 1: five new cards
+The card's colour says what kind of card it is, so the emblem uses the same family:
 
-| File | Card | What to paint |
+| Kind of card | Card colour | Emblem colours |
 |---|---|---|
-| `pic_split_shot.webp` | **Split Shot** (your shots fan out to the sides) | Three glowing energy bolts leaving one point and spreading apart like a fan: one straight up, one up-left, one up-right. Bright cyan-white, with short trails behind them. |
-| `pic_seeker.webp` | **Seeker** (your shots curve toward the bugs) | ONE glowing bolt flying in a clear curve, like a hook, with a bright trail showing the bend, and a small round targeting reticle at the end of the curve that it is heading into. Cyan bolt, orange reticle. |
-| `pic_drone_barrage.webp` | **Drone Barrage** (the helper drone hits harder) | A small round combat drone with two short guns, both firing: two bright muzzle flashes and two short bolts leaving it. Dark metal body with cyan lights. `REF_drone.png` shows our drone; keep it recognisable. |
-| `pic_killer_instinct.webp` | **Killer Instinct** (critical hits hit harder) | A sharp four-pointed golden star-burst with a glowing white-hot centre, like the flash of a perfect hit, with a few thin shards flying out. Gold and white. Angular and sharp, not round and soft. |
-| `pic_field_medic.webp` | **Field Medic** (the hero slowly gets health back) | A chunky medical device: a white-and-green capsule or canister with a glowing green cross on it and a soft green pulse ring round it. Clean and friendly. Not a heart (other cards use hearts). |
+| ATTACK cards | warm orange | pale peach-white on the lit faces, orange `#FF8059` in the body, deep rust on the underside |
+| DEFENCE cards | sky blue | ice-white on the lit faces, blue `#66BFFF` in the body, deep navy-blue underside |
+| PASSIVE cards | fresh green | mint-white on the lit faces, green `#8CF299` in the body, deep forest underside |
+| EVOLUTIONS | gold into pink | pale gold on the lit faces, gold `#FFD152` melting into pink `#FF73CC` in the body, deep plum underside |
 
-## Part 2: nine evolutions
+## STYLE CHECK: paint these 4 first
 
-An evolution is the grown-up form of a card. **Each picture must look like the same idea as
-the card it grew from, but clearly bigger, grander and more powerful**, so a player who knows
-the first card sees at once what it became. I give you the first card's picture as
-`FROM_...png` for each.
+| File | Card | The symbol |
+|---|---|---|
+| `pic_burst_fire.webp` | **Burst Fire** (attack: you fire several shots at once) | Three thick rounded bolts, like fat capsules, fanned out from one point at the bottom: one straight up, one leaning left, one leaning right. ORANGE family. |
+| `pic_aegis.webp` | **Aegis** (defence: more health and a shield) | A thick shield with a simple cross-bar or chevron raised on its face. BLUE family. |
+| `pic_rapid_pulse.webp` | **Rapid Pulse** (passive: you fire faster) | Three thick chevrons pointing up, stacked one above another, like a fast-forward sign turned upward. GREEN family. |
+| `pic_storm_volley.webp` | **Storm Volley** (the evolution of Burst Fire) | The Burst Fire symbol grown up: FIVE bolts in the fan, bigger and sharper, with a small lightning zig-zag between them and a wide crown of light behind. GOLD-PINK family. It must read as "Burst Fire, but more". |
 
-All nine share one extra touch so they read as a family: **a ring or crown of pink-gold energy
-behind or around the object** (pink `#FF73CC` melting into gold `#FFD152`).
+Send these four and stop. If one comes out in an interesting different way, send it too with
+`_alt` on the end of the name.
 
-| File | Evolution | Grew from | What to paint |
-|---|---|---|---|
-| `pic_storm_volley.webp` | **Storm Volley** | Burst Fire (`FROM_burst_fire.png`) | The same crystal rounds, but many more: a whole storm of them, seven or nine, flying together in a tight spearhead, with lightning crackling between them. |
-| `pic_flak_wall.webp` | **Flak Wall** | Split Shot (your new picture) | The fan of bolts grown into a wide wall: five or seven bolts spreading in a broad arc, with a faint curved shield of light across their tips, as if the fan itself blocks things. |
-| `pic_guardian_wing.webp` | **Guardian Wing** | Drone Barrage (your new picture) | The drone, bigger and armoured, with two small wing-like shield plates opened at its sides and a round shield glow in front of it, still firing both guns. |
-| `pic_sig_rook.webp` | **Crossfire** (Rook, cyan and purple) | `FROM_rook_twin.png` | Two heavy charcoal rifles crossed like an X, both muzzles glowing bright cyan, purple lines along them, bolts leaving both. |
-| `pic_sig_sparks.webp` | **Storm Coil** (Sparks, electric green) | `FROM_sparks_weld.png` | A big rusty tesla coil made of scrap, wrapped in a storm of bright green lightning that forks in every direction. |
-| `pic_sig_frost.webp` | **Absolute Zero** (Frost, ice blue) | `FROM_frost_freeze.png` | A huge, perfect, sharp ice crystal or snowflake with a white-cold core, frost spikes shooting out of it, a ring of frozen mist round it. |
-| `pic_sig_hollow.webp` | **Event Horizon** (Hollow, violet) | `FROM_hollow_phase.png` | A black sphere with a thick bright violet ring of light bent round it, like a small black hole, pulling thin violet streaks into itself. The middle is simply black. |
-| `pic_sig_nyx.webp` | **Blood Moon** (Nyx, blood red) | `FROM_nyx_mark.png` | A deep red crescent moon with a sharp red targeting mark across it, and a thin red blade of light cutting through. Dark and elegant. |
-| `pic_sig_ember.webp` | **Inferno** (Ember, orange fire) | `FROM_ember_burn.png` | A roaring pillar of fire shaped like a dragon's head rising out of the flames, mouth open, orange and white-hot at the core. |
+## What comes after (do NOT paint these yet)
 
-## What to send
+Listed so you can see the whole set. Same style, the colour family of its group.
 
-Fourteen `.webp` files, named exactly as above.
+**Attack cards (orange), 13 more:** `pic_piercing_rounds` (one long bolt passing through a
+ring), `pic_chain_spark` (a lightning bolt jumping between three dots), `pic_frost_rounds` (a
+bolt with a snowflake tip), `pic_split_shot` (one bolt splitting into three arrows),
+`pic_seeker` (a bolt on a curved hook path into a small target), `pic_drone_barrage` (a round
+drone with two guns), `pic_nova_burst` (a star-burst ring), and one for each hero:
+`pic_rook_twin` (two bolts side by side), `pic_sparks_weld` (a forked arc between two prongs),
+`pic_frost_freeze` (a six-armed snowflake), `pic_hollow_phase` (a bolt passing through a
+crescent), `pic_nyx_mark` (a targeting reticle with a slash), `pic_ember_burn` (a flame).
 
-If one comes out at another size or a little off-centre but looks good, send it anyway and
-tell me. If an evolution does not look like a bigger version of its `FROM_` picture, that is
-the one thing I cannot fix.
+**Defence cards (blue), 5 more:** `pic_field_medic` (a thick medical cross with a pulse ring),
+`pic_reinforced_hull` (a hexagonal armour plate with rivets), `pic_shield_recharge` (a shield
+with a circling arrow), `pic_second_wind` (a heart with a spark), `pic_mirror_shell` (a shield
+with an arrow bouncing off it).
+
+**Passive cards (green), 5 more:** `pic_heavy_bolts` (one very fat bolt), `pic_magnet` (a
+horseshoe magnet), `pic_killer_instinct` (a sharp four-pointed star), `pic_focus_fire` (a
+crosshair), `pic_salvage` (a thick coin with a wrench).
+
+**Evolutions (gold-pink), 11 more:** each is the grown-up version of an attack card's symbol.
+`pic_railstorm` (Railshot, from Piercing Rounds), `pic_thunder_lance` (from Chain Spark),
+`pic_flak_wall` (from Split Shot), `pic_gem_barrage` (Hunter Swarm, from Seeker),
+`pic_guardian_wing` (from Drone Barrage), and the six heroes' signatures `pic_sig_rook`,
+`pic_sig_sparks`, `pic_sig_frost`, `pic_sig_hollow`, `pic_sig_nyx`, `pic_sig_ember`.
+(Rudy may still change some of the evolutions; I will send the final list with the go-ahead.)
+
+## One check before you send
+
+Put each picture next to `cards_now.png`. Ask: is it ONE symbol, thick with a lit top and a
+dark underside, in one colour family, readable when you squint? If it looks like a small scene
+or a realistic object, it is the old style.
 
 Thank you, Luna!
