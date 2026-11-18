@@ -4251,7 +4251,7 @@ func _refresh_base() -> void:
 		rb.pressed.connect(func(): get_tree().change_scene_to_file("res://research_page.tscn"))
 		box.add_child(rb)
 		UIKit.dot(rb, lleft <= 0)
-	var intro := UIKit.label("You BUILD the base during a fight now: your buildings come up as cards. Every building you own gives half its help from the start; building it in the fight gives the rest and its special. Level them here to make them stronger.", 12, UIKit.SOFT)
+	var intro := UIKit.label("Pick the buildings that stand on your base. They help from the first second of a fight. Level them here to make them stronger.", 12, UIKit.SOFT)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(intro)
 	# the four slots
@@ -4261,7 +4261,7 @@ func _refresh_base() -> void:
 		var id := String(b.slots[i])
 		var open: bool = Base.slot_open(i, t_unlocked) or DevTools.on
 		var col: Color = Base.BUILDINGS[id].col if id != "" else UIKit.CYAN
-		var sq := _pick_square(Base.pic(id) if id != "" else null, ("Stage %d" % Turrets.MOUNT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
+		var sq := _pick_square(Base.pic(id) if id != "" else null, ("Stage %d" % Base.SLOT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
 		_num_badge(sq, col if open else UIKit.SOFT, str(i + 1))
 		var si: int = i
 		sq.pressed.connect(func():

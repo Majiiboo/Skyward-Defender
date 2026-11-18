@@ -5,7 +5,7 @@ extends RefCounted
 # turrets' place. The base never shoots: it is purely DEFENSIVE AND SUPPORTIVE. Each building gives
 # one kind of help (the base's defence, repair, the hero's health or punch, his ability, the drone,
 # warnings, coins), has its own level, and stands on one of the four slots, so which four you field
-# is the decision. Slots open with the campaign like the mounts did (Turrets.MOUNT_OPENS_AFTER).
+# is the decision. Slots open with the campaign (SLOT_OPENS_AFTER).
 # Save "base": {"slots": [id x4], "levels": {id: n}}; a building you own has a level >= 1.
 # Turret art is NOT used (Rudy: scrap it); a building shows an icon until the new base is painted.
 # The first time a save meets the base, what was spent on turrets comes back as coins (migrate).
@@ -63,8 +63,12 @@ static func owned(b: Dictionary, id: String) -> bool:
 static func level(b: Dictionary, id: String) -> int:
 	return clampi(int(b.levels.get(id, 1 if DevTools.on else 0)), 0, MAX_LEVEL)
 
+# Slot i opens once stage SLOT_OPENS_AFTER[i] is cleared (Rudy 2026-11-18: closer together than the old
+# turret mounts at 5 / 15 / 25 / 40; the first is open from the start).
+const SLOT_OPENS_AFTER := [0, 5, 10, 18]
+
 static func slot_open(i: int, stage_unlocked: int) -> bool:
-	return Turrets.mount_open(i, stage_unlocked)
+	return stage_unlocked > int(SLOT_OPENS_AFTER[i]) or DevTools.on
 
 static func can_build(save: Dictionary, id: String) -> bool:
 	return DevTools.on or int(save.get("stage_unlocked", 1)) > int(BUILDINGS[id].from)

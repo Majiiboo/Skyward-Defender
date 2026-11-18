@@ -637,7 +637,7 @@ func _check_ascend() -> void:
 # the next goal on Home, the daily stage twists, hero abilities (2026-11-10)
 func _check_goals() -> void:
 	_expect(Goals.next({"stage_unlocked": 1}).text == "Win your first fight" and Goals.next({"stage_unlocked": 2}).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(1).text == "Clear stage 2: your hero's ability" and Goals.stage_goal(3).text == "Clear stage 3: the AUTO pilot", "stage goals: the ability at 2, AUTO at 3 (%s)" % Goals.stage_goal(1).text)
-	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: The Base") and String(Goals.stage_goal(4).text).contains("base slot 1"), "stage 5 opens the Base and its first slot (%s)" % Goals.stage_goal(4).text)
+	_expect(String(Goals.stage_goal(4).text).begins_with("Clear stage 5: The Base") and String(Goals.stage_goal(4).text).contains("base slot 2"), "stage 5 opens the Base and its second slot (%s)" % Goals.stage_goal(4).text)
 	_expect(String(Goals.stage_goal(9).text).contains(String(StageData.AREAS[1].name)), "stage 10 opens the next planet (%s)" % Goals.stage_goal(9).text)
 	var far := {"coins": 0, "stage_unlocked": 4, "pilot_xp": 0, "store_free": {"chest_u": 9999999999, "chest_e": 9999999999, "pack_daily": 9999999999, "pack_weekly": 9999999999, "pack_monthly": 9999999999}}
 	_expect(String(Goals.next(far).text).begins_with("Clear stage 5"), "nothing to do now: the next stage unlock (%s)" % Goals.next(far).text)
@@ -803,6 +803,7 @@ func _check_base() -> void:
 	_expect(is_equal_approx(float(Base.stats(s).damage), 0.06), "Lv.2 Armory: hero damage +6%")
 	Base.place(b, 0, "armory")
 	_expect(b.slots[0] == "armory" and b.slots[1] == "", "a building stands on one slot at a time")
+	Base.place(b, 3, "armory")   # the last slot opens after stage 18
 	s["stage_unlocked"] = 3
 	s["base"] = Base.write(b)
 	_expect(Base.stats(s).on.is_empty(), "a closed slot gives nothing")
@@ -876,7 +877,7 @@ func _check_links() -> void:
 	_expect(Base.links(s) == ["bulwark", "war_room"], "two pairs fielded: two links (%s)" % str(Base.links(s)))
 	s.base.slots = ["shield_gen", "plating", "armory", "refinery"]
 	_expect(Base.links(s) == ["bulwark"], "a partner off the base: that link is gone")
-	s["stage_unlocked"] = 6
+	s["stage_unlocked"] = 5
 	_expect(Base.links(s).is_empty(), "the partner on a slot that is not open yet does not count")
 
 func _check_season() -> void:

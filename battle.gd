@@ -2911,13 +2911,13 @@ func _open_cards() -> void:
 	dim.size = Vector2(FIELD_W, FIELD_H)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_card_panel.add_child(dim)
-	var evo_pick: bool = _bevo_due > 0 or _evo_due > 0 and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty()
+	var evo_pick: bool = _evo_due > 0 and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty()
 	var title := UIKit.label("EVOLUTION" if evo_pick else "LEVEL %d" % run_level, 20, Color(1.0, 0.82, 0.32) if evo_pick else Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", title_font)
 	title.position = Vector2(0, FIELD_H * 0.5 - 250)
 	title.size = Vector2(FIELD_W, 30)
 	_card_panel.add_child(title)
-	var sub := UIKit.label(("Three building cards earned it  ·  choose one" if _bevo_due > 0 else "Three hero cards earned it  ·  choose one") if evo_pick else "Choose a power card", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
+	var sub := UIKit.label("Three hero cards earned it  ·  choose one" if evo_pick else "Choose a power card", 13, UIKit.MUTED, HORIZONTAL_ALIGNMENT_CENTER)
 	sub.position = Vector2(0, FIELD_H * 0.5 - 222)
 	sub.size = Vector2(FIELD_W, 20)
 	_card_panel.add_child(sub)
@@ -3139,7 +3139,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 				var c: Color = tc if k < lvl else (gold if k == lvl else Color(1, 1, 1, 0.14))
 				pips.draw_style_box(UIKit.box(c, Color(0, 0, 0, 0), 3.0, 0), Rect2(x0 + k * (pw + gp), 1.0, pw, 6.0)))
 		v.add_child(pips)
-	var line: String = String(def.desc) if fusion else (_bld_line(id) if Cards.is_bld(id) else (Cards.over_text(id, _shot_shape) if over else Cards.pick_text(id, lvl, _shot_shape)))
+	var line: String = String(def.desc) if fusion else (Cards.over_text(id, _shot_shape) if over else Cards.pick_text(id, lvl, _shot_shape))
 	var d := UIKit.label(line, 11, gold if over else Color(0.82, 0.89, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	d.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(d)
@@ -3213,7 +3213,7 @@ func _card_info(id: String) -> void:
 	v.add_child(hl)
 	var lines: Array = [String(def.desc) + "."]
 	if fusion:
-		lines.append("A building evolution. Every third building card you take earns one." if Cards.is_bevo(id) else "An evolution. Every third hero card you take in a fight earns one.")
+		lines.append("An evolution. Every third hero card you take in a fight earns one.")
 	else:
 		pass
 	for ln in lines:
@@ -3232,23 +3232,6 @@ func _pick_card(id: String) -> void:
 		_write_save({"cards_seen": cs.cards_seen})
 	if not _replaying:
 		Sfx.play("card")
-	if Cards.is_bld(id):   # a building card: place it, or strengthen the one that stands
-		_bld_pick(Cards.bld_id(id))
-		_card_panel.visible = false
-		picking = false
-		_bld_picks += 1
-		if _bld_picks % Cards.EVO_EVERY == 0 and not _replaying:
-			_bevo_due += 1
-		_owed_pick()
-		return
-	if Cards.is_bevo(id):
-		card_levels[id] = 1
-		_bevo_due = maxi(_bevo_due - 1, 0)
-		_bld_evolve(Cards.bld_id(id))
-		_card_panel.visible = false
-		picking = false
-		_owed_pick()
-		return
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
 		_fuse(id)
@@ -3490,21 +3473,14 @@ func _dbg_cards(ids: String) -> void:
 	_dbg_offer = Array(ids.split(","))
 	_open_cards()
 
-# a pick the player is still owed after the one just taken: a building evolution, a hero evolution,
-# or the second pick after a new building. Opens it; an evolution with nothing left to offer is dropped.
+# a pick the player is still owed after the one just taken: a hero evolution.
+# Opens it; an evolution with nothing left to offer is dropped.
 func _owed_pick() -> void:
 	if _replaying:
 		return
-	if _bevo_due > 0:
-		var any := false
-		for sid in _base_slots:
-			if String(sid) != "" and not card_levels.has("bevo:" + String(sid)):
-				any = true
-		if not any:
-			_bevo_due = 0
 	if _evo_due > 0 and Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty():
 		_evo_due = 0
-	if _bevo_due > 0 or _evo_due > 0 or _bld_bonus:
+	if _evo_due > 0:
 		_open_cards()
 
 func _offer() -> Array:
@@ -3512,21 +3488,14 @@ func _offer() -> Array:
 		var forced := _dbg_offer
 		_dbg_offer = []
 		return forced
-	var fielded: Array = []   # the old base cards are no longer drawn: a building s own cards replaced them (bld: ids below)
+	var fielded: Array = []   # a base card (Cards "building") comes up only while its building stands
+	for sid in _base_slots:
+		if String(sid) != "":
+			fielded.append(String(sid))
 	if _drone_on:   # Drone Barrage needs a drone (Cards "building": "*drone")
 		fielded.append("*drone")
 	if _pulse_open():
 		fielded.append("*pulse")
-	# A BUILDING EVOLUTION PICK: any three building cards earn one, for a building that stands
-	if _bevo_due > 0:
-		var bev: Array = []
-		for sid in _base_slots:
-			if String(sid) != "" and not card_levels.has("bevo:" + String(sid)):
-				bev.append("bevo:" + String(sid))
-		if bev.is_empty():
-			_bevo_due = 0
-		else:
-			return bev.slice(0, 3)
 	# AN EVOLUTION PICK (Rudy 2026-11-18): any three hero cards earn one; the three on offer are
 	# evolutions this hero has unlocked and not taken in this fight
 	if _evo_due > 0:
@@ -3541,28 +3510,6 @@ func _offer() -> Array:
 				evos[j] = tmp
 			return evos.slice(0, 3)
 	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents, _hero_lv)
-	if _bld_bonus:   # the pick that follows a new building: hero cards only
-		_bld_bonus = false
-		return picks
-	# all three by chance; a building card can take any of them. One protection only (Rudy): while a
-	# pod stands free and no building has been on offer for two picks, one is put among them.
-	var cands := _bld_cands()
-	if not cands.is_empty() and not picks.is_empty():
-		var free := _bld_free_pod() >= 0
-		var put := 0
-		for i in picks.size():
-			if not cands.is_empty() and rng.randf() < BLD_CHANCE:
-				var k: int = rng.randi() % cands.size()
-				picks[i] = cands[k]
-				cands.remove_at(k)
-				put += 1
-		if put == 0 and free and _bld_dry >= 2:
-			var news: Array = cands.filter(func(c): return int(card_levels.get(c, 0)) == 0)
-			if not news.is_empty():
-				picks[rng.randi() % picks.size()] = news[rng.randi() % news.size()]
-				put = 1
-		if free:
-			_bld_dry = 0 if put > 0 else _bld_dry + 1
 	return picks
 
 # Chain Spark: lightning jumps from a hit bug to the nearest others.
@@ -6056,19 +6003,12 @@ var _warn_mult := 1.0       # Radar: runner lanes and hazards show this much lon
 var _base_perks: Array = []   # buildings at level 5 on the base: their perks (Base.PERKS)
 var _dome_used := false      # the Shield Generator's emergency shield went up this fight
 
-# THE BASE IS BUILT DURING THE FIGHT (Rudy 2026-11-18). A stage starts with four empty pods. A building
-# the player OWNS (Heroes > Base) comes up as a card among the three; taking it places it on the next
-# free pod at its Base-page level, and its later cards strengthen it (Cards.BLD_MAX picks in all: the
-# last brings the old base card's special). Any three building cards earn a building evolution.
-const BLD_CHANCE := 0.28           # the chance that one of the three cards is a building, each card on its own
-const BLD_OWNED_SHARE := 0.0      # Rudy 2026-11-18: an owned building gives NOTHING until it is built in the fight (0.5 was my softening rule; he did not want it)
-var _bld_owned: Array = []        # the buildings that can come up as cards this fight
-var _bld_menu := {}               # their levels from the Base page
-var _bld_picks := 0               # building cards taken this stage: every third earns a building evolution
-var _bevo_due := 0                # building evolution picks owed
-var _bld_dry := 2                 # picks since a building card was on offer while a pod stood free
-var _links_on: Array = []         # the links (Base.LINKS) already live this fight
-var _bld_bonus := false           # UNUSED since 2026-11-18: Rudy took out the free pick after a new building (nothing sets it now)
+# THE BASE IS A LOADOUT (Rudy 2026-11-18, his last word after trying it as cards): the buildings slotted
+# on the Base page stand from the first second at their full effect, with their level-5 special and
+# their links. NO building cards in the pick: the cards are for the hero. (A few old base cards, e.g.
+# Shield Surge, can still come up, each only when its building stands: see _offer.)
+var _bld_menu := {}               # the fielded buildings' levels from the Base page
+var _links_on: Array = []         # the links (Base.LINKS) live this fight
 
 func _apply_base(sv: Dictionary) -> void:
 	_base_links = []
@@ -6077,64 +6017,35 @@ func _apply_base(sv: Dictionary) -> void:
 	_pods = []
 	_base_perks = []
 	_dome_used = false
-	_bld_owned = []
 	_bld_menu = {}
-	_bld_picks = 0
-	_bevo_due = 0
-	_bld_dry = 2   # the first pick of a stage brings a building when a pod is free
-	_bld_bonus = false
 	for i in Base.SLOTS:
 		_base_slots[i] = ""
 		_base_levels[i] = 0
 		_base_open[i] = false
-	if _mods.has("no_turrets"):   # the Base offline twist (trials): every pod dark, no building cards
+	if _mods.has("no_turrets"):   # the Base offline twist (trials): every pod dark
 		return
 	var b := Base.read(sv)
 	var su := int(sv.get("stage_unlocked", 1))
 	for i in Base.SLOTS:
 		_base_open[i] = Base.slot_open(i, su) or DevTools.on
-	for id in Base.ORDER:
-		if Base.owned(b, String(id)):
-			_bld_owned.append(String(id))
-			_bld_menu[String(id)] = maxi(Base.level(b, String(id)), 1)
-			_tex["bld_" + String(id)] = Base.pic(String(id))   # loaded now: a texture first loaded while drawing shows white
-	# A building you OWN always gives HALF of what it gives at its level, standing or not (the first
-	# sweep with a bare base lost every stage from 20 up by wave 5: the bugs are tuned against a
-	# base that is there from the first second). Building it in the fight brings the other half,
-	# its special and its upgrades.
-	for oid in _bld_owned:
-		_bld_apply(String(oid), BLD_OWNED_SHARE)
-	shield = shield_max   # the fight starts with everything full, as it always did
+		var id := String(b.slots[i])
+		if not _base_open[i] or id == "" or not Base.BUILDINGS.has(id) or _base_slots.has(id):
+			continue
+		var lv := maxi(Base.level(b, id), 1)
+		_bld_menu[id] = lv
+		_base_slots[i] = id
+		_base_levels[i] = lv
+		_tex["bld_" + id] = Base.pic(id)   # loaded now: a texture first loaded while drawing shows white
+		_pods.append({"mount": i, "pos": Backdrop.pod_pos(i, FIELD_W, BASE_Y), "drop": 1.0, "held_by": -1})
+		_bld_apply(id, 1.0)
+		if lv >= Base.PERK_LEVEL:
+			_bld_perk(id)
+	_bld_links()
+	shield = shield_max   # the fight starts with everything full
 	hull = hull_max
 	pilot_hp = pilot_hp_max
 
-func _bld_free_pod() -> int:
-	for i in Base.SLOTS:
-		if _base_open[i] and String(_base_slots[i]) == "":
-			return i
-	return -1
-
-# the building cards that could be offered now: a new building while a pod is free, an upgrade for one that stands
-func _bld_cands() -> Array:
-	var out: Array = []
-	var free := _bld_free_pod() >= 0
-	for id in _bld_owned:
-		var n := int(card_levels.get("bld:" + String(id), 0))
-		if (n == 0 and free) or (n > 0 and n < Cards.BLD_MAX):
-			out.append("bld:" + String(id))
-	return out
-
-# the one line on a building card: what THIS pick does
-func _bld_line(cid: String) -> String:
-	var id := Cards.bld_id(cid)
-	var n := int(card_levels.get(cid, 0))
-	if n == 0:
-		return "Build it: " + Base.text(id, int(_bld_menu.get(id, 1)))
-	if n == Cards.BLD_MAX - 1:
-		return String(Cards.OVERCHARGE.get(String(Cards.BLD_OVER[id]), "Half as much again"))
-	return "Half as much again"
-
-# what a building gives, `mult` times over (1 when it is placed, 0.5 for an upgrade, 1 again when it evolves)
+# what a building gives at its Base-page level (`mult` = 1)
 func _bld_apply(id: String, mult: float) -> void:
 	var a: float = Base.amount(id, int(_bld_menu.get(id, 1))) * mult
 	var g := 0.0
@@ -6198,52 +6109,6 @@ func _bld_links() -> void:
 			"drone_bay": _drone_mult *= 1.2
 			"capacitor": _pulse_cd_mult = 0.75
 			"prospector": _coin_mult *= 1.1
-		if not _replaying:
-			_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 34.0), "LINK: " + String(Base.LINKS[l].name), Color(1.0, 0.82, 0.32), true)
-
-# a building card was taken
-func _bld_pick(id: String) -> void:
-	var key := "bld:" + id
-	var n: int = int(card_levels.get(key, 0)) + 1
-	if n == 1:
-		var pod := _bld_free_pod()
-		if pod < 0:
-			return
-		card_levels[key] = 1
-		_base_slots[pod] = id
-		_base_levels[pod] = int(_bld_menu.get(id, 1))
-		_pods.append({"mount": pod, "pos": Backdrop.pod_pos(pod, FIELD_W, BASE_Y), "drop": 1.0, "held_by": -1})
-		_bld_apply(id, 1.0 - BLD_OWNED_SHARE)   # the half it did not give yet
-		if int(_bld_menu.get(id, 1)) >= Base.PERK_LEVEL:
-			_bld_perk(id)
-		_bld_links()
-		if not _replaying:
-			var at: Vector2 = Backdrop.pod_pos(pod, FIELD_W, BASE_Y)
-			_float_text(at + Vector2(0, -36), String(Base.BUILDINGS[id].name), Base.BUILDINGS[id].col, true)
-			_fx_add("nova", at, 20.0, 0.5, 0.0, 2.2, Base.BUILDINGS[id].col)
-			_burst(at, 26.0, Base.BUILDINGS[id].col, 14)
-			Sfx.play("shield")
-	else:
-		card_levels[key] = n
-		_bld_apply(id, 0.5)
-		if n == Cards.BLD_MAX:
-			_overcharge(String(Cards.BLD_OVER[id]))
-	_pod_ping(id)
-
-# a building evolution: it gives as much again, and its special power is on whatever its level
-func _bld_evolve(id: String) -> void:
-	_bld_apply(id, 1.0)
-	_bld_perk(id)
-	_pod_ping(id)
-	if _replaying:
-		return
-	var pink: Color = Cards.COLOR.fusion
-	var pod := _base_slots.find(id)
-	var at: Vector2 = Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y)
-	_float_text(at + Vector2(0, -40), String(Cards.BEVO[id]), pink, true)
-	_fx_add("nova", at, 30.0, 0.6, 0.0, 2.6, pink)
-	_burst(at, 34.0, pink, 20)
-	shake = maxf(shake, 0.3)
 
 # With the turrets gone the hero does all the shooting. The turrets did nothing on the first
 # stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by

@@ -468,8 +468,6 @@ func _step() -> bool:
 		b._supply_pick(0)
 	if b.picking:
 		_pick()
-	if not b.picking:
-		_dry_snap = b._bld_dry
 	var hp_before: float = b.pilot_hp
 	var hull_before: float = b.hull
 	var shield_before: float = b.shield
@@ -604,8 +602,6 @@ func _bld_score(cid: String) -> float:
 		return v
 	if n == Cards.BLD_MAX - 1:
 		v += 1.5   # its last upgrade brings its special
-	if b._bld_picks % Cards.EVO_EVERY == Cards.EVO_EVERY - 1:
-		v += 1.5   # the third building card brings a building evolution
 	return v
 
 # The fight draws the three cards itself when a pick opens, and that draw uses up two things: the
@@ -618,10 +614,6 @@ var _sim_owed := false    # this pick opened inside the last one (an evolution, 
 var _dry_snap := 2
 
 func _pick() -> void:
-	if _sim_bonus:
-		b._bld_bonus = true
-	elif not _sim_owed:
-		b._bld_dry = _dry_snap
 	_sim_bonus = false
 	_sim_owed = false
 	var offer: Array = b._offer()

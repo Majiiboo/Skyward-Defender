@@ -57,8 +57,8 @@ static func stage_goal(stage_unlocked: int) -> Dictionary:
 		var u: Dictionary = Unlocks.UNLOCKS[uid]
 		if u.has("stage") and not opens.has(int(u.stage)):
 			opens[int(u.stage)] = String(u.name)
-	for i in Turrets.MOUNT_OPENS_AFTER.size():
-		var ms := int(Turrets.MOUNT_OPENS_AFTER[i])
+	for i in Base.SLOT_OPENS_AFTER.size():
+		var ms := int(Base.SLOT_OPENS_AFTER[i])
 		opens[ms] = (String(opens[ms]) + " + base slot %d" % (i + 1)) if opens.has(ms) else "base slot %d" % (i + 1)
 	for a in range(1, StageData.AREAS.size()):   # a new planet after every 10th stage
 		var ps := a * 10
