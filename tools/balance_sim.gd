@@ -19,7 +19,10 @@ extends SceneTree
 #               "human"   = "skilled" with a 0.25 s reaction time and about one dodge in three missed
 #   SIM_TURRETS loadout, e.g. "sentry,,," (default: a new player's loadout)
 #   SIM_LEVEL   turret level (1)
-#   SIM_KIT     "auto" = the gear + turrets a typical player has by that stage (_auto_kit)
+#   SIM_KIT     "auto" = the hero, weapon and base a sensible player has by that stage (_auto_kit, rewritten 2026-11-18)
+#   SIM_WEALTH  what he has earned, as a multiple of first-clear income (1.5; 1.0 = first clears only)
+#   SIM_BASE    the buildings he fields, in building order ("shield_gen,repair_bay,armory,medbay"; "none")
+#   SIM_HERO / SIM_WEAPON / SIM_WLV / SIM_STAR / SIM_CHIPS  another hero, weapon class, weapon level, step, chips
 #   SIM_PROMO   "0-9" or "2,5": promotion trials by rank index instead of stages (dev144); the
 #               kit is the one for the trial's base stage, ranks below it already won
 #   SIM_KIT_PLUS n: the auto kit of a player n stages further on (a stronger player, dev144)
@@ -29,8 +32,6 @@ extends SceneTree
 
 const DT := 1.0 / 30.0
 const MAX_T := 600.0
-# cards a sensible player takes first
-const CARD_PRIORITY := ["heavy_bolts", "rapid_pulse", "piercing_rounds", "burst_fire", "chain_spark", "frost_rounds", "aegis", "shield_recharge", "turret_overclock", "reinforced_hull", "nova_burst", "magnet"]
 
 var stages: Array = []
 var runs := 3
@@ -129,119 +130,287 @@ func _write_save(stage: int) -> void:
 	if promo >= 0:
 		Promotion.start(d, promo)
 		d["promotion"] = promo
+	_coins_in = int(d.get("coins", 0))
+	_parts_in = d.get("parts", {}) if d.get("parts") is Dictionary else {}
 	var f := FileAccess.open("user://skybound_save.json", FileAccess.WRITE)
 	f.store_string(JSON.stringify(d))
 	f.close()
 
-# SIM_KIT=auto: the gear and turrets a typical player has when meeting `stage`. Coins
-# earned so far (ECONOMY.md first-clear table) x1.5 for daily gifts, missions and replays,
-# 60% spent on the six gear pieces, 40% on the turrets on the open mounts, all levelled
-# evenly (cost of Lv.L: gear 60 L(L-1) a piece, turret 75 L(L-1)).
-const COINS_SO_FAR := [[1, 0], [10, 964], [15, 2171], [20, 3964], [25, 5631], [30, 7970], [40, 12816], [50, 18548], [60, 25108]]
+var _coins_in := 0
+var _parts_in := {}
+
+func _read_sim_save() -> Dictionary:
+	var f := FileAccess.open("user://skybound_save.json", FileAccess.READ)
+	if f == null:
+		return {}
+	var d = JSON.parse_string(f.get_as_text())
+	return d if d is Dictionary else {}
+
+# SIM_KIT=auto: what a sensible player owns when meeting `stage` for the first time.
+#
+# REWRITTEN 2026-11-18 (REVIEW-base-collapse.md, option A). What changed against the old kit:
+# - NO TURRETS. The old kit put 40% of its coins into turrets, which left the game on 2026-11-10.
+# - THE REAL PRICES, read from the game: Heroes.level_cost, GearData.upgrade_cost (+ Parts.need and
+#   Materials.weapon_need), Base.build_cost / level_cost / level_parts, Gates.need for an ascend.
+#   The old kit counted a weapon level at twice its price and ignored parts.
+# - THE REAL INCOME. The old coin table (ECONOMY.md, dev109) was from before the wave bounty, the
+#   salvage coins and the longer stages: a stage pays about four times that today. INCOME below
+#   was measured with this script (the "earned:" line of every run), 2 runs a stage, 2026-11-18.
+# - HOW HE SPENDS: an ascend as soon as he is at his level cap and can pay for it, a new building as
+#   soon as a slot is free and he can pay for it; otherwise always
+#   the CHEAPEST next step among a hero level, a level of the weapon in hand, a new building, a
+#   building level. That keeps everything growing together, the way the upgrade buttons tempt a player.
+# - Parts are a wallet too (alloy, cells, cores, 3 merge into 1 of the next; barrels are crafted).
+# - His pilot level is the one his XP so far gives (it used to be the maximum).
+# Still ASSUMED, not derived: WEALTH (x1.5 on first-clear income, for replays, lost fights, Patrol,
+# daily rewards and chests) and the stage at which he has the shards for each ascend (STAR_FROM).
+# Left out: the drone s levels and the talent map (both stay at their start).
+#
+# One first clear of a stage: [stage, coins, alloy, cells, cores, pilot XP]. The sampled stages are
+# mostly boss stages (every fifth), which pay a cell and a sure salvage; OFF_BOSS trims the others.
+const INCOME := [[1, 100, 3, 0.0, 0.0, 130], [3, 150, 3.5, 0.0, 0.0, 209], [5, 350, 8, 2.0, 0.0, 375], [8, 610, 10, 2.0, 0.0, 668],
+	[10, 700, 14, 3.0, 0.0, 796], [12, 940, 19, 3.0, 0.0, 965], [15, 1350, 21, 2.0, 0.0, 1338], [20, 1970, 40, 3.0, 0.5, 1890],
+	[25, 1430, 34, 4.0, 0.0, 1705], [30, 2110, 50, 9.0, 0.5, 2406], [35, 2040, 36, 5.0, 0.0, 2127], [40, 3010, 65, 11.0, 0.5, 2903],
+	[45, 2690, 48, 6.0, 0.0, 2372], [50, 3900, 78, 10.0, 0.5, 3245], [55, 2830, 64, 8.0, 0.0, 2767], [60, 4000, 76, 13.0, 1.0, 3333]]
+const OFF_BOSS_COINS := 0.85    # a stage that is not a fifth stage: no sure salvage
+const OFF_BOSS_PARTS := 0.15    # and almost no cells or cores (measured 0 at stages 8 and 12)
+const WEALTH := 1.5             # SIM_WEALTH overrides (1.0 = first clears only, nothing else)
+# the stage from which he has the shards and essences for his 2nd .. 5th step (as the old kit assumed)
+const STAR_FROM := [10, 20, 35, 50]
+# THE BASE HE FIELDS, in the order he builds it (SIM_BASE="a,b,c,d" overrides, "none" = no base).
+# Everything about the base is in _base_start / _base_options / _base_write, so when buildings
+# become cards taken during the fight only those three need to change.
+const BASE_WANT := ["shield_gen", "repair_bay", "armory", "medbay"]
+
 var kit_auto := false
 var promos: Array = []
+var _wkit := ""
+var r_kit := ""
 
-static func _coins_before(stage: int) -> float:
-	for i in COINS_SO_FAR.size() - 1:
-		var a: Array = COINS_SO_FAR[i]
-		var z: Array = COINS_SO_FAR[i + 1]
-		if stage <= z[0]:
-			return lerpf(float(a[1]), float(z[1]), float(stage - a[0]) / float(z[0] - a[0]))
-	return float(COINS_SO_FAR[-1][1])
+# what one first clear of `stage` pays: {coins, alloy, cell, core, xp}
+static func _income(stage: int) -> Dictionary:
+	var a: Array = INCOME[0]
+	var z: Array = INCOME[-1]
+	for i in INCOME.size() - 1:
+		if stage >= int(INCOME[i][0]) and stage <= int(INCOME[i + 1][0]):
+			a = INCOME[i]
+			z = INCOME[i + 1]
+			break
+	var k := clampf(float(stage - int(a[0])) / maxf(float(int(z[0]) - int(a[0])), 1.0), 0.0, 1.0)
+	var boss := stage % 5 == 0
+	return {"coins": lerpf(a[1], z[1], k) * (1.0 if boss else OFF_BOSS_COINS), "alloy": lerpf(a[2], z[2], k),
+		"cell": lerpf(a[3], z[3], k) * (1.0 if boss else OFF_BOSS_PARTS), "core": lerpf(a[4], z[4], k) * (1.0 if boss else OFF_BOSS_PARTS),
+		"xp": lerpf(a[5], z[5], k)}
 
-# the highest level L with per * L * (L-1) <= budget
-static func _level_for(budget: float, per: float) -> int:
-	var lv := 1
-	while lv < 10 and per * (lv + 1) * lv <= budget:
-		lv += 1
-	return lv
+# everything earned before meeting `stage`, as a wallet: coins, parts, materials, and "xp"
+static func _wealth_before(stage: int) -> Dictionary:
+	var mult := float(OS.get_environment("SIM_WEALTH")) if OS.get_environment("SIM_WEALTH") != "" else WEALTH
+	var w := {"coins": 0.0, "alloy": 0.0, "cell": 0.0, "core": 0.0, "xp": 0.0}
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 7
+	var mats := {}
+	for st in range(1, stage):
+		var inc := _income(st)
+		for k in ["coins", "alloy", "cell", "core"]:
+			w[k] += float(inc[k]) * mult
+		w.xp += float(inc.xp)   # no multiplier: most of it is the first-clear bonus
+		var drop := Materials.stage_drop(st, false, rng)   # barrels, rotors, essences: the game s own rule
+		for k in drop:
+			mats[k] = float(mats.get(k, 0.0)) + float(drop[k]) * mult
+	for k in ["coins", "alloy", "cell", "core"]:
+		w[k] = floorf(w[k])
+	for k in mats:
+		w[k] = floorf(float(mats[k]))
+	return w
+
+# make sure the wallet holds `n` of `k`, merging parts (3 into 1) or crafting (Materials.RECIPES) on the way
+static func _obtain(w: Dictionary, k: String, n: float) -> bool:
+	var guard := 0
+	while float(w.get(k, 0.0)) < n and guard < 200:
+		guard += 1
+		var made := false
+		for src in Parts.MERGE:
+			if String(Parts.MERGE[src]) == k and _obtain(w, String(src), float(Parts.MERGE_COST)):
+				w[src] = float(w[src]) - float(Parts.MERGE_COST)
+				w[k] = float(w.get(k, 0.0)) + 1.0
+				made = true
+				break
+		if not made:
+			for rc in Materials.RECIPES:
+				if not Dictionary(rc.makes).has(k) or float(w.coins) < float(rc.coins):
+					continue
+				var ok := true
+				for nk in rc.needs:
+					if not _obtain(w, String(nk), float(rc.needs[nk])):
+						ok = false
+						break
+				if ok:
+					for nk in rc.needs:
+						w[nk] = float(w[nk]) - float(rc.needs[nk])
+					w.coins = float(w.coins) - float(rc.coins)
+					w[k] = float(w.get(k, 0.0)) + float(rc.makes[k])
+					made = true
+					break
+		if not made:
+			return false
+	return float(w.get(k, 0.0)) >= n
+
+# pay `coins` and `need` out of the wallet if it can (parts merged or crafted as needed); true = paid
+static func _pay(w: Dictionary, coins: float, need: Dictionary) -> bool:
+	var t := w.duplicate()
+	if float(t.coins) < coins:
+		return false
+	t.coins = float(t.coins) - coins
+	var keys: Array = need.keys()
+	keys.sort_custom(func(x, y): return _rank(String(x)) > _rank(String(y)))   # the rarest first, so a merge does not eat what a cheaper line needs
+	for k in keys:
+		if not _obtain(t, String(k), float(need[k])):
+			return false
+		t[k] = float(t[k]) - float(need[k])
+	for k in t:
+		w[k] = t[k]
+	return true
+
+static func _rank(k: String) -> int:
+	return 3 if Materials.is_material(k) else Parts.ORDER.find(k)
+
+# ---- the base of the kit (the only part that knows how buildings are owned and placed)
+func _base_want() -> Array:
+	var e := OS.get_environment("SIM_BASE")
+	if e == "none":
+		return []
+	return Array(e.split(",")) if e != "" else BASE_WANT.duplicate()
+
+func _base_start(stage: int) -> Dictionary:
+	var base := {"slots": ["", "", "", ""], "levels": {}}
+	_base_options(base, stage, true)   # what costs nothing (the Shield Generator) is simply there
+	return base
+
+# the next things he could buy for the base: [{coins, parts, kind "build" / "blevel", id}]; with
+# `free_only`, buildings that cost nothing are built on the spot instead
+func _base_options(base: Dictionary, stage: int, free_only: bool = false) -> Array:
+	var out: Array = []
+	var slot := -1
+	for i in Base.SLOTS:
+		if Base.slot_open(i, stage) and String(base.slots[i]) == "":
+			slot = i
+			break
+	if slot >= 0:
+		for id in _base_want():
+			if not Base.BUILDINGS.has(id) or base.levels.has(id) or stage <= int(Base.BUILDINGS[id].from):
+				continue
+			if Base.build_cost(id) == 0:
+				base.levels[id] = 1
+				base.slots[slot] = id
+				return _base_options(base, stage, free_only)
+			if not free_only:
+				out.append({"coins": float(Base.build_cost(id)), "parts": {}, "kind": "build", "id": id, "slot": slot})
+			break   # one at a time, in his order
+	if not free_only:
+		for id in base.levels:
+			var lv := int(base.levels[id])
+			if lv < Base.MAX_LEVEL and base.slots.has(id):
+				out.append({"coins": float(Base.level_cost(lv)), "parts": Base.level_parts(lv), "kind": "blevel", "id": id})
+	return out
+
+func _base_buy(base: Dictionary, o: Dictionary) -> void:
+	if String(o.kind) == "build":
+		base.levels[o.id] = 1
+		base.slots[int(o.slot)] = o.id
+	else:
+		base.levels[o.id] = int(base.levels[o.id]) + 1
+
+func _base_write(d: Dictionary, base: Dictionary) -> String:
+	d["base"] = {"slots": base.slots, "levels": base.levels}
+	var bits: Array = []
+	for id in base.slots:
+		if String(id) != "":
+			bits.append("%s %d" % [String(id), int(base.levels[id])])
+	return "base " + (" + ".join(bits) if not bits.is_empty() else "none")
 
 func _auto_kit(d: Dictionary, stage: int) -> void:
 	stage += int(OS.get_environment("SIM_KIT_PLUS")) if OS.get_environment("SIM_KIT_PLUS") != "" else 0
-	var spend := _coins_before(stage) * 1.5
-	# heroes (dev172): 60% of the kit goes to the hero: levels (ATK + HP + DEF in one since dev186) and
-	# the one weapon piece; the old armour pieces are gone
-	var hero_budget := spend * 0.6
-	var wlv := _level_for(hero_budget * 0.2, 120.0)
-	# stars by stage (DESIGN-stars.md): 2 from stage 10, 3 from 20, 4 from 35, 5 from 50; the star
-	# caps the hero level and every turret track, and multiplies power (Gates.power_mult)
-	var star := 1 + (1 if stage >= 10 else 0) + (1 if stage >= 20 else 0) + (1 if stage >= 35 else 0) + (1 if stage >= 50 else 0)
-	if OS.get_environment("SIM_STAR") != "":
+	var w := _wealth_before(stage)
+	var plevel := Turrets.pilot_level(int(w.xp))
+	d["pilot_xp"] = int(w.xp)
+	# SIM_HERO / SIM_WEAPON: any hero with any of his four weapon classes (default: Rook, the pistol he comes with)
+	var hid := OS.get_environment("SIM_HERO")
+	if not Heroes.ROSTER.has(hid):
+		hid = "rook"
+	var cls := OS.get_environment("SIM_WEAPON")
+	if not Arsenal.ORDER.has(cls):
+		cls = String(Arsenal.first(hid))
+	var el := Heroes.element_of(hid)
+	# his step: he starts on his grade s step and ascends when he is at the cap, the stage has given
+	# him the shards (STAR_FROM), his pilot level opens the door (Gates.door) and he can pay
+	var star := Heroes.grade(hid)
+	var star_max := star
+	for i in STAR_FROM.size():
+		if stage >= int(STAR_FROM[i]) and plevel >= Gates.door(i + 2):
+			star_max = maxi(star_max, i + 2)
+	if OS.get_environment("SIM_STAR") != "":   # a forced step costs nothing
 		star = int(OS.get_environment("SIM_STAR"))
+		star_max = star
 	var hl := 1
-	var hb := hero_budget * 0.8
-	while hl < Gates.level_cap("hero", star) and hb >= Heroes.level_cost(hl):   # capped by the star
-		hb -= Heroes.level_cost(hl)
-		hl += 1
-	var dl := 1
-	var db := 0.0
-	while dl < Heroes.MAX_DEF_LEVEL and db >= Heroes.def_cost(dl):
-		db -= Heroes.def_cost(dl)
-		dl += 1
-	d["hero"] = {"selected": "rook", "owned": ["rook"], "levels": {"rook": hl}, "def": {"rook": dl}, "tiers": {"rook": star}, "shards": {}}
-	var glv := wlv
-	var lv := {}
-	for s in GearData.SLOTS:
-		lv["ion_" + s.to_lower()] = glv
-	d["gear"] = {"equipped": GearData.DEFAULT.duplicate(), "levels": lv}
-	# SIM_HERO / SIM_WEAPON (2026-11-16, weapons step 6): any hero with any of his four weapon
-	# classes, at the level the kit affords (capped by his step, as in the game)
-	var sim_hero := OS.get_environment("SIM_HERO")
-	var sim_cls := OS.get_environment("SIM_WEAPON")
-	if sim_hero != "" and Heroes.ROSTER.has(sim_hero):
-		d["hero"] = {"selected": sim_hero, "owned": ["rook", sim_hero], "levels": {sim_hero: hl}, "def": {sim_hero: dl}, "tiers": {sim_hero: star}, "shards": {}}
-	if sim_cls != "":
-		var hid := sim_hero if sim_hero != "" else "rook"
-		var wl := mini(wlv, Arsenal.cap(d, hid))
-		if OS.get_environment("SIM_WLV") != "":
-			wl = int(OS.get_environment("SIM_WLV"))
-		d["arsenal"] = {hid: {"equipped": sim_cls, "owned": Arsenal.ORDER.duplicate(), "levels": {sim_cls: wl}}}
-		# SIM_CHIPS (2026-11-16): what sits in the weapon s three slots: unset = its own chips (the default),
-		# "none" = empty, or three ids by comma ("shape3,cap,over"); general chips are owned for the run
-		var sim_chips := OS.get_environment("SIM_CHIPS")
-		if sim_chips != "":
-			var row: Array = ["", "", ""]
-			var own: Array = []
-			if sim_chips != "none":
-				var parts := sim_chips.split(",")
-				for i in mini(parts.size(), 3):
-					row[i] = String(parts[i])
-					if Chips.CHIPS.has(String(parts[i])):
-						own.append(String(parts[i]))
-			d["chips"] = {"owned": own, "fit": {Arsenal.key(hid, sim_cls): row}}
-			if row.has("special"):
-				d["special_test"] = true   # the Specialty chip without earning the mastery
-		_wkit = " %s %s Lv.%d" % [hid, sim_cls, wl]
-	var types := ["sentry", "lance", "storm", "gravity"]
-	var lo: Array = ["", "", "", ""]
-	var n := 0
-	for i in 4:
-		if stage > int(Turrets.MOUNT_OPENS_AFTER[i]):
-			lo[i] = types[i]
-			n += 1
-	# each turret's share split evenly over its three tracks (a track costs 60 x level a step)
-	var tl := mini(_level_for(spend * 0.4 / maxf(1.0, n) / 3.0, 30.0), Gates.level_cap("turret", star)) if n > 0 else 1
-	var ttr := {}
-	var tst := {}
-	for t in lo:
-		if t != "":
-			ttr[t] = {"atk": tl, "rate": tl, "range": tl}
-			tst[t] = star
-	d["turrets"] = {"loadout": lo, "tracks": ttr, "stars": tst}
-	# the base (Base, 2026-11-10, in place of turrets): a typical player fields what the stage has opened, levelled with the campaign
-	var bl := clampi(1 + stage / 7, 1, Base.MAX_LEVEL)
-	var bslots: Array = ["", "", "", ""]
-	var blv := {}
-	var bi := 0
-	for bid in ["shield_gen", "armory", "medbay", "repair_bay"]:
-		if bi < 4 and stage > int(Base.BUILDINGS[bid].from):
-			bslots[bi] = bid
-			blv[bid] = bl
-			bi += 1
-	d["base"] = {"slots": bslots, "levels": blv}
-	r_kit = "hero Lv.%d %d-star DEF %d, weapon Lv.%d, %d turrets Lv.%d" % [hl, star, dl, glv, n, tl] + _wkit
-var _wkit := ""
-var r_kit := ""
+	var wl := 1
+	var base := _base_start(stage)
+	var guard := 0
+	while guard < 2000:
+		guard += 1
+		if hl >= Gates.level_cap("hero", star) and star < star_max:
+			var nd := Gates.need("hero", star + 1, el)
+			if _pay(w, float(nd.coins), {}):   # the shards and essences are what STAR_FROM stands for
+				star += 1
+				continue
+		var opts: Array = _base_options(base, stage)
+		if hl < Gates.level_cap("hero", star):
+			opts.append({"coins": float(Heroes.level_cost(hl)), "parts": {}, "kind": "hero"})
+		if wl < mini(int(Arsenal.CAPS[clampi(star, 1, Arsenal.CAPS.size()) - 1]), GearData.MAX_LEVEL):
+			var need := Parts.need(wl)
+			need.merge(Materials.weapon_need(wl, el))
+			opts.append({"coins": float(GearData.upgrade_cost(wl)), "parts": need, "kind": "weapon"})
+		# a new building goes first when a slot is free (a big step a player takes as soon as he can);
+		# after that, the cheapest next level of anything
+		opts.sort_custom(func(x, y): return (float(x.coins) if String(x.kind) != "build" else -1.0) < (float(y.coins) if String(y.kind) != "build" else -1.0))
+		var bought := false
+		for o in opts:
+			if _pay(w, float(o.coins), o.parts):
+				match String(o.kind):
+					"hero": hl += 1
+					"weapon": wl += 1
+					_: _base_buy(base, o)
+				bought = true
+				break
+		if not bought:
+			break
+	if OS.get_environment("SIM_WLV") != "":
+		wl = int(OS.get_environment("SIM_WLV"))
+	# the save: "tiers" holds the steps climbed (1 = none), Heroes.tier adds his grade
+	d["hero"] = {"selected": hid, "owned": ["rook", hid] if hid != "rook" else ["rook"], "levels": {hid: hl}, "def": {hid: 1},
+		"tiers": {hid: maxi(star - Heroes.grade(hid) + 1, 1)}, "shards": {}}
+	d["arsenal"] = {hid: {"equipped": cls, "owned": Arsenal.ORDER.duplicate(), "levels": {cls: wl}}}
+	d["turrets"] = {"loadout": ["", "", "", ""]}
+	_wkit = ""
+	if OS.get_environment("SIM_HERO") != "" or OS.get_environment("SIM_WEAPON") != "":
+		_wkit = " %s %s" % [hid, cls]
+	# SIM_CHIPS (2026-11-16): what sits in the weapon s three slots: unset = its own chips (the default),
+	# "none" = empty, or three ids by comma ("shape3,cap,over"); general chips are owned for the run
+	var sim_chips := OS.get_environment("SIM_CHIPS")
+	if sim_chips != "":
+		var row: Array = ["", "", ""]
+		var own: Array = []
+		if sim_chips != "none":
+			var parts := sim_chips.split(",")
+			for i in mini(parts.size(), 3):
+				row[i] = String(parts[i])
+				if Chips.CHIPS.has(String(parts[i])):
+					own.append(String(parts[i]))
+		d["chips"] = {"owned": own, "fit": {Arsenal.key(hid, cls): row}}
+		if row.has("special"):
+			d["special_test"] = true   # the Specialty chip without earning the mastery
+	var btxt := _base_write(d, base)
+	# the same opening as the old kit line ("hero Lv.n n-star DEF n, weapon Lv.n, ..."), the base in the turrets place
+	r_kit = "hero Lv.%d %d-star DEF 1, weapon Lv.%d, %s, pilot Lv.%d, %d coins spare" % [hl, star, wl, btxt, plevel, int(w.coins)] + _wkit
 
 func _next() -> void:
 	if b:
@@ -334,33 +503,79 @@ func _step() -> bool:
 		return false
 	return b.time_alive < MAX_T
 
+# THE CARD PICKS OF THE TEST PLAYER, rewritten 2026-11-18 for the cards of dev335 (types, five-level
+# offensive cards, any three hero cards earn an evolution pick). The old wish list put Aegis and the
+# base cards ahead of damage cards it did not know, and fed one card blindly. Now:
+# - an evolution pick: his own signature first, then EVO_ORDER, with a lift for one that builds on
+#   a card he already holds;
+# - a normal pick: every card on offer gets a score = what it is worth (CARD_VALUE: damage cards
+#   high, defence low), plus a lift for damage in the first picks of a stage, plus a NEED lift for
+#   a defensive card when the hero s health, the shield or the hull is low (nothing heals for free
+#   any more), minus a little for each level already held, so he spreads; one more nudge toward a
+#   hero card when it is the third one (it brings the evolution pick).
+const CARD_VALUE := {
+	"heavy_bolts": 9.0, "burst_fire": 9.0, "rapid_pulse": 8.5, "split_shot": 7.5, "hot_rounds": 7.5, "focus_fire": 7.0,
+	"piercing_rounds": 7.0, "chain_spark": 6.5, "killer_instinct": 5.5, "radar_sweep": 5.5, "seeker": 5.5, "frost_rounds": 5.0,
+	"drone_barrage": 4.5, "drone_uplink": 4.0, "magnet": 4.0, "nova_burst": 4.0, "reactor_surge": 3.5, "core_overload": 3.0, "mirror_shell": 3.0,
+	"aegis": 3.5, "shield_recharge": 3.5, "field_medic": 3.0, "reinforced_hull": 3.0, "shield_surge": 3.0, "stim_pack": 3.0, "second_wind": 3.0,
+	"nanobots": 2.5, "plate_up": 2.5, "rich_seam": 1.0, "salvage": 1.0,
+}
+const HERO_CARD_VALUE := 9.0    # his own five-level card
+const EVO_ORDER := ["storm_volley", "railstorm", "thunder_lance", "flak_wall", "gem_barrage", "guardian_wing"]
+const EARLY_PICKS := 4          # "early in a stage": damage first
+
+func _evo_score(id: String) -> float:
+	var v := 10.0 if id.begins_with("sig_") else 8.0 - float(maxi(EVO_ORDER.find(id), 0))
+	var off := String(Cards.FUSIONS[id].parts[0])
+	if int(b.card_levels.get(off, 0)) > 0:   # it builds on a card he holds
+		v += 2.0 + 0.5 * int(b.card_levels.get(off, 0))
+	if id == "guardian_wing" and b.shield < b.shield_max * 0.4:
+		v += 3.0
+	return v
+
+func _card_score(id: String) -> float:
+	if not Cards.CARDS.has(id):
+		return 0.0
+	var lv := int(b.card_levels.get(id, 0))
+	var v := HERO_CARD_VALUE if id == Cards.hero_card(b._hero_id) else float(CARD_VALUE.get(id, 3.0))
+	var hp: float = b.pilot_hp / maxf(b.pilot_hp_max, 1.0)
+	var sh: float = b.shield / maxf(b.shield_max, 1.0)
+	var hu: float = b.hull / maxf(b.hull_max, 1.0)
+	var left := 1.0 - float(b.wave_index) / maxf(float(b.waves.size()), 1.0)   # how much of the stage is still to come
+	var need_hp := clampf((0.8 - hp) / 0.5, 0.0, 1.0)      # 0 above 80% health, 1 at 30% and under
+	var need_sh := clampf((0.6 - sh) / 0.5, 0.0, 1.0)      # 0 above 60% shield, 1 at 10% and under
+	var need_hu := clampf((1.0 - hu) / 0.5, 0.0, 1.0)      # the hull only loses points once the shield is gone
+	match id:
+		"field_medic": v += 10.0 * need_hp * (0.4 + 0.6 * left)    # slow healing: worth most with a long way to go
+		"aegis", "stim_pack": v += 9.0 * need_hp                   # health back now
+		"second_wind": v += 6.0 * need_hp
+		"reinforced_hull": v += 9.0 * maxf(need_sh, need_hu)       # repaired now
+		"shield_surge": v += 9.0 * need_sh
+		"shield_recharge": v += 10.0 * need_sh * (0.4 + 0.6 * left)
+		"nanobots", "plate_up": v += 9.0 * need_hu
+	if Cards.type_of(id) != "def" and v >= 5.0 and r.cards.size() < EARLY_PICKS:
+		v += 2.0   # firepower first: his weakest minutes meet the full stream of bugs
+	v -= 0.6 * lv   # spread
+	if int(Cards.CARDS[id].max) >= 5 and lv == int(Cards.CARDS[id].max) - 1:
+		v += 2.0    # the next pick is its top level
+	if Cards.is_hero_card(id) and b._hero_picks % Cards.EVO_EVERY == Cards.EVO_EVERY - 1:
+		v += 1.5    # the third hero card brings an evolution pick
+	return v
+
 func _pick() -> void:
 	var offer: Array = b._offer()
 	var best: String = offer[0]
-	var bi := 99
+	var top := -1e9
+	var evo := false
 	for id in offer:
 		if Cards.FUSIONS.has(id):
-			best = id   # a fusion always wins
-			break
-		var k := CARD_PRIORITY.find(id)
-		if k >= 0 and k < bi:
-			bi = k
+			evo = true
+	for id in offer:
+		var s := _evo_score(id) if Cards.FUSIONS.has(id) else (-1.0 if evo else _card_score(id))
+		if s > top:
+			top = s
 			best = id
-	# a player building toward an evolution: Evolve first, then deepen the offensive card already
-	# held, then take its partner; only then the old priority list
-	if not Cards.FUSIONS.has(best):
-		var held := ""
-		for id in offer:
-			if Cards.CARDS.has(id) and Cards.type_of(id) == "off" and int(b.card_levels.get(id, 0)) > 0 and Cards.evolves_to(id) != "" and (held == "" or int(b.card_levels.get(id, 0)) > int(b.card_levels.get(held, 0))):
-				held = id
-		if held != "":
-			best = held
-		else:
-			for id in offer:
-				for f in Cards.FUSIONS:
-					if String(Cards.FUSIONS[f].parts[1]) == id and int(b.card_levels.get(id, 0)) == 0 and int(b.card_levels.get(Cards.FUSIONS[f].parts[0], 0)) > 0:
-						best = id
-	else:
+	if Cards.FUSIONS.has(best):
 		_pk_log.append("EVOLVE %s at %ds/w%d" % [best, int(b.time_alive), b.wave_index + 1])
 	if _pick_mode == "dmg" and not Cards.FUSIONS.has(best):
 		var di := 99
@@ -481,6 +696,7 @@ func _finish() -> void:
 	r.hit_diver = b.stat_hit_diver
 	r.pxp = b._xp_gain
 	var why := "WIN" if r.won else ("hp" if b.pilot_hp <= 0.0 else ("hull" if b.hull <= 0.0 else "timeout"))
+	r["why"] = why
 	if why == "timeout":   # what was left on screen (a stuck bug shows up here)
 		for e in b.enemies:
 			print("  left: %s %s at %s hp %.1f/%.1f state %s shield %.1f queue %d" % [e.type, e.get("variant", "-"), str(Vector2(e.pos).round()), e.hp, e.hp_max, e.state, float(e.get("shield_hp", 0.0)), b.wave_queue.size()])
@@ -489,6 +705,17 @@ func _finish() -> void:
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
 	print("    shield min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), b._runners_caught, r.base_hits])
+	r["kit"] = r_kit
+	r["evos"] = 0
+	for c in r.cards:
+		if Cards.FUSIONS.has(c):
+			r.evos += 1
+	# what the stage paid (the save the fight wrote, against what the sim put in it): the income
+	# table INCOME below was measured from these lines
+	var after := _read_sim_save()
+	var pa: Dictionary = after.get("parts", {}) if after.get("parts") is Dictionary else {}
+	print("    earned: coins %d, alloy %d, cell %d, core %d, pilot XP %d" % [int(after.get("coins", 0)) - _coins_in, int(pa.get("alloy", 0)) - int(_parts_in.get("alloy", 0)),
+		int(pa.get("cell", 0)) - int(_parts_in.get("cell", 0)), int(pa.get("core", 0)) - int(_parts_in.get("core", 0)), int(r.pxp)])
 	if not results.has(r.stage):
 		results[r.stage] = []
 	results[r.stage].append(r)
@@ -514,6 +741,12 @@ func _summary() -> void:
 		var avg_xp := px / maxf(pw, 1)
 		total_xp += avg_xp
 		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%  %8.0f  (%5.0f, Lv %d)" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n, avg_xp, total_xp, Turrets.pilot_level(int(total_xp))])
+		var sm := 0.0; var sw := 100.0; var hw := 100.0; var ev := 0.0; var lh := 0; var lb := 0
+		for x in rs:
+			sm += float(x.get("min_shield", 100.0)); sw = minf(sw, float(x.get("min_shield", 100.0))); hw = minf(hw, x.min_hull); ev += float(x.get("evos", 0))
+			lh += 1 if String(x.get("why", "")) == "hp" else 0
+			lb += 1 if String(x.get("why", "")) == "hull" else 0
+		print("       shield min avg %3.0f%% (worst %3.0f%%)  hull worst %3.0f  evolutions avg %.1f  lost: hero %d, base %d  kit: %s" % [sm / n, sw, hw, ev / n, lh, lb, String(rs[0].get("kit", ""))])
 
 # ---- per-wave log (SIM_WAVELOG=1), written for REVIEW-base-collapse.md: what arrived in each wave,
 # how fast the hero dealt with it, where he stood, and what the base and he had left at its end.
