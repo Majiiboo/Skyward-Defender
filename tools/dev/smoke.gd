@@ -1010,6 +1010,16 @@ func _check_base_cards() -> void:
 			if Cards.CARDS[id].get("bcard", false) and String(Cards.CARDS[id].building) == String(bid) and int(Cards.CARDS[id].max) == 1:
 				n_b += 1
 		_expect(n_b == 1, "building %s has exactly one base card" % bid)
+	# BONDS: one per building, a real five-level attack card, offered only with the building and three levels
+	for bid in Base.ORDER:
+		var n_bond := 0
+		for id in Cards.BONDS:
+			if String(Cards.BONDS[id].building) == String(bid):
+				n_bond += 1
+				_expect(Cards.CARDS.has(String(Cards.BONDS[id].card)) and int(Cards.CARDS[String(Cards.BONDS[id].card)].max) >= Cards.BOND_AT and Cards.is_evo(id) and ResourceLoader.exists(String(Cards.def(id).pic)), "bond %s: a real paired card and a picture" % id)
+		_expect(n_bond == 1, "building %s has exactly one bond" % bid)
+	_expect(Cards.bonds_open({"split_shot": 3}, ["medbay"]) == ["mending_volley"] and Cards.bonds_open({"split_shot": 2}, ["medbay"]).is_empty() and Cards.bonds_open({"split_shot": 5}, ["armory"]).is_empty() and Cards.bonds_open({"split_shot": 3, "mending_volley": 1}, ["medbay"]).is_empty(), "a bond needs its building, three levels of its card, and is taken once")
+	_expect(Cards.bond_of("split_shot", {}, ["medbay"]) == "mending_volley" and Cards.bond_of("split_shot", {}, ["armory"]) == "" and Cards.bond_of("heavy_bolts", {}, ["medbay"]) == "", "the hint on a card: only the pair of a building that stands")
 	for dead in ["turret_overclock", "sentry_ricochet", "flak_shrapnel"]:
 		_expect(not Cards.CARDS.has(dead), "the turret card %s is gone" % dead)
 

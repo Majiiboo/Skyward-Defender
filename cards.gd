@@ -140,6 +140,37 @@ const BEVO := {
 const BLD_OVER := {"shield_gen": "shield_surge", "repair_bay": "nanobots", "armory": "hot_rounds", "medbay": "stim_pack", "plating": "plate_up",
 	"hangar": "drone_uplink", "reactor": "reactor_surge", "radar": "radar_sweep", "refinery": "rich_seam"}
 
+# BONDS (Rudy 2026-11-18): a building on the base + its paired attack card at BOND_AT levels = a
+# special evolution on the next evolution pick (never among the normal three). One per building.
+# The hero's element flavours what a bond fires (battle _bond_flavour).
+const BOND_AT := 3
+const BONDS := {
+	"mirror_dome":    {"name": "Mirror Dome",    "building": "shield_gen", "card": "ricochet",        "desc": "Bolts the shield fires back bounce on to 3 more bugs"},
+	"overhaul":       {"name": "Overhaul",       "building": "repair_bay", "card": "overdrive",       "desc": "Each time Overdrive fires, the shield gets 5% back"},
+	"arsenal_volley": {"name": "Arsenal Volley", "building": "armory",     "card": "burst_fire",      "desc": "Every 4th shot fires twice"},
+	"mending_volley": {"name": "Mending Volley", "building": "medbay",     "card": "split_shot",      "desc": "Side shots give a little health back on each hit"},
+	"bastion_rounds": {"name": "Bastion Rounds", "building": "plating",    "card": "piercing_rounds", "desc": "Piercing shots shove every bug they pass back"},
+	"carrier_strike": {"name": "Carrier Strike", "building": "hangar",     "card": "drone_barrage",   "desc": "Every 6 s the Hangar launches 4 missiles"},
+	"lightning_rod":  {"name": "Lightning Rod",  "building": "reactor",    "card": "chain_spark",     "desc": "Every 10th shot arcs from you to the base, hitting what is between"},
+	"hunter_net":     {"name": "Hunter Net",     "building": "radar",      "card": "seeker",          "desc": "A marked bug that dies passes its mark to the nearest bug"},
+	"fallout":        {"name": "Fallout",        "building": "refinery",   "card": "shrapnel",        "desc": "Shards carry the dead bug's burn or chill to the bugs they hit"},
+}
+
+# the bonds that can be offered now: the building stands, the paired card has BOND_AT levels, not taken yet
+static func bonds_open(levels: Dictionary, fielded: Array) -> Array:
+	var out: Array = []
+	for id in BONDS:
+		if not levels.has(id) and fielded.has(String(BONDS[id].building)) and int(levels.get(String(BONDS[id].card), 0)) >= BOND_AT:
+			out.append(id)
+	return out
+
+# the bond this card is working toward with a building that stands ("" when none, or already taken)
+static func bond_of(card: String, levels: Dictionary, fielded: Array) -> String:
+	for id in BONDS:
+		if String(BONDS[id].card) == card and fielded.has(String(BONDS[id].building)) and not levels.has(id):
+			return id
+	return ""
+
 static func is_bld(id: String) -> bool:
 	return id.begins_with("bld:")
 
@@ -147,7 +178,7 @@ static func is_bevo(id: String) -> bool:
 	return id.begins_with("bevo:")
 
 static func is_evo(id: String) -> bool:
-	return FUSIONS.has(id) or is_bevo(id)
+	return FUSIONS.has(id) or BONDS.has(id) or is_bevo(id)
 
 static func bld_id(id: String) -> String:
 	return id.get_slice(":", 1)
@@ -317,6 +348,8 @@ static func def(id: String) -> Dictionary:
 		return {"name": String(b.name), "desc": String(b.kind) + " building", "max": BLD_MAX, "rarity": "uncommon", "pic": "res://base/bld_%s.png" % bld_id(id)}
 	if is_bevo(id):
 		return {"name": String(BEVO[bld_id(id)]), "desc": "Gives twice as much, and its special power is on", "max": 1, "rarity": "fusion", "pic": "res://base/bld_%s.png" % bld_id(id)}
+	if BONDS.has(id):
+		return {"name": String(BONDS[id].name), "desc": String(BONDS[id].desc), "max": 1, "rarity": "fusion", "pic": "res://base/bld_%s.png" % String(BONDS[id].building)}
 	return CARDS[id] if CARDS.has(id) else FUSIONS[id]
 
 # the line the top pick of a card shows

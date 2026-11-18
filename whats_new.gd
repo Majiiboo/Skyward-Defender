@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["Build the base in the fight", "A stage starts with empty pods. Your buildings come up as teal cards: take one and it lands on a pod. Take it again to strengthen it. Placing a new one also gives you a hero card."],
-	["Building evolutions", "Any three building cards earn one: pick a building that stands, it gives as much again and its special power switches on."],
+	["The base is a loadout again", "No more building cards. The buildings you slot on Heroes > Base stand from the first second. Slots open from the start, then after stages 5, 10 and 18."],
+	["Base cards", "Each building you brought has ONE card, taken once, from in-fight level 4. It changes what the building does, and its pod turns gold."],
+	["Bonds", "A building plus its paired attack card. Level that card three times and a BOND is on your next evolution pick. The card shows the building's symbol."],
+	["Five new hero cards", "Hair Trigger, Heavy Caliber, Overdrive, Ricochet and Shrapnel. They open with the hero's level: 6, 9, 14, 20, 25."],
 	["The Cards page", "Heroes > Cards: each hero's basic cards and his evolutions in two rows. Locked ones show the hero level that opens them."],
 	["New power cards", "A colour says the kind (orange attack, blue defence, green passive, teal base). A tap takes the card. Hold a card to read more."],
 	["Evolutions", "Take any three hero cards in a fight and an Evolution pick opens: choose one of the gold cards your hero has unlocked."],
 	["No free healing", "The shield no longer mends after a wave and health does not come back. Earn it: the Field Medic card, a Repair Bay or Med Bay, Shield Recharge."],
-	["Longer stages", "About a third more waves per stage, so a build has time to grow. Stages 1 to 3 are as short as before."],
-	["Every hero moves", "Rook, Sparks, Hollow, Nyx and Ember are rebuilt for the fight like the penguin, each with his own pistol, rifle and launcher."],
 ]
 
 static func due(save: Dictionary) -> bool:

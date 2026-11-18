@@ -1495,7 +1495,20 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			side_b.vel = (dir * Vector2(main_b.vel).length()).rotated(side * 0.2 * float(1 + k / 2))
 			side_b.dmg = float(side_b.dmg) * _split_dmg
 			side_b["lane"] = 20 + k
+			if _bonds.has("mending_volley"):
+				side_b["heal"] = 0.003
+				_bond_flavour(side_b)
 			bullets.append(side_b)
+	# BONDS that ride on a volley
+	if _bonds.has("lightning_rod") and not _echo:
+		_rod_n += 1
+		if _rod_n >= 10:
+			_rod_n = 0
+			_bond_rod()
+	if _bonds.has("arsenal_volley") and not _echo and _volley_n % 4 == 0:
+		_echo = true
+		_fire(origin + Vector2(9.0, 0.0), dir, target_id, pierce)
+		_echo = false
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
 	return current + clampf(angle_difference(current, goal), -max_step, max_step)
@@ -1668,7 +1681,7 @@ func _update_bullets(delta: float) -> void:
 				e.hit_t = HIT_FLINCH_T
 				if b.get("shrap", false):
 					e["by_shrap"] = true
-				if _shove and not _is_boss(e) and not b.get("drone", false) and not b.get("shrap", false):   # Heavy Caliber: the hit shoves it back up
+				if (_shove or (_bonds.has("bastion_rounds") and (bool(b.get("pierce", false)) or bool(b.get("rail", false)) or int(b.get("pierce_left", 0)) > 0))) and not _is_boss(e) and not b.get("drone", false) and not b.get("shrap", false):   # Heavy Caliber / Bastion Rounds: the hit shoves it back up
 					e.pos = Vector2(e.pos) + Vector2(0.0, -10.0)
 				if float(_steps.get("kill_heal", 0.0)) > 0.0 and String(b.get("shape", "")) == "stream" and float(e.hp) <= 0.0:
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.kill_heal), pilot_hp_max)   # Devour (Hollow's rifle)
@@ -2221,6 +2234,16 @@ func _kill(e: Dictionary) -> void:
 			if shield > 0.0 and shield < shield_max:
 				shield = minf(shield + shield_max * 0.02, shield_max)
 				_pod_ping("repair_bay")
+	if _bonds.has("hunter_net") and float(e.get("mark_t", 0.0)) > 0.0:   # the mark jumps to the nearest bug
+		var hn = null
+		var hd := 420.0
+		for o in enemies:
+			if o != e and float(o.hp) > 0.0 and not _is_boss(o) and o.type != "crate" and float(o.get("mark_t", 0.0)) <= 0.0 and Vector2(o.pos).distance_to(e.pos) < hd:
+				hd = Vector2(o.pos).distance_to(e.pos)
+				hn = o
+		if hn != null:
+			hn["mark_t"] = 20.0
+			zaps.append({"a": Vector2(e.pos), "b": Vector2(hn.pos), "life": 0.15, "seed": rng.randf() * 100.0})
 	# Shrapnel (card): the bug bursts into shards that hit its neighbours
 	if _shrap_n > 0 and not _is_boss(e) and e.type != "spore" and (_shrap_chain or not e.get("by_shrap", false)) and _shard_q.size() < 40:
 		var s_dmg: float = float(_weapon().damage) * damage_mult * _shrap_dmg
@@ -2229,12 +2252,23 @@ func _kill(e: Dictionary) -> void:
 			_shard_q.append({"pos": Vector2(e.pos), "vel": Vector2.RIGHT.rotated(s_turn + TAU * si / float(_shrap_n)) * 440.0, "dmg": s_dmg, "r": 9.0, "tid": -2, "col": "cyan",
 				"big": false, "pierce": false, "hits": [e.id], "spark": 0, "pierce_left": 0, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": si,
 				"born": time_alive, "lane": 70 + si, "ttl": 0.3, "weld": 0, "shrap": true})
+		if _bonds.has("fallout"):   # the shards carry what the dead bug was suffering, and the hero's element
+			for fi in _shrap_n:
+				var fs: Dictionary = _shard_q[_shard_q.size() - 1 - fi]
+				if float(e.get("burn_t", 0.0)) > 0.0:
+					fs["burn"] = true
+				if float(e.get("slow_t", 0.0)) > 0.0 or float(e.get("freeze_t", 0.0)) > 0.0:
+					fs["frost"] = true
+				_bond_flavour(fs)
 	# Overdrive (card): kills fill the meter; full, it fires charged shots for a few seconds
 	if _od_need > 0 and _od_t <= 0.0:
 		_od_k += 1
 		if _od_k >= _od_need:
 			_od_k = 0
 			_od_t = _od_len
+			if _bonds.has("overhaul") and shield > 0.0:
+				shield = minf(shield + shield_max * 0.05, shield_max)
+				_pod_ping("repair_bay")
 			_float_text(soldier_pos + Vector2(0, -84), "OVERDRIVE!", Color(1.0, 0.6, 0.3), true)
 			_fx_add("nova", soldier_pos, 80.0, 0.4, 0.0, 2.0, Color(1.0, 0.6, 0.3))
 			Sfx.play("level", 1.4)
@@ -2358,7 +2392,7 @@ func _hurt_base(amount: float) -> void:
 		_pulse_flash = maxf(_pulse_flash, 0.35)
 		return
 	amount *= (1.0 - _base_dr) * _base_hit()   # gear milestones (Chest); bugs hit the base harder (dev272)
-	if _bcards.has("reflective_barrier") and shield > 0.0:
+	if (_bcards.has("reflective_barrier") or _bonds.has("mirror_dome")) and shield > 0.0:
 		_bc_reflect()
 	hit_t = 0.0
 	_took_damage = true
@@ -2930,7 +2964,7 @@ func _open_cards() -> void:
 	dim.size = Vector2(FIELD_W, FIELD_H)
 	dim.mouse_filter = Control.MOUSE_FILTER_STOP
 	_card_panel.add_child(dim)
-	var evo_pick: bool = _evo_due > 0 and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty()
+	var evo_pick: bool = _evo_due > 0 and _evo_any()
 	var title := UIKit.label("EVOLUTION" if evo_pick else "LEVEL %d" % run_level, 20, Color(1.0, 0.82, 0.32) if evo_pick else Color(0.85, 0.75, 1.0), HORIZONTAL_ALIGNMENT_CENTER)
 	title.add_theme_font_override("font", title_font)
 	title.position = Vector2(0, FIELD_H * 0.5 - 250)
@@ -3125,7 +3159,7 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	band.size = Vector2(size.x - 4.0, 24.0 if worded else 10.0)
 	band.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	b.add_child(band)
-	var word: String = "EVOLVE" if fusion else ("MAX" if over else "")
+	var word: String = ("BOND" if Cards.BONDS.has(id) else "EVOLVE") if fusion else ("MAX" if over else "")
 	var bl := UIKit.label(word, 11, ink, HORIZONTAL_ALIGNMENT_CENTER)
 	bl.add_theme_font_override("font", title_font)
 	bl.position = Vector2(0, 3)
@@ -3201,6 +3235,24 @@ func _make_card(id: String, pos: Vector2, size: Vector2) -> Control:
 	b.pressed.connect(func():
 		if not st.held:
 			_pick_card(id))
+	# BOND HINT (Rudy 2026-11-18): this card is the pair of a building that stands on the base: its
+	# symbol in the corner, and three dots that fill as the card is levelled (the bond comes at three)
+	var bond_id := Cards.bond_of(id, card_levels, _fielded())
+	if bond_id != "" and not fusion:
+		var btex: Texture2D = _tex.get("bld_" + String(Cards.BONDS[bond_id].building))
+		var hint := Control.new()
+		hint.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hint.position = Vector2(size.x - 34.0, 6.0)
+		hint.size = Vector2(28.0, 38.0)
+		var have: int = lvl
+		hint.draw.connect(func():
+			hint.draw_style_box(UIKit.box(Color(0.04, 0.06, 0.12, 0.7), Color(1.0, 0.82, 0.32, 0.9), 8.0, 1), Rect2(0.0, 0.0, 28.0, 28.0))
+			if btex != null:
+				hint.draw_texture_rect(btex, Rect2(3.0, 3.0, 22.0, 22.0), false)
+			for k in Cards.BOND_AT:
+				var dc: Color = Color(1.0, 0.82, 0.32) if k < have else (Color(1.0, 1.0, 1.0, 0.95) if k == have else Color(1.0, 1.0, 1.0, 0.25))
+				hint.draw_circle(Vector2(5.0 + k * 9.0, 34.0), 2.6, dc))
+		b.add_child(hint)
 	return b
 
 # everything about one card, under the three (a held card): what it does, where it stands, and
@@ -3251,6 +3303,14 @@ func _pick_card(id: String) -> void:
 		_write_save({"cards_seen": cs.cards_seen})
 	if not _replaying:
 		Sfx.play("card")
+	if Cards.BONDS.has(id):   # a bond: a building and its paired card
+		card_levels[id] = 1
+		_bond(id)
+		_evo_due = maxi(_evo_due - 1, 0)
+		_card_panel.visible = false
+		picking = false
+		_owed_pick()
+		return
 	if Cards.FUSIONS.has(id):
 		card_levels[id] = 1
 		_fuse(id)
@@ -3382,7 +3442,7 @@ func _pick_card(id: String) -> void:
 	# any three hero cards earn an evolution: its pick opens at once, on top of this one
 	if Cards.is_hero_card(id):
 		_hero_picks += 1
-		if _hero_picks % Cards.EVO_EVERY == 0 and not _replaying and not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty():
+		if _hero_picks % Cards.EVO_EVERY == 0 and not _replaying and _evo_any():
 			_evo_due += 1
 			_open_cards()
 
@@ -3470,7 +3530,7 @@ func _dbg_cards(ids: String) -> void:
 func _owed_pick() -> void:
 	if _replaying:
 		return
-	if _evo_due > 0 and Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty():
+	if _evo_due > 0 and not _evo_any():
 		_evo_due = 0
 	if _evo_due > 0:
 		_open_cards()
@@ -3492,7 +3552,8 @@ func _offer() -> Array:
 	# evolutions this hero has unlocked and not taken in this fight
 	if _evo_due > 0:
 		var evos := Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on)
-		if evos.is_empty():
+		var bonds := Cards.bonds_open(card_levels, _fielded())   # a bond that is ready is always among the three
+		if evos.is_empty() and bonds.is_empty():
 			_evo_due = 0
 		else:
 			for i in range(evos.size() - 1, 0, -1):
@@ -3500,7 +3561,10 @@ func _offer() -> Array:
 				var tmp = evos[i]
 				evos[i] = evos[j]
 				evos[j] = tmp
-			return evos.slice(0, 3)
+			if bonds.size() > 2 and not evos.is_empty():   # leave room for one of his own evolutions
+				bonds = bonds.slice(0, 2)
+			bonds.append_array(evos)
+			return bonds.slice(0, 3)
 	var picks := Cards.draw(card_levels, 3, rng, run_level, false, fielded, _hero_id, _talents, _hero_lv)
 	return picks
 
@@ -5959,7 +6023,7 @@ func _run_begin() -> void:
 	_replaying = true
 	for id in cards:
 		for i in int(cards[id]):
-			if Cards.CARDS.has(id) or Cards.FUSIONS.has(id):
+			if Cards.CARDS.has(id) or Cards.FUSIONS.has(id) or Cards.BONDS.has(id):
 				_pick_card(String(id))
 	_replaying = false
 	picking = false
@@ -6242,6 +6306,10 @@ var _bc_gun_t := 0.0
 var _bc_ref_t := 0.0
 
 func _bc_reset() -> void:
+	_bonds = []
+	_bond_t = 0.0
+	_rod_n = 0
+	_echo = false
 	_bcards = []
 	_bc_of = {}
 	_bc_kills = 0
@@ -6288,6 +6356,9 @@ func _bc_reflect() -> void:
 		return
 	_bc_ref_t = time_alive
 	_bc_shot(from, best, float(_weapon().damage) * damage_mult * 2.0, false, true)
+	if _bonds.has("mirror_dome"):   # the bolt bounces on, and takes the hero's element
+		_shard_q[-1]["rico"] = 3
+		_bond_flavour(_shard_q[-1])
 	_pod_ping("shield_gen")
 
 # Spiked Hull (Hull Plating): the bug that hit the base blasts the bugs near it
@@ -6303,8 +6374,13 @@ func _bc_spikes(at: Vector2) -> void:
 	_pod_ping("plating")
 
 func _bc_tick(delta: float) -> void:
-	if _bcards.is_empty() or _preview:
+	if _preview or (_bcards.is_empty() and _bonds.is_empty()):
 		return
+	if _bonds.has("carrier_strike"):
+		_bond_t += delta
+		if _bond_t >= 6.0:
+			_bond_t = 0.0
+			_bond_carrier()
 	if _bcards.has("low_orbit_care") and pilot_hp > 0.0:   # Med Bay: health while he stays close to the base
 		if _near_base():
 			_bc_heal_t += delta
@@ -6334,6 +6410,89 @@ func _bc_tick(delta: float) -> void:
 				_bc_gun_t = 0.0
 				var pod := _base_slots.find("hangar")
 				_bc_shot(Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y), low, float(_weapon().damage) * damage_mult * 0.6 * _drone_mult, true, false)
+
+# ------------------------------------------------------------------ BONDS (Rudy 2026-11-18)
+# A building on the base + its paired attack card at Cards.BOND_AT levels = a special evolution,
+# offered FIRST on the next evolution pick (Cards.BONDS). What a bond fires takes the hero's element.
+var _bonds: Array = []      # bonds taken this stage
+var _bond_t := 0.0          # Carrier Strike: seconds since its last volley
+var _rod_n := 0             # Lightning Rod: volleys since its last arc
+var _echo := false          # Arsenal Volley: the second firing is under way
+
+func _fielded() -> Array:
+	return _base_slots.filter(func(s): return String(s) != "")
+
+func _evo_any() -> bool:
+	return not Cards.bonds_open(card_levels, _fielded()).is_empty() or not Cards.evos_open(_hero_id, _hero_lv, card_levels, _drone_on).is_empty()
+
+func _bond(id: String) -> void:
+	if _bonds.has(id):
+		return
+	_bonds.append(id)
+	var bid := String(Cards.BONDS[id].building)
+	_bc_of[bid] = id   # the pod turns gold for a bond too
+	_pod_ping(bid)
+	if _replaying:
+		return
+	var pink: Color = Cards.COLOR.fusion
+	var pod := _base_slots.find(bid)
+	var at: Vector2 = Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y)
+	_float_text(soldier_pos + Vector2(0, -56), String(Cards.BONDS[id].name), pink, true)
+	_fx_add("nova", at, 30.0, 0.6, 0.0, 2.6, pink)
+	_fx_add("nova", soldier_pos, 60.0, 0.5, 0.0, 2.2, pink)
+	zaps.append({"a": at, "b": soldier_pos, "life": 0.35, "seed": rng.randf() * 100.0})
+	shake = maxf(shake, 0.3)
+	Sfx.play("level", 1.3)
+
+# the hero's element on a shot a bond fires: frost chills, fire burns, sparks arc, Nyx marks, Hollow drains, Rook hits harder
+func _bond_flavour(nb: Dictionary) -> void:
+	match _bolt_set:
+		"frost": nb["frost"] = true
+		"solar": nb["burn"] = true
+		"scavenger": nb["spark"] = maxi(int(nb.get("spark", 0)), 1)
+		"nightmare": nb["marks"] = 0.7
+		"void": nb["heal"] = maxf(float(nb.get("heal", 0.0)), 0.003)
+		_: nb["dmg"] = float(nb.dmg) * 1.2
+
+# Lightning Rod (Reactor + Chain Spark): an arc from the hero to the core; every bug near that line is hit
+func _bond_rod() -> void:
+	var a: Vector2 = soldier_pos
+	var c := Vector2(FIELD_W * 0.5, BASE_Y - 34.0)
+	var dmg: float = float(_weapon().damage) * damage_mult * 1.5
+	for e in enemies:
+		if float(e.hp) <= 0.0 or not _can_hurt(e) or e.type == "crate":
+			continue
+		var p: Vector2 = Vector2(e.pos)
+		var k: float = clampf((p - a).dot(c - a) / maxf((c - a).length_squared(), 1.0), 0.0, 1.0)
+		if p.distance_to(a + (c - a) * k) > 52.0:
+			continue
+		e.hp -= dmg
+		e.hit_t = HIT_FLINCH_T
+		stat_pilot_dmg += dmg
+		match _bolt_set:
+			"frost":
+				e["slow_t"] = maxf(float(e.get("slow_t", 0.0)), 1.5)
+				e["slow"] = maxf(float(e.get("slow", 0.0)), 0.3)
+			"solar":
+				e["burn_t"] = maxf(float(e.get("burn_t", 0.0)), 1.5)
+				e["burn_dps"] = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.02) * float(e.hp_max))
+			"nightmare": e["mark_t"] = maxf(float(e.get("mark_t", 0.0)), 1.5)
+	zaps.append({"a": a, "b": c, "life": 0.2, "seed": rng.randf() * 100.0})
+	_pod_ping("reactor")
+
+# Carrier Strike (Hangar + Drone Barrage): four missiles at the toughest bugs
+func _bond_carrier() -> void:
+	var targets: Array = enemies.filter(func(e): return float(e.hp) > 0.0 and _can_hurt(e) and e.type != "crate")
+	if targets.is_empty():
+		return
+	targets.sort_custom(func(x, y): return float(x.hp) > float(y.hp))
+	var pod := _base_slots.find("hangar")
+	var from: Vector2 = Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y)
+	for k in 4:
+		_bc_shot(from, targets[k % targets.size()], float(_weapon().damage) * damage_mult * 2.5 * _drone_mult, true, true)
+		_bond_flavour(_shard_q[-1])
+		_shard_q[-1]["ttl"] = 2.0
+	_pod_ping("hangar")
 
 # ------------------------------------------------------------------ CORE PULSE (2026-11-10)
 # The base's own button (Rudy: "the base as a whole, one can act like a shield"). Tap the core:

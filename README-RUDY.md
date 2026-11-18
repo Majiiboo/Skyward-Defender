@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev338 (version/code=338 and version/name="1.0-dev338" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev346 (version/code=346 and version/name="1.0-dev346" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,41 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev346: the base is a loadout again, base cards and bonds (8 updates since dev338)
+
+You tried "buildings come up as cards" and did not like it: too many kinds of card. So:
+
+1. **No building cards.** The three cards are for the hero. Three hero cards still earn an evolution.
+2. **The base stands from the first second.** The buildings you slot on Heroes > Base are there at full
+   strength, with their level 5 special and their links. Slots open from the start, then after stages
+   5, 10 and 18 (they were 5, 15, 25, 40).
+3. **Nine base cards, one per building.** Each is taken once and changes what the building DOES. They only
+   come up if you brought the building, never before in-fight level 4, never two in one pick. The pod turns
+   gold when you take its card. Shield Generator: Reflective Barrier. Repair Bay: Field Repairs. Armory:
+   Full Magazine. Med Bay: Low Orbit Care. Hull Plating: Spiked Hull. Hangar: Guard Wing. Reactor: Arc
+   Tether. Radar: Target Lock. Refinery: Coolant Vent.
+4. **Nine bonds.** A building plus its paired attack card. Level the paired card three times and the bond
+   is on your next evolution pick, marked BOND. The paired card shows the building's symbol in its corner
+   with three dots. Shield Generator + Ricochet, Repair Bay + Overdrive, Armory + Burst Fire, Med Bay +
+   Split Shot, Hull Plating + Piercing Rounds, Hangar + Drone Barrage, Reactor + Chain Spark, Radar +
+   Seeker, Refinery + Shrapnel. What a bond fires takes your hero's element.
+5. **Five new hero cards.** Hair Trigger (hero Lv.6), Heavy Caliber (9), Overdrive (14), Ricochet (20),
+   Shrapnel (25).
+6. **Luna's first four emblem card pictures** are in: Burst Fire, Aegis, Rapid Pulse, Storm Volley.
+7. An owned building no longer gives anything unless it is on the base, and there is no free pick.
+8. The test player was brought up to date (it now buys a fair kit).
+
+What to look at on the phone:
+- Does a base card or a bond feel like a reward when it comes up? That is the question for this build.
+- "Close to the base" (Med Bay and Reactor cards) is the lowest part of the screen, a little below where
+  the hero starts. Tell me if that is too low or too easy.
+- The game is EASY right now. My test player wins every stage with the hull untouched. Your "more enemies
+  on screen" change is not built yet: judge the cards, not the difficulty.
+
+Not done: nothing here is balanced, the new cards and bonds borrow building pictures and icons, Coolant Vent
+shows no mist, Guard Wing fires from the Hangar pod (no second drone), a building evolution at level 10 is
+not built, Home does not yet show what a stage throws at you.
 
 ## dev338: you build the base during the fight (3 updates since dev335)
 
