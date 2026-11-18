@@ -23,6 +23,7 @@ func _initialize() -> void:
 	_check_cards()
 	_check_unlocks()
 	_check_heroes()
+	_check_hero_cards()
 	_check_materials()
 	_check_store()
 	_check_turrets()
@@ -304,6 +305,23 @@ func _check_unlocks() -> void:
 	Unlocks.settle(old)
 	_expect(Unlocks.fresh(old).is_empty(), "an old save takes what it has as seen")
 	_expect(UIKit.tab_shown([0, 1, 2, 3], 2, [2, 3]) == 0 and UIKit.tab_shown([0, 1, 2, 3], 1, [2]) == 1, "hidden tab falls back to the first shown")
+
+# the hero s card page (hero_cards.gd, 2026-11-18): his own card leads the basic tier, and a new hero has an evolution to earn
+func _check_hero_cards() -> void:
+	for id in Heroes.ROSTER:
+		var b: Array = HeroCards.basics(String(id))
+		var e: Array = HeroCards.evolutions(String(id))
+		_expect(not b.is_empty() and String(b[0]) == Cards.hero_card(String(id)) and Cards.hero_card(String(id)) != "", "%s: his own card comes first on his card page" % id)
+		var open1 := 0
+		for f in e:
+			open1 += 1 if HeroCards.lock_note(String(f), 1, false) == "" else 0
+		_expect(open1 >= 1 and e.has("sig_" + String(id)), "%s: at least one evolution open at level 1, his own among them" % id)
+		for c in b:
+			_expect(not Cards.CARDS[c].has("talent") and String(Cards.CARDS[c].get("hero", id)) == String(id), "%s: %s belongs on his page" % [id, c])
+		for c in b + e:
+			_expect(HeroCards.pic(String(c)) != null, "card page: %s has a picture" % c)
+	_expect(HeroCards.lock_note("split_shot", 9, true) == "Lv.10" and HeroCards.lock_note("split_shot", 10, true) == "", "a card opens at its hero level")
+	_expect(HeroCards.lock_note("drone_barrage", 30, false) == "Drone" and HeroCards.lock_text("drone_barrage", 30, false) == "Needs a drone", "Drone Barrage needs a drone")
 
 # heroes (dev172): roster, grades, buying, elements, levels, tiers, the old-save conversion
 func _check_heroes() -> void:

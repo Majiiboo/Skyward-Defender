@@ -306,11 +306,16 @@ func _build() -> void:
 		_abl_btn = _side_square("Ability", "ability")
 		_abl_btn.pressed.connect(func(): _ability_sheet())
 		stage.add_child(_abl_btn)
+		# his cards in tiers (HeroCards): the basic ones, then the evolutions, locked ones with their level
+		var crd := _side_square("Cards", "cards")
+		crd.pressed.connect(func(): HeroCards.show(self, _view_id, _read()))
+		stage.add_child(crd)
 		stage.resized.connect(func():
 			tal.position = Vector2(stage.size.x - 56.0, 6.0)
 			sts.position = Vector2(stage.size.x - 56.0, 92.0)
 			_kit_btn.position = Vector2(0.0, SLOT_PX + 30.0)
-			_abl_btn.position = Vector2(stage.size.x - 56.0, 178.0)
+			_abl_btn.position = Vector2(stage.size.x - 56.0, 264.0)
+			crd.position = Vector2(stage.size.x - 56.0, 178.0)   # always there, so it sits above the Ability square (which opens at stage 2)
 			_wing_btn.position = Vector2(0.0, SLOT_PX + 30.0 + 84.0))
 	_paint_suit()
 	# the hero (heroes, dev172): name + element, passive and level, LEVEL UP, stars + EVOLVE
@@ -2096,6 +2101,12 @@ func _side_square(text: String, kind: String) -> Button:
 				b.draw_texture_rect(UIKit.element_icon(Heroes.element_of(_view_id)), Rect2(c - Vector2(15, 18), Vector2(30, 30)), false)
 				for i in 3:   # a pip per upgrade bought
 					b.draw_circle(Vector2(c.x - 9.0 + i * 9.0, c.y + 19.0), 2.6, UIKit.GOLD if i < Heroes.ability_ups(hero, _view_id) else Color(1, 1, 1, 0.18))
+			"cards":   # two cards fanned: orange behind, gold-pink in front
+				for k in 2:
+					b.draw_set_transform(c + Vector2(-5.0 + k * 9.0, 1.0 - k * 1.0), -0.22 + k * 0.36, Vector2.ONE)
+					var cr := Rect2(-9, -13, 18, 26)
+					b.draw_style_box(UIKit.box((Cards.TYPE_COLOR.off if k == 0 else Cards.COLOR.fusion).darkened(0.25), Color(1, 1, 1, 0.85), 4.0, 1), cr)
+				b.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 			"loadout":
 				var n := str(Loadouts.active(_read()) + 1)
 				b.draw_string(UIKit.title_font(), Vector2(0, c.y + 9.0), n, HORIZONTAL_ALIGNMENT_CENTER, 56.0, 26, UIKit.CYAN)
@@ -4578,6 +4589,9 @@ func _on_ability_up() -> void:
 	_ability_sheet(false)
 
 # capture hook (tools/dev/capture.gd CAP_CALL="_dbg_ability")
+func _dbg_cards_page(hero_id: String = "") -> void:   # CAP_CALL="_dbg_cards_page|frost"
+	HeroCards.show(self, hero_id if Heroes.ROSTER.has(hero_id) else _view_id, _read())
+
 func _dbg_ability() -> void:
 	_ability_sheet()
 
