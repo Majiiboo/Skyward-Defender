@@ -1,0 +1,51 @@
+diff --git a/battle.gd b/battle.gd
+index c6e07e6..47ca0a9 100644
+--- a/battle.gd
++++ b/battle.gd
+@@ -1714,7 +1714,7 @@ func _update_bullets(delta: float) -> void:
+ 			score += 10
+ 			continue
+ 		if Backdrop.inside_field(Vector2(FIELD_W / 2, BASE_Y), DOME_RX, DOME_RY, b.pos):
+-			_hurt_base(8.0)
++			dbg_src = "shot:" + String(b.get("kind", "goo")); _hurt_base(8.0)
+ 			_burst(b.pos, 6.0, Color(0.18, 0.9, 1.0), 4)
+ 			continue
+ 		if String(b.get("kind", "")) == "poison" and b.pos.distance_to(soldier_pos) < 18.0:
+@@ -1892,7 +1892,7 @@ func _update_enemies(delta: float) -> void:
+ 								_float_text(e.pos + Vector2(0, -70), "POD GRABBED!", Color(1.0, 0.5, 0.4), true)
+ 						"hold":
+ 							if not held.is_empty():   # it tears at the pod: the shield drains until it is shot off
+-								shield = maxf(shield - shield_max * 0.02 * delta, 0.0)
++								shield = maxf(shield - shield_max * 0.02 * delta, 0.0); dbg_drain += shield_max * 0.02 * delta
+ 							e.pos.x += sin(e.t * 2.0) * 6.0 * delta
+ 							e.hold_t = float(e.get("hold_t", 0.0)) + delta
+ 							# shot off (a quarter of its health since the grab) or it tires after HOLD_MAX s
+@@ -2044,7 +2044,7 @@ func _update_enemies(delta: float) -> void:
+ 			_kill(e)
+ 			continue
+ 		if not _is_boss(e) and Backdrop.inside_field(centre, DOME_RX, DOME_RY, e.pos):
+-			_hurt_base((RUNNER_DMG * (0.5 if _base_perks.has("plating") else 1.0)) if e.has("runner") else float(def.get("base_dmg", 10.0)))
++			dbg_src = ("runner" if e.has("runner") else String(e.type) + ("+" + String(e.get("variant", "")) if String(e.get("variant", "")) != "" else "")); _hurt_base((RUNNER_DMG * (0.5 if _base_perks.has("plating") else 1.0)) if e.has("runner") else float(def.get("base_dmg", 10.0)))
+ 			if _is_diver(e):
+ 				_burst(e.pos, 26.0, Color(1.0, 0.55, 0.3), 16)   # a kamikaze hit: bigger, hotter
+ 				shake = maxf(shake, 0.55)
+@@ -2252,6 +2252,9 @@ func _xp_need() -> float:
+ 
+ # ------------------------------------------------------------------ damage, effects, end
+ 
++var dbg_base := {}   # TEMP (base-collapse review)
++var dbg_src := "?"
++var dbg_drain := 0.0
+ func _hurt_base(amount: float) -> void:
+ 	if _preview:
+ 		return
+@@ -2260,6 +2263,9 @@ func _hurt_base(amount: float) -> void:
+ 		_pulse_flash = maxf(_pulse_flash, 0.35)
+ 		return
+ 	amount *= (1.0 - _base_dr) * _base_hit()   # gear milestones (Chest); bugs hit the base harder (dev272)
++	var _k := "%d|%s" % [wave_index + 1, dbg_src]   # TEMP (base-collapse review): who hit the base, by wave
++	var _row: Array = dbg_base.get(_k, [0, 0.0])
++	dbg_base[_k] = [int(_row[0]) + 1, float(_row[1]) + amount * ((1.0 - _shield_dr) if shield > 0.0 else 1.0)]
+ 	hit_t = 0.0
+ 	_took_damage = true
+ 	shake = maxf(shake, 0.45 if shield <= 0.0 else 0.3)

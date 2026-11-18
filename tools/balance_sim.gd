@@ -45,9 +45,25 @@ var steps := 0
 var r := {}
 var human_move := 0.0
 var human_x := -1.0
+# per-wave log (REVIEW-base-collapse.md): one WV line per wave when SIM_WAVELOG=1
+var _wl := OS.get_environment("SIM_WAVELOG") == "1"
+var _w := {}
+var _w_seen := {}
+var _mode := "idle"
+# what-if switches for the test player (sim only; the game is not changed):
+#   SIM_PICK=dmg   takes the plain damage cards first, never a defensive card while one is offered
+#   SIM_LOW=n      the human bot hovers n px above the base line (the game starts him at 200)
+#   SIM_SHARP=1    the human bot decides every 0.13 s and never misses a decision
+#   SIM_TOUGH=0    the dev272 tougher-bugs dials off (battle TOUGH_ON), to see how much they weigh
+var _pick_mode := OS.get_environment("SIM_PICK")
+var _low := float(OS.get_environment("SIM_LOW")) if OS.get_environment("SIM_LOW") != "" else 0.0
+var _sharp := OS.get_environment("SIM_SHARP") == "1"
+const DMG_FIRST := ["heavy_bolts", "rapid_pulse", "burst_fire", "split_shot", "rook_twin", "piercing_rounds", "chain_spark", "killer_instinct", "seeker", "hot_rounds", "frost_rounds", "shield_recharge", "reinforced_hull"]
 
 func _initialize() -> void:
 	Promotion.TWISTS = false   # no daily stage twists in a sweep: the numbers must not change with the date
+	if OS.get_environment("SIM_TOUGH") == "0":
+		load("res://battle.gd").TOUGH_ON = false
 	if OS.get_environment("SIM_WAVES") != "":   # what-if dials for the card rework
 		StageData.WAVE_MULT = float(OS.get_environment("SIM_WAVES"))
 	if OS.get_environment("SIM_STEEP") != "":
@@ -283,7 +299,7 @@ func _step() -> bool:
 	elif pilot == "human":
 		# a player in MANUAL (2026-11-10): finger down, he flies under the bug he wants and fires straight
 		# up, and slides away from shots; decides every 0.25 s and misses about one decision in three
-		if steps % 8 == 0 and randf() > 0.3:
+		if (steps % 4 == 0) if _sharp else (steps % 8 == 0 and randf() > 0.3):
 			_manual_decide()
 		# his ability: on a crowd or a boss, as soon as it is ready
 		if b._ult_t <= 0.0 and b._ability_open() and b.enemies.size() >= 5:
@@ -293,7 +309,11 @@ func _step() -> bool:
 		b.dragging = true
 		if human_x >= 0.0:
 			b._drag_by(Vector2(clampf(human_x - b.soldier_pos.x, -SPEED * DT, SPEED * DT), 0))
+		if _low > 0.0:
+			b._drag_by(Vector2(0, clampf(b.BASE_Y - _low - b.soldier_pos.y, -SPEED * DT, SPEED * DT)))
 	b._process(DT)
+	if _wl:
+		_wave_log()
 	if b.run_level < _pk_lvl or b.time_alive < 1.0:   # a new run: start the pick log over
 		_pk_lvl = 1
 		_pk_log = []
@@ -342,6 +362,13 @@ func _pick() -> void:
 						best = id
 	else:
 		_pk_log.append("EVOLVE %s at %ds/w%d" % [best, int(b.time_alive), b.wave_index + 1])
+	if _pick_mode == "dmg" and not Cards.FUSIONS.has(best):
+		var di := 99
+		for id in offer:
+			var dk := DMG_FIRST.find(id)
+			if dk >= 0 and dk < di:
+				di = dk
+				best = id
 	r.cards.append(best)
 	b._pick_card(best)
 
@@ -408,7 +435,9 @@ func _manual_decide() -> void:
 	var p: Vector2 = b.soldier_pos
 	var here := _threat_dist(p, p.x)
 	human_x = -1.0
+	_mode = "idle"
 	if here < 24.0:
+		_mode = "dodge"
 		var best_d := here
 		for i in range(-10, 11):
 			var tx := clampf(p.x + i * 18.0, 30.0, b.FIELD_W - 30.0)
@@ -416,6 +445,7 @@ func _manual_decide() -> void:
 			if d > best_d:
 				best_d = d
 				human_x = tx
+				_mode = "hunt"
 		return
 	# the bug to line up on: the lowest one, the near ones first
 	var best_s := -1e9
@@ -429,8 +459,13 @@ func _manual_decide() -> void:
 			if _threat_dist(p, tx) >= 24.0:
 				best_s = s
 				human_x = tx
+				_mode = "hunt"
 
 func _finish() -> void:
+	if _wl:
+		_wave_flush()
+		print("RUN stage %d run %d %s cards %s" % [cur[0], cur[1], "WIN" if b.stage_cleared else ("hp" if b.pilot_hp <= 0.0 else "hull"), ",".join(r.cards)])
+		_w = {}
 	r.won = b.stage_cleared
 	r.t = b.time_alive
 	r.wave = b.wave_index + (0 if b.stage_cleared else 1)
@@ -479,3 +514,75 @@ func _summary() -> void:
 		var avg_xp := px / maxf(pw, 1)
 		total_xp += avg_xp
 		print("%5d  %d/%d  %7.0fs  %4.1f/%-3d  %11.1f  %8.0f  %14.0f%%  %8.0f  (%5.0f, Lv %d)" % [st, w, rs.size(), t / n, wv / n, rs[0].waves, hl / n, hm / n, 100.0 * ps / n, avg_xp, total_xp, Turrets.pilot_level(int(total_xp))])
+
+# ---- per-wave log (SIM_WAVELOG=1), written for REVIEW-base-collapse.md: what arrived in each wave,
+# how fast the hero dealt with it, where he stood, and what the base and he had left at its end.
+# The "base:" part needs the dbg_base counter in battle.gd (not in the game by default): without
+# it that part is simply empty.
+func _wave_reset() -> void:
+	_w = {"w": b.wave_index, "t0": b.time_alive, "k0": b.kills, "d0": b.stat_pilot_dmg, "n": 0, "sx": 0.0, "sxx": 0.0,
+		"lost": 0, "pot": 0.0, "dodge": 0, "hunt": 0, "idle": 0, "en": 0, "off": 0.0, "offn": 0, "hp_in": 0.0, "bugs": 0, "run": 0, "low": 0,
+		"dr0": float(b.get("dbg_drain")) if b.get("dbg_drain") != null else 0.0, "rc0": b._runners_caught, "hb0": b.stat_hit_bullet, "hd0": b.stat_hit_diver}
+
+func _wave_log() -> void:
+	if _w.is_empty():
+		_w_seen = {}
+		_wave_reset()
+	if b.wave_index != int(_w.w) and not (b.game_over or b.stage_cleared):
+		_wave_flush()
+		_wave_reset()
+	var p: Vector2 = b.soldier_pos
+	for g in b.gems:   # XP gems about to blink out uncollected
+		if not g.get("coin", false) and float(g.life) <= DT * 1.01 and b._vacuum_t <= 0.0:
+			_w.lost += 1
+			pass
+	var wp: Dictionary = b._weapon()
+	_w.pot += float(wp.damage) * b.damage_mult * (1.0 + (2.0 / float(wp.charge) if int(wp.get("charge", 0)) > 0 else 0.0)) / (float(wp.interval) / b.fire_rate_mult) * DT
+	_w.n += 1
+	_w.sx += p.x
+	_w.sxx += p.x * p.x
+	_w[_mode] += 1
+	_w.en += b.enemies.size()
+	var low_y := -1.0
+	var low_x := 0.0
+	var near := false
+	for e in b.enemies:
+		if not _w_seen.has(e.id):
+			_w_seen[e.id] = true
+			_w.hp_in += float(e.hp_max)
+			_w.bugs += 1
+			if e.has("runner"):
+				_w.run += 1
+		if e.pos.y > b.BASE_Y - 260.0 and String(e.type) != "crate":
+			near = true
+		if e.pos.y > low_y and e.pos.y > 100.0 and e.pos.y < p.y - 20.0 and String(e.type) != "crate":
+			low_y = e.pos.y
+			low_x = e.pos.x
+	if near:
+		_w.low += 1
+	if low_y >= 0.0:
+		_w.off += absf(low_x - p.x)
+		_w.offn += 1
+
+func _wave_flush() -> void:
+	if _w.is_empty() or int(_w.n) == 0:
+		return
+	var n := float(_w.n)
+	var dur: float = maxf(b.time_alive - float(_w.t0), 0.01)
+	var mx: float = float(_w.sx) / n
+	var base := ""
+	var dbg: Variant = b.get("dbg_base")
+	if dbg != null:
+		for k in dbg:
+			if String(k).begins_with("%d|" % (int(_w.w) + 1)):
+				base += " %s=%dx/%.0f" % [String(k).get_slice("|", 1), int(dbg[k][0]), float(dbg[k][1])]
+		var dr: float = float(b.get("dbg_drain")) - float(_w.dr0)
+		if dr > 0.05:
+			base += " wrecker_drain=%.0f" % dr
+	print("WV st %d run %d w %d/%d kind %s dur %.0f kills %d dps %.1f hp_in %.0f bugs %d runners %d caught %d meanx %.0f sdx %.0f dodge %.0f hunt %.0f idle %.0f en %.1f off %.0f near %.0f shield %.0f hull %.0f hp %.0f herohits %d+%d lvl %d xplost %d potdps %.1f | base:%s" % [
+		cur[0], cur[1], int(_w.w) + 1, b.waves.size(), (String(b._wave_kind_for(int(_w.w))) if String(b._wave_kind_for(int(_w.w))) != "" else "-"), dur,
+		b.kills - int(_w.k0), (b.stat_pilot_dmg - float(_w.d0)) / dur, float(_w.hp_in), int(_w.bugs), int(_w.run), b._runners_caught - int(_w.rc0),
+		mx, sqrt(maxf(float(_w.sxx) / n - mx * mx, 0.0)), 100.0 * _w.dodge / n, 100.0 * _w.hunt / n, 100.0 * _w.idle / n,
+		float(_w.en) / n, float(_w.off) / maxf(float(_w.offn), 1.0), 100.0 * _w.low / n,
+		100.0 * b.shield / maxf(b.shield_max, 1.0), 100.0 * b.hull / maxf(b.hull_max, 1.0), 100.0 * b.pilot_hp / maxf(b.pilot_hp_max, 1.0),
+		b.stat_hit_bullet - int(_w.hb0), b.stat_hit_diver - int(_w.hd0), b.run_level, int(_w.lost), float(_w.pot) / dur, base])
