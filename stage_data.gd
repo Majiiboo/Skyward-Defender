@@ -235,14 +235,16 @@ static func wave_count(stage: int) -> int:
 	return maxi(1, roundi(_wave_count(stage) * WAVE_MULT))
 
 static func _wave_count(stage: int) -> int:
-	# the first planet is the tutorial (5 then 8 waves); later planets 10 waves in zone A,
-	# 12 in zone B, so a stage stays a few minutes long
-	if stage <= 5:
+	# LONGER STAGES (Rudy 2026-11-17, for the card rework: about a third more waves, so a five-level
+	# card has time to evolve). Stages 1-3 stay the short tutorial; then 7, 11 on the rest of planet 1;
+	# later planets 13 waves in zone A and 16 in zone B (were 5 / 8 / 10 / 12).
+	if stage <= 3:
 		return 5
+	if stage <= 5:
+		return 7
 	if stage <= 10:
-		return 8
-	return 10 if area_stage(stage) <= 5 else 12
-
+		return 11
+	return 13 if area_stage(stage) <= 5 else 16
 # A wave = list of [enemy_id, count]. Enemies arrive one at a time over the wave.
 static func waves(stage: int) -> Array:
 	var out: Array = []
