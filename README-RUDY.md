@@ -1,7 +1,7 @@
 # Skybound Defender — source package for Rudy
 
 This is the full Godot project for the game you have been playtesting.
-Build 1.0-dev346 (version/code=346 and version/name="1.0-dev346" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
+Build 1.0-dev369 (version/code=369 and version/name="1.0-dev369" in export_presets.cfg). The phone installs over an existing app only if the version code is HIGHER than the installed one and the APK is signed with the same key. Each push raises the build by the number of updates it carries (dev167 + 4 updates = dev171).
 Package name: com.skybound.defender. Main scene: hub.tscn (the Home screen).
 
 ## What you need to open it
@@ -2188,6 +2188,55 @@ Other useful files:
 - menu_style.gd / menu_anim.gd — shared button look and press animation.
 - export_presets.cfg — the Android export settings. Do not change the
   version code to a lower number; the next build must be 54 or higher.
+
+## dev369: bigger waves in formation, evolutions you can see, bounties (23 updates since dev346)
+
+Nothing in this build has been on a phone. The numbers are from the test player, not from you.
+
+WHAT TO LOOK AT FIRST
+- THE FIGHT IS BUSIER. From stage 6 a wave brings about half as many bugs again, each a little
+  weaker, paying the same in total. They arrive in rows, wedges and columns (two groups at once
+  from stage 11). Past stage 30 the crowd keeps growing. This is your "more enemies on screen" dial.
+- EVERY EVOLUTION DOES SOMETHING YOU CAN SEE. Railshot holds a beam, Flak Wall hangs a wall above
+  the hero, Storm Volley sweeps a fan, Guardian Wing brings two wingmen, Thunder Lance plants
+  lightning rods, Hunter Swarm shots latch on and jump, and a hero's own signature puts a ring of
+  his element round him. Three new ones: Afterburner (from Overdrive), Prism Shot (from Ricochet),
+  Cluster Storm (from Shrapnel).
+- LESS TEXT IN THE FIGHT. Twenty shout texts are gone (the score pop on every kill, OVERDRIVE!,
+  LEVEL n, CAUGHT!, ability and pulse shouts, EVOLVED!). Warnings and damage numbers stay.
+- STAGE BOUNTIES. Campaign: every cleared stage from 6 up has a small medal. Win the stage again
+  under one rule (no ability, 40% less health, no refreshes, a time limit, no Core Pulse, three
+  base slots) for a one-time reward. Lose, and your power comes back.
+- THE BASE PAGE. The real base is on top; tap a pod to pick its slot. Each building card shows
+  what is live and one next milestone, with Details for the rest. A building evolves at level 10.
+  The building in slot 1 shapes the Core Pulse.
+- HOME SHOWS THE STAGE. Five small portraits under the stage name; tap for what the stage throws
+  at you and which buildings answer it.
+- CARD PICTURES. Luna's 57 emblems are in: every card, base card, bond and evolution.
+- AUTO. It had a hidden bonus that made it fire faster than you by hand at high hero levels. That
+  is gone: late on, AUTO now does worse than playing by hand but still mostly wins.
+- WEEKLY EVENT. Two new weeks hand everyone the same kit (Borrowed Wings: Frost; Glass Arsenal:
+  Ember). Your own hero and base are untouched. Event tokens were never being saved: fixed.
+- MENUS. One gold button on Research; a price you cannot pay reads red (Season, Legendary chest,
+  chips); a stage offer never opens right after another sheet on Home; a hint steps aside when a
+  sheet opens.
+
+TEST PLAYER, BY HAND, FAIR KIT (lowest shield, averaged)
+- Stage 3: untouched. 8: 90%. 12: 57%. 20: about 30-45%. 35: 35% (won 2 of 3). 45: 81%. 60: 57%.
+- A hero eight stages under-levelled loses stage 20 by hand and (almost always) on AUTO.
+
+NOT TUNED, YOUR FEEL NEEDED
+- The new evolutions: all of them together are far too strong. Prism Shot and Cluster Storm were
+  already cut once.
+- The two loadout weeks: the autopilot won them untouched even with bugs 70% tougher.
+- Bounty time limits and reward sizes are first guesses.
+- AUTO at stage 60 sits near the edge (won 6 of 8).
+- Stage 45 reads soft and stage 35 hard in the tests; that comes from the test player's kit.
+
+FOR LUNA (not sent): "Luna card pictures 5" on the Desktop asks for three emblems: Cluster Storm,
+Afterburner, Prism Shot. Until then those three cards show the picture of the card they grow from.
+
+REVIEWS IN THE FOLDER: REVIEW-difficulty-dev361.md, REVIEW-auto-late.md.
 
 ## dev346: the base is a loadout again, base cards and bonds (8 updates since dev338)
 

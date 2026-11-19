@@ -6,7 +6,7 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["Evolutions change the screen", "A held beam, a wall of flak, a sweeping fan, two wingmen, lightning rods, hunters that latch on. A banner names each one when you take it."],
+	["Evolutions change the screen", "A held beam, a wall of flak, a sweeping fan, two wingmen, lightning rods, hunters that latch on."],
 	["Hero signatures", "A hero's own evolution now puts a ring of his element round him: ice slows, fire burns, electric zaps, dark marks."],
 	["New evolutions", "Afterburner (from Overdrive), Prism Shot (from Ricochet) and Cluster Storm (from Shrapnel)."],
 	["More bugs, in formation", "From stage 6 the waves are bigger and arrive in rows, wedges and columns. Each bug is a little weaker, and pays the same in total."],
