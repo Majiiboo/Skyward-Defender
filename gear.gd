@@ -4446,6 +4446,7 @@ func _base_details(id: String) -> void:
 	var layer := Control.new()
 	_bd_layer = layer
 	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	layer.z_index = 30   # above the first-time hint card (Hints, z 20), so Close is never covered
 	add_child(layer)
 	var dim := Button.new()
 	dim.set_anchors_preset(Control.PRESET_FULL_RECT)

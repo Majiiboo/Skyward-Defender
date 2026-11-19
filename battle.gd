@@ -5445,7 +5445,7 @@ func _update_runners(delta: float) -> void:
 		if not _seen.has("runner"):   # the first one ever: say what the lane means
 			_seen.append("runner")
 			_write_save({"seen_enemies": _seen})
-			_float_text(Vector2(FIELD_W * 0.5, FIELD_H * 0.3), "RUNNER! Catch it in its lane", Color(1.0, 0.85, 0.4), true)
+			_float_text(Vector2(FIELD_W * 0.5, 128.0), "RUNNER! Catch it in its lane", Color(1.0, 0.85, 0.4), true)
 	var keep: Array = []
 	for l in _lanes:
 		l.t = float(l.t) - delta
