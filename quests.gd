@@ -279,6 +279,9 @@ func _clean_row(text: String, progress: float, goal: float, reward: Dictionary, 
 	if icon != null and not claimed:
 		b.icon = icon
 		b.add_theme_constant_override("icon_max_width", 20)
+		if done and reward.has("coins"):   # a gold coin on the gold Claim button vanished: darken it there
+			for st in ["icon_normal_color", "icon_hover_color", "icon_pressed_color", "icon_focus_color"]:
+				b.add_theme_color_override(st, UIKit.COIN_ON_GOLD)
 	b.custom_minimum_size = Vector2(86, 44)
 	b.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(b)
@@ -523,7 +526,10 @@ func _collection() -> void:
 			holder.add_child(q)
 		cv.add_child(holder)
 		var nl := UIKit.label(String(e.name) if e.have else "???", 9, UIKit.TEXT if e.have else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
-		nl.clip_text = true
+		# a long name ("Shield Generator") was cut at both ends: it takes a second line
+		nl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nl.max_lines_visible = 2
+		nl.add_theme_constant_override("line_spacing", -2)
 		cv.add_child(nl)
 		cell.add_child(cv)
 		grid.add_child(cell)

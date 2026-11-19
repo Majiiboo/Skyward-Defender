@@ -128,8 +128,8 @@ static func _tile(id: String, note: String) -> Button:
 	b.add_child(grad)
 	var v := VBoxContainer.new()
 	v.set_anchors_preset(Control.PRESET_FULL_RECT)
-	v.offset_left = 3
-	v.offset_right = -3
+	v.offset_left = 6   # names touched the tile edges at 3
+	v.offset_right = -6
 	v.offset_top = 7
 	v.offset_bottom = -4
 	v.add_theme_constant_override("separation", 2)

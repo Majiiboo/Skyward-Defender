@@ -134,7 +134,7 @@ func _project(id: String, r: Dictionary) -> Button:
 	var can: bool = why == ""
 	var b := Button.new()
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	b.custom_minimum_size = Vector2(0, 150)
+	b.custom_minimum_size = Vector2(0, 166)   # room for a two-line "Next:" (the button sat on the card edge at 150)
 	var edge := Color(1, 1, 1, 0.05)
 	if running:
 		edge = UIKit.CYAN

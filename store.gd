@@ -295,6 +295,9 @@ func _build() -> void:
 	if get_tree().root.has_meta("shop_tab"):   # ... and for a Shop section (captures use it)
 		_shop_tab = int(get_tree().root.get_meta("shop_tab"))
 		get_tree().root.remove_meta("shop_tab")
+	if get_tree().root.has_meta("supply_tab"):   # ... and for a Supplies section (captures use it)
+		_supply_tab = int(get_tree().root.get_meta("supply_tab"))
+		get_tree().root.remove_meta("supply_tab")
 	tab = clampi(tab, 0, TAB_NAMES.size() - 1)
 	_tabs_row = UIKit.tabs(TAB_NAMES, func(i): tab = i; _fill(), tab, [], [],
 		[UIKit.ic("ic_chest_e"), UIKit.ic("ic_gift"), UIKit.ic("ic_token", "ic_exchange")])
@@ -1168,7 +1171,7 @@ func _item_square(tex: Texture2D, name: String, corner: String, state: Control, 
 	top.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	var nm := UIKit.label(name, 13, UIKit.SOFT)
 	nm.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	nm.clip_text = true
+	UIKit.fit(nm)   # "Uncommon Key" beside "x1" was cut to "Uncommon Ke" in a three-column tile
 	top.add_child(nm)
 	if corner != "":
 		top.add_child(UIKit.title(corner, 15, UIKit.CYAN))

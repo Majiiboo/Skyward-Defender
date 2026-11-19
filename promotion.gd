@@ -170,7 +170,8 @@ static func etrial_why_not(save: Dictionary, el: String) -> String:
 	if etrial_steps(save, el) >= ETRIAL_STEPS:
 		return "Ladder complete"
 	if etrial_owned_hero(save, el) == "":
-		return "Needs a %s hero" % Heroes.element_name(el)
+		var en: String = String(Heroes.element_name(el))   # "an Electric hero", "an Ice hero"
+		return "Needs %s %s hero" % ["an" if en.left(1).to_lower() in ["a", "e", "i", "o", "u"] else "a", en]
 	return ""
 
 static func etrial_reward(step: int, first: bool, el: String) -> Dictionary:
