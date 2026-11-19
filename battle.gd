@@ -800,12 +800,17 @@ func _start_stage() -> void:
 	_start_wave()
 	_maybe_brief()
 
-# a crowd dial at this stage: nothing through stage 5, all of it from stage 15; the cap never shrinks
+# a crowd dial at this stage: nothing through stage 5, all of it from stage 15, and past stage 30 it keeps
+# growing (CROWD_LATE: twice the dial by stage 60), except the health cut, which stops at the dial
+static var CROWD_LATE := 30.0     # stages past 30 for the dial to double (a dial for the simulator: SIM_LATE)
 func _crowd(v: float) -> float:
 	if horde or _is_trial() or _preview:
 		return 1.0
-	# and it builds over the first waves of a stage (half in wave 1, all of it from wave 4): no cards yet then
-	return lerpf(1.0, v, (clampf((stage - 5) / 10.0, 0.0, 1.0) + maxf(stage - 30, 0.0) / 60.0) * minf(1.0, 0.5 + 0.17 * wave_index))   # past stage 30 it keeps growing (half as much again by stage 60)
+	var k: float = clampf((stage - 5) / 10.0, 0.0, 1.0) + maxf(stage - 30, 0.0) / CROWD_LATE
+	if v < 1.0:   # fewer hit points: never below the dial itself
+		k = minf(k, 1.0)
+	# it builds over the first waves of a stage (half in wave 1, all of it from wave 4): no cards yet then
+	return lerpf(1.0, v, k * minf(1.0, 0.5 + 0.17 * wave_index))
 
 func _start_wave() -> void:
 	_bc_lock = 3 if _bcards.has("target_lock") else 0
@@ -850,6 +855,7 @@ func _start_wave() -> void:
 		else:
 			wave_queue.append(bid)
 	wave_spawn_t = 0.6
+	_vanguard = roundi(wave_queue.size() * VANGUARD * clampf((stage - 30) / 20.0, 0.0, 1.0)) if not (horde or _is_trial() or _preview) else 0
 	if not _preview:
 		_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 	if not wk.is_empty():
@@ -5059,6 +5065,10 @@ const VARIANTS := {
 }
 const AURA_R := 120.0
 var _variants_seen := {}   # variant -> true once its card showed this run
+# THE VANGUARD (2026-11-18, late stages were soft): from stage 31 the first bugs of every wave come armoured or
+# shielded, in front of the fast ones, so the front line has to be broken first. All of it by stage 50.
+static var VANGUARD := 0.3        # the share of a wave that leads it as a vanguard (a dial for the simulator: SIM_VAN)
+var _vanguard := 0                # vanguard bugs still to come this wave
 
 func _roll_variant(e: Dictionary) -> void:
 	if not ["scout", "drifter", "spitter", "diver", "mite", "hulk", "rivet", "dart", "cinder", "crust", "spitfire", "comet"].has(String(e.type)) or e.has("hatchling"):
@@ -5070,9 +5080,14 @@ func _roll_variant(e: Dictionary) -> void:
 	if pool.is_empty():
 		return
 	var p: float = clampf(0.06 + 0.006 * (stage - 5), 0.06, 0.32)
-	if rng.randf() > p:
+	var lead: bool = _vanguard > 0
+	if lead:
+		_vanguard -= 1
+	if not lead and rng.randf() > p:
 		return
 	var v: String = pool[rng.randi() % pool.size()]
+	if lead:
+		v = "armoured" if _vanguard % 2 == 0 else "shielded"
 	e.variant = v
 	match v:
 		"armoured":
