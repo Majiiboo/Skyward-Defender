@@ -4263,6 +4263,15 @@ func _refresh_base() -> void:
 		var col: Color = Base.BUILDINGS[id].col if id != "" else UIKit.CYAN
 		var sq := _pick_square(Base.pic(id) if id != "" else null, ("Stage %d" % Base.SLOT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
 		_num_badge(sq, col if open else UIKit.SOFT, str(i + 1))
+		if i == 0:   # the building here shapes the Core Pulse (Base.PULSE)
+			var tag := PanelContainer.new()
+			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tag.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.GOLD if Base.pulse_open(data) else UIKit.SOFT, 0.9), 8, Vector2(6, 0)))
+			tag.add_child(UIKit.title("PULSE", 10, Color(0.04, 0.07, 0.13), HORIZONTAL_ALIGNMENT_CENTER))
+			tag.set_anchors_preset(Control.PRESET_TOP_LEFT)
+			tag.offset_left = 6.0
+			tag.offset_top = 6.0
+			sq.add_child(tag)
 		var si: int = i
 		sq.pressed.connect(func():
 			b_slot = si
@@ -4355,6 +4364,12 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 		var ll := UIKit.label("%s with %s: %s" % [String(lk.name), String(Base.BUILDINGS[String(lk.with)].name), String(lk.text)], 12, UIKit.GOLD if on_l else UIKit.SOFT)
 		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nv.add_child(ll)
+	# what it does to the Core Pulse from slot 1 (Base.PULSE): gold when it stands there and the pulse is open
+	var p_open: bool = Base.pulse_open(data)
+	var p_on: bool = p_open and String(b.slots[0]) == id
+	var pl := UIKit.label("In slot 1%s: %s pulse, %s" % ["" if p_open else " (from stage %d)" % Base.PULSE_FROM, Base.pulse_name(id), Base.pulse_text(id)], 12, UIKit.GOLD if p_on else UIKit.SOFT)
+	pl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nv.add_child(pl)
 	head.add_child(nv)
 	v.add_child(head)
 	if not own:
