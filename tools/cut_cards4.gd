@@ -15,7 +15,7 @@ const FLOOR := 8.0    # the black itself
 func _initialize() -> void:
 	var n := 0
 	for f in DirAccess.get_files_at(SRC4):
-		if not (f.begins_with("pic_") and f.ends_with(".webp")):
+		if not (f.begins_with("pic_") and f.ends_with(".webp")) or f.ends_with("_v1.webp") or f.ends_with("_alt.webp"):   # earlier versions and alternates are kept, not cut
 			continue
 		var img := Image.load_from_file(ProjectSettings.globalize_path(SRC4 + f))
 		img.convert(Image.FORMAT_RGBA8)

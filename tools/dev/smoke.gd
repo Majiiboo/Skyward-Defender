@@ -1016,7 +1016,7 @@ func _check_card_pics() -> void:
 	for id in ids:
 		_expect(B.card_tex_of(id) != null, "the card %s has a picture for the HUD row" % id)
 	for id in Cards.BONDS:
-		_expect(B.card_pic_path(id) == "res://base/bld_%s.png" % String(Cards.BONDS[id].building), "the bond %s shows its building" % id)
+		_expect(B.card_pic_path(id) in ["res://cards/pic_%s.png" % id, "res://base/bld_%s.png" % String(Cards.BONDS[id].building)], "the bond %s shows its own emblem, or its building" % id)
 	for id in Cards.CARDS:
 		if Cards.CARDS[id].get("bcard", false):
 			_expect(B.card_pic_path(id) != "", "the base card %s has a painted picture" % id)
