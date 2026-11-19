@@ -81,6 +81,12 @@ static func show(host: Control, ids: Array) -> String:
 	var card := _card(id)
 	host.add_child(card)
 	host.set_meta("hint_card", card)
+	# a sheet or pop-up opened over the page (a new child of the page) sends the hint away, so the
+	# two never sit on top of each other; the first half second is the page still building itself
+	var born := Time.get_ticks_msec()
+	host.child_entered_tree.connect(func(n: Node):
+		if n != card and is_instance_valid(card) and Time.get_ticks_msec() - born > 500:
+			card.queue_free())
 	return id
 
 static func _card(id: String) -> Control:
