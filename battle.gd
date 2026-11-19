@@ -1267,16 +1267,19 @@ func _update_outro(delta: float) -> void:
 #     person (_auto_pilot: a quarter second to react, about one dodge in three missed), so a hand on
 #     the screen beats it. A finger down takes over at once; lifting it hands back.
 const AUTO_FROM := 3      # AUTO unlocks once this stage is cleared (the first stages teach flying)
-const AUTO_FIRE := 0.75
+static var AUTO_FIRE := 0.75      # AUTO's share of the fire rate (a dial for the simulator: SIM_AUTO_FIRE)
+static var AUTO_LATE := 0.65      # the share from stage 45 on; it slides down from AUTO_FIRE after stage 30 (SIM_AUTO_LATE). See REVIEW-auto-late.md
+static var AUTO_LEVEL := 0.0      # how much of the hero-level "auto fire" bonus (+1% a level) AUTO gets: 1 = all (the old rule: a Lv.50 hero fired at 112% on AUTO), 0 = none (SIM_AUTO_LEVEL)
+static var AUTO_CONE := 1.2       # AUTO aims only at bugs within this many radians either side of straight up; 1.2 = anywhere (SIM_AUTO_CONE)
 const ASSIST := 0.26      # radians either side of straight up (0.16 until the turrets went: alone, the manual bot lost stage 30 that AUTO won)
 
 func _auto_open() -> bool:
 	return stage_unlocked > AUTO_FROM or DevTools.on
 
 # the bug a straight-up bolt should bend to: the one closest to his line of fire, inside ASSIST
-func _assist_target(from: Vector2, up_ang: float, speed: float) -> Dictionary:
+func _assist_target(from: Vector2, up_ang: float, speed: float, cone := ASSIST) -> Dictionary:
 	var best := {}
-	var best_off := ASSIST
+	var best_off := cone
 	for e in enemies:
 		if e.pos.y < 100.0 or e.pos.y > from.y - 20.0:
 			continue
@@ -1285,7 +1288,7 @@ func _assist_target(from: Vector2, up_ang: float, speed: float) -> Dictionary:
 		var off: float = absf(angle_difference(up_ang, a))
 		if off < best_off:
 			best_off = off
-			best = {"ang": a, "id": e.id}
+			best = {"ang": a, "id": e.id, "pos": e.pos, "vel": e.vel}
 	return best
 
 func _aim_and_fire(delta: float) -> void:
@@ -1295,6 +1298,8 @@ func _aim_and_fire(delta: float) -> void:
 	var muzzle_base := _muzzle_world()
 	var auto: bool = auto_on and not dragging
 	var target := _pick_aim_target(muzzle_base) if auto else {}
+	if AUTO_CONE < 1.2 and not target.is_empty() and absf(angle_difference(-PI / 2.0, (Vector2(target.pos) - muzzle_base).angle())) > AUTO_CONE:
+		target = _assist_target(muzzle_base, -PI / 2.0, float(weapon.speed), AUTO_CONE)   # the nearest bug is off to the side: only one inside the cone will do
 	if not target.is_empty():
 		var flight_t: float = muzzle_base.distance_to(target.pos) / float(weapon.speed)
 		var lead_pos: Vector2 = target.pos + target.vel * flight_t * aim_lead_accuracy
@@ -1330,7 +1335,7 @@ func _aim_and_fire(delta: float) -> void:
 		interval *= 0.5   # Rapid Pulse overcharged: overdrive window
 	if auto:
 		if idle_aiming and fire_timer <= 0.0 and not target.get("doomed", false) and absf(angle_difference(idle_aim_ang, aim_goal)) <= aim_ready_angle:
-			fire_timer = interval * idle_fire_ratio / (idle_power * AUTO_FIRE)
+			fire_timer = interval * idle_fire_ratio / (lerpf(1.0, idle_power, AUTO_LEVEL) * lerpf(AUTO_FIRE, AUTO_LATE, clampf((stage - 30) / 15.0, 0.0, 1.0)))
 			_kick(1.0)
 			var shot_ang := idle_aim_ang + rng.randf_range(-aim_error, aim_error)
 			var d2 := Vector2(cos(shot_ang), sin(shot_ang))

@@ -75,6 +75,10 @@ func _initialize() -> void:
 	if OS.get_environment("SIM_LATE") != "": bs.CROWD_LATE = float(OS.get_environment("SIM_LATE"))
 	if OS.get_environment("SIM_VAN") != "": bs.VANGUARD = float(OS.get_environment("SIM_VAN"))
 	if OS.get_environment("SIM_FORM") == "0": bs.FORMATIONS = false
+	if OS.get_environment("SIM_AUTO_FIRE") != "": bs.AUTO_FIRE = float(OS.get_environment("SIM_AUTO_FIRE"))   # the AUTO dials (REVIEW-auto-late.md)
+	if OS.get_environment("SIM_AUTO_LATE") != "": bs.AUTO_LATE = float(OS.get_environment("SIM_AUTO_LATE"))
+	if OS.get_environment("SIM_AUTO_LEVEL") != "": bs.AUTO_LEVEL = float(OS.get_environment("SIM_AUTO_LEVEL"))
+	if OS.get_environment("SIM_AUTO_CONE") != "": bs.AUTO_CONE = float(OS.get_environment("SIM_AUTO_CONE"))
 	if OS.get_environment("SIM_STEEP") != "":
 		load("res://battle.gd").XP_STEEP = int(OS.get_environment("SIM_STEEP"))
 	var _ud := OS.get_user_data_dir().to_lower()
