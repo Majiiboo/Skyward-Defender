@@ -3705,7 +3705,7 @@ func _update_drone(delta: float) -> void:
 		_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
 		return
 	_drone_aim = lerp_angle(_drone_aim, (Vector2(best.pos) - p).angle(), minf(1.0, delta * 10.0))
-	_drone_cd -= delta * float(body.rate) * DroneData.rate_bonus(int(_drone.level)) * _evo_drone_rate
+	_drone_cd -= delta * float(body.rate) * DroneData.rate_bonus(int(_drone.level)) * _evo_drone_rate * (PULSE_DRONE_RATE if _pulse_drone_t > 0.0 else 1.0)   # Hangar in slot 1: the pulse scrambles the drone
 	if _drone_cd > 0.0:
 		return
 	_drone_cd = float(pod.every)
@@ -6105,6 +6105,7 @@ func _apply_base(sv: Dictionary) -> void:
 	_base_links = []
 	_links_on = []
 	_pulse_cd_mult = 1.0
+	_pulse_kind = ""
 	_pods = []
 	_base_perks = []
 	_dome_used = false
@@ -6135,6 +6136,7 @@ func _apply_base(sv: Dictionary) -> void:
 		if lv >= Base.EVO_LEVEL:
 			_bld_evolve(id)
 	_bld_links()
+	_pulse_kind = String(_base_slots[0]) if Base.PULSE.has(String(_base_slots[0])) else ""   # slot 1 shapes the Core Pulse
 	shield = shield_max   # the fight starts with everything full
 	hull = hull_max
 	pilot_hp = pilot_hp_max
@@ -6670,7 +6672,7 @@ func _bond_carrier() -> void:
 # knock, enemy shots in the air are wiped, and a little shield comes back. Then it recharges for
 # PULSE_CD seconds (the ring round the core fills). Opens after stage PULSE_FROM. AUTO presses it
 # when the shield is low and a crowd is in. The base still never shoots: this is a wall, not a gun.
-const PULSE_FROM := 7
+const PULSE_FROM := Base.PULSE_FROM
 const PULSE_T := 4.0
 const PULSE_CD := 70.0
 const PULSE_REACH := 300.0     # bugs this far above the base line or closer are caught
@@ -6679,6 +6681,83 @@ var _pulse_live := 0.0         # seconds of the wall left
 var _pulse_flash := 0.0
 var _pulse_btn: Button
 var _pulse_blocked := 0        # hits it stopped this fight (shown on nothing yet; for the sim)
+# SHAPED BY SLOT 1 (2026-11-18, Base.PULSE): the building on the first slot adds one thing to the pulse.
+# First guesses, not balanced.
+const PULSE_WALL_ADD := 1.5    # shield_gen: the wall stands this much longer
+const PULSE_MEND := 0.08       # repair_bay: share of the hull back (of the shield when the hull is whole)
+const PULSE_DMG := 1.25        # armory: the hero's shots for PULSE_DMG_T seconds
+const PULSE_DMG_T := 5.0
+const PULSE_HEAL := 0.12       # medbay: share of the hero's health back
+const PULSE_SHOVE := 60.0      # plating: px a caught bug is thrown back up
+const PULSE_DRONE_RATE := 2.0  # hangar: the gun drone's fire rate for PULSE_DRONE_T seconds
+const PULSE_DRONE_T := 6.0
+const PULSE_CHARGE := 0.25     # reactor: share of the hero ability's cooldown given at once
+const PULSE_MARK_T := 6.0      # radar: caught bugs are marked (every hit crits)
+const PULSE_COINS := 0.5       # refinery: share of its coins a caught bug drops at once
+var _pulse_kind := ""          # the building on slot 1 ("" = a plain pulse); set in _apply_base
+var _pulse_dmg_t := 0.0        # seconds of the Armory's boost left (damage_mult carries it meanwhile)
+var _pulse_drone_t := 0.0      # seconds of the Hangar's scramble left
+var _pulse_shaped := 0.0       # what the last shaped pulse did, as one number (bugs, seconds, HP...; for tests)
+
+func _pulse_col() -> Color:
+	return Color(Base.BUILDINGS[_pulse_kind].col) if _pulse_kind != "" else Color(0.31, 0.88, 1.0)
+
+# the extra of the building on slot 1, on top of the plain pulse; `caught` = the non-boss bugs it stunned
+func _pulse_shape(caught: Array) -> void:
+	_pulse_shaped = 0.0
+	if _pulse_kind == "":
+		return
+	var col := _pulse_col()
+	match _pulse_kind:
+		"shield_gen":
+			_pulse_live += PULSE_WALL_ADD
+			_pulse_shaped = _pulse_live
+		"repair_bay":
+			if hull < hull_max:
+				_pulse_shaped = minf(hull_max * PULSE_MEND, hull_max - hull)
+				hull += _pulse_shaped
+			else:
+				_pulse_shaped = minf(shield_max * PULSE_MEND, shield_max - shield)
+				shield += _pulse_shaped
+		"armory":
+			if _pulse_dmg_t <= 0.0:
+				damage_mult *= PULSE_DMG
+			_pulse_dmg_t = PULSE_DMG_T
+			_pulse_shaped = damage_mult
+			_fx_add("nova", soldier_pos, 70.0, 0.4, 0.0, 2.0, col)
+		"medbay":
+			_pulse_shaped = minf(roundf(pilot_hp_max * PULSE_HEAL), pilot_hp_max - pilot_hp)
+			pilot_hp += _pulse_shaped
+			_fx_add("nova", soldier_pos, 70.0, 0.4, 0.0, 2.0, col)
+			if _pulse_shaped > 0.0:
+				_float_text(soldier_pos + Vector2(0, -60), "+%d" % int(_pulse_shaped), col)
+		"plating":
+			for e in caught:
+				e.pos = Vector2(e.pos) + Vector2(0.0, -PULSE_SHOVE)
+				_pulse_shaped += 1.0
+		"hangar":
+			_pulse_drone_t = PULSE_DRONE_T
+			_pulse_shaped = PULSE_DRONE_T
+			if _drone_on:
+				_fx_add("nova", _drone_pos(), 50.0, 0.4, 0.0, 2.0, col)
+		"reactor":
+			_pulse_shaped = minf(_ult_cd * PULSE_CHARGE, _ult_t)
+			_ult_t -= _pulse_shaped
+			_fx_add("nova", soldier_pos, 70.0, 0.4, 0.0, 2.0, col)
+		"radar":
+			for e in caught:
+				if e.type != "crate":
+					e["mark_t"] = maxf(float(e.get("mark_t", 0.0)), PULSE_MARK_T)
+					_pulse_shaped += 1.0
+		"refinery":
+			for e in caught:
+				var c: float = float(Dictionary(StageData.ENEMIES[e.type]).get("coins", 0.0)) * PULSE_COINS
+				if c <= 0.0 or e.type == "crate":
+					continue
+				gems.append({"pos": Vector2(e.pos), "tier": 0, "coin": true, "life": 16.0, "value": c * _streak_mult(),
+					"vel": Vector2(rng.randf_range(-45, 45), rng.randf_range(-75, -30))})
+				_pulse_shaped += c
+	_pod_ping(_pulse_kind)
 
 func _pulse_open() -> bool:
 	return (stage_unlocked > PULSE_FROM or DevTools.on) and not _mods.has("no_turrets")
@@ -6690,6 +6769,8 @@ func _pulse_setup() -> void:
 	_pulse_live = 0.0
 	_pulse_flash = 0.0
 	_pulse_blocked = 0
+	_pulse_dmg_t = 0.0     # (damage_mult was worked out afresh just before: nothing to give back)
+	_pulse_drone_t = 0.0
 	if _pulse_btn == null:
 		_pulse_btn = Button.new()
 		_pulse_btn.flat = true
@@ -6712,11 +6793,12 @@ func _use_pulse() -> void:
 	_buzz(55)
 	_ai_pulse = 1.0
 	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
-	_float_text(eye + Vector2(0, -DOME_RY - 8.0), "CORE PULSE!", Color(0.6, 0.95, 1.0), true)
-	_fx_add("nova", eye, 320.0, 0.7, 0.0, 2.6, Color(0.31, 0.88, 1.0))
+	_float_text(eye + Vector2(0, -DOME_RY - 8.0), "CORE PULSE!" if _pulse_kind == "" else Base.pulse_name(_pulse_kind).to_upper() + " PULSE!", _pulse_col().lerp(Color(0.9, 0.98, 1.0), 0.45), true)   # named after the building on slot 1
+	_fx_add("nova", eye, 320.0, 0.7, 0.0, 2.6, _pulse_col())
 	shake = maxf(shake, 0.5)
 	hitstop = maxf(hitstop, 0.08)
 	Sfx.play("shield", 0.7)
+	var caught: Array = []
 	for e in enemies:
 		if e.pos.y < BASE_Y - PULSE_REACH or not _can_hurt(e):
 			continue
@@ -6729,9 +6811,11 @@ func _use_pulse() -> void:
 			e.hp -= dmg
 			e.hit_t = HIT_FLINCH_T
 			_count_dmg("base", dmg, e)
+			caught.append(e)
 	enemy_bullets = enemy_bullets.filter(func(b): return b.pos.y < BASE_Y - PULSE_REACH)
 	if shield < shield_max:
 		shield = minf(shield + shield_max * 0.05, shield_max)
+	_pulse_shape(caught)
 	for i in Base.SLOTS:
 		_pod_ping_t[i] = time_alive
 
@@ -6740,6 +6824,11 @@ func _update_pulse(delta: float) -> void:
 	_pulse_t = maxf(_pulse_t - delta, 0.0)
 	_pulse_live = maxf(_pulse_live - delta, 0.0)
 	_pulse_flash = maxf(_pulse_flash - delta * 1.6, 0.0)
+	_pulse_drone_t = maxf(_pulse_drone_t - delta, 0.0)
+	if _pulse_dmg_t > 0.0:
+		_pulse_dmg_t -= delta
+		if _pulse_dmg_t <= 0.0:
+			damage_mult /= PULSE_DMG   # the Armory's boost runs out
 	if _pulse_btn:
 		_pulse_btn.position = Backdrop.core_eye(FIELD_W, BASE_Y) - Vector2(36, 30)
 		_pulse_btn.visible = _pulse_open()
@@ -6762,8 +6851,15 @@ func _draw_pulse() -> void:
 	if not _pulse_open():
 		return
 	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
-	var cyan := Color(0.31, 0.88, 1.0)
+	var cyan := _pulse_col().lerp(Color(0.31, 0.88, 1.0), 0.25)   # toward the colour of the building on slot 1
 	var ready := _pulse_t <= 0.0
+	if _pulse_kind != "" and _tex.has("bld_" + _pulse_kind):   # whose pulse it is: its picture in the middle of the button
+		draw_circle(eye, 13.0, Color(0.03, 0.06, 0.12, 0.72))
+		draw_texture_rect(_tex["bld_" + _pulse_kind], Rect2(eye - Vector2(11, 11), Vector2(22, 22)), false, Color(1, 1, 1, 1.0 if ready else 0.55))
+	if _pulse_dmg_t > 0.0 or _pulse_drone_t > 0.0:   # a boost is running: a thin arc round the hero / the drone
+		var bp: Vector2 = soldier_pos if _pulse_dmg_t > 0.0 else (_drone_pos() if _drone_on else eye)
+		var bk: float = (_pulse_dmg_t / PULSE_DMG_T) if _pulse_dmg_t > 0.0 else _pulse_drone_t / PULSE_DRONE_T
+		draw_arc(bp, 30.0 if _pulse_dmg_t > 0.0 else 20.0, -PI / 2.0, -PI / 2.0 + TAU * bk, 40, Color(cyan, 0.8), 2.0, true)
 	if ready:
 		var beat := 0.5 + 0.5 * sin(time_alive * 5.0)
 		draw_arc(eye, 21.0 + 2.0 * beat, 0.0, TAU, 48, Color(1.0, 0.78, 0.27, 0.7 + 0.3 * beat), 2.5, true)
@@ -6771,7 +6867,7 @@ func _draw_pulse() -> void:
 		draw_arc(eye, 21.0, 0.0, TAU, 48, Color(1, 1, 1, 0.1), 2.0, true)
 		draw_arc(eye, 21.0, -PI / 2.0, -PI / 2.0 + TAU * (1.0 - _pulse_t / (PULSE_CD * _pulse_cd_mult)), 48, Color(cyan, 0.85), 2.5, true)
 	if _pulse_live > 0.0:
-		var k := _pulse_live / PULSE_T
+		var k := minf(_pulse_live / PULSE_T, 1.0)
 		var c := Vector2(FIELD_W * 0.5, BASE_Y)
 		var pts := Backdrop._ell_pts(c, DOME_RX + 4.0, DOME_RY + 4.0, PI, TAU)
 		draw_polyline(pts, Color(1, 1, 1, 0.35 + 0.4 * k), 5.0, true)

@@ -275,6 +275,38 @@ static func links_of(id: String) -> Array:
 			out.append({"id": l, "with": String(d.b) if String(d.a) == id else String(d.a), "name": String(d.name), "text": String(d.text)})
 	return out
 
+# THE CORE PULSE IS SHAPED BY SLOT 1 (2026-11-18): the building on the FIRST slot adds one thing to
+# the base's own button (battle.gd CORE PULSE), so the order of the slots is a choice too. Each is
+# something the building does not already do with its levels, its Lv.5 perk or a link. First guesses,
+# not balanced; the numbers live in battle.gd (_pulse_shape).
+const PULSE := {
+	"shield_gen": {"name": "Long Wall",     "text": "the wall stands 1.5 s longer"},
+	"repair_bay": {"name": "Patch-Up",      "text": "it mends 8% of the hull (8% more shield when the hull is whole)"},
+	"armory":     {"name": "Loaded",        "text": "the hero's shots hit 25% harder for 5 s"},
+	"medbay":     {"name": "Healing",       "text": "the hero gets 12% of his health back"},
+	"plating":    {"name": "Ram",           "text": "bugs it catches are shoved 60 px back up"},
+	"hangar":     {"name": "Scramble",      "text": "the gun drone fires twice as fast for 6 s"},
+	"reactor":    {"name": "Power Surge",   "text": "the hero's ability gains 25% of its charge"},
+	"radar":      {"name": "Target Sweep",  "text": "bugs it catches are marked for 6 s: every hit on them crits"},
+	"refinery":   {"name": "Shakedown",     "text": "every bug it catches drops half its coins at once"},
+}
+
+const PULSE_FROM := 7   # the Core Pulse opens once this stage is cleared (battle.gd reads it)
+
+static func pulse_open(save: Dictionary) -> bool:
+	return int(save.get("stage_unlocked", 1)) > PULSE_FROM or DevTools.on
+
+# the building that shapes the pulse: the one on slot 1 ("" = none)
+static func pulse_of(save: Dictionary) -> String:
+	var id := String(read(save).slots[0])
+	return id if PULSE.has(id) else ""
+
+static func pulse_name(id: String) -> String:
+	return String(Dictionary(PULSE.get(id, {})).get("name", ""))
+
+static func pulse_text(id: String) -> String:
+	return String(Dictionary(PULSE.get(id, {})).get("text", ""))
+
 # a building's picture: Luna's render (base/bld_<id>.png, tools/cut_base2.gd), else its icon
 static var _pics := {}
 static func pic(id: String) -> Texture2D:

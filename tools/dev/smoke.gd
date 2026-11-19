@@ -42,6 +42,7 @@ func _initialize() -> void:
 	_check_base_evo()
 	_check_ability_ups()
 	_check_links()
+	_check_pulse_kinds()
 	_check_season()
 	_check_research()
 	_check_bossrush()
@@ -898,6 +899,16 @@ func _check_links() -> void:
 	_expect(Base.links(s) == ["bulwark"], "a partner off the base: that link is gone")
 	s["stage_unlocked"] = 5
 	_expect(Base.links(s).is_empty(), "the partner on a slot that is not open yet does not count")
+
+func _check_pulse_kinds() -> void:
+	for id in Base.ORDER:
+		_expect(Base.pulse_name(String(id)) != "" and Base.pulse_text(String(id)) != "", "%s shapes the Core Pulse: a name and a line" % id)
+	var s := {"stage_unlocked": 20, "base": {"slots": ["radar", "armory", "", ""], "levels": {"radar": 1, "armory": 1}}}
+	_expect(Base.pulse_of(s) == "radar", "the building on slot 1 shapes the pulse (%s)" % Base.pulse_of(s))
+	s.base.slots = ["", "armory", "", ""]
+	_expect(Base.pulse_of(s) == "", "an empty slot 1: a plain pulse")
+	_expect(Base.pulse_of({}) == "shield_gen", "a new save: the Shield Generator on slot 1")
+	_expect(Base.pulse_open(s) and not Base.pulse_open({"stage_unlocked": Base.PULSE_FROM}), "the pulse opens after stage %d" % Base.PULSE_FROM)
 
 func _check_season() -> void:
 	var s := {"stage_unlocked": 5, "crystals": 100}
