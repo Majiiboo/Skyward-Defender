@@ -399,6 +399,10 @@ static func draw_core_base(c: CanvasItem, width: float, base_y: float, bottom_y:
 				c.draw_arc(p, r + 4.0 * k, a - 0.28, a + 0.28, 8, Color(col, 0.9), 3.0 * k, true)
 		if lv >= 10:   # a halo floating off it (the third look)
 			c.draw_arc(p, r + 9.0 * k, t * 0.6, t * 0.6 + TAU * 0.8, 36, Color(col, 0.55), 1.2, true)
+		if bool(pd.get("evo", false)):   # an EVOLVED building (Base.EVOS): slow rings of light breathing out from the pod
+			for ei in 2:
+				var eu := fposmod(t * 0.33 + i * 0.21 + ei * 0.5, 1.0)
+				c.draw_arc(p, r + (2.0 + 13.0 * eu) * k, 0.0, TAU, 48, Color(col.lerp(Color.WHITE, 0.35), 0.75 * (1.0 - eu) * (1.0 - eu)), 2.6 * (1.0 - eu) + 0.6, true)
 		if fl > 0.0:
 			c.draw_arc(p, r + (4.0 + 14.0 * (1.0 - fl)) * k, 0.0, TAU, 40, Color(col, 0.7 * fl), 1.5, true)
 		var tx: Texture2D = pd.tex
@@ -497,6 +501,13 @@ static func _draw_core_art(c: CanvasItem, width: float, base_y: float, t: float,
 		c.draw_texture_rect(ptex, rect, false, col.lerp(Color.WHITE, 0.4 + 0.6 * fl))
 		var half := POD_D * k * 0.31 * (1.0 + 0.12 * fl)
 		var tx: Texture2D = pd.tex
+		if bool(pd.get("evo", false)):   # an EVOLVED building (Base.EVOS): a steady rim and slow rings of light breathing out from the pod, in its colour
+			var ecol: Color = Color(pd.col).lerp(Color.WHITE, 0.35)
+			var er := POD_D * k * 0.5
+			c.draw_arc(p, er + 2.0 * k, 0.0, TAU, 48, Color(ecol, 0.7 + 0.25 * sin(t * 1.6 + i)), 2.5, true)
+			for ei in 2:
+				var eu := fposmod(t * 0.33 + i * 0.21 + ei * 0.5, 1.0)
+				c.draw_arc(p, er + (2.0 + 17.0 * eu) * k, 0.0, TAU, 48, Color(ecol, 0.9 * (1.0 - eu)), 3.6 * (1.0 - eu) + 0.8, true)
 		if gold:   # a gold ring that turns round the pod
 			for gi in 3:
 				var ga: float = t * 1.4 + TAU * gi / 3.0
