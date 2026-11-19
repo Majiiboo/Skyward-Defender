@@ -2108,7 +2108,7 @@ func _update_enemies(delta: float) -> void:
 								e.hold_t = 0.0
 								e.grab_cd = float(def.grab_every)
 								_burst(e.pos + Vector2(0, 60), 24.0, Color(0.3, 0.9, 1.0), 14)
-								_float_text(e.pos + Vector2(0, -70), "LET GO!", Color(0.4, 1.0, 0.6), true)
+								pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 						"lift":
 							e.ext = move_toward(float(e.get("ext", 0.0)), 0.0, delta * 2.5)
 							e.pos.y = move_toward(e.pos.y, hover_y, delta * 110.0)
@@ -2403,7 +2403,7 @@ func _kill(e: Dictionary) -> void:
 				_pod_ping("repair_bay")
 				if oh_add >= 0.5 and _bond_sign("overhaul", 4.0, false):   # Overhaul (bond): what the Repair Bay gave, over the dome
 					_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(oh_add), BOND_GOLD)
-			_float_text(soldier_pos + Vector2(0, -84), "OVERDRIVE!", Color(1.0, 0.6, 0.3), true)
+			pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 			_fx_add("nova", soldier_pos, 80.0, 0.4, 0.0, 2.0, Color(1.0, 0.6, 0.3))
 			Sfx.play("level", 1.4)
 	Sfx.play("boss_kill" if _is_boss(e) else "kill", rng.randf_range(0.9, 1.1))
@@ -2419,7 +2419,7 @@ func _kill(e: Dictionary) -> void:
 		shake = maxf(shake, 0.8)
 	elif int(def.xp_tier) >= 1:
 		hitstop = maxf(hitstop, 0.05)
-	_float_text(e.pos, "+%d" % worth, Color(1.0, 0.85, 0.4))
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	# a Drifter bursts into spore pods that drift down at the base
 	for k in int(def.get("spores", 0)):
 		var pod := _make_enemy(String(def.get("spawns_on_death", "spore")), e.pos)   # a Hulk bursts into Junk Bolts
@@ -2502,7 +2502,7 @@ func _gain_xp(amount: float) -> void:
 		run_xp -= need
 		run_level += 1
 		Sfx.play("level")
-		_float_text(soldier_pos + Vector2(0, -40), "LEVEL %d" % run_level, Color(0.85, 0.75, 1.0), true)
+		pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 		_open_cards()
 
 func _xp_need() -> float:
@@ -2604,7 +2604,7 @@ func _show_dmg(e: Dictionary, dmg: float, crit: bool, mult: float = 1.0) -> void
 	if dmg <= 0.0:
 		return
 	if crit:
-		_float_text(e.pos + Vector2(0, -float(e.r) - 10.0), "CRIT %d" % roundi(dmg * DMG_SHOW), Color(1.0, 0.82, 0.32), true)
+		_float_text(e.pos + Vector2(0, -float(e.r) - 10.0), str(roundi(dmg * DMG_SHOW)), Color(1.0, 0.82, 0.32), true)
 		return
 	var a: Dictionary = _dmg_acc.get(int(e.id), {"v": 0.0, "t": time_alive, "m": mult})
 	a.v = float(a.v) + dmg
@@ -3485,7 +3485,7 @@ func _pick_card(id: String) -> void:
 			# a beat of hit-stop and a shake, so the third pick feels like the event it is
 			_fx_add("nova", soldier_pos, 130.0, 0.6, 0.0, 2.4, Color(1.0, 0.85, 0.4))
 			_burst(soldier_pos, 40.0, Color(1.0, 0.85, 0.4), 18)
-			_float_text(soldier_pos + Vector2(0, -84), "OVERCHARGE!", Color(1.0, 0.85, 0.4), true)
+			pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 			hitstop = maxf(hitstop, 0.12)
 			shake = maxf(shake, 0.35)
 		if not _replaying:
@@ -3593,7 +3593,7 @@ func _pick_card(id: String) -> void:
 			_fx_add("nova", soldier_pos, 150.0, 0.7, 0.0, 4.5)   # Luna's white-gold ring sweeps the screen
 			shake = maxf(shake, 0.6)
 	if not _replaying:
-		_float_text(soldier_pos + Vector2(0, -56), Cards.CARDS[id].name, Cards.COLOR[Cards.CARDS[id].rarity])
+		pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	_card_panel.visible = false
 	picking = false
 	# any three hero cards earn an evolution: its pick opens at once, on top of this one
@@ -3640,7 +3640,7 @@ func _overcharge(id: String) -> void:
 		"nyx_mark": _crit_dmg += 1.0
 		"ember_burn": _burn_spread = true
 	var gold := Color(1.0, 0.82, 0.32)
-	_float_text(soldier_pos + Vector2(0, -80), "OVERCHARGED!", gold, true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	_burst(soldier_pos, 34.0, gold, 18)
 	_fx_add("nova", soldier_pos, 40.0, 0.5, 0.0, 1.6, gold)
 
@@ -3771,7 +3771,7 @@ func _bastion_blast() -> void:
 			if not _is_boss(e):
 				e.pos += (e.pos - c).normalized() * 70.0
 	_fx_add("nova", c + Vector2(0, -60), 220.0, 0.6, 0.0, 1.8, Color(0.55, 0.85, 1.0))
-	_float_text(c + Vector2(0, -150), "BASTION!", Cards.COLOR.fusion, true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	shake = maxf(shake, 0.5)
 
 # The drone sidekick (Gear > Drone, DroneData): one drone flies beside the pilot and
@@ -5580,7 +5580,7 @@ func _runner_caught(e: Dictionary) -> void:
 	_pod_ping("radar")
 	if _radar_heal and shield < shield_max:
 		shield = minf(shield + shield_max * 0.03, shield_max)
-	_float_text(e.pos + Vector2(0, -22), "CAUGHT!", Color(1.0, 0.85, 0.4), true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	var worth: float = (4.0 + 0.4 * stage) * (2.0 if _base_perks.has("radar") else 1.0)   # Radar Lv.5: a caught runner pays double
 	for i in 4:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
@@ -5700,7 +5700,7 @@ func _ability_effect(hid: String, assist: bool) -> void:
 	var shout := String(ab.name).to_upper() + "!"
 	if assist:
 		shout = "%s: %s" % [String(Heroes.ROSTER[hid].name).to_upper(), shout]
-	_float_text(soldier_pos + Vector2(0, -92 if not assist else -116), shout, col.lerp(Color.WHITE, 0.3), true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	_fx_add("nova", soldier_pos, 140.0 if not assist else 100.0, 0.6, 0.0, 3.2, col)
 	_burst(soldier_pos, 46.0, col, 20)
 	if not assist:
@@ -5856,7 +5856,7 @@ func _streak_add() -> void:
 	_streak_pop = 1.0
 	_streak_best = maxi(_streak_best, _streak)
 	if _streak == 10 or _streak == 25 or _streak == 50 or (_streak > 50 and _streak % 50 == 0):
-		_float_text(soldier_pos + Vector2(0, -70), "STREAK x%d" % _streak, Color(1.0, 0.85, 0.4), true)
+		pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 		Sfx.play("level", 1.0 + minf(_streak, 100) * 0.004)
 
 func _streak_break() -> void:
@@ -6544,7 +6544,7 @@ func _supply_pick(i: int) -> void:
 			damage_mult *= 1.3
 			pilot_hp_max = maxf(roundf(pilot_hp_max * 0.75), 1.0)
 			pilot_hp = minf(pilot_hp, pilot_hp_max)
-	_float_text(soldier_pos + Vector2(0, -60), String(SUPPLIES[id].name), Color(1.0, 0.45, 0.5) if id == "cursed" else Color(0.5, 1.0, 0.78), true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 
 # capture hook (CAP_CALL="_dbg_supply"): the supply choice
 func _dbg_supply() -> void:
@@ -6808,7 +6808,7 @@ func _evo_aegis() -> void:
 		e.hit_t = HIT_FLINCH_T
 		_count_dmg("base", dmg, e)
 	_fx_add("nova", eye, 340.0, 0.7, 0.0, 2.6, Color(0.31, 0.88, 1.0))
-	_float_text(eye + Vector2(0, -DOME_RY - 52.0), "AEGIS BURST", Color(0.5, 0.92, 1.0), true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	shake = maxf(shake, 0.5)
 
 # Bastion Plate: true = this hit on the base is the first of its wave and does nothing
@@ -6817,7 +6817,7 @@ func _evo_plate() -> bool:
 		return false
 	_evo_plate_wave = wave_index
 	_pod_ping("plating")
-	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "PLATED", Color(0.82, 0.87, 0.96), true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	Sfx.play("shield", 1.3)
 	return true
 
@@ -6869,7 +6869,7 @@ func _evo_tick(delta: float) -> void:
 				e.scanned = true
 				e.hp = float(e.hp) * 0.5
 				_pod_ping("radar")
-				_float_text(Vector2(e.pos) + Vector2(0, 26), "SCANNED", Color(0.5, 1.0, 0.78))
+				pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 
 # With the turrets gone the hero does all the shooting. The turrets did nothing on the first
 # stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by
@@ -6923,7 +6923,7 @@ func _support_blocks() -> bool:
 	_sup_flash = 1.0
 	inv_t = maxf(inv_t, 0.4)
 	_fx_add("nova", soldier_pos, 60.0, 0.35, 0.0, 1.6, Color(0.31, 0.88, 1.0))
-	_float_text(soldier_pos + Vector2(0, -52), "BLOCKED", Color(0.5, 0.92, 1.0))
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	Sfx.play("shield")
 	return true
 
@@ -7054,7 +7054,7 @@ func _bc_take(id: String) -> void:
 	var pod := _base_slots.find(bid)
 	if pod >= 0 and not _replaying:
 		var at: Vector2 = Backdrop.pod_pos(pod, FIELD_W, BASE_Y)
-		_float_text(at + Vector2(0, -38), String(Cards.CARDS[id].name), Color(1.0, 0.82, 0.32), true)
+		pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 		_fx_add("nova", at, 24.0, 0.5, 0.0, 2.4, Color(1.0, 0.82, 0.32))
 
 # a shot the base fires by itself (Reflective Barrier, Guard Wing)
@@ -7214,7 +7214,7 @@ func _bond(id: String) -> void:
 	var pink: Color = Cards.COLOR.fusion
 	var pod := _base_slots.find(bid)
 	var at: Vector2 = Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y)
-	_float_text(soldier_pos + Vector2(0, -56), String(Cards.BONDS[id].name), pink, true)
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	_fx_add("nova", at, 30.0, 0.6, 0.0, 2.6, pink)
 	_fx_add("nova", soldier_pos, 60.0, 0.5, 0.0, 2.2, pink)
 	zaps.append({"a": at, "b": soldier_pos, "life": 0.35, "seed": rng.randf() * 100.0})
@@ -7401,7 +7401,7 @@ func _use_pulse() -> void:
 	_buzz(55)
 	_ai_pulse = 1.0
 	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
-	_float_text(eye + Vector2(0, -DOME_RY - 8.0), "CORE PULSE!" if _pulse_kind == "" else Base.pulse_name(_pulse_kind).to_upper() + " PULSE!", _pulse_col().lerp(Color(0.9, 0.98, 1.0), 0.45), true)   # named after the building on slot 1
+	pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	_fx_add("nova", eye, 320.0, 0.7, 0.0, 2.6, _pulse_col())
 	shake = maxf(shake, 0.5)
 	hitstop = maxf(hitstop, 0.08)
@@ -7857,7 +7857,7 @@ func _update_special(delta: float) -> void:
 	var from0 := _muzzle_world()
 	if not _sp_said:
 		_sp_said = true
-		_float_text(soldier_pos + Vector2(0, -70), String(Arsenal.SPECIALS[_sp_id].name).to_upper(), Color(1.0, 0.85, 0.4))
+		pass   # (a shout text stood here: trimmed, Rudy 2026-11-18: less clutter)
 	match _sp_id:
 		"frost":
 			_sp_objs.append({"kind": "globe", "pos": from0, "from": from0, "to": Vector2(crowd.pos), "t": 0.5, "dur": 0.5})
