@@ -3821,6 +3821,8 @@ func _cost_btn(title_text: String, coin_cost: int, needs: Dictionary, note: Stri
 		for k in needs:
 			var ok: bool = int(have.get(k, 0)) >= int(needs[k])
 			row.add_child(UIKit.iconed(_mat_icon(String(k)), str(int(needs[k])), 11, ink if (ok or gold) else SHORT, 14.0))
+		if gold:
+			UIKit.on_gold(row)   # a gold coin on a gold button: tinted dark so it shows
 		v.add_child(row)
 	b.add_child(v)
 	if gold:   # a gold button that cannot be pressed turns dark: its dark ink must turn pale to stay readable
