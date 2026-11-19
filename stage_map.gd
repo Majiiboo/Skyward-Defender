@@ -17,6 +17,7 @@ const ELITE := Color(0.73, 0.6, 1.0)
 const MUTED := Color(0.62, 0.70, 0.84)
 
 var unlocked := 1
+var _bounty_won := {}            # stages whose bounty is won (the medal on the trail)
 var selected := 1
 var stars := {}
 var elite := false
@@ -40,6 +41,9 @@ func _ready() -> void:
 	var elite_open: bool = DevTools.on or (Unlocks.open(d, "elite") and Turrets.pilot_level(int(d.get("pilot_xp", 0))) >= 10)
 	elite = elite_open and bool(root.get_meta("campaign_elite", false))
 	unlocked = StageData.elite_top(d) if elite else StageData.stage_top(d)   # dev mode: every stage
+	for bs in range(Bounties.BOUNTY_FROM, StageData.MAX_STAGE + 1):
+		if Bounties.done(d, bs):
+			_bounty_won[bs] = true
 	selected = clampi(int(d.get("selected_stage", 1)), 1, unlocked)
 	var s = d.get("stars", {})
 	stars = s if typeof(s) == TYPE_DICTIONARY else {}
@@ -194,6 +198,13 @@ func _draw_node(s: int) -> void:
 		Color.WHITE if open else Color(1, 1, 1, 0.35))
 	if kind != "":
 		_trail.draw_string(_font, p + Vector2(-50, -r - 8), "BOSS" if kind == "boss" else "MINI-BOSS", HORIZONTAL_ALIGNMENT_CENTER, 100, 10, ring if open else Color(1, 1, 1, 0.3))
+	if cleared and not elite and s >= Bounties.BOUNTY_FROM:   # the stage s BOUNTY medal (not a red dot): hollow = still to win, gold = won
+		var mc := p + Vector2(r * 0.82, -r * 0.82)
+		var mwon: bool = _bounty_won.has(s)
+		_trail.draw_line(mc + Vector2(-3.0, 4.0), mc + Vector2(-5.0, 11.0), Color(GOLD, 0.9 if mwon else 0.6), 2.0, true)   # two ribbon tails
+		_trail.draw_line(mc + Vector2(3.0, 4.0), mc + Vector2(5.0, 11.0), Color(GOLD, 0.9 if mwon else 0.6), 2.0, true)
+		_trail.draw_circle(mc, 6.5, GOLD if mwon else Color(0.03, 0.05, 0.12, 1.0))
+		_trail.draw_arc(mc, 6.5, 0.0, TAU, 20, Color(GOLD, 1.0 if mwon else 0.75), 1.5, true)
 	if cleared and not elite:
 		var n := _stars_of(s)
 		for k in 3:

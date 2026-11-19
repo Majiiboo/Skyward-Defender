@@ -244,7 +244,7 @@ const FUSIONS := {
 	"afterburner":   {"name": "Afterburner",   "parts": ["overdrive", "hair_trigger"], "rarity": "fusion", "max": 1,
 		"desc": "Overdrive lasts longer and he leaves a burning wake: bugs that cross it catch fire"},
 	"prism_shot":    {"name": "Prism Shot",    "parts": ["ricochet", "killer_instinct"], "rarity": "fusion", "max": 1,
-		"desc": "A shot that bounces splits to three bugs at once, and each split bounces on"},
+		"desc": "A shot that bounces splits to two bugs at once, and each split bounces on once"},
 	"cluster_storm": {"name": "Cluster Storm", "parts": ["shrapnel", "heavy_caliber"], "rarity": "fusion", "max": 1,
 		"desc": "Dead bugs burst into shards that hunt the nearest bugs and burst them too"},
 	# the six heroes: his own card with Aegis becomes his signature

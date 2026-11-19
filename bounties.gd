@@ -15,7 +15,7 @@ const GLASS_HP := 0.6          # "glass": the hero's health is cut to this share
 # "from" = the first stage the restriction can bite at (the Core Pulse opens after stage 7, the
 # fourth base slot after stage 18); a stage below it gets one of the ALWAYS kinds instead
 const KINDS := {
-	"no_ability": {"name": "Bare Hands",   "text": "The hero's ability is off.",        "icon": "ic_energy",    "from": 0},
+	"no_ability": {"name": "Bare Hands",   "text": "The hero's own ability is off.",        "icon": "ic_energy",    "from": 0},
 	"glass":      {"name": "Glass Hero",   "text": "The hero has 40% less health.",     "icon": "ui_heart",     "from": 0},
 	"no_refresh": {"name": "First Hand",   "text": "No card refreshes.",                "icon": "ic_exchange",  "from": 0},
 	"swift":      {"name": "Swift Strike", "text": "Win in under %s.",                  "icon": "tw_swift_bugs", "from": 0},

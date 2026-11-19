@@ -1855,8 +1855,8 @@ func _update_bullets(delta: float) -> void:
 						if o != e and float(o.hp) > 0.0 and _can_hurt(o) and not b.hits.has(o.id) and Vector2(o.pos).distance_to(e.pos) < 190.0:
 							r_c.append(o)
 					r_c.sort_custom(func(x, y): return Vector2(x.pos).distance_to(e.pos) < Vector2(y.pos).distance_to(e.pos))
-					# Prism Shot (evolution): the first bounce splits to three bugs; the splits bounce on singly
-					var r_n: int = mini(r_c.size(), 3 if _prism and not b.get("split", false) else 1)
+					# Prism Shot (evolution): the first bounce splits to TWO bugs at half strength; a split bounces on once at most
+					var r_n: int = mini(r_c.size(), 2 if _prism and not b.get("split", false) else 1)
 					for r_i in r_n:
 						var r_best = r_c[r_i]
 						var rb: Dictionary = b.duplicate(true)
@@ -1869,8 +1869,9 @@ func _update_bullets(delta: float) -> void:
 						rb["ttl"] = 0.6
 						rb["lane"] = 60 + int(b.rico)
 						rb["split"] = true
-						if r_n > 1:   # three ways: each split carries less
-							rb.dmg = float(rb.dmg) * 0.45
+						if r_n > 1:   # each split carries half and has one bounce left at most
+							rb.dmg = float(rb.dmg) * 0.5
+							rb.rico = mini(int(rb.rico), 1)
 						rb.erase("seek")
 						if String(rb.get("shape", "")) == "stream":   # a bounce is a single bolt, not part of the ribbon
 							rb.shape = "pellet"
@@ -2720,6 +2721,13 @@ func _end_run(won: bool) -> void:
 		_write_save({"daily_day": int(d.daily_day), "crystals": int(d.get("crystals", 0)), "materials": d.get("materials", {})})
 	# a stage bounty: a win under the restriction pays its reward, once (Bounties.finish)
 	_bounty = {}
+	if bounty != "" and not won:   # a LOST bounty gives its power tokens back (Rudy 2026-11-18): trying a hard one costs nothing
+		var back: int = Energy.cost(false, stage)
+		if back > 0:
+			Energy.update(d)
+			d["energy"] = int(d.get("energy", 0)) + back
+			_write_save({"energy": int(d.energy), "energy_t": d.get("energy_t", 0)})
+			_bounty = {"paid": false, "reward": {}, "why": "Not this time. Your %d power is back." % back}
 	if bounty != "" and won:
 		_bounty = Bounties.finish(d, stage, time_alive)
 		if bool(_bounty.paid):
