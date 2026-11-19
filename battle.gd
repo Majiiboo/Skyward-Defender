@@ -1083,7 +1083,7 @@ const FORM_GAP := 46.0
 const FORM_SHAPES := ["row", "vee", "column", "stairs", "arc"]
 var _form_last := ""
 
-func _spawn_formation() -> void:
+func _spawn_formation(half: float = 0.0) -> void:   # half: -1 = the left half of the sky, 1 = the right, 0 = anywhere
 	var id: String = wave_queue[0]
 	var most: int = 3 if stage <= 5 else (4 if stage <= 10 else (5 if stage <= 20 else (6 if stage <= 40 else 7)))
 	most = maxi(most, roundi(StageData.group_size(stage) * _crowd(CROWD_PACE)))
@@ -1109,8 +1109,10 @@ func _spawn_formation() -> void:
 			"column": offs.append(Vector2(0.0, -k * FORM_GAP))
 			"stairs": offs.append(Vector2((k - mid) * FORM_GAP * side, -k * FORM_GAP * 0.6))
 			_: offs.append(Vector2((k - mid) * FORM_GAP, -(mid * mid - (k - mid) * (k - mid)) * 7.0))   # an arc, the ends lead
-	var half: float = mid * FORM_GAP + 34.0
-	var cx: float = rng.randf_range(minf(half, FIELD_W * 0.5), maxf(FIELD_W - half, FIELD_W * 0.5))
+	var reach: float = mid * FORM_GAP + 34.0
+	var cx: float = rng.randf_range(minf(reach, FIELD_W * 0.5), maxf(FIELD_W - reach, FIELD_W * 0.5))
+	if half != 0.0:
+		cx = FIELD_W * (0.5 + 0.25 * half) + rng.randf_range(-30.0, 30.0)
 	for o in offs:
 		_spawn(id, Vector2(clampf(cx + float(o.x), 24.0, FIELD_W - 24.0), 60.0 + float(o.y)))
 
@@ -1123,7 +1125,13 @@ func _spawn_step(delta: float) -> void:
 	if wave_spawn_t <= 0.0:
 		wave_spawn_t = (StageData.spawn_gap(stage) / _crowd(CROWD_PACE)) if enemies.size() < roundi(_crowd(float(CROWD_CAP))) else 2.4
 		if FORMATIONS and stage >= 2 and not _is_boss_id(String(wave_queue[0])) and String(wave_queue[0]) != "crate":
-			_spawn_formation()
+			# from planet 2 two formations come at once, one on each side: you cannot cover both from one spot
+			var two: bool = stage >= 11 and wave_queue.size() > 6
+			var first: float = -1.0 if rng.randf() < 0.5 else 1.0
+			_spawn_formation(first if two else 0.0)
+			if two and not wave_queue.is_empty() and not _is_boss_id(String(wave_queue[0])) and String(wave_queue[0]) != "crate":
+				_spawn_formation(-first)
+				wave_spawn_t *= 1.4
 			return
 		# arrive in small groups so the sky fills (one at a time in stage 1)
 		var n: int = mini(roundi(StageData.group_size(stage) * _crowd(CROWD_PACE)), wave_queue.size())
