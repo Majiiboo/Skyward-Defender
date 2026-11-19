@@ -266,7 +266,7 @@ func _clean_card(id: String, locked: bool) -> Button:
 	tv.add_child(UIKit.title(title_txt, 20, UIKit.TEXT))
 	tv.add_child(UIKit.label(line1, 14, Color(0.87, 0.9, 0.97)))
 	var l2 := UIKit.label(line2, 12, line2_col)
-	l2.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	UIKit.fit(l2)   # a long reward line steps its font down before it is cut
 	tv.add_child(l2)
 	h.add_child(tv)
 	var gold: bool = id == "standard" and not locked

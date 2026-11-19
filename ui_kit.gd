@@ -163,7 +163,12 @@ static func _style_btn(b: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat, t
 		normal.shadow_offset = Vector2(0, 2)
 	if not b.has_meta("bevel"):
 		b.set_meta("bevel", true)
-		b.draw.connect(func(): if not b.disabled: draw_bevel(b, b.size))
+		b.draw.connect(func():
+			if not b.disabled:
+				draw_bevel(b, b.size)
+			if bool(b.get_meta("ink_off", false)) != b.disabled:
+				b.set_meta("ink_off", b.disabled)
+				_ink.call_deferred(b, b.disabled))
 	b.add_theme_stylebox_override("normal", normal)
 	b.add_theme_stylebox_override("hover", normal)
 	b.add_theme_stylebox_override("pressed", pressed)
@@ -174,6 +179,50 @@ static func _style_btn(b: Button, normal: StyleBoxFlat, pressed: StyleBoxFlat, t
 	b.add_theme_color_override("font_pressed_color", text_col)
 	b.add_theme_color_override("font_disabled_color", Color(0.5, 0.55, 0.65))
 	press_fx(b)
+
+# Labels laid over a kit button (a title with a cost row under it) are written in the
+# button's dark ink; a disabled button turns dark, so they went dark on dark. While the
+# button is disabled every dark label inside it is pale, and it gets its ink back after.
+static func _ink(n: Node, off: bool) -> void:
+	if not is_instance_valid(n):
+		return
+	for c in n.get_children():
+		if c is Label:
+			var l: Label = c
+			if off:
+				var col := l.get_theme_color("font_color")
+				if col.get_luminance() < 0.35:
+					l.set_meta("ink0", col)
+					l.add_theme_color_override("font_color", Color(0.62, 0.66, 0.76, col.a))
+			elif l.has_meta("ink0"):
+				l.add_theme_color_override("font_color", l.get_meta("ink0"))
+				l.remove_meta("ink0")
+		elif c is TextureRect and c.has_meta("on_gold"):   # a coin tinted for gold: its own colours on the dark fill
+			c.modulate = Color.WHITE if off else COIN_ON_GOLD
+		_ink(c, off)
+
+# A gold coin picture on a gold button or pill disappears into it: there it is drawn in a
+# dark amber (the picture itself is untouched, only tinted). Pass an iconed() row.
+const COIN_ON_GOLD := Color(0.5, 0.33, 0.04)
+static func on_gold(row: Control) -> void:
+	for c in row.get_children():
+		if c is TextureRect:
+			c.modulate = COIN_ON_GOLD
+			c.set_meta("on_gold", true)
+
+# A one-line label that must stay inside its box: the font steps down (to min_px) until the
+# text fits the width it was given; what still does not fit is cut with an ellipsis.
+static func fit(l: Label, min_px: int = 10) -> void:
+	var base := l.get_theme_font_size("font_size")
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.clip_text = true
+	l.resized.connect(func():
+		var f := l.get_theme_font("font")
+		var px := base
+		while px > min_px and f.get_string_size(l.text, HORIZONTAL_ALIGNMENT_LEFT, -1, px).x > l.size.x:
+			px -= 1
+		if px != l.get_theme_font_size("font_size"):
+			l.add_theme_font_size_override("font_size", px))
 
 # Touch feedback on every kit button (dev140): a small squeeze while held, a springy
 # release. Connected once per button.

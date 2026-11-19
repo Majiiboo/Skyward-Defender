@@ -685,7 +685,13 @@ func _stat_rows(box: VBoxContainer, rows: Array) -> void:
 		var l: Control = UIKit.iconed(UIKit.ic(String(STAT_ICON.get(r[0], ""))), r[0], 13, Color(0.82, 0.9, 1.0)) if STAT_ICON.has(r[0]) else UIKit.label(r[0], 13, Color(0.82, 0.9, 1.0))
 		l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		h.add_child(l)
-		h.add_child(UIKit.label(r[1], 13, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT))
+		h.add_theme_constant_override("separation", 10)
+		var val := UIKit.label(r[1], 13, Color.WHITE, HORIZONTAL_ALIGNMENT_RIGHT)
+		if String(r[1]).length() > 26:   # a long building line ran into its name: it wraps in the room that is left
+			l.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+			val.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			val.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		h.add_child(val)
 		box.add_child(h)
 
 # ------------------------------------------------------------------ workshop page
@@ -2832,7 +2838,8 @@ func _talents_screen() -> void:
 		b.pressed.connect(func(): show.call(nn))
 		map.add_child(b)
 		var tag := UIKit.label("%s %s" % [c.tag, Talents.bonus_text(n)], 9, UIKit.GOLD if n <= have else (UIKit.CYAN if n == nxt else UIKit.MUTED), HORIZONTAL_ALIGNMENT_CENTER)
-		tag.position = p + Vector2(-44, 16.0 if String(c.card) == "" else 22.0)
+		tag.position = p + Vector2(-44, (16.0 if String(c.card) == "" else 22.0) + (6.0 if n == nxt else 0.0))   # the next star wears a ring: its tag sits under it
+		tag.position.x = clampf(tag.position.x, 4.0, w - 92.0)   # a tag beside the screen edge was cut ("CARD +6 p")
 		tag.size = Vector2(88, 14)
 		tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		map.add_child(tag)
@@ -3512,6 +3519,7 @@ func _level_sheet() -> void:
 	var gcost := UIKit.title("", 20, UIKit.GOLD_INK)
 	gb.add_child(gcost)
 	go.add_child(gb)
+	UIKit.on_gold(gb)   # the gold coin vanished on the gold button
 	go.button_down.connect(_lvl_press_down)
 	go.button_up.connect(func(): _lvl_token += 1)
 	go.pressed.connect(_lvl_pressed)
@@ -3613,7 +3621,7 @@ func _lvl_refresh(pop: bool) -> void:
 		go.text = ""
 		_lv_ui.go_cost.text = UIKit.num(cost)
 		_lv_ui.go_box.visible = true
-		_lv_ui.go_box.modulate.a = 0.45 if coins < cost else 1.0
+		_lv_ui.go_box.modulate.a = 0.85 if coins < cost else 1.0   # the kit turns the ink pale when disabled; 0.45 on top of dark ink was unreadable
 		go.disabled = coins < cost
 		hint.text = "Hold to keep levelling" if coins >= cost else "Not enough coins"
 
@@ -4194,6 +4202,8 @@ func _refresh_ws_craft_clean() -> void:
 		var sl := UIKit.iconed(UIKit.ic("ic_coin", "ui_coin"), UIKit.num(cc), 14, UIKit.GOLD_INK if ok else (UIKit.TEXT if coins >= cc else SHORT), 18.0)
 		sl.alignment = BoxContainer.ALIGNMENT_CENTER
 		sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		if ok:
+			UIKit.on_gold(sl)   # the gold coin vanished on the gold pill
 		state.add_child(sl)
 		v.add_child(state)
 		b.add_child(v)

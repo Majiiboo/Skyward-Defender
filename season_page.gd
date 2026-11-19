@@ -140,7 +140,15 @@ func _fill() -> void:
 	var list := VBoxContainer.new()
 	list.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	list.add_theme_constant_override("separation", 6)
-	_scroll.add_child(list)
+	# the scroll bar lay over the Premium column's edge: the rows keep 10 px clear of it
+	var pad := MarginContainer.new()
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	pad.add_theme_constant_override("margin_right", 10)
+	pad.add_child(list)
+	_scroll.add_child(pad)
+	var gap := Control.new()
+	gap.custom_minimum_size = Vector2(2, 0)
+	names.add_child(gap)
 	_here = null
 	for t in range(1, Season.TIERS + 1):
 		var reached: bool = t <= tier

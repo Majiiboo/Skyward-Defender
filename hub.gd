@@ -1755,7 +1755,7 @@ func _patrol_fill() -> void:
 		if left > 0:
 			cb.add_child(UIKit.iconed(load("res://icons/ic_bolt.svg"), str(Energy.PATROL_COST), 15, UIKit.GOLD_INK, 18.0))
 		if claim.disabled:
-			cb.modulate.a = 0.45
+			cb.modulate.a = 0.85   # the kit turns the dark ink pale on a disabled button; 0.45 left it unreadable
 		claim.add_child(cb)
 		claim.pressed.connect(func():
 			var s := Progress.read()

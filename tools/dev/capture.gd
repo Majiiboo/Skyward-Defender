@@ -11,6 +11,12 @@ extends SceneTree
 
 func _initialize() -> void:
 	var sv := OS.get_environment("CAP_SAVE")
+	# never write a test save over the real one: without override.cfg (the separate save
+	# folder) the capture stops here
+	if sv != "" and not bool(ProjectSettings.get_setting("application/config/use_custom_user_dir", false)):
+		push_error("capture.gd: no override.cfg with a custom user dir, CAP_SAVE refused")
+		quit(1)
+		return
 	if sv != "":
 		var f := FileAccess.open(sv, FileAccess.READ)
 		if f:
@@ -34,6 +40,12 @@ func _initialize() -> void:
 	if call != "":
 		_pending = call.split("|")
 
+func _scroll(n: Node, px: int) -> void:
+	if n is ScrollContainer:
+		n.scroll_vertical = px
+	for c in n.get_children():
+		_scroll(c, px)
+
 var _pending := PackedStringArray()
 var _frames := 0
 
@@ -47,9 +59,19 @@ func _process(_delta: float) -> bool:
 		var offer: Array = current_scene._offer()
 		if not offer.is_empty():
 			current_scene._pick_card(offer[0])
-	if _pending.is_empty() or current_scene == null:
+	if current_scene == null:
 		return false
 	_frames += 1
+	# CAP_SET="_supply_tab=2,_x=1": int variables set on the scene before CAP_CALL runs
+	# (pair it with CAP_CALL=_fill to open a sub-tab that has no root meta)
+	if _frames == 9:
+		for pair in OS.get_environment("CAP_SET").split(",", false):
+			current_scene.set(pair.get_slice("=", 0), int(pair.get_slice("=", 1)))
+	# CAP_SCROLL=600: scroll every list on the page down by that much (to see below the fold)
+	if _frames == 30 and OS.get_environment("CAP_SCROLL") != "":
+		_scroll(current_scene, int(OS.get_environment("CAP_SCROLL")))
+	if _pending.is_empty():
+		return false
 	if _frames == 10:
 		var args: Array = []
 		for i in range(1, _pending.size()):
