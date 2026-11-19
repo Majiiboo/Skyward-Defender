@@ -6,14 +6,14 @@ extends RefCounted
 # README-RUDY.md keeps the full story). Also opened from Settings > About.
 
 const NOTES := [
-	["The base is a loadout again", "No more building cards. The buildings you slot on Heroes > Base stand from the first second. Slots open from the start, then after stages 5, 10 and 18."],
-	["Base cards", "Each building you brought has ONE card, taken once, from in-fight level 4. It changes what the building does, and its pod turns gold."],
-	["Bonds", "A building plus its paired attack card. Level that card three times and a BOND is on your next evolution pick. The card shows the building's symbol."],
-	["Five new hero cards", "Hair Trigger, Heavy Caliber, Overdrive, Ricochet and Shrapnel. They open with the hero's level: 6, 9, 14, 20, 25."],
-	["The Cards page", "Heroes > Cards: each hero's basic cards and his evolutions in two rows. Locked ones show the hero level that opens them."],
-	["New power cards", "A colour says the kind (orange attack, blue defence, green passive, teal base). A tap takes the card. Hold a card to read more."],
-	["Evolutions", "Take any three hero cards in a fight and an Evolution pick opens: choose one of the gold cards your hero has unlocked."],
-	["No free healing", "The shield no longer mends after a wave and health does not come back. Earn it: the Field Medic card, a Repair Bay or Med Bay, Shield Recharge."],
+	["Evolutions change the screen", "A held beam, a wall of flak, a sweeping fan, two wingmen, lightning rods, hunters that latch on. A banner names each one when you take it."],
+	["Hero signatures", "A hero's own evolution now puts a ring of his element round him: ice slows, fire burns, electric zaps, dark marks."],
+	["New evolutions", "Afterburner (from Overdrive), Prism Shot (from Ricochet) and Cluster Storm (from Shrapnel)."],
+	["More bugs, in formation", "From stage 6 the waves are bigger and arrive in rows, wedges and columns. Each bug is a little weaker, and pays the same in total."],
+	["Stage bounties", "Campaign: a medal on a cleared stage. Win it again under one rule for a one-time reward. Lose, and your power comes back."],
+	["The Base page", "The real base sits on top: tap a pod to pick its slot. Slot 1 shapes the Core Pulse. Buildings evolve at level 10."],
+	["Home shows the stage", "Five small portraits under the stage name: tap them to see what the stage throws at you and which buildings answer it."],
+	["Card pictures", "Every card, base card, bond and evolution has its own emblem now."],
 ]
 
 static func due(save: Dictionary) -> bool:
