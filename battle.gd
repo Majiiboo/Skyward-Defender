@@ -565,6 +565,7 @@ func _start_stage() -> void:
 	_seek = 0.0
 	_od_need = 0
 	_bc_reset()
+	_hero_evo_reset()
 	_od_len = 4.0
 	_od_k = 0
 	_od_t = 0.0
@@ -1009,6 +1010,7 @@ func _process(delta: float) -> void:
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	_bc_tick(delta)
+	_hevo_tick(delta)
 	_evo_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
@@ -1533,7 +1535,11 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 				nb.pierce = true
 		if _rico_n > 0 and (_shot_shape != "stream" or _shot_n % 3 == 0):   # Ricochet (card): the rifle bounces every 3rd shot of its stream
 			nb["rico"] = _rico_n
-		if _seek > 0.0:   # Seeker (card): the shot curves toward the nearest bug ahead of it
+		if _hunters and _shot_n % (10 if _shot_shape == "stream" else 4) == 0:   # Hunter Swarm (evolution): this shot is a hunter
+			nb["hunter"] = true
+			nb["seek"] = maxf(_seek, 4.0)
+			nb["col"] = "gold"
+		elif _seek > 0.0:   # Seeker (card): the shot curves toward the nearest bug ahead of it
 			nb["seek"] = _seek
 		if _burst_pierce and ((_shot_shape == "ball" and i >= count - burst_extra) or (_shot_shape == "stream" and burst_count > 1 and _shot_n % 4 == 0)):
 			nb.pierce = true   # Burst Fire at its top level: the extra balls pierce / every 4th stream shot pierces
@@ -1763,6 +1769,7 @@ func _update_bullets(delta: float) -> void:
 				dmg = _through_shield(e, dmg)   # a shielded variant's bubble first
 				e.hp -= dmg
 				e.hit_t = HIT_FLINCH_T
+				_hevo_hit(b, e)
 				if b.get("shrap", false):
 					e["by_shrap"] = true
 				if (_shove or (_bonds.has("bastion_rounds") and (bool(b.get("pierce", false)) or bool(b.get("rail", false)) or int(b.get("pierce_left", 0)) > 0))) and not _is_boss(e) and not b.get("drone", false) and not b.get("shrap", false):   # Heavy Caliber / Bastion Rounds: the hit shoves it back up
@@ -1851,8 +1858,6 @@ func _update_bullets(delta: float) -> void:
 						zaps.append({"a": Vector2(e.pos), "b": Vector2(r_best.pos), "life": 0.1, "seed": rng.randf() * 100.0})
 				if not hit:
 					b.hits.append(e.id)
-					if _thunder and not b.has("src"):
-						_chain(e, 1, dmg * 0.5)
 				stat_hits += 1
 				for k in 3:
 					sparks.append({"pos": b.pos, "vel": Vector2(rng.randf_range(-100, 100), rng.randf_range(-100, 100)), "life": 0.3, "col": Color(0.2, 0.85, 1.0)})
@@ -2343,6 +2348,13 @@ func _kill(e: Dictionary) -> void:
 			_shard_q.append({"pos": Vector2(e.pos), "vel": Vector2.RIGHT.rotated(s_turn + TAU * si / float(_shrap_n)) * 440.0, "dmg": s_dmg, "r": 9.0, "tid": -2, "col": "cyan",
 				"big": false, "pierce": false, "hits": [e.id], "spark": 0, "pierce_left": 0, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": si,
 				"born": time_alive, "lane": 70 + si, "ttl": 0.3, "weld": 0, "shrap": true})
+		if _cluster:   # Cluster Storm (evolution): the shards hunt the nearest bugs and fly further
+			for ci in _shrap_n:
+				var cs: Dictionary = _shard_q[_shard_q.size() - 1 - ci]
+				cs["seek"] = 7.0
+				cs["ttl"] = 0.75
+				cs["col"] = "gold"
+			_fx_add("nova", Vector2(e.pos), 46.0, 0.25, 0.0, 1.5, Color(1.0, 0.8, 0.35, 0.8))
 		if _bonds.has("fallout"):   # the shards carry what the dead bug was suffering, and the hero's element
 			for fi in _shrap_n:
 				var fs: Dictionary = _shard_q[_shard_q.size() - 1 - fi]
@@ -3604,7 +3616,12 @@ func _fuse(id: String) -> void:
 		"flak_wall":
 			_split_n += 2
 			_mirror = maxi(_mirror, 3)
-		"gem_barrage": _barrage = true
+		"gem_barrage": _hunters = true
+		"cluster_storm":
+			_cluster = true
+			_shrap_chain = true
+			_shrap_n = maxi(_shrap_n, 6)
+			_shrap_dmg = maxf(_shrap_dmg, 0.5)
 		"guardian_wing":
 			_drone_mult *= 1.6
 			_shield_rate += 0.01
@@ -4797,6 +4814,7 @@ func _draw_hud() -> void:
 	_draw_wing_chip()
 	_draw_streak()
 	_draw_overdrive()
+	_hevo_draw()
 	_draw_move_tip()
 	for e in enemies:
 		if _is_boss(e):
@@ -5797,6 +5815,124 @@ func _update_streak(delta: float) -> void:
 
 # top right, under the HP bar: the count, a small "+n% coins", and a line that drains
 # Overdrive (card): a thin meter under the hero that fills with kills, and runs down in gold while it is live
+# ------------------------------------------------------------------ EVOLUTIONS THAT CHANGE THE SCREEN (2026-11-18)
+# Three prototypes, agreed with Rudy: an evolution changes what happens on screen, not a number.
+# THUNDER LANCE: a hit plants a lightning ROD in the bug (three at most); for ROD_T seconds it arcs to every
+#   bug within ROD_R, until it runs out or the host dies.
+# HUNTER SWARM: every 4th shot is a hunter: it homes, LATCHES on and drills, and jumps to the nearest bug
+#   when its host dies (eight at most).
+# CLUSTER STORM (new, from Shrapnel): the shards home in and bugs they kill burst again (in _kill).
+const ROD_T := 2.2
+const ROD_R := 118.0
+const ROD_EVERY := 0.3
+const LEECH_T := 4.5
+const LEECH_EVERY := 0.25
+const LEECH_JUMP := 280.0
+var _hunters := false
+var _cluster := false
+var _leeches: Array = []          # {"eid", "life", "k", "ph"}
+var _rod_cd := 0.0
+
+func _hero_evo_reset() -> void:
+	_hunters = false
+	_cluster = false
+	_leeches = []
+	_rod_cd = 0.0
+
+func _hevo_shot() -> float:   # one of the hero s shots, the measure for what these do
+	return float(_weapon().damage) * damage_mult
+
+func _hevo_hit(b: Dictionary, e: Dictionary) -> void:
+	if b.get("drone", false) or b.has("src"):
+		return
+	if _thunder and _rod_cd <= 0.0 and float(e.get("rod_t", 0.0)) <= 0.0 and float(e.hp) > 0.0 and not b.get("shrap", false):
+		var rods := 0
+		for o in enemies:
+			if float(o.get("rod_t", 0.0)) > 0.0:
+				rods += 1
+		if rods < 3:
+			e["rod_t"] = ROD_T
+			e["rod_k"] = 0.0
+			_rod_cd = 0.7
+			_fx_add("nova", Vector2(e.pos), 30.0, 0.22, 0.0, 1.6, Color(1.0, 0.85, 0.4))
+			Sfx.play("spit", 1.8)
+	if b.get("hunter", false) and float(e.hp) > 0.0 and _leeches.size() < 8:
+		_leeches.append({"eid": int(e.id), "life": LEECH_T, "k": 0.0, "ph": rng.randf() * TAU})
+
+func _hevo_tick(delta: float) -> void:
+	_rod_cd = maxf(_rod_cd - delta, 0.0)
+	if _thunder:
+		for e in enemies:
+			if float(e.get("rod_t", 0.0)) <= 0.0:
+				continue
+			e.rod_t = float(e.rod_t) - delta
+			e.rod_k = float(e.rod_k) + delta
+			if float(e.rod_k) < ROD_EVERY:
+				continue
+			e.rod_k = 0.0
+			var d: float = _hevo_shot() * 0.3
+			for o in enemies:
+				if o.id != e.id and float(o.hp) > 0.0 and _can_hurt(o) and Vector2(o.pos).distance_to(e.pos) < ROD_R:
+					o.hp -= d
+					o.hit_t = HIT_FLINCH_T
+					stat_pilot_dmg += d
+					zaps.append({"a": Vector2(e.pos) + Vector2(0.0, -float(e.r) - 12.0), "b": Vector2(o.pos), "life": 0.16, "seed": rng.randf() * 100.0})
+	if _leeches.is_empty():
+		return
+	var by_id := {}
+	for e in enemies:
+		if float(e.hp) > 0.0:
+			by_id[int(e.id)] = e
+	var keep: Array = []
+	for l in _leeches:
+		l.life = float(l.life) - delta
+		if float(l.life) <= 0.0:
+			continue
+		if not by_id.has(int(l.eid)):   # the host is gone: jump to the nearest bug
+			var from: Vector2 = l.get("at", soldier_pos)
+			var best = null
+			var bd := LEECH_JUMP
+			for o in enemies:
+				if float(o.hp) > 0.0 and _can_hurt(o) and Vector2(o.pos).distance_to(from) < bd:
+					bd = Vector2(o.pos).distance_to(from)
+					best = o
+			if best == null:
+				continue
+			l.eid = int(best.id)
+			zaps.append({"a": from, "b": Vector2(best.pos), "life": 0.18, "seed": rng.randf() * 100.0})
+			by_id[int(best.id)] = best
+		var h: Dictionary = by_id[int(l.eid)]
+		l["at"] = Vector2(h.pos)
+		l.k = float(l.k) + delta
+		if float(l.k) >= LEECH_EVERY:
+			l.k = 0.0
+			var ld: float = _hevo_shot() * 0.3
+			if _can_hurt(h):
+				h.hp -= ld
+				h.hit_t = HIT_FLINCH_T * 0.5
+				stat_pilot_dmg += ld
+		keep.append(l)
+	_leeches = keep
+
+func _hevo_draw() -> void:
+	var gold := Color(1.0, 0.85, 0.4)
+	if _thunder:
+		for e in enemies:
+			var rt: float = float(e.get("rod_t", 0.0))
+			if rt <= 0.0:
+				continue
+			var top: Vector2 = Vector2(e.pos) + Vector2(0.0, -float(e.r) - 14.0)
+			draw_line(Vector2(e.pos), top, gold, 2.0, true)   # the rod: a thin gold pin with a ball on top
+			draw_circle(top, 3.5 + 1.2 * sin(time_alive * 18.0), gold)
+			draw_arc(Vector2(e.pos), ROD_R, 0.0, TAU, 48, Color(gold, 0.10 + 0.08 * (rt / ROD_T)), 1.0, true)
+	for l in _leeches:
+		if not l.has("at"):
+			continue
+		var ang: float = time_alive * 9.0 + float(l.ph)
+		var p: Vector2 = Vector2(l.at) + Vector2.RIGHT.rotated(ang) * 13.0
+		draw_circle(p, 3.0, gold)
+		draw_line(p, p - Vector2.RIGHT.rotated(ang + PI / 2.0) * 7.0, Color(gold, 0.5), 1.5, true)
+
 func _draw_overdrive() -> void:
 	if _od_need <= 0:
 		return

@@ -234,13 +234,15 @@ const FUSIONS := {
 	"railstorm":     {"name": "Railshot",      "parts": ["piercing_rounds", "killer_instinct"], "rarity": "fusion", "max": 1,
 		"desc": "Every 4th shot is a rail: through the whole line, twice as hard"},
 	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "heavy_bolts"], "rarity": "fusion", "max": 1,
-		"desc": "Every bug a shot passes through throws sparks"},
+		"desc": "Hits plant a lightning rod in the bug: it arcs to every bug around it"},
 	"flak_wall":     {"name": "Flak Wall",     "parts": ["split_shot", "reinforced_hull"], "rarity": "fusion", "max": 1,
 		"desc": "Two more side shots, and shots you stop fly back at the bugs"},
 	"gem_barrage":   {"name": "Hunter Swarm",  "parts": ["seeker", "magnet"], "rarity": "fusion", "max": 1,
-		"desc": "Every 10 gems fire 6 shots at the nearest bugs"},
+		"desc": "Every 4th shot is a hunter: it latches on, drills, and jumps to the next bug"},
 	"guardian_wing": {"name": "Guardian Wing", "parts": ["drone_barrage", "shield_recharge"], "rarity": "fusion", "max": 1,
 		"desc": "The drone hits far harder and its fire mends the shield"},
+	"cluster_storm": {"name": "Cluster Storm", "parts": ["shrapnel", "heavy_caliber"], "rarity": "fusion", "max": 1,
+		"desc": "Dead bugs burst into shards that hunt the nearest bugs and burst them too"},
 	# the six heroes: his own card with Aegis becomes his signature
 	"sig_rook":   {"name": "Crossfire",     "parts": ["rook_twin", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
 	"sig_sparks": {"name": "Storm Coil",    "parts": ["sparks_weld", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
@@ -366,7 +368,7 @@ const UNLOCK := {
 	"hair_trigger": 6, "heavy_caliber": 9, "overdrive": 14, "ricochet": 20, "shrapnel": 25,
 	"split_shot": 10, "killer_instinct": 12, "shield_recharge": 12, "seeker": 15, "frost_rounds": 18, "drone_barrage": 18, "nova_burst": 20,
 }
-const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "guardian_wing": 30}
+const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "cluster_storm": 28, "guardian_wing": 30}
 const EVO_EVERY := 3   # every third hero card taken in a fight earns an evolution pick
 
 static func unlock_level(id: String) -> int:
