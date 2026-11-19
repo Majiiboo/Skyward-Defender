@@ -1011,6 +1011,7 @@ func _process(delta: float) -> void:
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	_bc_tick(delta)
 	_hevo_tick(delta)
+	_hevo_tick2(delta)
 	_evo_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
@@ -1481,7 +1482,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		var w_charged: bool = int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0 and not (_crit6 and _shot_n % 6 == 0)   # the weapon's own charged bolt
 		var lucky: bool = rng.randf() < _crit_rate or _evo_forge()   # a critical hit (crit rate / crit damage); War Forge: every 12th for sure
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
-		var rail: bool = _railstorm and _shot_n % 4 == 0
+		var rail: bool = false   # Railshot is a held beam now (_hevo_tick2)
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
 		if (crit or rail) and i == 0 and _rig_view:
 			_rig_view.fire(1.6)   # a charged or rail shot shoves him back harder
@@ -2370,7 +2371,7 @@ func _kill(e: Dictionary) -> void:
 		_od_k += 1
 		if _od_k >= _od_need:
 			_od_k = 0
-			_od_t = _od_len
+			_od_t = _od_len + (1.5 if _wake else 0.0)
 			if _bonds.has("overhaul") and shield > 0.0:
 				var oh_add: float = minf(shield_max * 0.05, shield_max - shield)
 				shield += oh_add
@@ -3616,7 +3617,9 @@ func _fuse(id: String) -> void:
 		"flak_wall":
 			_split_n += 2
 			_mirror = maxi(_mirror, 3)
+			_flak = true
 		"gem_barrage": _hunters = true
+		"afterburner": _wake = true
 		"cluster_storm":
 			_cluster = true
 			_shrap_chain = true
@@ -4313,6 +4316,8 @@ func _draw() -> void:
 	for e in enemies:
 		_draw_enemy(e)
 	_draw_shards()
+	_hevo_draw()    # rods, hunters, the beam, the flak wall, the wake (they were called from the HUD layer and never drew)
+	_hevo_draw2()
 	for r in rings:
 		var k: float = 1.0 - r.life / r.max
 		draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
@@ -4814,7 +4819,6 @@ func _draw_hud() -> void:
 	_draw_wing_chip()
 	_draw_streak()
 	_draw_overdrive()
-	_hevo_draw()
 	_draw_move_tip()
 	for e in enemies:
 		if _is_boss(e):
@@ -5833,11 +5837,141 @@ var _cluster := false
 var _leeches: Array = []          # {"eid", "life", "k", "ph"}
 var _rod_cd := 0.0
 
+# Second round (the same night):
+# RAILSHOT: every BEAM_CD seconds he HOLDS a beam for BEAM_T: a column straight up from the muzzle that
+#   follows him and burns every bug in it (the old "every 4th shot is a rail" is gone).
+# FLAK WALL: every WALL_CD seconds a wall of flak hangs across the field above him for WALL_T: bugs that
+#   cross it are hurt and slowed. It never touches the hero.
+# AFTERBURNER (new, from Overdrive): while Overdrive runs he leaves a burning wake; bugs that cross it
+#   catch fire. Overdrive lasts 1.5 s longer.
+const BEAM_CD := 5.0
+const BEAM_T := 1.3
+const BEAM_W := 17.0
+const WALL_CD := 8.0
+const WALL_T := 3.5
+const WALL_HALF := 120.0
+const WALL_UP := 170.0
+const WAKE_T := 2.5
+const WAKE_R := 30.0
+var _beam_cd := 2.0
+var _beam_t := 0.0
+var _beam_k := 0.0
+var _flak := false
+var _wall_cd := 3.0
+var _wall_t := 0.0
+var _wall_k := 0.0
+var _wall_at := Vector2.ZERO
+var _wake := false
+var _wake_pts: Array = []         # {"pos", "life"}
+var _wake_k := 0.0
+
 func _hero_evo_reset() -> void:
 	_hunters = false
 	_cluster = false
 	_leeches = []
 	_rod_cd = 0.0
+	_beam_cd = 2.0
+	_beam_t = 0.0
+	_flak = false
+	_wall_cd = 3.0
+	_wall_t = 0.0
+	_wake = false
+	_wake_pts = []
+
+func _hevo_hurt(e: Dictionary, d: float) -> void:
+	e.hp -= d
+	e.hit_t = HIT_FLINCH_T * 0.5
+	stat_pilot_dmg += d
+
+func _hevo_tick2(delta: float) -> void:
+	var busy: bool = not enemies.is_empty() and pilot_hp > 0.0
+	if _railstorm:
+		if _beam_t > 0.0:
+			_beam_t -= delta
+			_beam_k += delta
+			if _beam_k >= 0.1:
+				_beam_k = 0.0
+				var bx: float = _muzzle_world().x
+				for e in enemies:
+					if float(e.hp) > 0.0 and _can_hurt(e) and float(e.pos.y) < soldier_pos.y and absf(float(e.pos.x) - bx) < BEAM_W + float(e.r):
+						_hevo_hurt(e, _hevo_shot() * 0.8)
+		elif busy:
+			_beam_cd -= delta
+			if _beam_cd <= 0.0:
+				_beam_cd = BEAM_CD
+				_beam_t = BEAM_T
+				Sfx.play("shot_charge", 0.7)
+				shake = maxf(shake, 0.2)
+				if _rig_view:
+					_rig_view.fire(1.6)
+	if _flak:
+		if _wall_t > 0.0:
+			_wall_t -= delta
+			_wall_k += delta
+			if _wall_k >= 0.2:
+				_wall_k = 0.0
+				for e in enemies:
+					if float(e.hp) > 0.0 and _can_hurt(e) and absf(float(e.pos.y) - _wall_at.y) < float(e.r) + 10.0 and absf(float(e.pos.x) - _wall_at.x) < WALL_HALF + float(e.r):
+						_hevo_hurt(e, _hevo_shot() * 0.6)
+						if not _is_boss(e):
+							e.slow_t = maxf(float(e.get("slow_t", 0.0)), 0.5)
+							e.slow = maxf(float(e.get("slow", 0.0)), 0.5)
+						_fx_add("impact", Vector2(e.pos.x, _wall_at.y), 16.0, 0.14, rng.randf() * TAU, 1.4, Color(1.0, 0.75, 0.35))
+		elif busy:
+			_wall_cd -= delta
+			if _wall_cd <= 0.0:
+				_wall_cd = WALL_CD
+				_wall_t = WALL_T
+				_wall_at = Vector2(clampf(soldier_pos.x, WALL_HALF + 6.0, FIELD_W - WALL_HALF - 6.0), maxf(soldier_pos.y - WALL_UP, HUD_H + 90.0))
+				Sfx.play("shot_heavy", 1.3)
+	if _wake:
+		if _od_t > 0.0 and (_wake_pts.is_empty() or Vector2(_wake_pts[-1].pos).distance_to(soldier_pos) > 14.0) and _wake_pts.size() < 40:
+			_wake_pts.append({"pos": soldier_pos + Vector2(0.0, 6.0), "life": WAKE_T})
+		_wake_k += delta
+		var bite: bool = _wake_k >= 0.2
+		if bite:
+			_wake_k = 0.0
+		var keep: Array = []
+		for p in _wake_pts:
+			p.life = float(p.life) - delta
+			if float(p.life) <= 0.0:
+				continue
+			keep.append(p)
+			if not bite:
+				continue
+			for e in enemies:
+				if float(e.hp) > 0.0 and e.type != "spore" and _can_hurt(e) and Vector2(e.pos).distance_to(p.pos) < WAKE_R + float(e.r):
+					e.burn_t = maxf(float(e.get("burn_t", 0.0)), 2.0)
+					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.006 if _is_boss(e) else 0.05) * float(e.hp_max))
+		_wake_pts = keep
+
+func _hevo_draw2() -> void:
+	if _beam_t > 0.0:
+		var m: Vector2 = _muzzle_world()
+		var k: float = clampf(_beam_t / BEAM_T, 0.0, 1.0)
+		var w: float = BEAM_W * (0.55 + 0.45 * sin(k * PI)) * (1.0 + 0.12 * sin(time_alive * 40.0))
+		var el: Color = Heroes.element_color(Heroes.element_of(_hero_id))
+		draw_rect(Rect2(m.x - w * 1.6, 0.0, w * 3.2, m.y), Color(el, 0.16))
+		draw_rect(Rect2(m.x - w, 0.0, w * 2.0, m.y), Color(el, 0.45))
+		draw_rect(Rect2(m.x - w * 0.35, 0.0, w * 0.7, m.y), Color(1, 1, 1, 0.9))
+		draw_circle(m, w * 1.5, Color(1, 1, 1, 0.7))
+	elif _railstorm and _beam_cd < 0.6 and not enemies.is_empty():   # the half second before: a thin line shows where it will go
+		var m2: Vector2 = _muzzle_world()
+		draw_line(m2, Vector2(m2.x, 0.0), Color(1, 1, 1, 0.25), 1.0)
+	if _wall_t > 0.0:
+		var a: float = clampf(_wall_t / 0.4, 0.0, 1.0) * clampf((WALL_T - _wall_t) / 0.2, 0.0, 1.0)
+		var col := Color(1.0, 0.72, 0.3)
+		draw_rect(Rect2(_wall_at.x - WALL_HALF, _wall_at.y - 9.0, WALL_HALF * 2.0, 18.0), Color(col, 0.2 * a))
+		draw_line(_wall_at - Vector2(WALL_HALF, 0.0), _wall_at + Vector2(WALL_HALF, 0.0), Color(col, 0.95 * a), 3.0, true)
+		for i in 13:   # flak puffs popping along it
+			var u: float = fposmod(i * 0.618 + time_alive * (0.9 + 0.13 * (i % 4)), 1.0)
+			var px: float = _wall_at.x - WALL_HALF + (i + 0.5) * (WALL_HALF * 2.0 / 13.0)
+			draw_circle(Vector2(px, _wall_at.y + sin(i * 2.4) * 5.0), 3.0 + 9.0 * u, Color(col, (1.0 - u) * 0.8 * a))
+	for p in _wake_pts:
+		var lk: float = clampf(float(p.life) / WAKE_T, 0.0, 1.0)
+		var fl: float = 0.85 + 0.15 * sin(time_alive * 22.0 + float(p.pos.x))
+		draw_circle(Vector2(p.pos), WAKE_R * (0.5 + 0.5 * lk) * fl, Color(1.0, 0.45, 0.12, 0.22 * lk))
+		draw_circle(Vector2(p.pos), WAKE_R * 0.4 * lk * fl, Color(1.0, 0.8, 0.35, 0.5 * lk))
 
 func _hevo_shot() -> float:   # one of the hero s shots, the measure for what these do
 	return float(_weapon().damage) * damage_mult
