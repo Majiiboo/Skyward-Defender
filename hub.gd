@@ -586,8 +586,7 @@ func _build_home_clean() -> void:
 	for st in ["normal", "hover", "focus", "disabled"]:
 		eb.add_theme_stylebox_override(st, UIKit.pill(Color(UIKit.CARD, 0.75), 12, Vector2.ZERO))
 	eb.add_theme_stylebox_override("pressed", UIKit.pill(UIKit.CARD_HI, 12, Vector2.ZERO))
-	_weak_icon.set_anchors_preset(Control.PRESET_CENTER)
-	_weak_icon.position = Vector2(13, 6)
+	_weak_icon.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 6)   # centred inside its pill
 	eb.add_child(_weak_icon)
 	eb.pressed.connect(func(): ElementsChart.show(self, stage))
 	UIKit.press_fx(eb)

@@ -475,7 +475,6 @@ func _paint_slot(s: String) -> void:
 	# the level in the piece's rarity colour (Common grey ... Legendary gold)
 	v.add_child(UIKit.label("Lv.%d" % _lvl(id), 11, GearData.rarity_color(GearData.rarity(gear, id)), HORIZONTAL_ALIGNMENT_CENTER))
 	b.add_child(v)
-
 # the tile itself: a glass square, lit in its set's colour when selected
 func _draw_slot(b: Button, s: String) -> void:
 	var on := s == selected_slot
@@ -3773,6 +3772,8 @@ func _pick_square(tex: Texture2D, name: String, h: float, selected: bool, col: C
 	v.add_child(tr)
 	var nl := UIKit.label(name, 10, UIKit.SOFT if dim else UIKit.TEXT, HORIZONTAL_ALIGNMENT_CENTER)
 	nl.clip_text = true
+	if name.length() > 13:   # a long name in a narrow tile: a size down, so it never touches the edge
+		nl.add_theme_font_size_override("font_size", 10)
 	v.add_child(nl)
 	if sub != "":
 		var sl := UIKit.label(sub, 10, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER)
@@ -3814,6 +3815,13 @@ func _cost_btn(title_text: String, coin_cost: int, needs: Dictionary, note: Stri
 			row.add_child(UIKit.iconed(_mat_icon(String(k)), str(int(needs[k])), 11, ink if (ok or gold) else SHORT, 14.0))
 		v.add_child(row)
 	b.add_child(v)
+	if gold:   # a gold button that cannot be pressed turns dark: its dark ink must turn pale to stay readable
+		b.draw.connect(func():
+			if b.disabled and not b.has_meta("pale"):
+				b.set_meta("pale", true)
+				for l in v.find_children("*", "Label", true, false):
+					l.add_theme_color_override("font_color", UIKit.SOFT))
+
 	return b
 
 func _tag_row(el: String, role: String, star: int, extra: String = "") -> HBoxContainer:
@@ -4376,7 +4384,7 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 	var act := HBoxContainer.new()
 	act.add_theme_constant_override("separation", 8)
 	var why := Base.why_not_level(data, b, id)
-	var up := _cost_btn("LEVEL UP", Base.level_cost(lv), Base.level_parts(lv), "MAX" if lv >= Base.MAX_LEVEL else "", true, 17)
+	var up := _cost_btn("MAX LEVEL", 0, {}, "", true, 15) if lv >= Base.MAX_LEVEL else _cost_btn("LEVEL UP", Base.level_cost(lv), Base.level_parts(lv), "", true, 17)
 	up.disabled = why != ""
 	up.pressed.connect(func(): _on_base_level(id))
 	act.add_child(up)
