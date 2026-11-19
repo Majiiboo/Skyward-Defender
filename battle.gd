@@ -3682,8 +3682,6 @@ func _fuse(id: String) -> void:
 	if _replaying:
 		return
 	var pink: Color = Cards.COLOR.fusion
-	_float_text(soldier_pos + Vector2(0, -80), "EVOLVED!", pink, true)
-	_float_text(soldier_pos + Vector2(0, -56), String(Cards.FUSIONS[id].name), pink)
 	_burst(soldier_pos, 46.0, pink, 26)
 	_fx_add("nova", soldier_pos, 60.0, 0.6, 0.0, 2.2, pink)
 	shake = maxf(shake, 0.35)
