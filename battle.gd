@@ -862,8 +862,10 @@ func _start_wave() -> void:
 		_float_text(Vector2(FIELD_W * 0.5, 190), "%s  ·  %s" % [String(wk.name), String(wk.text)], wk.col, true)
 		Sfx.play("boss", 1.3)
 
-func _spawn(id: String) -> void:
-	var e := _make_enemy(id, Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
+func _spawn(id: String, at: Vector2 = Vector2.INF) -> void:
+	var e := _make_enemy(id, at if at != Vector2.INF else Vector2(rng.randf_range(40.0, FIELD_W - 40.0), 60.0))
+	if at != Vector2.INF:   # part of a formation: it holds its place in the shape for a moment, then flies its own way
+		e["form_t"] = FORM_HOLD
 	if _bc_lock > 0 and not _is_boss_id(id) and id != "crate":   # base card (Radar): the first three of a wave are marked
 		_bc_lock -= 1
 		e["mark_t"] = 45.0
@@ -1071,6 +1073,47 @@ func _process(delta: float) -> void:
 			_start_wave()
 	queue_redraw()
 
+# FORMATIONS (Rudy 2026-11-18: bugs come down in formations, not at random, and from early on). A group is
+# one kind of bug in one shape: a row, a V, a column, a staircase or an arc. Small at first (3 from stage 2),
+# up to 7 late. They hold the shape for FORM_HOLD seconds, then each flies its own way.
+static var FORMATIONS := true     # a dial for the simulator (SIM_FORM=0)
+const FORM_HOLD := 1.8
+const FORM_SPEED := 62.0          # the slowest a formation comes down, px a second
+const FORM_GAP := 46.0
+const FORM_SHAPES := ["row", "vee", "column", "stairs", "arc"]
+var _form_last := ""
+
+func _spawn_formation() -> void:
+	var id: String = wave_queue[0]
+	var most: int = 3 if stage <= 5 else (4 if stage <= 10 else (5 if stage <= 20 else (6 if stage <= 40 else 7)))
+	most = maxi(most, roundi(StageData.group_size(stage) * _crowd(CROWD_PACE)))
+	var n := 0
+	var i := 0
+	while i < wave_queue.size() and n < most:   # the same kind, pulled from wherever it waits in the wave
+		if String(wave_queue[i]) == id:
+			wave_queue.remove_at(i)
+			n += 1
+		else:
+			i += 1
+	var shape: String = FORM_SHAPES[rng.randi() % FORM_SHAPES.size()]
+	if shape == _form_last:   # never the same shape twice running
+		shape = FORM_SHAPES[(FORM_SHAPES.find(shape) + 1) % FORM_SHAPES.size()]
+	_form_last = shape
+	var offs: Array = []
+	var mid: float = (n - 1) * 0.5
+	var side: float = -1.0 if rng.randf() < 0.5 else 1.0
+	for k in n:
+		match shape:
+			"row": offs.append(Vector2((k - mid) * FORM_GAP, 0.0))
+			"vee": offs.append(Vector2((k - mid) * FORM_GAP, -absf(k - mid) * FORM_GAP * 0.7))   # the point leads
+			"column": offs.append(Vector2(0.0, -k * FORM_GAP))
+			"stairs": offs.append(Vector2((k - mid) * FORM_GAP * side, -k * FORM_GAP * 0.6))
+			_: offs.append(Vector2((k - mid) * FORM_GAP, -(mid * mid - (k - mid) * (k - mid)) * 7.0))   # an arc, the ends lead
+	var half: float = mid * FORM_GAP + 34.0
+	var cx: float = rng.randf_range(minf(half, FIELD_W * 0.5), maxf(FIELD_W - half, FIELD_W * 0.5))
+	for o in offs:
+		_spawn(id, Vector2(clampf(cx + float(o.x), 24.0, FIELD_W - 24.0), 60.0 + float(o.y)))
+
 func _spawn_step(delta: float) -> void:
 	if _preview:
 		return
@@ -1079,6 +1122,9 @@ func _spawn_step(delta: float) -> void:
 	wave_spawn_t -= delta
 	if wave_spawn_t <= 0.0:
 		wave_spawn_t = (StageData.spawn_gap(stage) / _crowd(CROWD_PACE)) if enemies.size() < roundi(_crowd(float(CROWD_CAP))) else 2.4
+		if FORMATIONS and stage >= 2 and not _is_boss_id(String(wave_queue[0])) and String(wave_queue[0]) != "crate":
+			_spawn_formation()
+			return
 		# arrive in small groups so the sky fills (one at a time in stage 1)
 		var n: int = mini(roundi(StageData.group_size(stage) * _crowd(CROWD_PACE)), wave_queue.size())
 		for i in n:
@@ -1858,7 +1904,10 @@ func _update_enemies(delta: float) -> void:
 			e.vel.y += 90.0 * delta
 			if e.t > 0.7:
 				e.state = "fly"
-		match ("dummy" if e.has("dummy") else ("runner" if e.has("runner") else String(def.move))):
+		match ("dummy" if e.has("dummy") else ("runner" if e.has("runner") else ("form" if float(e.get("form_t", 0.0)) > 0.0 else String(def.move)))):
+			"form":   # in formation: straight down at the formation's pace, so the shape holds
+				e.pos.y += maxf(float(e.speed), FORM_SPEED * _bug_speed) * delta   # its own pace (one kind = one pace), never a crawl
+				e.form_t = float(e.form_t) - delta
 			"dummy":   # a target on the Try window s range: it drops into its place and sways there
 				e.pos = Vector2(e.pos).lerp(Vector2(e.home) + Vector2(sin(e.t * 1.3 + float(e.ph)) * 7.0, cos(e.t * 0.9 + float(e.ph)) * 4.0), minf(delta * 7.0, 1.0))
 			"crate":

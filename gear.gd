@@ -4259,46 +4259,38 @@ func _refresh_base() -> void:
 		rb.pressed.connect(func(): get_tree().change_scene_to_file("res://research_page.tscn"))
 		box.add_child(rb)
 		UIKit.dot(rb, lleft <= 0)
-	var intro := UIKit.label("Pick the buildings that stand on your base. They help from the first second of a fight. Level them here to make them stronger.", 12, UIKit.SOFT)
+	var intro := UIKit.label("Tap a pod, then a building. The base stands from the first second of a fight.", 12, UIKit.SOFT)
 	intro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(intro)
-	# the four slots
-	var slots := HBoxContainer.new()
-	slots.add_theme_constant_override("separation", 8)
+	# the base itself, as it stands in the fight (BaseDeck): tap a pod to pick that slot
+	var deck := BaseDeck.new()
+	var live_pairs: Array = []
 	for i in Base.SLOTS:
 		var id := String(b.slots[i])
 		var open: bool = Base.slot_open(i, t_unlocked) or DevTools.on
-		var col: Color = Base.BUILDINGS[id].col if id != "" else UIKit.CYAN
-		var sq := _pick_square(Base.pic(id) if id != "" else null, ("Stage %d" % Base.SLOT_OPENS_AFTER[i]) if not open else (String(Base.BUILDINGS[id].name) if id != "" else "Empty"), 100.0, i == b_slot, col, not open)
-		_num_badge(sq, col if open else UIKit.SOFT, str(i + 1))
-		if i == 0:   # the building here shapes the Core Pulse (Base.PULSE)
-			var tag := PanelContainer.new()
-			tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tag.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.GOLD if Base.pulse_open(data) else UIKit.SOFT, 0.9), 8, Vector2(6, 0)))
-			tag.add_child(UIKit.title("PULSE", 10, Color(0.04, 0.07, 0.13), HORIZONTAL_ALIGNMENT_CENTER))
-			tag.set_anchors_preset(Control.PRESET_TOP_LEFT)
-			tag.offset_left = 6.0
-			tag.offset_top = 6.0
-			sq.add_child(tag)
-		var si: int = i
-		sq.pressed.connect(func():
-			b_slot = si
-			var here := String(Base.read(_read()).slots[si])
-			if here != "":
-				b_focus = here
-			_refresh_base())
-		slots.add_child(sq)
-	box.add_child(slots)
-	# the links live right now (Base.links): gold chips; none yet = a quiet hint
-	var live: Array = Base.links(data)
-	var lrow := HFlowContainer.new()
-	lrow.add_theme_constant_override("h_separation", 6)
-	lrow.add_theme_constant_override("v_separation", 6)
-	if live.is_empty():
-		lrow.add_child(UIKit.label("No links yet. Some buildings give a bonus when fielded together.", 11, UIKit.SOFT))
-	for l in live:
-		lrow.add_child(UIKit.chip("Link: " + String(Base.LINKS[l].name), UIKit.GOLD))
-	box.add_child(lrow)
+		var pd := {"open": open, "level": Base.level(b, id) if id != "" else 0, "flash": 0.0}
+		if id != "" and open:
+			pd["col"] = Base.BUILDINGS[id].col
+			pd["tex"] = Base.pic(id)
+			pd["evo"] = Base.has_evo(b, id)
+		deck.pods.append(pd)
+		deck.locked.append("" if open else "Stage %d" % Base.SLOT_OPENS_AFTER[i])
+	for l in Base.links(data):   # a gold line between two linked pods, as in the fight
+		var pair: Array = []
+		for part in [String(Base.LINKS[l].a), String(Base.LINKS[l].b)]:
+			pair.append(b.slots.find(part))
+		live_pairs.append(pair)
+	deck.links = live_pairs
+	deck.sel = b_slot
+	deck.pulse = "on" if Base.pulse_open(data) else "off"
+	deck.pod_tapped.connect(func(si: int):
+		b_slot = si
+		var here := String(Base.read(_read()).slots[si])
+		if here != "":
+			b_focus = here
+		Sfx.play("tap")
+		_refresh_base())
+	box.add_child(deck)
 	box.add_child(_base_card(data, b))
 	# every building
 	var grid := GridContainer.new()
@@ -4360,29 +4352,51 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 		var nxt := UIKit.label("Next level: " + Base.text(id, lv + 1), 12, GOOD)
 		nxt.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		nv.add_child(nxt)
-	# its level-5 perk (Base.PERKS): gold once earned, a promise before
+	# AT A GLANCE (2026-11-18): what is live now as small gold chips, then the ONE next milestone with
+	# a padlock; everything else (links, pulse, base card, bond) is behind Details (_base_details)
+	var live_row := HFlowContainer.new()
+	live_row.add_theme_constant_override("h_separation", 6)
+	live_row.add_theme_constant_override("v_separation", 6)
 	var has_pk: bool = own and Base.has_perk(b, id)
-	var pk := UIKit.label(("Perk: " if has_pk else "At Lv.%d: " % Base.PERK_LEVEL) + Base.perk_text(id), 12, UIKit.GOLD if has_pk else UIKit.SOFT)
-	pk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nv.add_child(pk)
-	# its level-10 evolution (Base.EVOS): the same pattern, a promise in grey, gold once earned
 	var has_ev: bool = own and Base.has_evo(b, id)
-	var ev := UIKit.label(("%s: %s" % [Base.evo_name(id), Base.evo_text(id)]) if has_ev else ("At Lv.%d: %s" % [Base.EVO_LEVEL, Base.evo_name(id)]), 12, UIKit.GOLD if has_ev else UIKit.SOFT)
-	ev.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nv.add_child(ev)
-	# who it links with (Base.LINKS): gold when both are fielded
+	if has_pk:
+		live_row.add_child(UIKit.chip("Perk", UIKit.GOLD))
+	if has_ev:
+		live_row.add_child(UIKit.chip(Base.evo_name(id), UIKit.GOLD))
 	var live_l: Array = Base.links(data)
 	for lk in Base.links_of(id):
-		var on_l: bool = live_l.has(String(lk.id))
-		var ll := UIKit.label("%s with %s: %s" % [String(lk.name), String(Base.BUILDINGS[String(lk.with)].name), String(lk.text)], 12, UIKit.GOLD if on_l else UIKit.SOFT)
-		ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		nv.add_child(ll)
-	# what it does to the Core Pulse from slot 1 (Base.PULSE): gold when it stands there and the pulse is open
-	var p_open: bool = Base.pulse_open(data)
-	var p_on: bool = p_open and String(b.slots[0]) == id
-	var pl := UIKit.label("In slot 1%s: %s pulse, %s" % ["" if p_open else " (from stage %d)" % Base.PULSE_FROM, Base.pulse_name(id), Base.pulse_text(id)], 12, UIKit.GOLD if p_on else UIKit.SOFT)
-	pl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	nv.add_child(pl)
+		if live_l.has(String(lk.id)):
+			live_row.add_child(UIKit.chip(String(lk.name), UIKit.GOLD))
+	if Base.pulse_open(data) and String(b.slots[0]) == id:
+		live_row.add_child(UIKit.chip(Base.pulse_name(id) + " pulse", UIKit.GOLD))
+	if live_row.get_child_count() > 0:
+		nv.add_child(live_row)
+	var next_txt := ""
+	if not has_pk:
+		next_txt = "Lv.%d  ·  %s" % [Base.PERK_LEVEL, Base.perk_text(id)]
+	elif not has_ev:
+		next_txt = "Lv.%d  ·  %s: %s" % [Base.EVO_LEVEL, Base.evo_name(id), Base.evo_text(id)]
+	if next_txt != "":
+		var nrow := HBoxContainer.new()
+		nrow.add_theme_constant_override("separation", 6)
+		var lockpic := TextureRect.new()
+		lockpic.texture = UIKit.ic("ui_padlock", "ic_rank")
+		lockpic.custom_minimum_size = Vector2(14, 14)
+		lockpic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		lockpic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		lockpic.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+		lockpic.modulate = Color(UIKit.SOFT, 0.9)
+		nrow.add_child(lockpic)
+		var nl2 := UIKit.label(next_txt, 12, UIKit.SOFT)
+		nl2.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		nl2.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nrow.add_child(nl2)
+		nv.add_child(nrow)
+	var more := UIKit.ghost_button("Details  ›", 12)
+	more.custom_minimum_size = Vector2(0, 30)
+	more.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	more.pressed.connect(func(): _base_details(id))
+	nv.add_child(more)
 	head.add_child(nv)
 	v.add_child(head)
 	if not own:
@@ -4419,6 +4433,78 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 	act.add_child(place)
 	v.add_child(act)
 	return p
+
+# Everything a building can do, in one bottom sheet (the Base card shows only what is live and what is
+# next): its perk, its evolution, its links, its Core Pulse from slot 1, its base card and its bond.
+var _bd_layer: Control = null
+func _base_details(id: String) -> void:
+	if is_instance_valid(_bd_layer):
+		_bd_layer.queue_free()
+	var data := _read()
+	var b := Base.read(data)
+	var own: bool = Base.owned(b, id)
+	var layer := Control.new()
+	_bd_layer = layer
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.62)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(func(): layer.queue_free())
+	layer.add_child(dim)
+	var sheet := UIKit.popup_panel()
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	sheet.offset_left = 8.0
+	sheet.offset_right = -8.0
+	sheet.offset_bottom = -8.0
+	layer.add_child(sheet)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	sheet.add_child(v)
+	v.add_child(UIKit.popup_title(String(Base.BUILDINGS[id].name)))
+	var rows: Array = []   # [head, text, live]
+	rows.append(["Lv.%d perk" % Base.PERK_LEVEL, Base.perk_text(id), own and Base.has_perk(b, id)])
+	rows.append(["Lv.%d  ·  %s" % [Base.EVO_LEVEL, Base.evo_name(id)], Base.evo_text(id), own and Base.has_evo(b, id)])
+	var live_l: Array = Base.links(data)
+	for lk in Base.links_of(id):
+		rows.append(["Link with %s  ·  %s" % [String(Base.BUILDINGS[String(lk.with)].name), String(lk.name)], String(lk.text), live_l.has(String(lk.id))])
+	var p_open: bool = Base.pulse_open(data)
+	rows.append(["In slot 1  ·  %s pulse%s" % [Base.pulse_name(id), "" if p_open else "  (from stage %d)" % Base.PULSE_FROM], Base.pulse_text(id), p_open and String(b.slots[0]) == id])
+	for cid in Cards.CARDS:
+		var cd: Dictionary = Cards.CARDS[cid]
+		if bool(cd.get("bcard", false)) and String(cd.get("building", "")) == id:
+			rows.append(["Card in the fight  ·  %s" % String(cd.name), String(cd.desc), false])
+	for bid in Cards.BONDS:
+		var bd: Dictionary = Cards.BONDS[bid]
+		if String(bd.building) == id:
+			rows.append(["Bond with %s  ·  %s" % [String(Cards.CARDS[String(bd.card)].name), String(bd.name)], String(bd.desc), false])
+	for r in rows:
+		var card := UIKit.panel(14)
+		var cv := VBoxContainer.new()
+		cv.add_theme_constant_override("separation", 2)
+		card.add_child(cv)
+		cv.add_child(UIKit.title(String(r[0]), 13, UIKit.GOLD if bool(r[2]) else UIKit.TEXT))
+		var tl := UIKit.label(String(r[1]), 12, UIKit.TEXT if bool(r[2]) else UIKit.SOFT)
+		tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		cv.add_child(tl)
+		v.add_child(card)
+	var note := UIKit.label("Gold = live now. The card and the bond come up during a fight while this building stands.", 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(note)
+	var close := UIKit.ghost_button("Close", 13)
+	close.custom_minimum_size = Vector2(0, 40)
+	close.pressed.connect(func(): layer.queue_free())
+	v.add_child(close)
+
+# capture hook (CAP_CALL="_dbg_base_details|<id>")
+func _dbg_base_details(id: String = "shield_gen") -> void:
+	b_focus = id
+	_refresh_base()
+	_base_details(id)
 
 func _on_base_build(id: String) -> void:
 	var data := _read()

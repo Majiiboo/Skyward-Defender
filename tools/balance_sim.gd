@@ -74,6 +74,7 @@ func _initialize() -> void:
 	if OS.get_environment("SIM_CAP") != "": bs.CROWD_CAP = int(OS.get_environment("SIM_CAP"))
 	if OS.get_environment("SIM_LATE") != "": bs.CROWD_LATE = float(OS.get_environment("SIM_LATE"))
 	if OS.get_environment("SIM_VAN") != "": bs.VANGUARD = float(OS.get_environment("SIM_VAN"))
+	if OS.get_environment("SIM_FORM") == "0": bs.FORMATIONS = false
 	if OS.get_environment("SIM_STEEP") != "":
 		load("res://battle.gd").XP_STEEP = int(OS.get_environment("SIM_STEEP"))
 	if not OS.get_user_data_dir().to_lower().contains("sim"):
