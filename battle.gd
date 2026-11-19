@@ -567,6 +567,7 @@ func _start_stage() -> void:
 	_bc_reset()
 	_hero_evo_reset()
 	_hevo3_reset()
+	_sig_aura = ""
 	_od_len = 4.0
 	_od_k = 0
 	_od_t = 0.0
@@ -1014,6 +1015,7 @@ func _process(delta: float) -> void:
 	_hevo_tick(delta)
 	_hevo_tick2(delta)
 	_hevo_tick3(delta)
+	_hevo_tick4(delta)
 	_evo_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
@@ -3636,6 +3638,7 @@ func _fuse(id: String) -> void:
 			if id.begins_with("sig_"):   # a hero s signature: he hits harder and is harder to hurt
 				damage_mult *= 1.25
 				_def = minf(_def + 0.15, 0.75)
+				_sig_aura = Heroes.element_of(_hero_id)
 	if _replaying:
 		return
 	var pink: Color = Cards.COLOR.fusion
@@ -4323,6 +4326,7 @@ func _draw() -> void:
 	_hevo_draw()    # rods, hunters, the beam, the flak wall, the wake (they were called from the HUD layer and never drew)
 	_hevo_draw2()
 	_hevo_draw3()
+	_hevo_draw4()
 	for r in rings:
 		var k: float = 1.0 - r.life / r.max
 		draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
@@ -6133,6 +6137,63 @@ func _hevo_draw3() -> void:
 		draw_texture_rect(tx, Rect2(Vector2(_wm_p[i]) - Vector2(WM_W, h) * 0.5, Vector2(WM_W, h)), false, Color(1.6, 1.5, 1.3))
 		if float(_wm_flash[i]) > 0.0:
 			draw_circle(Vector2(_wm_p[i]) + Vector2(0.0, -h * 0.5), 5.0, Color(1, 1, 1, 0.8))
+
+
+# HERO SIGNATURES = AN AURA (agreed with Rudy): his signature evolution puts a ring of his element round
+# him (SIG_R); bugs inside it feel that element twice a second: ice slows, fire burns, electric zaps
+# the nearest, energy hurts everything in it, void feeds him, dark marks them (every hit a crit).
+const SIG_R := 96.0
+var _sig_aura := ""
+var _sig_k := 0.0
+
+func _hevo_tick4(delta: float) -> void:
+	if _sig_aura == "" or pilot_hp <= 0.0:
+		return
+	_sig_k += delta
+	if _sig_k < 0.5:
+		return
+	_sig_k = 0.0
+	var near = null
+	var nd := SIG_R + 60.0
+	for e in enemies:
+		if float(e.hp) <= 0.0 or not _can_hurt(e) or e.type == "crate":
+			continue
+		var d: float = Vector2(e.pos).distance_to(soldier_pos) - float(e.r)
+		if d > SIG_R:
+			continue
+		if d < nd:
+			nd = d
+			near = e
+		match _sig_aura:
+			"frost":
+				if not _is_boss(e):
+					e.slow_t = maxf(float(e.get("slow_t", 0.0)), 0.7)
+					e.slow = maxf(float(e.get("slow", 0.0)), 0.4)
+			"solar":
+				if e.type != "spore":
+					e.burn_t = maxf(float(e.get("burn_t", 0.0)), 1.5)
+					e.burn_dps = maxf(float(e.get("burn_dps", 0.0)), (0.005 if _is_boss(e) else 0.04) * float(e.hp_max))
+			"ion":
+				_hevo_hurt(e, _hevo_shot() * 0.35)
+			"void":
+				_hevo_hurt(e, _hevo_shot() * 0.15)
+				pilot_hp = minf(pilot_hp + pilot_hp_max * 0.004, pilot_hp_max)
+			"nightmare":
+				e.mark_t = maxf(float(e.get("mark_t", 0.0)), 1.0)
+	if _sig_aura == "scavenger" and near != null:
+		_hevo_hurt(near, _hevo_shot() * 1.2)
+		zaps.append({"a": soldier_pos, "b": Vector2(near.pos), "life": 0.16, "seed": rng.randf() * 100.0})
+
+func _hevo_draw4() -> void:
+	if _sig_aura == "" or pilot_hp <= 0.0:
+		return
+	var col: Color = Heroes.element_color(_sig_aura)
+	var br: float = 0.5 + 0.5 * sin(time_alive * 2.6)
+	draw_circle(soldier_pos, SIG_R, Color(col, 0.05 + 0.03 * br))
+	draw_arc(soldier_pos, SIG_R, 0.0, TAU, 64, Color(col, 0.35 + 0.2 * br), 1.5, true)
+	for i in 6:   # six short arcs turning on the ring
+		var a0: float = time_alive * 0.7 + TAU * i / 6.0
+		draw_arc(soldier_pos, SIG_R - 5.0, a0, a0 + 0.32, 8, Color(col, 0.75), 2.5, true)
 
 func _hevo_draw() -> void:
 	var gold := Color(1.0, 0.85, 0.4)

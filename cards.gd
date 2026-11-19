@@ -246,12 +246,12 @@ const FUSIONS := {
 	"cluster_storm": {"name": "Cluster Storm", "parts": ["shrapnel", "heavy_caliber"], "rarity": "fusion", "max": 1,
 		"desc": "Dead bugs burst into shards that hunt the nearest bugs and burst them too"},
 	# the six heroes: his own card with Aegis becomes his signature
-	"sig_rook":   {"name": "Crossfire",     "parts": ["rook_twin", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
-	"sig_sparks": {"name": "Storm Coil",    "parts": ["sparks_weld", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
-	"sig_frost":  {"name": "Absolute Zero", "parts": ["frost_freeze", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
-	"sig_hollow": {"name": "Event Horizon", "parts": ["hollow_phase", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on him are 15% weaker"},
-	"sig_nyx":    {"name": "Blood Moon",    "parts": ["nyx_mark", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on her are 15% weaker"},
-	"sig_ember":  {"name": "Inferno",       "parts": ["ember_burn", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and hits on her are 15% weaker"},
+	"sig_rook":   {"name": "Crossfire",     "parts": ["rook_twin", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring of energy round him hurts every bug inside it"},
+	"sig_sparks": {"name": "Storm Coil",    "parts": ["sparks_weld", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring round him zaps the nearest bug inside it"},
+	"sig_frost":  {"name": "Absolute Zero", "parts": ["frost_freeze", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring of cold round him slows every bug inside it"},
+	"sig_hollow": {"name": "Event Horizon", "parts": ["hollow_phase", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring round him drains the bugs inside it and feeds him"},
+	"sig_nyx":    {"name": "Blood Moon",    "parts": ["nyx_mark", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring round her marks the bugs inside it: every hit on them is a crit"},
+	"sig_ember":  {"name": "Inferno",       "parts": ["ember_burn", "aegis"], "rarity": "fusion", "max": 1, "desc": "Damage +25%, and a ring of fire round her sets the bugs inside it alight"},
 }
 
 # what each pick of a FIVE-LEVEL card gives (index = picks so far); the fifth shows its OVERCHARGE line
