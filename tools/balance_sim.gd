@@ -544,7 +544,7 @@ const CARD_VALUE := {
 	"nanobots": 2.5, "plate_up": 2.5, "rich_seam": 1.0, "salvage": 1.0,
 }
 const HERO_CARD_VALUE := 9.0    # his own five-level card
-const EVO_ORDER := ["storm_volley", "railstorm", "thunder_lance", "flak_wall", "gem_barrage", "guardian_wing", "cluster_storm"]
+const EVO_ORDER := ["storm_volley", "railstorm", "thunder_lance", "flak_wall", "gem_barrage", "guardian_wing", "cluster_storm", "afterburner", "prism_shot"]
 # SIM_EVO=<id> (2026-11-18): the bot takes THIS evolution at its first evolution pick once the hero has
 #   unlocked it (it is handed the card even when the three on offer do not show it, so every run measures
 #   it from the same moment: the third hero card), and the picks line says "EVOLVE <id> at ..s/w..".
