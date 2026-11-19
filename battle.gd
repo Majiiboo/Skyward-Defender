@@ -815,7 +815,7 @@ func _start_stage() -> void:
 
 # a crowd dial at this stage: nothing through stage 5, all of it from stage 15, and past stage 30 it keeps
 # growing (CROWD_LATE: twice the dial by stage 60), except the health cut, which stops at the dial
-static var CROWD_LATE := 30.0     # stages past 30 for the dial to double (a dial for the simulator: SIM_LATE)
+static var CROWD_LATE := 20.0     # stages past 30 for the dial to double (a dial for the simulator: SIM_LATE)
 func _crowd(v: float) -> float:
 	if horde or (_is_trial() and bounty == "") or _preview:
 		return 1.0
@@ -2365,19 +2365,20 @@ func _kill(e: Dictionary) -> void:
 	if _shrap_n > 0 and not _is_boss(e) and e.type != "spore" and (_shrap_chain or not e.get("by_shrap", false)) and _shard_q.size() < 40:
 		var s_dmg: float = float(_weapon().damage) * damage_mult * _shrap_dmg
 		var s_turn: float = rng.randf() * TAU
-		for si in _shrap_n:
-			_shard_q.append({"pos": Vector2(e.pos), "vel": Vector2.RIGHT.rotated(s_turn + TAU * si / float(_shrap_n)) * 440.0, "dmg": s_dmg, "r": 9.0, "tid": -2, "col": "cyan",
+		var s_n: int = maxi(_shrap_n / 2, 2) if (_cluster and e.get("by_shrap", false)) else _shrap_n   # Cluster Storm: a bug a shard killed bursts into half as many
+		for si in s_n:
+			_shard_q.append({"pos": Vector2(e.pos), "vel": Vector2.RIGHT.rotated(s_turn + TAU * si / float(s_n)) * 440.0, "dmg": s_dmg, "r": 9.0, "tid": -2, "col": "cyan",
 				"big": false, "pierce": false, "hits": [e.id], "spark": 0, "pierce_left": 0, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": si,
 				"born": time_alive, "lane": 70 + si, "ttl": 0.3, "weld": 0, "shrap": true})
 		if _cluster:   # Cluster Storm (evolution): the shards hunt the nearest bugs and fly further
-			for ci in _shrap_n:
+			for ci in s_n:
 				var cs: Dictionary = _shard_q[_shard_q.size() - 1 - ci]
 				cs["seek"] = 7.0
 				cs["ttl"] = 0.75
 				cs["col"] = "gold"
 			_fx_add("nova", Vector2(e.pos), 46.0, 0.25, 0.0, 1.5, Color(1.0, 0.8, 0.35, 0.8))
 		if _bonds.has("fallout"):   # the shards carry what the dead bug was suffering, and the hero's element
-			for fi in _shrap_n:
+			for fi in s_n:
 				var fs: Dictionary = _shard_q[_shard_q.size() - 1 - fi]
 				if float(e.get("burn_t", 0.0)) > 0.0:
 					fs["burn"] = true
@@ -3662,8 +3663,8 @@ func _fuse(id: String) -> void:
 		"cluster_storm":
 			_cluster = true
 			_shrap_chain = true
-			_shrap_n = maxi(_shrap_n, 6)
-			_shrap_dmg = maxf(_shrap_dmg, 0.5)
+			_shrap_n = maxi(_shrap_n, 4)
+			_shrap_dmg = maxf(_shrap_dmg, 0.35)
 		"guardian_wing":
 			_drone_mult *= 1.6
 			_shield_rate += 0.01
