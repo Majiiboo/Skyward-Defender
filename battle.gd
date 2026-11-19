@@ -6252,16 +6252,17 @@ func _hevo_draw() -> void:
 			if rt <= 0.0:
 				continue
 			var top: Vector2 = Vector2(e.pos) + Vector2(0.0, -float(e.r) - 14.0)
-			draw_line(Vector2(e.pos), top, gold, 2.0, true)   # the rod: a thin gold pin with a ball on top
+			draw_line(Vector2(e.pos), top, gold, 3.0, true)   # the rod: a thin gold pin with a ball on top
 			draw_circle(top, 3.5 + 1.2 * sin(time_alive * 18.0), gold)
-			draw_arc(Vector2(e.pos), ROD_R, 0.0, TAU, 48, Color(gold, 0.10 + 0.08 * (rt / ROD_T)), 1.0, true)
+			draw_arc(Vector2(e.pos), ROD_R, 0.0, TAU, 48, Color(gold, 0.22 + 0.16 * (rt / ROD_T)), 1.5, true)
 	for l in _leeches:
 		if not l.has("at"):
 			continue
 		var ang: float = time_alive * 9.0 + float(l.ph)
 		var p: Vector2 = Vector2(l.at) + Vector2.RIGHT.rotated(ang) * 13.0
-		draw_circle(p, 3.0, gold)
-		draw_line(p, p - Vector2.RIGHT.rotated(ang + PI / 2.0) * 7.0, Color(gold, 0.5), 1.5, true)
+		draw_circle(p, 8.0, Color(gold, 0.25))
+		draw_circle(p, 4.5, gold)
+		draw_line(p, p - Vector2.RIGHT.rotated(ang + PI / 2.0) * 10.0, Color(gold, 0.6), 2.5, true)
 
 func _draw_overdrive() -> void:
 	if _od_need <= 0:
