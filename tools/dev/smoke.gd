@@ -47,6 +47,7 @@ func _initialize() -> void:
 	_check_spin()
 	_check_contracts()
 	_check_base_cards()
+	_check_card_pics()
 	_check_welcome()
 	_check_deals()
 	_check_campaign()
@@ -976,6 +977,21 @@ func _check_contracts() -> void:
 	_expect(Contracts.claim(s, "rook", "wins").is_empty(), "not twice: the next mark is 10 wins")
 	_expect(int(Contracts.list(s, "rook")[0].goal) == 10, "the next mark shows")
 	_expect(Contracts.list(s, "frost")[0].progress == 0, "every hero has his own tally")
+
+# the HUD card row and the card pick share one lookup (battle card_tex_of): no card, evolution, bond
+# or base card may come back without a picture (an empty square in the row)
+func _check_card_pics() -> void:
+	var B = load("res://battle.gd")
+	var ids: Array = Cards.CARDS.keys() + Cards.FUSIONS.keys() + Cards.BONDS.keys()
+	for id in ids:
+		_expect(B.card_tex_of(id) != null, "the card %s has a picture for the HUD row" % id)
+	for id in Cards.BONDS:
+		_expect(B.card_pic_path(id) == "res://base/bld_%s.png" % String(Cards.BONDS[id].building), "the bond %s shows its building" % id)
+	for id in Cards.CARDS:
+		if Cards.CARDS[id].get("bcard", false):
+			_expect(B.card_pic_path(id) != "", "the base card %s has a painted picture" % id)
+	for id in Cards.FUSIONS:
+		_expect(B.card_pic_path(id) != "", "the evolution %s shows its own picture or the card it grew from" % id)
 
 func _check_base_cards() -> void:
 	var rng := RandomNumberGenerator.new()
