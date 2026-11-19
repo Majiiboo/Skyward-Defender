@@ -1850,13 +1850,15 @@ func _update_bullets(delta: float) -> void:
 						b.dmg = float(b.dmg) * 1.25
 				# Ricochet (card): the shot that stops here bounces on to the nearest bug it has not hit
 				if hit and int(b.get("rico", 0)) > 0:
-					var r_best = null
-					var r_d := 190.0
+					var r_c: Array = []   # the bugs in reach it has not hit, nearest first
 					for o in enemies:
-						if o != e and float(o.hp) > 0.0 and _can_hurt(o) and not b.hits.has(o.id) and Vector2(o.pos).distance_to(e.pos) < r_d:
-							r_d = Vector2(o.pos).distance_to(e.pos)
-							r_best = o
-					if r_best != null:
+						if o != e and float(o.hp) > 0.0 and _can_hurt(o) and not b.hits.has(o.id) and Vector2(o.pos).distance_to(e.pos) < 190.0:
+							r_c.append(o)
+					r_c.sort_custom(func(x, y): return Vector2(x.pos).distance_to(e.pos) < Vector2(y.pos).distance_to(e.pos))
+					# Prism Shot (evolution): the first bounce splits to three bugs; the splits bounce on singly
+					var r_n: int = mini(r_c.size(), 3 if _prism and not b.get("split", false) else 1)
+					for r_i in r_n:
+						var r_best = r_c[r_i]
 						var rb: Dictionary = b.duplicate(true)
 						rb.rico = int(b.rico) - 1
 						rb.dmg = float(b.dmg) * _rico_keep
@@ -1866,6 +1868,9 @@ func _update_bullets(delta: float) -> void:
 						rb.hits.append(e.id)
 						rb["ttl"] = 0.6
 						rb["lane"] = 60 + int(b.rico)
+						rb["split"] = true
+						if r_n > 1:   # three ways: each split carries less
+							rb.dmg = float(rb.dmg) * 0.45
 						rb.erase("seek")
 						if String(rb.get("shape", "")) == "stream":   # a bounce is a single bolt, not part of the ribbon
 							rb.shape = "pellet"
@@ -3643,6 +3648,9 @@ func _fuse(id: String) -> void:
 			_flak = true
 		"gem_barrage": _hunters = true
 		"afterburner": _wake = true
+		"prism_shot":
+			_prism = true
+			_rico_n = maxi(_rico_n, 2)
 		"cluster_storm":
 			_cluster = true
 			_shrap_chain = true
@@ -5898,6 +5906,7 @@ var _wall_t := 0.0
 var _wall_k := 0.0
 var _wall_at := Vector2.ZERO
 var _wake := false
+var _prism := false               # Prism Shot: the first bounce of a shot splits to three bugs
 var _wake_pts: Array = []         # {"pos", "life"}
 var _wake_k := 0.0
 
@@ -5912,6 +5921,7 @@ func _hero_evo_reset() -> void:
 	_wall_cd = 3.0
 	_wall_t = 0.0
 	_wake = false
+	_prism = false
 	_wake_pts = []
 
 func _hevo_hurt(e: Dictionary, d: float) -> void:

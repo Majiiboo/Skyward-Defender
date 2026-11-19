@@ -243,6 +243,8 @@ const FUSIONS := {
 		"desc": "Two wingmen fly beside him and shoot; the drone hits far harder and mends the shield"},
 	"afterburner":   {"name": "Afterburner",   "parts": ["overdrive", "hair_trigger"], "rarity": "fusion", "max": 1,
 		"desc": "Overdrive lasts longer and he leaves a burning wake: bugs that cross it catch fire"},
+	"prism_shot":    {"name": "Prism Shot",    "parts": ["ricochet", "killer_instinct"], "rarity": "fusion", "max": 1,
+		"desc": "A shot that bounces splits to three bugs at once, and each split bounces on"},
 	"cluster_storm": {"name": "Cluster Storm", "parts": ["shrapnel", "heavy_caliber"], "rarity": "fusion", "max": 1,
 		"desc": "Dead bugs burst into shards that hunt the nearest bugs and burst them too"},
 	# the six heroes: his own card with Aegis becomes his signature
@@ -370,7 +372,7 @@ const UNLOCK := {
 	"hair_trigger": 6, "heavy_caliber": 9, "overdrive": 14, "ricochet": 20, "shrapnel": 25,
 	"split_shot": 10, "killer_instinct": 12, "shield_recharge": 12, "seeker": 15, "frost_rounds": 18, "drone_barrage": 18, "nova_burst": 20,
 }
-const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "afterburner": 22, "cluster_storm": 28, "guardian_wing": 30}
+const EVO_UNLOCK := {"storm_volley": 5, "railstorm": 10, "thunder_lance": 15, "flak_wall": 20, "gem_barrage": 25, "afterburner": 22, "prism_shot": 26, "cluster_storm": 28, "guardian_wing": 30}
 const EVO_EVERY := 3   # every third hero card taken in a fight earns an evolution pick
 
 static func unlock_level(id: String) -> int:
