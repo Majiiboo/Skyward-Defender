@@ -77,7 +77,8 @@ func _initialize() -> void:
 	if OS.get_environment("SIM_FORM") == "0": bs.FORMATIONS = false
 	if OS.get_environment("SIM_STEEP") != "":
 		load("res://battle.gd").XP_STEEP = int(OS.get_environment("SIM_STEEP"))
-	if not OS.get_user_data_dir().to_lower().contains("sim"):
+	var _ud := OS.get_user_data_dir().to_lower()
+	if not (_ud.contains("sim") or _ud.contains("sweep")):   # "sweep": a side sweep s own folder (skybound_side_sweep2_a ...)
 		push_error("balance_sim: user data dir is %s; use tools/sim_override.cfg as override.cfg so the real save is not touched" % OS.get_user_data_dir())
 		quit(1)
 		return
@@ -117,6 +118,7 @@ func _initialize() -> void:
 			for i in runs:
 				queue.append([st, i])
 	print("SIM pilot=%s turrets=%s lvl=%d runs=%d" % [pilot, loadout, tlevel, runs])
+	print("SIM save folder: %s%s" % [OS.get_user_data_dir(), ("  evolution wanted: " + _evo_want) if _evo_want != "" else ""])
 	_next()
 
 func _write_save(stage: int) -> void:
@@ -440,6 +442,7 @@ func _next() -> void:
 	b.set_process(false)
 	b.set_process_input(false)
 	_evo_seen = 0
+	_evo_locked_said = false
 	_sim_bonus = false
 	_sim_owed = false
 	_dry_snap = 2
@@ -541,7 +544,14 @@ const CARD_VALUE := {
 	"nanobots": 2.5, "plate_up": 2.5, "rich_seam": 1.0, "salvage": 1.0,
 }
 const HERO_CARD_VALUE := 9.0    # his own five-level card
-const EVO_ORDER := ["storm_volley", "railstorm", "thunder_lance", "flak_wall", "gem_barrage", "guardian_wing"]
+const EVO_ORDER := ["storm_volley", "railstorm", "thunder_lance", "flak_wall", "gem_barrage", "guardian_wing", "cluster_storm"]
+# SIM_EVO=<id> (2026-11-18): the bot takes THIS evolution at its first evolution pick once the hero has
+#   unlocked it (it is handed the card even when the three on offer do not show it, so every run measures
+#   it from the same moment: the third hero card), and the picks line says "EVOLVE <id> at ..s/w..".
+# SIM_EVO_SKIP=<id,id>: evolutions the bot never takes (a clean "without them" run to compare against).
+var _evo_want := OS.get_environment("SIM_EVO")
+var _evo_skip: Array = Array(OS.get_environment("SIM_EVO_SKIP").split(",", false))
+var _evo_locked_said := false
 const EARLY_PICKS := 4          # "early in a stage": damage first
 
 func _evo_score(id: String) -> float:
@@ -637,7 +647,7 @@ func _pick() -> void:
 	for id in offer:
 		var s := -1.0
 		if Cards.FUSIONS.has(id):
-			s = _evo_score(id)
+			s = -0.5 if _evo_skip.has(id) else _evo_score(id)
 		elif Cards.is_bevo(id) or Cards.is_bld(id):
 			s = _bld_score(id) if (Cards.is_bevo(id) or not evo) else -1.0
 		elif not evo:
@@ -645,6 +655,11 @@ func _pick() -> void:
 		if s > top:
 			top = s
 			best = id
+	if hero_evo and _evo_want != "" and Cards.evos_open(b._hero_id, b._hero_lv, b.card_levels, b._drone_on).has(_evo_want):
+		best = _evo_want
+	elif hero_evo and _evo_want != "" and not b.card_levels.has(_evo_want) and not _evo_locked_said:
+		_evo_locked_said = true
+		_pk_log.append("(%s not open: hero Lv.%d, needs Lv.%d)" % [_evo_want, b._hero_lv, Cards.unlock_level(_evo_want)])
 	if hero_evo:   # the what-if switches SIM_EVO_ONE_IN / SIM_EVO_MAX: this evolution pick is passed over, as if it had not been earned
 		_evo_seen += 1
 		if _evo_seen % _evo_one_in != 0 or _evo_taken >= _evo_max:
