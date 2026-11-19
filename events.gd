@@ -11,6 +11,7 @@ extends RefCounted
 const EVENT_FROM := 10
 const WEEK_S := 7 * 86400
 const EVENT_HP := 1.1
+const ANOMALY_HP := 1.7        # a loadout week: the bugs are this much tougher again (the given kit walked through the fight)
 const EVENT_WIN := 20
 const THEMES := [
 	{"id": "scrap_rush", "name": "Scrap Rush", "text": "Your ability charges fast. Bugs wear thick shells.",

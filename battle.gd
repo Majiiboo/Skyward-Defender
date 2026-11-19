@@ -1027,8 +1027,6 @@ func _process(delta: float) -> void:
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	_bc_tick(delta)
 	_hevo_tick(delta)
-	if not _evo_ban.is_empty():
-		_evo_ban.t = float(_evo_ban.t) + delta
 	_hevo_tick2(delta)
 	_hevo_tick3(delta)
 	_hevo_tick4(delta)
@@ -3685,7 +3683,7 @@ func _fuse(id: String) -> void:
 		return
 	var pink: Color = Cards.COLOR.fusion
 	_float_text(soldier_pos + Vector2(0, -80), "EVOLVED!", pink, true)
-	_evo_ban = {"name": String(Cards.FUSIONS[id].name), "desc": String(Cards.FUSIONS[id].desc), "t": 0.0}
+	_float_text(soldier_pos + Vector2(0, -56), String(Cards.FUSIONS[id].name), pink)
 	_burst(soldier_pos, 46.0, pink, 26)
 	_fx_add("nova", soldier_pos, 60.0, 0.6, 0.0, 2.2, pink)
 	shake = maxf(shake, 0.35)
@@ -4878,7 +4876,6 @@ func _draw_hud() -> void:
 	_draw_ult_btn()
 	_draw_wing_chip()
 	_draw_streak()
-	_draw_evo_banner()
 	_draw_overdrive()
 	_draw_move_tip()
 	for e in enemies:
@@ -5154,7 +5151,7 @@ func _part_drops(e: Dictionary, def: Dictionary) -> Array:
 
 # bug health for this run: the stage's scaling, Elite, and a promotion trial on top
 func _hp_mult() -> float:
-	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (BossRush.RUSH_HP * (1.0 + BossRush.RUSH_STEP * wave_index) if boss_rush else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * _tough() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0)
+	return StageData.hp_mult(stage, false) * (StageData.elite_mult(wave_index) if elite else 1.0) * (Promotion.hp_mult(promo) if promo >= 0 else 1.0) * (Promotion.etrial_hp(int(etrial.step)) if not etrial.is_empty() else 1.0) * (1.25 if _mods.has("thick_shells") else 1.0) * (Promotion.DAILY_HP if daily else 1.0) * (BossRush.RUSH_HP * (1.0 + BossRush.RUSH_STEP * wave_index) if boss_rush else 1.0) * (Events.EVENT_HP if event_run else 1.0) * (Runs.ELITE_HP if run_mode and _run_kind() == "elite" else 1.0) * (Runs.step_hp(_run) if run_mode else 1.0) * _no_turret_hp() * _tough() * ((1.0 + HORDE_HP_PER_WAVE * wave_index) if horde else 1.0) * (Events.ANOMALY_HP if _kit_on else 1.0)
 
 # HORDE (Rudy's Modes card, dev172): endless waves built from your best Standard stage's wave
 # list, cycling through it with more bugs each lap and bug health up HORDE_HP_PER_WAVE a wave; a
@@ -6277,25 +6274,6 @@ func _draw_overdrive() -> void:
 	var k: float = (_od_t / maxf(_od_len, 0.1)) if live else float(_od_k) / float(_od_need)
 	_hc.draw_rect(Rect2(at, Vector2(44.0, 4.0)), Color(0.03, 0.05, 0.1, 0.75))
 	_hc.draw_rect(Rect2(at, Vector2(44.0 * clampf(k, 0.0, 1.0), 4.0)), Color(1.0, 0.82, 0.3) if live else Color(1.0, 0.55, 0.3, 0.9))
-
-# THE EVOLUTION BANNER: taking an evolution names it and says in one line what now happens on screen,
-# for 3.5 s in the middle of the field (the HUD layer), so a new behaviour is never a mystery.
-var _evo_ban := {}   # {name, desc, t}
-
-func _draw_evo_banner() -> void:
-	if _evo_ban.is_empty() or picking:
-		return
-	var t: float = float(_evo_ban.t)
-	var a: float = clampf(t / 0.25, 0.0, 1.0) * clampf((3.5 - t) / 0.5, 0.0, 1.0)
-	if t >= 3.5:
-		_evo_ban = {}
-		return
-	var pink: Color = Cards.COLOR.fusion
-	var w := FIELD_W - 48.0
-	var box := Rect2(24.0, HUD_H + 200.0 - 8.0 * (1.0 - clampf(t / 0.25, 0.0, 1.0)), w, 58.0)
-	_hc.draw_style_box(UIKit.box(Color(0.04, 0.05, 0.11, 0.88 * a), Color(pink, 0.9 * a), 14, 1), box)
-	_hc.draw_string(title_font, box.position + Vector2(0.0, 23.0), String(_evo_ban.name).to_upper(), HORIZONTAL_ALIGNMENT_CENTER, w, 17, Color(1.0, 0.86, 0.45, a))
-	_hc.draw_multiline_string(hud_font, box.position + Vector2(12.0, 40.0), String(_evo_ban.desc), HORIZONTAL_ALIGNMENT_CENTER, w - 24.0, 11, 2, Color(0.93, 0.96, 1.0, a))
 
 func _draw_streak() -> void:
 	if _streak < 3:
