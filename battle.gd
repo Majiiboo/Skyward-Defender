@@ -136,6 +136,7 @@ var _spit_mult := 1.0             # Double spit
 var waves: Array = []
 var wave_index := 0
 var wave_queue: Array = []        # enemy ids still to spawn this wave
+var stat_peak := 0                # the most enemies on the field at once this stage (the sim prints it)
 var wave_spawn_t := 0.0
 var stage_cleared := false
 var soldier_pos := Vector2(240, 620)
@@ -300,6 +301,11 @@ var _drone_flash := 0.0
 var _drone_guard := 0.0
 var _drone_beam := {}
 static var XP_STEEP := 18           # past this run level each pick costs half as much again (a dial for the simulator: SIM_STEEP)
+# THE CROWD (Rudy 2026-11-18: pressure by MORE ENEMIES ON SCREEN, not harder hits). Eased in over stages 6-15 (_crowd).
+static var CROWD := 1.5           # how many bugs a wave brings (bosses not counted); XP and coins a kill are divided by it
+static var CROWD_HP := 0.8        # the health of each of them
+static var CROWD_PACE := 1.8      # how fast a wave arrives: bigger groups, shorter gaps
+static var CROWD_CAP := 28        # with this many on the field the next group waits longer
 var _xp_cut := 1.0                # Quick Study overcharged: levels need less XP
 var _aegis_heal := false
 var _railstorm := false
@@ -490,6 +496,7 @@ func _write_save(patch: Dictionary) -> void:
 # ------------------------------------------------------------------ setup
 
 func _start_stage() -> void:
+	stat_peak = 0
 	waves = Promotion.waves(promo) if promo >= 0 else (Promotion.etrial_waves(int(etrial.step)) if not etrial.is_empty() else StageData.waves(stage))
 	if boss_rush:
 		waves = BossRush.waves(_read_save())
@@ -793,6 +800,13 @@ func _start_stage() -> void:
 	_start_wave()
 	_maybe_brief()
 
+# a crowd dial at this stage: nothing through stage 5, all of it from stage 15; the cap never shrinks
+func _crowd(v: float) -> float:
+	if horde or _is_trial() or _preview:
+		return 1.0
+	# and it builds over the first waves of a stage (half in wave 1, all of it from wave 4): no cards yet then
+	return lerpf(1.0, v, (clampf((stage - 5) / 10.0, 0.0, 1.0) + maxf(stage - 30, 0.0) / 60.0) * minf(1.0, 0.5 + 0.17 * wave_index))   # past stage 30 it keeps growing (half as much again by stage 60)
+
 func _start_wave() -> void:
 	_bc_lock = 3 if _bcards.has("target_lock") else 0
 	wave_queue.clear()
@@ -818,7 +832,7 @@ func _start_wave() -> void:
 			gems.append({"pos": Vector2(FIELD_W * 0.5 + rng.randf_range(-90, 90), 200.0 + rng.randf_range(-20, 20)), "tier": 0, "coin": true, "life": 16.0,
 				"value": (12.0 + 1.0 * stage) / 8.0, "vel": Vector2(rng.randf_range(-80, 80), rng.randf_range(-40, 60))})
 	for entry in waves[wave_index]:
-		var many: int = int(entry[1]) if _is_boss_id(String(entry[0])) else maxi(1, roundi(int(entry[1]) * float(wk.get("count", 1.0))))
+		var many: int = int(entry[1]) if _is_boss_id(String(entry[0])) else maxi(1, roundi(int(entry[1]) * float(wk.get("count", 1.0)) * _crowd(CROWD)))
 		for i in many:
 			wave_queue.append(entry[0])
 	wave_queue.shuffle()
@@ -867,6 +881,7 @@ func _spawn(id: String) -> void:
 		_boss_bar_max = e.hp_max
 	_meet(id)
 	enemies.append(e)
+	stat_peak = maxi(stat_peak, enemies.size())
 
 # The first time a player meets a bug type, a small card says what it does.
 func _meet(id: String) -> void:
@@ -893,7 +908,7 @@ func _meet_variant(v: String, bug: String) -> void:
 func _make_enemy(id: String, pos: Vector2) -> Dictionary:
 	var def: Dictionary = StageData.ENEMIES[id]
 	var e := {"id": next_enemy_id, "type": id, "pos": pos,
-		"hp": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp), "hp_max": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp),
+		"hp": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp * _crowd(CROWD_HP)), "hp_max": float(def.hp) * _hp_mult() * (1.0 if StageData.is_boss(id) else _wave_hp * _crowd(CROWD_HP)),
 		"speed": float(def.speed) * StageData.speed_mult(stage) * _bug_speed * _wave_speed, "r": float(def.size) * 0.4, "ph": rng.randf() * TAU,
 		"state": "fly", "t": 0.0, "vel": Vector2.ZERO, "fire_t": rng.randf_range(1.0, 2.5), "lay_t": 3.0, "laying": 0.0,
 		"dart_t": rng.randf_range(0.3, 1.0), "dart_vx": 0.0, "dodge_v": 0.0, "dodge_cd": 0.0, "feinted": false}
@@ -1056,9 +1071,9 @@ func _spawn_step(delta: float) -> void:
 		return
 	wave_spawn_t -= delta
 	if wave_spawn_t <= 0.0:
-		wave_spawn_t = StageData.spawn_gap(stage) if enemies.size() < 12 else 2.4
+		wave_spawn_t = (StageData.spawn_gap(stage) / _crowd(CROWD_PACE)) if enemies.size() < roundi(_crowd(float(CROWD_CAP))) else 2.4
 		# arrive in small groups so the sky fills (one at a time in stage 1)
-		var n: int = mini(StageData.group_size(stage), wave_queue.size())
+		var n: int = mini(roundi(StageData.group_size(stage) * _crowd(CROWD_PACE)), wave_queue.size())
 		for i in n:
 			var id: String = wave_queue.pop_front()
 			_spawn(id)
@@ -2314,7 +2329,7 @@ func _kill(e: Dictionary) -> void:
 	var ncoins: int = mini(int(def.coins), 10)   # a boss drops 10 coins worth her full reward between them
 	for i in ncoins:
 		gems.append({"pos": e.pos + Vector2(rng.randf_range(-14, 14), rng.randf_range(-8, 8)), "tier": 0, "coin": true, "life": 16.0,
-			"value": float(def.coins) / float(ncoins) * _streak_mult(),
+			"value": float(def.coins) / float(ncoins) * _streak_mult() / (1.0 if _is_boss(e) else _crowd(CROWD)),
 			"vel": Vector2(rng.randf_range(-45, 45), rng.randf_range(-75, -30))})
 
 func _update_gems(delta: float) -> void:
@@ -2343,7 +2358,7 @@ func _update_gems(delta: float) -> void:
 			_fx_add("spark", g.pos, 18.0, 0.2, 0.0, 1.7, Color(1.0, 0.85, 0.35))
 			continue
 		if d < 16.0:
-			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult)
+			_gain_xp(float(StageData.GEM_XP[g.tier]) * _gem_xp_mult / _crowd(CROWD))
 			_gems_got += 1
 			Sfx.play_rising("gem")
 			if _gem_shield:
@@ -6291,6 +6306,18 @@ func _draw_core_base() -> void:
 	Backdrop.draw_core_base(self, FIELD_W, BASE_Y, FIELD_H, time_alive, pods, shield / maxf(shield_max, 1.0), _base_links)
 	if _bcards.has("arc_tether") and _near_base():   # Arc Tether: a thin gold line from the core to the hero while it is live
 		draw_line(Vector2(FIELD_W * 0.5, BASE_Y - 34.0), soldier_pos, Color(1.0, 0.85, 0.4, 0.3 + 0.15 * sin(time_alive * 9.0)), 1.5, true)
+	if _bcards.has("coolant_vent"):   # Coolant Vent: a cold line marks where bugs slow down, with specks of frost drifting down from it
+		var cy: float = BASE_Y - BC_ZONE
+		var seg: float = 14.0
+		var off: float = fmod(time_alive * 10.0, seg * 2.0)
+		var x: float = -off
+		while x < FIELD_W:
+			draw_line(Vector2(maxf(x, 0.0), cy), Vector2(minf(x + seg, FIELD_W), cy), Color(0.55, 0.9, 1.0, 0.22), 1.0)
+			x += seg * 2.0
+		for i in 14:
+			var fx: float = fmod(37.0 + i * 71.3 + sin(time_alive * 0.7 + i) * 9.0, FIELD_W)
+			var k: float = fmod(time_alive * 0.22 + i * 0.173, 1.0)
+			draw_circle(Vector2(fx, cy + k * (BC_ZONE - 40.0)), 1.4, Color(0.75, 0.95, 1.0, 0.45 * (1.0 - k)))
 
 # ------------------------------------------------------------------ BASE CARDS (Rudy 2026-11-18)
 # One card per building on the base (Cards "bcard"), taken once, from in-fight level 4. Each changes

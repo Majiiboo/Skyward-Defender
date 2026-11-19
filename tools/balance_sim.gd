@@ -67,6 +67,11 @@ func _initialize() -> void:
 		load("res://battle.gd").TOUGH_ON = false
 	if OS.get_environment("SIM_WAVES") != "":   # what-if dials for the card rework
 		StageData.WAVE_MULT = float(OS.get_environment("SIM_WAVES"))
+	var bs = load("res://battle.gd")   # the crowd dials (more enemies on screen)
+	if OS.get_environment("SIM_CROWD") != "": bs.CROWD = float(OS.get_environment("SIM_CROWD"))
+	if OS.get_environment("SIM_CROWD_HP") != "": bs.CROWD_HP = float(OS.get_environment("SIM_CROWD_HP"))
+	if OS.get_environment("SIM_PACE") != "": bs.CROWD_PACE = float(OS.get_environment("SIM_PACE"))
+	if OS.get_environment("SIM_CAP") != "": bs.CROWD_CAP = int(OS.get_environment("SIM_CAP"))
 	if OS.get_environment("SIM_STEEP") != "":
 		load("res://battle.gd").XP_STEEP = int(OS.get_environment("SIM_STEEP"))
 	if not OS.get_user_data_dir().to_lower().contains("sim"):
@@ -778,7 +783,7 @@ func _finish() -> void:
 		r.stage, cur[1], why, r.wave, r.waves, r.t, r.hearts_lost, r.hit_bullet, r.hit_diver, r.min_hull,
 		str(r.first_heart_wave), str(r.first_base_wave), r.kills, r.lvl,
 		100.0 * r.pilot_dmg / maxf(r.pilot_dmg + r.turret_dmg, 0.001), ",".join(r.cards.slice(0, 6))])
-	print("    shield min %3.0f%%  hero health min %3.0f%%  runners caught %d, hits on the base %d" % [float(r.get("min_shield", 100.0)), float(r.get("min_hp", 100.0)), b._runners_caught, r.base_hits])
+	print("    shield min %3.0f%%  hero health min %3.0f%%  runners caught %d, hits on the base %d, most on screen %d" % [float(r.get("min_shield", 100.0)), float(r.get("min_hp", 100.0)), b._runners_caught, r.base_hits, b.stat_peak])
 	r["kit"] = r_kit
 	r["built"] = b._base_slots.filter(func(sid): return String(sid) != "").size()   # buildings standing at the end
 	r["evos"] = 0
