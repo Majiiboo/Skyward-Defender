@@ -33,6 +33,7 @@ const HINTS := {
 	# pages of their own
 	"season":    {"title": "Season Pass", "text": "Fights and daily quests earn season XP. Every 100 XP is a tier with a reward."},
 	"campaign":  {"title": "Stars and chests", "text": "Three stars a stage. 10, 20 and 30 stars on a planet each open a chest."},
+	"bounty":    {"title": "Bounties", "text": "A medal on a cleared stage: win it again under one rule, for a one-time reward."},
 	"works":     {"title": "Field works", "text": "Stops 3 and 6: bolt an upgrade onto the base for the rest of the run."},
 }
 

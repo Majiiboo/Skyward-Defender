@@ -76,7 +76,7 @@ func _ready() -> void:
 	modulate.a = 0.0
 	create_tween().tween_property(self, "modulate:a", 1.0, 0.25)
 	if not elite and Campaign.unread(Progress.read()).is_empty():   # not on top of a story message
-		Hints.show(self, ["campaign"])
+		Hints.show(self, ["campaign", "bounty"])
 	# the newest story note nobody has read opens by itself, once
 	if not elite:
 		var nr := Campaign.unread(Progress.read())
