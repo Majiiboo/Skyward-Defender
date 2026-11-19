@@ -124,6 +124,8 @@ var _abilities_used := 0          # times the ability was fired this fight (Cont
 var _season_xp := 0               # season XP this fight paid (Season; end screen)
 var _season_up := false           # it filled a tier
 var _daily_reward := {}           # what today's first win paid (end screen)
+var bounty := ""                  # a STAGE BOUNTY fight (Bounties): the restriction's kind, "" = none
+var _bounty := {}                 # what the win paid (Bounties.finish; end screen)
 var _horde_best := 0              # the best wave count before this run
 var _horde_new_best := false
 var etrial := {}                  # an element trial (Promotion.take_etrial): {"el", "step"}; {} = none
@@ -464,6 +466,12 @@ func _load() -> void:
 		_write_save({"selected_mode": "normal"})
 		stage = Promotion.daily_stage(d)
 		elite = false
+	var bst := Bounties.take(d)   # a stage bounty (Bounties): that stage again under one restriction
+	bounty = Bounties.kind_of(bst) if bst > 0 else ""
+	if bounty != "":
+		_write_save({"selected_mode": "normal"})
+		stage = bst
+		elite = false
 	if not etrial.is_empty():
 		stage = int(Promotion.ETRIAL_STAGES[int(etrial.step)])
 	if promo >= 0:
@@ -671,13 +679,15 @@ func _start_stage() -> void:
 	aim_error = 0.05 / gs.aim
 	aim_turn_speed = 10.0 * gs.aim
 	pilot_hp_max = float(gs.get("hp", 100.0))
+	if bounty == "glass":   # the Glass Hero bounty
+		pilot_hp_max = maxf(roundf(pilot_hp_max * Bounties.GLASS_HP), 1.0)
 	_def = clampf(float(gs.get("def", 0.0)), 0.0, 0.6)
 	pilot_hp = pilot_hp_max
 	_recovery = gs.recovery
 	_magnet_base = MAGNET_BASE + float(gs.magnet)
 	magnet_radius = _magnet_base
 	idle_power = gs.auto_fire
-	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if _is_trial() else 1.0)   # trials: cards come faster
+	_gem_xp_mult = gs.gem_xp * (Promotion.GEM_XP_MULT if _is_trial() and bounty == "" else 1.0)   # trials: cards come faster
 	_coin_mult = gs.coins
 	if _twist:
 		_coin_mult *= Promotion.TWIST_COINS   # a twisted stage pays more
@@ -805,7 +815,7 @@ func _start_stage() -> void:
 # growing (CROWD_LATE: twice the dial by stage 60), except the health cut, which stops at the dial
 static var CROWD_LATE := 30.0     # stages past 30 for the dial to double (a dial for the simulator: SIM_LATE)
 func _crowd(v: float) -> float:
-	if horde or _is_trial() or _preview:
+	if horde or (_is_trial() and bounty == "") or _preview:
 		return 1.0
 	var k: float = clampf((stage - 5) / 10.0, 0.0, 1.0) + maxf(stage - 30, 0.0) / CROWD_LATE
 	if v < 1.0:   # fewer hit points: never below the dial itself
@@ -856,7 +866,7 @@ func _start_wave() -> void:
 		else:
 			wave_queue.append(bid)
 	wave_spawn_t = 0.6
-	_vanguard = roundi(wave_queue.size() * VANGUARD * clampf((stage - 30) / 20.0, 0.0, 1.0)) if not (horde or _is_trial() or _preview) else 0
+	_vanguard = roundi(wave_queue.size() * VANGUARD * clampf((stage - 30) / 20.0, 0.0, 1.0)) if not (horde or (_is_trial() and bounty == "") or _preview) else 0
 	if not _preview:
 		_float_text(Vector2(FIELD_W * 0.5, 160), "WAVE %d" % (wave_index + 1), Color(0.75, 0.97, 1.0), true)
 	if not wk.is_empty():
@@ -2698,6 +2708,12 @@ func _end_run(won: bool) -> void:
 		_daily_reward = Promotion.daily_reward(d)
 		Progress.grant(d, _daily_reward)
 		_write_save({"daily_day": int(d.daily_day), "crystals": int(d.get("crystals", 0)), "materials": d.get("materials", {})})
+	# a stage bounty: a win under the restriction pays its reward, once (Bounties.finish)
+	_bounty = {}
+	if bounty != "" and won:
+		_bounty = Bounties.finish(d, stage, time_alive)
+		if bool(_bounty.paid):
+			_write_save({"bounties": d.bounties, "crystals": int(d.get("crystals", 0)), "materials": d.get("materials", {})})
 	# a promotion trial: a win the first time = the next rank, for good (Promotion)
 	_promoted = false
 	if promo >= 0 and won and Promotion.won(d, promo):
@@ -3116,7 +3132,9 @@ func _open_cards() -> void:
 	hold_hint.size = Vector2(FIELD_W, 16)
 	_card_panel.add_child(hold_hint)
 	refresh.size = Vector2(180, 34)
-	refresh.disabled = refreshes <= 0 and coins_now < coin_cost
+	refresh.disabled = (refreshes <= 0 and coins_now < coin_cost) or bounty == "no_refresh"
+	if bounty == "no_refresh":
+		refresh.text = "No refresh  ·  bounty"
 	refresh.pressed.connect(func():
 		if refreshes > 0:
 			refreshes -= 1
@@ -3966,6 +3984,8 @@ func _show_end(won: bool) -> void:
 		title = "RUSH CLEARED" if won else "RUSH OVER"
 	if daily:
 		title = "CHALLENGE CLEARED" if won else "CHALLENGE FAILED"
+	if bounty != "":
+		title = "BOUNTY WON" if won and bool(_bounty.get("paid", false)) else ("STAGE CLEARED" if won else "BOUNTY FAILED")
 	if event_run:
 		title = "EVENT CLEARED" if won else "EVENT LOST"
 	if run_mode:
@@ -3987,6 +4007,13 @@ func _show_end(won: bool) -> void:
 			v.add_child(UIKit.label("TODAY'S REWARD:  " + Progress.reward_text(_daily_reward), 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
 		elif won:
 			v.add_child(UIKit.label("Today's reward is already yours", 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	if bounty != "":
+		v.add_child(UIKit.label("BOUNTY  ·  %s" % Bounties.name_of(stage).to_upper(), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
+		if bool(_bounty.get("paid", false)):
+			var brp := Progress.reward_text(_bounty.reward).split(" + ")   # three to five rewards: a second line keeps the card on the screen
+			v.add_child(UIKit.label("BOUNTY REWARD:  " + " + ".join(brp.slice(0, 2)) + ("\n" + " + ".join(brp.slice(2)) if brp.size() > 2 else ""), 12, UIKit.GOLD, HORIZONTAL_ALIGNMENT_CENTER))
+		elif won:
+			v.add_child(UIKit.label(String(_bounty.get("why", "")), 12, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
 	if promo >= 0:
 		v.add_child(UIKit.label("PROMOTION TRIAL  ·  %s" % String(Promotion.RANKS[promo].name).to_upper(), 13, UIKit.CYAN, HORIZONTAL_ALIGNMENT_CENTER))
 	else:
@@ -4714,7 +4741,7 @@ func _draw_hud() -> void:
 		_hud_title_key = hud_key
 		_hud_num = "%d " % stage
 		_hud_nx = 16.0 + title_font.get_string_size(_hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20).x
-		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else (String(Events.theme().name) if event_run else (("EXPEDITION · " + String(Runs.KINDS[_run_kind()].name)) if run_mode else StageData.stage_name(stage))))))).to_upper()
+		_hud_title = (("TRIAL · " + String(Promotion.RANKS[promo].name)) if promo >= 0 else (("%s TRIAL %d" % [Heroes.element_name(String(etrial.el)), int(etrial.step) + 1]) if not etrial.is_empty() else (("HORDE · WAVE %d" % (wave_index + 1)) if horde else ("DAILY CHALLENGE" if daily else (("BOUNTY · " + Bounties.name_of(stage)) if bounty != "" else (String(Events.theme().name) if event_run else (("EXPEDITION · " + String(Runs.KINDS[_run_kind()].name)) if run_mode else StageData.stage_name(stage)))))))).to_upper()
 		if boss_rush:
 			_hud_title = "BOSS RUSH"
 	_hc.draw_string(title_font, Vector2(16, 34), _hud_num, HORIZONTAL_ALIGNMENT_LEFT, -1, 20, Color.WHITE)
@@ -5122,7 +5149,7 @@ func _horde_wave(k: int) -> Array:
 
 # a rank trial or an element trial: no stars, no stage unlocks, no drops; the trial pays
 func _is_trial() -> bool:
-	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode or boss_rush
+	return promo >= 0 or not etrial.is_empty() or daily or event_run or run_mode or boss_rush or bounty != ""
 
 # A red flash round the screen edge the moment the pilot loses a heart (dev156), fading
 # over a third of a second; drawn on the HUD layer so it sits over the whole field.
@@ -5562,7 +5589,7 @@ var _ult_flash := 0.0
 var _runners_caught := 0
 
 func _ability_open() -> bool:
-	return stage_unlocked > ABILITY_FROM or DevTools.on
+	return (stage_unlocked > ABILITY_FROM or DevTools.on) and bounty != "no_ability"
 
 func _bolt_dmg() -> float:
 	return float(WEAPONS[weapon_id].damage) * damage_mult
@@ -5596,7 +5623,7 @@ var _ai_ult := 1.0
 
 func _use_ability() -> void:
 	if not _ability_open():
-		_float_text(Vector2(100.0, _ult_rect().position.y - 14.0), "Unlocks after stage %d" % ABILITY_FROM, Color(0.75, 0.82, 0.92))
+		_float_text(Vector2(100.0, _ult_rect().position.y - 14.0), "Off for this bounty" if bounty == "no_ability" else "Unlocks after stage %d" % ABILITY_FROM, Color(0.75, 0.82, 0.92))
 		return
 	if _ult_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
@@ -6335,7 +6362,7 @@ func _apply_base(sv: Dictionary) -> void:
 	var b := Base.read(sv)
 	var su := int(sv.get("stage_unlocked", 1))
 	for i in Base.SLOTS:
-		_base_open[i] = Base.slot_open(i, su) or DevTools.on
+		_base_open[i] = (Base.slot_open(i, su) or DevTools.on) and not (bounty == "three_slots" and i >= 3)
 		var id := String(b.slots[i])
 		if not _base_open[i] or id == "" or not Base.BUILDINGS.has(id) or _base_slots.has(id):
 			continue
@@ -7037,7 +7064,7 @@ func _pulse_shape(caught: Array) -> void:
 	_pod_ping(_pulse_kind)
 
 func _pulse_open() -> bool:
-	return (stage_unlocked > PULSE_FROM or DevTools.on) and not _mods.has("no_turrets")
+	return (stage_unlocked > PULSE_FROM or DevTools.on) and not _mods.has("no_turrets") and bounty != "no_pulse"
 
 func _pulse_setup() -> void:
 	if _preview:
