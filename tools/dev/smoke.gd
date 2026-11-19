@@ -34,6 +34,7 @@ func _initialize() -> void:
 	_check_codex()
 	_check_wing()
 	_check_events()
+	_check_event_loadout()
 	_check_runs()
 	_check_base()
 	_check_support()
@@ -744,6 +745,45 @@ func _check_events() -> void:
 	for t in Events.TRACK:
 		_expect(int(t.points) > last, "the track rises (%d)" % int(t.points))
 		last = int(t.points)
+
+# the ANOMALY weeks (Events.loadout / kit_save): a theme that hands everyone the same kit
+func _check_event_loadout() -> void:
+	var n := 0
+	for th in Events.THEMES:
+		if not th.has("loadout"):
+			_expect(not Events.has_loadout(th) and Events.loadout(20, th).is_empty(), "theme %s: no loadout, the player s own kit" % th.id)
+			continue
+		n += 1
+		var lo: Dictionary = th.loadout
+		_expect(Heroes.ROSTER.has(String(lo.hero)) and Arsenal.ORDER.has(String(lo.weapon_class)), "theme %s: a real hero and weapon class" % th.id)
+		var seen := {}
+		for id in lo.base:
+			_expect(Base.BUILDINGS.has(String(id)) and not seen.has(id), "theme %s: building %s exists, once" % [th.id, id])
+			seen[id] = true
+		_expect(Array(lo.base).size() == Base.SLOTS, "theme %s: four buildings" % th.id)
+		var lo12 := Events.loadout(12, th)
+		var lo50 := Events.loadout(50, th)
+		_expect(int(lo50.hero_level) > int(lo12.hero_level) and int(lo50.weapon_level) > int(lo12.weapon_level) and int(lo50.base_level) > int(lo12.base_level), "theme %s: the kit grows with the stage" % th.id)
+		for k in [Events.loadout(1, th), lo12, lo50, Events.loadout(StageData.MAX_STAGE, th)]:
+			_expect(int(k.hero_level) <= Gates.level_cap("hero", int(k.star)) and int(k.weapon_level) <= int(Arsenal.CAPS[clampi(int(k.star), 1, Arsenal.CAPS.size()) - 1]) and int(k.base_level) <= Base.MAX_LEVEL, "theme %s: levels inside what the step allows" % th.id)
+		# the copy the fight reads carries the kit; the save it was made from is not touched
+		var real := {"stage_unlocked": 13, "coins": 5, "event_theme_test": String(th.id), "talents": 4,
+			"hero": {"selected": "rook", "owned": ["rook"], "levels": {"rook": 7}, "tiers": {"rook": 1}, "def": {}, "shards": {}},
+			"arsenal": {"rook": {"equipped": "sidearm", "owned": ["sidearm"], "levels": {"sidearm": 4}}},
+			"base": {"slots": ["shield_gen", "", "", ""], "levels": {"shield_gen": 2}}}
+		var was := JSON.stringify(real)
+		var kit := Events.kit_save(real, 12)
+		var gs := Heroes.stats(kit)
+		_expect(JSON.stringify(real) == was, "theme %s: the real save is untouched by the kit" % th.id)
+		_expect(String(gs.hero) == String(lo.hero) and String(GearData.WEAPON_CLASS.get(gs.weapon, "")) == String(lo.weapon_class) and int(gs.get("weapon_level", 0)) == int(lo12.weapon_level), "theme %s: the copy fights as the given hero with the given weapon" % th.id)
+		_expect(Base.read(kit).slots == Array(lo.base) and Array(Base.stats(kit).on).size() == Base.SLOTS, "theme %s: the copy fields the four given buildings" % th.id)
+		_expect(String(Heroes.stats(real).hero) == "rook", "theme %s: the player s own hero is still his" % th.id)
+	_expect(n >= 2, "two anomaly weeks exist")
+	var s := {"stage_unlocked": 13, "event_theme_test": "glass_arsenal"}
+	_expect(Events.open(s) and String(Events.theme().id) == "glass_arsenal", "the test key forces a week")
+	s.erase("event_theme_test")
+	_expect(Events.stage(s) == 12 and String(Events.theme().id) == String(Events.theme(Events.week()).id), "without the key the calendar decides")
+	_expect(Events.kit_save(s, 12) == s or Events.has_loadout(), "a plain week reads the save itself")
 
 # the Expedition (Runs, 2026-11-10): a run of stops, what carries, how it ends, what it pays
 func _check_runs() -> void:

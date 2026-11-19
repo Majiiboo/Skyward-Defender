@@ -851,6 +851,55 @@ func _event_sheet() -> void:
 	tl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	v.add_child(tl)
 	v.add_child(Promotion.mods_row(Array(th.mods), 12, 20.0))
+	# an ANOMALY week (Events.loadout): the kit everyone fights with, in one row
+	var kit := Events.loadout(Events.stage(_save), th)
+	if not kit.is_empty():
+		var kp := PanelContainer.new()
+		var ks := UIKit.box(UIKit.CARD_HI, Color(col, 0.55), 16, 1)
+		ks.set_content_margin_all(10)
+		kp.add_theme_stylebox_override("panel", ks)
+		var kv := VBoxContainer.new()
+		kv.add_theme_constant_override("separation", 6)
+		kp.add_child(kv)
+		var kh := HBoxContainer.new()
+		kh.add_theme_constant_override("separation", 8)
+		var chip := UIKit.chip("LOADOUT PROVIDED", col.lerp(Color.WHITE, 0.25))
+		chip.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		kh.add_child(chip)
+		var kl := UIKit.label("Everyone fights with this kit this week.", 11, UIKit.SOFT)
+		kl.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		kh.add_child(kl)
+		kv.add_child(kh)
+		var kr := HBoxContainer.new()
+		kr.add_theme_constant_override("separation", 8)
+		var face := TextureRect.new()
+		var fp := "res://heroes/%s/portrait.png" % String(kit.hero)
+		face.texture = load(fp) if ResourceLoader.exists(fp) else UIKit.element_icon(Heroes.element_of(String(kit.hero)))
+		face.custom_minimum_size = Vector2(46, 46)
+		face.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		face.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		kr.add_child(face)
+		var kn := VBoxContainer.new()
+		kn.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		kn.alignment = BoxContainer.ALIGNMENT_CENTER
+		kn.add_theme_constant_override("separation", 0)
+		kn.add_child(UIKit.title("%s  Lv.%d" % [String(Heroes.ROSTER[kit.hero].name), int(kit.hero_level)], 15, UIKit.TEXT))
+		kn.add_child(UIKit.label("%s  Lv.%d" % [String(GearData.CLASS_NAMES[kit.weapon_class]), int(kit.weapon_level)], 12, UIKit.SOFT))
+		kr.add_child(kn)
+		for bid in kit.base:
+			var bp := TextureRect.new()
+			bp.texture = Base.pic(String(bid))
+			bp.custom_minimum_size = Vector2(38, 38)
+			bp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			bp.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			kr.add_child(bp)
+		var bl := UIKit.label("Lv.%d" % int(kit.base_level), 11, UIKit.SOFT)
+		bl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		kr.add_child(bl)
+		kv.add_child(kr)
+		v.add_child(kp)
 	# the points and the track
 	var prow := HBoxContainer.new()
 	prow.add_theme_constant_override("separation", 6)

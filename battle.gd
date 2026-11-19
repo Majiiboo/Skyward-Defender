@@ -118,6 +118,7 @@ var horde := false                # HORDE mode (dev172): endless waves, beat you
 var daily := false                # the DAILY CHALLENGE (Promotion.daily_*): three twists, one reward a day
 var boss_rush := false            # BOSS RUSH (BossRush): every boss you have beaten, in a row, against the clock
 var _rush := {}                    # what the run paid (BossRush.finish; end screen)
+var _kit_on := false              # an anomaly week: this fight uses the event s given kit (Events.kit_save), not the player s
 var event_run := false            # a WEEKLY EVENT fight (Events): the week's twists, event points at the end
 var _event_points := 0            # what this fight paid (end screen)
 var _abilities_used := 0          # times the ability was fired this fight (Contracts)
@@ -632,6 +633,9 @@ func _start_stage() -> void:
 	_runners_caught = 0
 	_ult_live = 0.0
 	var sv := _read_save()
+	_kit_on = event_run and not _preview and Events.has_loadout()
+	if _kit_on:   # an ANOMALY week (Events): the kit is read from a COPY with the week s loadout in it; `sv` is never written back
+		sv = Events.kit_save(sv, stage)
 	stage_unlocked = int(sv.get("stage_unlocked", 1))
 	_speed_pack = bool(sv.get("speed_pack", false))
 	# the pilot's gear: every slot boosts a battle stat, sets add bonuses (gear_data.gd)
@@ -2689,10 +2693,11 @@ func _end_run(won: bool) -> void:
 	if run_mode:   # an Expedition fight: the run takes the result (Runs.fight_done)
 		_run_end(won)
 	# the kills of this fight count toward the mastery of the weapon class he carried (Mastery)
-	Mastery.add_kills(d, _mastery_cls, kills)
-	_write_save({"mastery": d.get("mastery", {})})
+	if not _kit_on:   # a borrowed kit (an anomaly week) earns no mastery and no contract marks
+		Mastery.add_kills(d, _mastery_cls, kills)
+		_write_save({"mastery": d.get("mastery", {})})
 	# the hero on duty adds to his contracts (Contracts): a win, his kills, his abilities
-	if Contracts.open(d):
+	if Contracts.open(d) and not _kit_on:
 		Contracts.add(d, _hero_id, won, kills, _abilities_used)
 		_write_save({"contracts": d.contracts})
 	_abilities_used = 0
@@ -2710,7 +2715,7 @@ func _end_run(won: bool) -> void:
 	if event_run:
 		_event_points = Events.points_for(won, hull / maxf(hull_max, 1.0), _hp_lost)
 		Events.add_points(d, _event_points)
-		_write_save({"event": d.event})
+		_write_save({"event": d.event, "event_tokens": int(d.get("event_tokens", 0))})   # the tokens too (they were never saved)
 	# a Boss Rush: coins for every boss down, the first full line of each length pays more (BossRush.finish)
 	_rush = {}
 	if boss_rush:
