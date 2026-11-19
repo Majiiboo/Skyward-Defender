@@ -566,6 +566,7 @@ func _start_stage() -> void:
 	_od_need = 0
 	_bc_reset()
 	_hero_evo_reset()
+	_hevo3_reset()
 	_od_len = 4.0
 	_od_k = 0
 	_od_t = 0.0
@@ -1012,6 +1013,7 @@ func _process(delta: float) -> void:
 	_bc_tick(delta)
 	_hevo_tick(delta)
 	_hevo_tick2(delta)
+	_hevo_tick3(delta)
 	_evo_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
@@ -3610,6 +3612,7 @@ func _fuse(id: String) -> void:
 		"storm_volley":
 			burst_count += 2
 			fire_rate_mult *= 1.15
+			_storm = true
 		"railstorm": _railstorm = true
 		"thunder_lance":
 			_thunder = true
@@ -3628,6 +3631,7 @@ func _fuse(id: String) -> void:
 		"guardian_wing":
 			_drone_mult *= 1.6
 			_shield_rate += 0.01
+			_wingmen = true
 		_:
 			if id.begins_with("sig_"):   # a hero s signature: he hits harder and is harder to hurt
 				damage_mult *= 1.25
@@ -4318,6 +4322,7 @@ func _draw() -> void:
 	_draw_shards()
 	_hevo_draw()    # rods, hunters, the beam, the flak wall, the wake (they were called from the HUD layer and never drew)
 	_hevo_draw2()
+	_hevo_draw3()
 	for r in rings:
 		var k: float = 1.0 - r.life / r.max
 		draw_arc(r.pos, r.r * k, 0.0, TAU, 20, Color(r.col, (1.0 - k) * 0.7), 2.0, true)
@@ -6047,6 +6052,87 @@ func _hevo_tick(delta: float) -> void:
 				stat_pilot_dmg += ld
 		keep.append(l)
 	_leeches = keep
+
+
+# Third round: STORM VOLLEY sweeps a fan of bolts across the sky every FAN_CD seconds (left to right, then
+# right to left); GUARDIAN WING puts two small wingmen beside the hero (Luna s scout drone, small) that
+# shoot the nearest bug.
+const FAN_CD := 6.0
+const FAN_N := 11
+const WM_OFF := 46.0
+const WM_W := 32.0
+var _storm := false
+var _fan_cd := 3.0
+var _fan_left := 0
+var _fan_k := 0.0
+var _fan_dir := 1.0
+var _wingmen := false
+var _wm_p := [Vector2.ZERO, Vector2.ZERO]
+var _wm_t := [0.0, 0.35]
+var _wm_flash := [0.0, 0.0]
+
+func _hevo3_reset() -> void:
+	_storm = false
+	_fan_cd = 3.0
+	_fan_left = 0
+	_wingmen = false
+	_wm_p = [Vector2.ZERO, Vector2.ZERO]
+
+func _hevo_tick3(delta: float) -> void:
+	var busy: bool = not enemies.is_empty() and pilot_hp > 0.0
+	if _storm:
+		if _fan_left > 0:
+			_fan_k -= delta
+			while _fan_k <= 0.0 and _fan_left > 0:
+				_fan_k += 0.05
+				var u: float = 1.0 - float(_fan_left - 1) / float(FAN_N - 1)   # 0 .. 1 across the sweep
+				var ang: float = -PI / 2.0 + _fan_dir * deg_to_rad(lerpf(-58.0, 58.0, u))
+				_shard_q.append({"pos": _muzzle_world(), "vel": Vector2.RIGHT.rotated(ang) * 700.0, "dmg": _hevo_shot() * 0.9, "r": 10.0, "tid": -2, "col": "cyan",
+					"big": true, "pierce": false, "hits": [], "spark": 0, "pierce_left": 1, "frost": false, "rail": false, "lucky": false, "shape": "pellet", "sn": 0,
+					"born": time_alive, "lane": 81, "ttl": 1.3, "weld": 0})
+				_bond_flavour(_shard_q[-1])
+				_fan_left -= 1
+		elif busy:
+			_fan_cd -= delta
+			if _fan_cd <= 0.0:
+				_fan_cd = FAN_CD
+				_fan_left = FAN_N
+				_fan_k = 0.0
+				_fan_dir = -_fan_dir
+				Sfx.play("shot_charge", 1.25)
+	if _wingmen:
+		for i in 2:
+			var want: Vector2 = soldier_pos + Vector2(WM_OFF * (-1.0 if i == 0 else 1.0), 14.0 + 4.0 * sin(time_alive * 2.3 + i * 2.0))
+			_wm_p[i] = want if _wm_p[i] == Vector2.ZERO else Vector2(_wm_p[i]).lerp(want, minf(delta * 7.0, 1.0))
+			_wm_flash[i] = maxf(float(_wm_flash[i]) - delta, 0.0)
+			_wm_t[i] = float(_wm_t[i]) - delta
+			if float(_wm_t[i]) > 0.0 or not busy:
+				continue
+			var best = null
+			var bd := 340.0
+			for o in enemies:
+				if float(o.hp) > 0.0 and _can_hurt(o) and o.type != "crate" and Vector2(o.pos).distance_to(_wm_p[i]) < bd:
+					bd = Vector2(o.pos).distance_to(_wm_p[i])
+					best = o
+			if best == null:
+				continue
+			_wm_t[i] = 0.7
+			_wm_flash[i] = 0.1
+			_bc_shot(Vector2(_wm_p[i]) + Vector2(0.0, -10.0), best, _hevo_shot() * 0.6 * _drone_mult, true, false)
+
+func _hevo_draw3() -> void:
+	if not _wingmen or not _tex.has("body_scout"):
+		return
+	var tx: Texture2D = _tex["body_scout"]
+	var h: float = WM_W * tx.get_height() / tx.get_width()
+	for i in 2:
+		if _wm_p[i] == Vector2.ZERO:
+			continue
+		draw_circle(Vector2(_wm_p[i]), WM_W * 0.75, Color(1.0, 0.82, 0.45, 0.16))   # a soft gold light: the drone art is dark on a dark sky
+		draw_arc(Vector2(_wm_p[i]), WM_W * 0.75, 0.0, TAU, 28, Color(1.0, 0.82, 0.45, 0.55), 1.0, true)
+		draw_texture_rect(tx, Rect2(Vector2(_wm_p[i]) - Vector2(WM_W, h) * 0.5, Vector2(WM_W, h)), false, Color(1.6, 1.5, 1.3))
+		if float(_wm_flash[i]) > 0.0:
+			draw_circle(Vector2(_wm_p[i]) + Vector2(0.0, -h * 0.5), 5.0, Color(1, 1, 1, 0.8))
 
 func _hevo_draw() -> void:
 	var gold := Color(1.0, 0.85, 0.4)

@@ -230,7 +230,7 @@ const OVERCHARGE := {
 # next pick: a new named form on top of the card (battle.gd _fuse). Defensive cards do not evolve.
 const FUSIONS := {
 	"storm_volley":  {"name": "Storm Volley",  "parts": ["burst_fire", "rapid_pulse"], "rarity": "fusion", "max": 1,
-		"desc": "Bursts grow by two shots and fire faster"},
+		"desc": "Bursts grow by two shots, and every 6 seconds a fan of bolts sweeps the sky"},
 	"railstorm":     {"name": "Railshot",      "parts": ["piercing_rounds", "killer_instinct"], "rarity": "fusion", "max": 1,
 		"desc": "Every 5 seconds he holds a beam: it burns every bug in the column above him"},
 	"thunder_lance": {"name": "Thunder Lance", "parts": ["chain_spark", "heavy_bolts"], "rarity": "fusion", "max": 1,
@@ -240,7 +240,7 @@ const FUSIONS := {
 	"gem_barrage":   {"name": "Hunter Swarm",  "parts": ["seeker", "magnet"], "rarity": "fusion", "max": 1,
 		"desc": "Every 4th shot is a hunter: it latches on, drills, and jumps to the next bug"},
 	"guardian_wing": {"name": "Guardian Wing", "parts": ["drone_barrage", "shield_recharge"], "rarity": "fusion", "max": 1,
-		"desc": "The drone hits far harder and its fire mends the shield"},
+		"desc": "Two wingmen fly beside him and shoot; the drone hits far harder and mends the shield"},
 	"afterburner":   {"name": "Afterburner",   "parts": ["overdrive", "hair_trigger"], "rarity": "fusion", "max": 1,
 		"desc": "Overdrive lasts longer and he leaves a burning wake: bugs that cross it catch fire"},
 	"cluster_storm": {"name": "Cluster Storm", "parts": ["shrapnel", "heavy_caliber"], "rarity": "fusion", "max": 1,
