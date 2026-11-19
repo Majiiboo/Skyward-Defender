@@ -1565,6 +1565,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 			side_b["lane"] = 20 + k
 			if _bonds.has("mending_volley"):
 				side_b["heal"] = 0.003
+				side_b["mend"] = true
 				_bond_flavour(side_b)
 			bullets.append(side_b)
 	# BONDS that ride on a volley
@@ -1576,6 +1577,8 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 	if _bonds.has("arsenal_volley") and not _echo and _volley_n % 4 == 0:
 		_echo = true
 		_fire(origin + Vector2(9.0, 0.0), dir, target_id, pierce)
+		_fx_add("impact", origin + Vector2(9.0, 0.0) + dir * 10.0, 22.0, 0.14, dir.angle(), 1.5, BOND_GOLD)   # the second firing leaves the barrel gold
+		_bond_sign("arsenal_volley", 1.5)
 		_echo = false
 
 func _turn_toward(current: float, goal: float, max_step: float) -> float:
@@ -1687,6 +1690,11 @@ func _update_bullets(delta: float) -> void:
 				if float(_steps.get("exec", 0.0)) > 0.0 and b.get("charged", false) and float(e.hp) < 0.5 * float(e.hp_max):
 					dmg *= 1.0 + float(_steps.exec)   # Execution (Nyx's pistol at Lv.30)
 				if float(b.get("heal", 0.0)) > 0.0:   # the void twins' Leech
+					if b.get("mend", false) and pilot_hp < pilot_hp_max:   # Mending Volley (bond): the Med Bay pod blinks, and what it gave shows as one gold number
+						_mend_acc += pilot_hp_max * float(b.heal)
+						if _bond_sign("mending_volley", 4.0):
+							_float_text(soldier_pos + Vector2(0, -44), "+%d" % maxi(1, roundi(_mend_acc)), BOND_GOLD)
+							_mend_acc = 0.0
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(b.heal), pilot_hp_max)
 				if b.has("chip"):
 					_chip_hit(b, e)
@@ -1751,6 +1759,8 @@ func _update_bullets(delta: float) -> void:
 					e["by_shrap"] = true
 				if (_shove or (_bonds.has("bastion_rounds") and (bool(b.get("pierce", false)) or bool(b.get("rail", false)) or int(b.get("pierce_left", 0)) > 0))) and not _is_boss(e) and not b.get("drone", false) and not b.get("shrap", false):   # Heavy Caliber / Bastion Rounds: the hit shoves it back up
 					e.pos = Vector2(e.pos) + Vector2(0.0, -10.0)
+					if not _shove and _bond_sign("bastion_rounds", 0.35):   # Bastion Rounds (bond): a gold knock on the bug, the Plating pod blinks
+						_fx_add("impact", Vector2(e.pos) + Vector2(0.0, float(e.r) * 0.6), 26.0, 0.18, -PI / 2.0, 1.6, BOND_GOLD)
 				if float(_steps.get("kill_heal", 0.0)) > 0.0 and String(b.get("shape", "")) == "stream" and float(e.hp) <= 0.0:
 					pilot_hp = minf(pilot_hp + pilot_hp_max * float(_steps.kill_heal), pilot_hp_max)   # Devour (Hollow's rifle)
 				if int(_steps.get("shatter", 0)) > 0 and b.get("charged", false) and float(e.hp) <= 0.0:   # Shatter (the pistol's Lv.30)
@@ -2314,7 +2324,9 @@ func _kill(e: Dictionary) -> void:
 				hn = o
 		if hn != null:
 			hn["mark_t"] = 20.0
-			zaps.append({"a": Vector2(e.pos), "b": Vector2(hn.pos), "life": 0.15, "seed": rng.randf() * 100.0})
+			zaps.append({"a": Vector2(e.pos), "b": Vector2(hn.pos), "life": 0.3, "seed": rng.randf() * 100.0, "col": BOND_GOLD})   # a thin gold thread carries the mark over
+			_fx_add("impact", Vector2(hn.pos), 24.0, 0.25, 0.0, 1.6, BOND_GOLD)
+			_bond_sign("hunter_net", 1.0)
 	# Shrapnel (card): the bug bursts into shards that hit its neighbours
 	if _shrap_n > 0 and not _is_boss(e) and e.type != "spore" and (_shrap_chain or not e.get("by_shrap", false)) and _shard_q.size() < 40:
 		var s_dmg: float = float(_weapon().damage) * damage_mult * _shrap_dmg
@@ -2331,6 +2343,8 @@ func _kill(e: Dictionary) -> void:
 				if float(e.get("slow_t", 0.0)) > 0.0 or float(e.get("freeze_t", 0.0)) > 0.0:
 					fs["frost"] = true
 				_bond_flavour(fs)
+			if _bond_sign("fallout", 0.8):   # Fallout (bond): a gold puff where the bug burst, the Refinery pod blinks
+				_fx_add("nova", Vector2(e.pos), 26.0, 0.3, 0.0, 2.0, BOND_GOLD)
 	# Overdrive (card): kills fill the meter; full, it fires charged shots for a few seconds
 	if _od_need > 0 and _od_t <= 0.0:
 		_od_k += 1
@@ -2338,8 +2352,11 @@ func _kill(e: Dictionary) -> void:
 			_od_k = 0
 			_od_t = _od_len
 			if _bonds.has("overhaul") and shield > 0.0:
-				shield = minf(shield + shield_max * 0.05, shield_max)
+				var oh_add: float = minf(shield_max * 0.05, shield_max - shield)
+				shield += oh_add
 				_pod_ping("repair_bay")
+				if oh_add >= 0.5 and _bond_sign("overhaul", 4.0, false):   # Overhaul (bond): what the Repair Bay gave, over the dome
+					_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "SHIELD +%d" % roundi(oh_add), BOND_GOLD)
 			_float_text(soldier_pos + Vector2(0, -84), "OVERDRIVE!", Color(1.0, 0.6, 0.3), true)
 			_fx_add("nova", soldier_pos, 80.0, 0.4, 0.0, 2.0, Color(1.0, 0.6, 0.3))
 			Sfx.play("level", 1.4)
@@ -3100,16 +3117,31 @@ func _open_cards() -> void:
 # the cards taken this run, as a row of small pictures beside the LV chip with a pip per level
 # (dev199, Rudy's Undead Slayer note): the build at a glance; overcharged ones framed gold
 var _card_tex_cache := {}
-func _card_tex(id: String) -> Texture2D:
-	if _card_tex_cache.has(id):
-		return _card_tex_cache[id]
+# ONE lookup for a card's picture, shared by the card pick (_card_pic) and the HUD row (_card_tex):
+# Luna's cards/pic_<id>.png, else the "pic" its definition names (a bond or a base card = its building);
+# an evolution without its own picture shows the card it grew from. "" = nothing painted: a menu icon.
+static func card_pic_path(id: String) -> String:
 	var own := "res://cards/pic_%s.png" % id
-	var path: String = own if ResourceLoader.exists(own) else String(Cards.def(id).get("pic", ""))
-	if path == "" and Cards.FUSIONS.has(id):
-		path = "res://cards/pic_%s.png" % String(Cards.FUSIONS[id].parts[0])
-	var tex: Texture2D = load(path) if path != "" and ResourceLoader.exists(path) else null
-	_card_tex_cache[id] = tex
-	return tex
+	if ResourceLoader.exists(own):
+		return own
+	if Cards.FUSIONS.has(id):
+		return card_pic_path(String(Cards.FUSIONS[id].parts[0]))
+	var path := String(Cards.def(id).get("pic", ""))
+	return path if path != "" and ResourceLoader.exists(path) else ""
+
+static func card_icon(id: String) -> String:   # the menu icon a card without a picture borrows
+	if Cards.FUSIONS.has(id):
+		return card_icon(String(Cards.FUSIONS[id].parts[0]))
+	return String(Cards.def(id).get("icon", "event"))
+
+static func card_tex_of(id: String) -> Texture2D:
+	var path := card_pic_path(id)
+	return load(path) if path != "" else Icons.get_icon(card_icon(id))
+
+func _card_tex(id: String) -> Texture2D:
+	if not _card_tex_cache.has(id):
+		_card_tex_cache[id] = card_tex_of(id)
+	return _card_tex_cache[id]
 
 func _draw_card_row(at: Vector2) -> void:
 	if card_levels.is_empty():
@@ -3138,31 +3170,18 @@ func _draw_card_row(at: Vector2) -> void:
 		_hc.draw_string(hud_font, at + Vector2(shown * step, 13.0), "+%d" % (ids.size() - shown), HORIZONTAL_ALIGNMENT_LEFT, -1, 10, UIKit.MUTED)
 
 func _card_pic(id: String, h: float) -> Control:
-	if Cards.FUSIONS.has(id) and not ResourceLoader.exists("res://cards/pic_%s.png" % id):
-		# until its own picture is painted, an evolution shows the picture of the card it grew from, alone
-		# (Rudy 2026-11-18: not the two parts side by side)
-		return _card_pic(String(Cards.FUSIONS[id].parts[0]), h)
-		var row := HBoxContainer.new()
-		row.alignment = BoxContainer.ALIGNMENT_CENTER
-		row.add_theme_constant_override("separation", -int(h * 0.3))
-		row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		for part in Cards.FUSIONS[id].parts:
-			var p := _card_pic(part, h)
-			p.custom_minimum_size = Vector2(h, h)
-			row.add_child(p)
-		return row
+	# until its own picture is painted, an evolution shows the picture of the card it grew from, alone
+	# (Rudy 2026-11-18: not the two parts side by side): card_pic_path follows that, for the HUD row too
 	var icon := TextureRect.new()
-	var own := "res://cards/pic_%s.png" % id
-	var pic_path := own if ResourceLoader.exists(own) else String(Cards.def(id).get("pic", own))   # Luna's picture first; a hero card without one yet borrows its weapon art (cards.gd "pic": Rook's Twin Trigger)
-	if ResourceLoader.exists(pic_path):
-		icon.texture = load(pic_path)
+	var pic_path := card_pic_path(id)   # Luna's picture first; a hero card without one yet borrows its weapon art (cards.gd "pic": Rook's Twin Trigger)
+	icon.texture = _card_tex(id)
+	if pic_path != "":
 		icon.custom_minimum_size = Vector2(0, h)
 		if id == "nova_burst":
 			var add := CanvasItemMaterial.new()
 			add.blend_mode = CanvasItemMaterial.BLEND_MODE_ADD   # painted as light on black
 			icon.material = add
 	else:
-		icon.texture = Icons.get_icon(String(Cards.def(id).get("icon", "event")))
 		icon.custom_minimum_size = Vector2(0, h * 0.76)
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
@@ -3378,6 +3397,7 @@ func _pick_card(id: String) -> void:
 		_write_save({"cards_seen": cs.cards_seen})
 	if not _replaying:
 		Sfx.play("card")
+	_card_tex(id)   # its HUD-row picture, loaded now: a texture first loaded while drawing shows white
 	if Cards.BONDS.has(id):   # a bond: a building and its paired card
 		card_levels[id] = 1
 		_bond(id)
@@ -4184,6 +4204,7 @@ func _draw() -> void:
 			draw_line(p + Vector2(0, -r * 0.6 - r * 1.4 * k), p + Vector2(0, -r * 0.6 + r * 1.4 * k), Color(1, 1, 1, 0.9 * k * blink), 1.0, true)
 	_draw_drone()
 	_draw_support()
+	_draw_guard()
 	# pilot
 	var bob: float = sin(time_alive * 4.0) * 2.5
 	var pose := _current_pose()
@@ -4511,6 +4532,7 @@ func _fx_add(name: String, pos: Vector2, size: float, life: float, rot: float = 
 func _draw_fx() -> void:
 	_draw_zaps()
 	_draw_drone_light()
+	_draw_guard_light()
 	_draw_patches()
 	_draw_special()
 	for f in fxs:
@@ -6528,6 +6550,11 @@ var _bc_ref_t := 0.0
 
 func _bc_reset() -> void:
 	_bonds = []
+	_bond_seen = {}
+	_mend_acc = 0.0
+	_gw_t = 0.0
+	_gw_flash = 0.0
+	_gw_aim = -PI / 2.0
 	_bond_t = 0.0
 	_rod_n = 0
 	_echo = false
@@ -6580,6 +6607,8 @@ func _bc_reflect() -> void:
 	if _bonds.has("mirror_dome"):   # the bolt bounces on, and takes the hero's element
 		_shard_q[-1]["rico"] = 3
 		_bond_flavour(_shard_q[-1])
+		if _bond_sign("mirror_dome", 0.6, false):   # Mirror Dome (bond): the bolt leaves the dome in a gold flash
+			_fx_add("nova", from, 22.0, 0.3, 0.0, 2.2, BOND_GOLD)
 	_pod_ping("shield_gen")
 
 # Spiked Hull (Hull Plating): the bug that hit the base blasts the bugs near it
@@ -6618,19 +6647,57 @@ func _bc_tick(delta: float) -> void:
 			if Vector2(e.pos).y > BASE_Y - BC_ZONE and not _is_boss(e):
 				e["slow_t"] = maxf(float(e.get("slow_t", 0.0)), 0.3)
 				e["slow"] = maxf(float(e.get("slow", 0.0)), 0.25)
-	if _bcards.has("guard_wing"):   # Hangar: it shoots the lowest bug that comes near the base
+	if _bcards.has("guard_wing"):   # Hangar: its guard drone shoots the lowest bug that comes near the base
 		_bc_gun_t += delta
-		if _bc_gun_t >= 0.55:
-			var low = null
-			var ly: float = BASE_Y - BC_ZONE
-			for e in enemies:
-				if float(e.hp) > 0.0 and _can_hurt(e) and e.type != "crate" and Vector2(e.pos).y > ly:
-					ly = Vector2(e.pos).y
-					low = e
-			if low != null:
-				_bc_gun_t = 0.0
-				var pod := _base_slots.find("hangar")
-				_bc_shot(Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y), low, float(_weapon().damage) * damage_mult * 0.6 * _drone_mult, true, false)
+		_gw_t += delta
+		_gw_flash = maxf(_gw_flash - delta, 0.0)
+		var low = null
+		var ly: float = BASE_Y - BC_ZONE
+		for e in enemies:
+			if float(e.hp) > 0.0 and _can_hurt(e) and e.type != "crate" and Vector2(e.pos).y > ly:
+				ly = Vector2(e.pos).y
+				low = e
+		var gp := _guard_pos()
+		# it turns toward what it is about to shoot, and back to straight up when the sky near the base is clear
+		_gw_aim = _turn_toward(_gw_aim, (Vector2(low.pos) - gp).angle() if low != null else -PI / 2.0, delta * 7.0)
+		if low != null and _bc_gun_t >= 0.55:
+			_bc_gun_t = 0.0
+			_gw_flash = 0.12
+			_bc_shot(gp + Vector2.from_angle(_gw_aim) * 10.0, low, float(_weapon().damage) * damage_mult * 0.6 * _drone_mult, true, false)
+
+# GUARD WING's drone (2026-11-18): a small second drone over the Hangar pod, so the card has a body.
+# Luna's Scout picture at about 60% of the hero's drone, tinted a little gold; it bobs, turns to its
+# target, and its shots leave from it with the blaster's flash.
+const GW_W := 30.0
+var _gw_t := 0.0
+var _gw_aim := -PI / 2.0
+var _gw_flash := 0.0
+
+func _guard_pos() -> Vector2:
+	var pod := _base_slots.find("hangar")
+	return Backdrop.pod_pos(maxi(pod, 0), FIELD_W, BASE_Y) + Vector2(sin(_gw_t * 0.9) * 3.0, -50.0 + sin(_gw_t * 2.2) * 3.0)
+
+func _draw_guard() -> void:
+	if not _bcards.has("guard_wing") or not _tex.has("body_scout"):
+		return
+	var tx: Texture2D = _tex["body_scout"]
+	var h: float = GW_W * tx.get_height() / tx.get_width()
+	draw_set_transform(_guard_pos(), _gw_aim + PI / 2.0, Vector2.ONE)   # the painted drones face up
+	draw_texture_rect(tx, Rect2(-GW_W * 0.5, -h * 0.5, GW_W, h), false, Color(1.0, 0.92, 0.68))
+	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+func _draw_guard_light() -> void:   # on the light layer: a faint gold light under it (it is dark art over a dark base), and its muzzle flash
+	if not _bcards.has("guard_wing") or not _tex.has("body_scout"):
+		return
+	Backdrop.soft_glow(_fx, _guard_pos(), 26.0, Color(1.0, 0.82, 0.32, 0.28 + 0.08 * sin(_gw_t * 3.0) + 2.0 * _gw_flash))
+	if _gw_flash <= 0.0:
+		return
+	var ft: Texture2D = _fx_tex["drone_flash_blaster"]
+	var fw := 20.0
+	var fh: float = fw * ft.get_height() / ft.get_width()
+	_fx.draw_set_transform(_guard_pos() + Vector2.from_angle(_gw_aim) * 13.0, _gw_aim, Vector2.ONE)
+	_fx.draw_texture_rect(ft, Rect2(0, -fh * 0.5, fw, fh), false, Color(1.0, 0.9, 0.62, _gw_flash / 0.12))
+	_fx.draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
 # ------------------------------------------------------------------ BONDS (Rudy 2026-11-18)
 # A building on the base + its paired attack card at Cards.BOND_AT levels = a special evolution,
@@ -6639,6 +6706,20 @@ var _bonds: Array = []      # bonds taken this stage
 var _bond_t := 0.0          # Carrier Strike: seconds since its last volley
 var _rod_n := 0             # Lightning Rod: volleys since its last arc
 var _echo := false          # Arsenal Volley: the second firing is under way
+
+# A bond effect just fired: its pod blinks, at most once every `gap` seconds. True when this firing is
+# the one to show (the caller adds its own small gold flash, or one short gold text at a 4 s gap).
+const BOND_GOLD := Color(1.0, 0.82, 0.32)
+var _bond_seen := {}        # bond -> time_alive of its last sign
+var _mend_acc := 0.0        # Mending Volley: health given since its last number
+
+func _bond_sign(id: String, gap: float, ping: bool = true) -> bool:
+	if time_alive - float(_bond_seen.get(id, -99.0)) < gap:
+		return false
+	_bond_seen[id] = time_alive
+	if ping:
+		_pod_ping(String(Cards.BONDS[id].building))
+	return true
 
 func _fielded() -> Array:
 	return _base_slots.filter(func(s): return String(s) != "")
@@ -6698,7 +6779,9 @@ func _bond_rod() -> void:
 				e["burn_t"] = maxf(float(e.get("burn_t", 0.0)), 1.5)
 				e["burn_dps"] = maxf(float(e.get("burn_dps", 0.0)), (0.004 if _is_boss(e) else 0.02) * float(e.hp_max))
 			"nightmare": e["mark_t"] = maxf(float(e.get("mark_t", 0.0)), 1.5)
-	zaps.append({"a": a, "b": c, "life": 0.2, "seed": rng.randf() * 100.0})
+		_fx_add("impact", p, 24.0, 0.2, 0.0, 1.6, BOND_GOLD)
+	zaps.append({"a": a, "b": c, "life": 0.3, "seed": rng.randf() * 100.0, "col": BOND_GOLD})   # gold: the bond's arc, not a Chain Spark
+	_fx_add("nova", c, 28.0, 0.3, 0.0, 2.0, BOND_GOLD)
 	_pod_ping("reactor")
 
 # Carrier Strike (Hangar + Drone Barrage): four missiles at the toughest bugs
@@ -6713,6 +6796,7 @@ func _bond_carrier() -> void:
 		_bc_shot(from, targets[k % targets.size()], float(_weapon().damage) * damage_mult * 2.5 * _drone_mult, true, true)
 		_bond_flavour(_shard_q[-1])
 		_shard_q[-1]["ttl"] = 2.0
+	_fx_add("nova", from, 30.0, 0.35, 0.0, 2.2, BOND_GOLD)   # the launch: a gold ring off the Hangar pod
 	_pod_ping("hangar")
 
 # ------------------------------------------------------------------ CORE PULSE (2026-11-10)
