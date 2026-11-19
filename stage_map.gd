@@ -398,6 +398,65 @@ func _open_card(s: int) -> void:
 		_select(s)
 		_leave("res://hub.tscn"))
 	v.add_child(sel)
+	if not elite and Bounties.open(Progress.read(), s):
+		v.add_child(_bounty_row(s))
+
+# the stage's bounty (Bounties): its restriction, what it pays once, and the button that starts it
+func _bounty_row(s: int) -> PanelContainer:
+	var won := Bounties.done(Progress.read(), s)
+	var p := PanelContainer.new()
+	var ps := UIKit.box(UIKit.CARD_HI, Color(GOLD, 0.0 if won else 0.35), 16)
+	ps.content_margin_left = 12
+	ps.content_margin_right = 12
+	ps.content_margin_top = 10
+	ps.content_margin_bottom = 10
+	p.add_theme_stylebox_override("panel", ps)
+	var h := HBoxContainer.new()
+	h.add_theme_constant_override("separation", 10)
+	p.add_child(h)
+	var pic := TextureRect.new()
+	pic.texture = Bounties.icon_of(s)
+	pic.custom_minimum_size = Vector2(34, 34)
+	pic.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	pic.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	pic.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	pic.modulate.a = 0.5 if won else 1.0
+	h.add_child(pic)
+	var col := VBoxContainer.new()
+	col.add_theme_constant_override("separation", 2)
+	col.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	h.add_child(col)
+	col.add_child(UIKit.label("Bounty  ·  %s" % Bounties.name_of(s), 13, UIKit.SOFT if won else GOLD))
+	var line := UIKit.label(Bounties.text_of(s), 12, UIKit.SOFT if won else UIKit.TEXT)
+	line.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	col.add_child(line)
+	var rew := HBoxContainer.new()
+	rew.add_theme_constant_override("separation", 9)
+	rew.modulate.a = 0.45 if won else 1.0
+	var r := Bounties.reward(s)
+	for k in r:
+		var tex: Texture2D = UIKit.ic("ic_crystal", "ui_crystal") if String(k) == "crystals" else Materials.icon(String(k))
+		rew.add_child(UIKit.iconed(tex, str(int(r[k])), 12, UIKit.TEXT, 16.0))
+	col.add_child(rew)
+	if won:
+		var ok := UIKit.label("✓  Done", 13, Color(0.45, 0.92, 0.6))
+		ok.custom_minimum_size = Vector2(92, 0)
+		ok.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		ok.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(ok)
+		return p
+	var go := UIKit.teal_button("BOUNTY", 14)
+	go.custom_minimum_size = Vector2(92, 42)
+	go.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	go.pressed.connect(func():
+		if not Energy.try_play(self, false, s):   # it costs the stage's power tokens, like any fight
+			return
+		var d := Progress.read()   # the ask is written only once the power is paid
+		if Bounties.start(d, s):
+			Progress.write(d)
+			_leave("res://battle.tscn"))
+	h.add_child(go)
+	return p
 
 # a story note: the commander, a title, a few lines. Reading it marks it read.
 func _open_note(a: int, i: int) -> void:

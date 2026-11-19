@@ -54,6 +54,7 @@ func _initialize() -> void:
 	_check_deals()
 	_check_campaign()
 	_check_stage_intel()
+	_check_bounties()
 	_check_works()
 	_check_hints()
 	_check_hero_fight()
@@ -1434,6 +1435,36 @@ func _check_chips() -> void:
 		for cls in Arsenal.ORDER:
 			for id in Chips.OWN:
 				_expect(Chips.chip_name(id, hid, String(GearData.CLASS_ITEM[cls])) != "", "%s %s has a named %s chip" % [hid, cls, id])
+# stage bounties (bounties.gd): open on a cleared stage from 6 up, one fixed restriction a stage
+# that can bite there, a reward Progress.grant understands, paid once
+func _check_bounties() -> void:
+	var s := {"stage_unlocked": 12, "crystals": 0}
+	_expect(not Bounties.open(s, 5), "no bounty before stage %d" % Bounties.BOUNTY_FROM)
+	_expect(Bounties.open(s, 6) and Bounties.open(s, 11), "a cleared stage has a bounty")
+	_expect(not Bounties.open(s, 12), "the stage you are on has none yet")
+	var seen := {}
+	for st in range(Bounties.BOUNTY_FROM, StageData.MAX_STAGE + 1):
+		var k := Bounties.kind_of(st)
+		seen[k] = true
+		_expect(Bounties.KINDS.has(k) and k == Bounties.kind_of(st), "stage %d has one fixed kind" % st)
+		_expect(st >= int(Bounties.KINDS[k].from), "stage %d: '%s' can bite there" % [st, k])
+		_expect(Bounties.icon_of(st) != null and Bounties.name_of(st) != "" and Bounties.text_of(st).length() < 40 and not Bounties.text_of(st).contains("%s"), "stage %d: an icon, a name, one short line" % st)
+		var r := Bounties.reward(st)
+		_expect(int(r.get("crystals", 0)) > 0 and r.size() >= 3 and r.size() <= 5, "stage %d pays crystals and materials" % st)
+		for rk in r:
+			_expect(String(rk) == "crystals" or Materials.is_material(String(rk)), "stage %d reward '%s' is a material" % [st, rk])
+	_expect(seen.size() == Bounties.KINDS.size(), "every kind is used by some stage")
+	_expect(Bounties.reward(55).barrel > Bounties.reward(8).barrel and Bounties.reward(10).crystals > Bounties.reward(9).crystals, "later planets and boss stages pay more")
+	_expect(not Bounties.start(s, 12) and Bounties.take(s) == 0, "a closed bounty cannot be started")
+	_expect(Bounties.start(s, 8) and Bounties.take(s) == 8 and Bounties.take(s) == 0, "the ask is taken once")
+	var slow := Bounties.finish(s, 9, 9999.0)
+	_expect(Bounties.kind_of(9) == "swift" and not bool(slow.paid) and not Bounties.done(s, 9), "a slow win does not pay the swift bounty")
+	var a := Bounties.finish(s, 8, 100.0)
+	_expect(bool(a.paid) and Bounties.done(s, 8) and int(s.crystals) == int(Bounties.reward(8).crystals) and int(Materials.read(s).get("barrel", 0)) == int(Bounties.reward(8).barrel), "a win pays the reward")
+	var b2 := Bounties.finish(s, 8, 100.0)
+	_expect(not bool(b2.paid) and int(s.crystals) == int(Bounties.reward(8).crystals), "it pays once")
+	_expect(Bounties.waiting(s) == 5, "five of the six open bounties still wait")
+
 # what a stage throws at you (stage_intel.gd): every stage lists at least one enemy with a real
 # picture, shares add up, bosses come last, tags and suggestions stay in bounds
 func _check_stage_intel() -> void:
