@@ -50,6 +50,7 @@ func _initialize() -> void:
 	_check_welcome()
 	_check_deals()
 	_check_campaign()
+	_check_stage_intel()
 	_check_works()
 	_check_hints()
 	_check_hero_fight()
@@ -1388,3 +1389,33 @@ func _check_chips() -> void:
 		for cls in Arsenal.ORDER:
 			for id in Chips.OWN:
 				_expect(Chips.chip_name(id, hid, String(GearData.CLASS_ITEM[cls])) != "", "%s %s has a named %s chip" % [hid, cls, id])
+# what a stage throws at you (stage_intel.gd): every stage lists at least one enemy with a real
+# picture, shares add up, bosses come last, tags and suggestions stay in bounds
+func _check_stage_intel() -> void:
+	for st in range(1, StageData.MAX_STAGE + 1):
+		var es := StageIntel.enemies(st)
+		_expect(not es.is_empty(), "stage %d lists an enemy" % st)
+		var sum := 0.0
+		var boss_seen := false
+		for e in es:
+			sum += float(e.share)
+			_expect(ResourceLoader.exists(String(e.pic)) and StageIntel.tex(String(e.id)) != null, "stage %d: %s has a picture (%s)" % [st, e.id, e.pic])
+			_expect(String(e.name) != "", "stage %d: %s has a name" % [st, e.id])
+			_expect(not (boss_seen and not e.boss), "stage %d: bosses come last" % st)
+			boss_seen = boss_seen or bool(e.boss)
+		_expect(absf(sum - 1.0) < 0.001, "stage %d: shares add up to one (%f)" % [st, sum])
+		_expect(boss_seen or st % 5 != 0, "stage %d: a boss is listed on boss stages" % st)
+		var sh := StageIntel.short(st, 5)
+		_expect(sh.size() >= 1 and sh.size() <= 5, "stage %d: the Home row has one to five" % st)
+		_expect(not boss_seen or bool(sh[sh.size() - 1].boss), "stage %d: the Home row keeps the boss" % st)
+		var tg := StageIntel.tags(st)
+		_expect(tg.size() <= StageIntel.MAX_TAGS, "stage %d: at most three tags" % st)
+		for t in tg:
+			_expect(StageIntel.TAGS.has(String(t.id)) and StageIntel.ANSWERS.has(String(t.id)), "stage %d: tag %s is known" % [st, t.id])
+		var sg := StageIntel.suggest(st)
+		_expect(sg.size() <= StageIntel.MAX_SUGGEST and (tg.is_empty() or not sg.is_empty()), "stage %d: up to two suggestions" % st)
+		for id in sg:
+			_expect(Base.BUILDINGS.has(id), "stage %d: suggestion %s is a building" % [st, id])
+	for k in StageIntel.ANSWERS:
+		for id in StageIntel.ANSWERS[k]:
+			_expect(Base.BUILDINGS.has(id), "answer %s to %s is a building" % [id, k])

@@ -88,6 +88,7 @@ var _mode_tag: Label
 var _twist_box: HBoxContainer   # today's twist on the selected stage (Promotion.stage_twist)
 var _goal_btn: Button           # the next goal, one line, one tap (Goals.next)
 var _goal := {}
+var _intel_btn: Button   # what the selected stage throws at you: a row of small enemy portraits (StageIntel)
 var _weak_icon: TextureRect   # the element the stage is weak to, beside the tag
 var _stage_btn: Button
 var _std_btn: Button
@@ -610,6 +611,16 @@ func _build_home_clean() -> void:
 		_stage_btn.add_theme_stylebox_override(st, StyleBoxEmpty.new())
 	_stage_btn.pressed.connect(func(): _smooth_change_scene("res://stage_map.tscn"))   # the stage trail (the Campaign later)
 	sb.add_child(_stage_btn)
+	# what this stage throws at you: up to five small portraits, a tap opens "This stage"
+	_intel_btn = Button.new()
+	_intel_btn.name = "IntelButton"
+	_intel_btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	for st in ["normal", "hover", "focus"]:
+		_intel_btn.add_theme_stylebox_override(st, UIKit.pill(Color(UIKit.CARD, 0.6), 20, Vector2.ZERO))
+	_intel_btn.add_theme_stylebox_override("pressed", UIKit.pill(UIKit.CARD_HI, 20, Vector2.ZERO))
+	_intel_btn.pressed.connect(_intel_sheet)
+	UIKit.press_fx(_intel_btn)
+	sb.add_child(_intel_btn)
 	var ctl := HBoxContainer.new()
 	ctl.add_theme_constant_override("separation", 8)
 	ctl.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1106,6 +1117,7 @@ func _update_stage_label() -> void:
 	_stage_btn.text = StageData.stage_name(stage)
 	_stage_btn.modulate.a = 1.0 if stage <= _top_stage() else 0.5
 	_paint_twist()
+	_paint_intel()
 	if UIKit.CLEAN:
 		# no "WEAK TO" words: the element icon after the line says it (Rudy, dev209)
 		_mode_tag.text = "%s %d  ·  %s" % ["ELITE" if is_elite else "STAGE", stage, String(StageData.area(stage).name).to_upper()]
@@ -1908,3 +1920,199 @@ func _dbg_moment(id: String) -> void:
 # capture hook: the Elements chart
 func _dbg_elements() -> void:
 	ElementsChart.show(self, stage)
+# ----------------------------------------------------- what the stage throws at you (StageIntel)
+
+# one round enemy portrait: a dark circle, the picture inside, a gold edge on a boss; an enemy the
+# player has never met is a dark shape with a question mark
+func _intel_face(e: Dictionary, px: float, seen: bool) -> Control:
+	var p := Panel.new()
+	p.custom_minimum_size = Vector2(px, px)
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_theme_stylebox_override("panel", UIKit.box(Color(0.02, 0.04, 0.08, 0.92), UIKit.GOLD if e.boss else Color(1, 1, 1, 0.12), px * 0.5, 2 if e.boss else 1))
+	var tr := TextureRect.new()
+	tr.texture = StageIntel.tex(String(e.id))
+	tr.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var inset := px * 0.13
+	tr.offset_left = inset
+	tr.offset_top = inset
+	tr.offset_right = -inset
+	tr.offset_bottom = -inset
+	tr.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	tr.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	tr.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(tr)
+	if not seen:
+		tr.modulate = Color(0.16, 0.2, 0.28, 1.0)   # a dark shape: something to meet
+		var q := UIKit.title("?", int(px * 0.5), Color(1, 1, 1, 0.6), HORIZONTAL_ALIGNMENT_CENTER)
+		q.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		q.set_anchors_preset(Control.PRESET_FULL_RECT)
+		p.add_child(q)
+	return p
+
+func _intel_seen() -> Array:
+	return Array(Progress.read().get("seen_enemies", []))
+
+func _paint_intel() -> void:
+	if _intel_btn == null:
+		return
+	for c in _intel_btn.get_children():
+		c.queue_free()
+	var list := StageIntel.short(stage, 5)
+	_intel_btn.visible = not list.is_empty()
+	var seen := _intel_seen()
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 5)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.position = Vector2(5, 4)
+	for e in list:
+		row.add_child(_intel_face(e, 30.0, seen.has(e.id)))
+	var more := UIKit.label("›", 15, UIKit.SOFT)
+	more.custom_minimum_size = Vector2(12, 30)
+	more.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	row.add_child(more)
+	_intel_btn.add_child(row)
+	_intel_btn.custom_minimum_size = Vector2(list.size() * 35.0 + 12.0 + 12.0, 38)
+
+# the bottom sheet "This stage": every enemy with its share, the threat tags, the buildings that answer them
+func _intel_sheet() -> void:
+	var layer := Control.new()
+	layer.name = "IntelSheet"
+	layer.set_anchors_preset(Control.PRESET_FULL_RECT)
+	add_child(layer)
+	var dim := Button.new()
+	dim.set_anchors_preset(Control.PRESET_FULL_RECT)
+	var ds := StyleBoxFlat.new()
+	ds.bg_color = Color(0.01, 0.024, 0.055, 0.66)
+	for st in ["normal", "hover", "pressed", "focus"]:
+		dim.add_theme_stylebox_override(st, ds)
+	dim.pressed.connect(layer.queue_free)
+	layer.add_child(dim)
+	var sheet := PanelContainer.new()
+	var ss := UIKit.box(UIKit.CARD, Color(1, 1, 1, 0.06), 28)
+	ss.corner_radius_bottom_left = 0
+	ss.corner_radius_bottom_right = 0
+	ss.content_margin_left = 18
+	ss.content_margin_right = 18
+	ss.content_margin_top = 14
+	ss.content_margin_bottom = 22
+	sheet.add_theme_stylebox_override("panel", ss)
+	sheet.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	sheet.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	var slider := Control.new()
+	slider.set_anchors_preset(Control.PRESET_FULL_RECT)
+	slider.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	layer.add_child(slider)
+	slider.add_child(sheet)
+	dim.modulate.a = 0.0
+	dim.create_tween().tween_property(dim, "modulate:a", 1.0, 0.2)
+	slider.position.y = 700.0
+	slider.create_tween().tween_property(slider, "position:y", 0.0, 0.34).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", 8)
+	sheet.add_child(v)
+	v.add_child(UIKit.popup_title("This stage"))
+	v.add_child(UIKit.label("%s %d  ·  %s" % ["Elite" if mode == "Elite" else "Stage", stage, StageData.stage_name(stage)], 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+	var tags := StageIntel.tags(stage)
+	if not tags.is_empty():
+		var tr := HBoxContainer.new()
+		tr.alignment = BoxContainer.ALIGNMENT_CENTER
+		tr.add_theme_constant_override("separation", 8)
+		for t in tags:
+			tr.add_child(UIKit.chip(String(t.name), UIKit.GOLD if String(t.id) == "boss" else UIKit.CYAN))
+		v.add_child(tr)
+	var seen := _intel_seen()
+	var all := StageIntel.enemies(stage)
+	var top := 0.0
+	for e in all:
+		top = maxf(top, float(e.share))
+	var rows := VBoxContainer.new()
+	rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	rows.add_theme_constant_override("separation", 5)
+	for e in all:
+		var known: bool = seen.has(e.id)
+		var row := PanelContainer.new()
+		var rs := UIKit.box(Color(UIKit.CARD_HI, 0.45), Color(UIKit.GOLD, 0.5) if e.boss else Color(1, 1, 1, 0.04), 16, 1)
+		rs.content_margin_left = 10
+		rs.content_margin_right = 12
+		rs.content_margin_top = 6
+		rs.content_margin_bottom = 6
+		row.add_theme_stylebox_override("panel", rs)
+		var h := HBoxContainer.new()
+		h.add_theme_constant_override("separation", 10)
+		var face := _intel_face(e, 40.0, known)
+		face.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		h.add_child(face)
+		var nv := VBoxContainer.new()
+		nv.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		nv.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		nv.add_theme_constant_override("separation", 0)
+		nv.add_child(UIKit.title(String(e.name) if known else "? ? ?", 14, UIKit.TEXT if known else UIKit.SOFT))
+		var line := (String(e.line) if known else "Not met yet")
+		if e.boss and known:
+			line = "Boss. " + line
+		if line != "":
+			var ll := UIKit.label(line, 11, UIKit.SOFT)
+			ll.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			ll.custom_minimum_size = Vector2(120, 0)
+			nv.add_child(ll)
+		h.add_child(nv)
+		if e.boss:
+			var bc := UIKit.chip("x%d" % int(e.count), UIKit.GOLD)
+			bc.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			h.add_child(bc)
+		else:   # how much of the stage it is: a bar measured against the most numerous bug, and the share
+			var bar := ProgressBar.new()
+			bar.show_percentage = false
+			bar.max_value = maxf(top, 0.01)
+			bar.value = float(e.share)
+			bar.custom_minimum_size = Vector2(64, 8)
+			bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+			bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			bar.add_theme_stylebox_override("background", UIKit.pill(Color(1, 1, 1, 0.08), 4, Vector2.ZERO))
+			bar.add_theme_stylebox_override("fill", UIKit.pill(UIKit.CYAN, 4, Vector2.ZERO))
+			h.add_child(bar)
+			var pc := UIKit.label("%d%%" % maxi(roundi(float(e.share) * 100.0), 1), 11, UIKit.TEXT, HORIZONTAL_ALIGNMENT_RIGHT)
+			pc.custom_minimum_size = Vector2(34, 0)
+			h.add_child(pc)
+		row.add_child(h)
+		rows.add_child(row)
+	var sc := ScrollContainer.new()
+	sc.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	sc.custom_minimum_size = Vector2(0, minf(all.size() * 59.0, 400.0))
+	sc.add_child(rows)
+	v.add_child(sc)
+	UIKit.smooth_scroll(sc)
+	var sug := StageIntel.suggest(stage)
+	if not sug.is_empty():
+		v.add_child(UIKit.label("Good against it:", 11, UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER))
+		var gr := HBoxContainer.new()
+		gr.alignment = BoxContainer.ALIGNMENT_CENTER
+		gr.add_theme_constant_override("separation", 10)
+		for id in sug:
+			var card := PanelContainer.new()
+			card.add_theme_stylebox_override("panel", UIKit.box(Color(UIKit.CARD_HI, 0.6), Color(Base.BUILDINGS[id].col, 0.6), 16, 1))
+			var ch := HBoxContainer.new()
+			ch.add_theme_constant_override("separation", 8)
+			var bp := TextureRect.new()
+			bp.texture = Base.pic(String(id))
+			bp.custom_minimum_size = Vector2(38, 38)
+			bp.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			bp.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+			bp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			ch.add_child(bp)
+			var bn := UIKit.label(String(Base.BUILDINGS[id].name), 12, UIKit.TEXT)
+			bn.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+			bn.custom_minimum_size = Vector2(100, 0)
+			bn.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+			ch.add_child(bn)
+			card.add_child(ch)
+			gr.add_child(card)
+		v.add_child(gr)
+	var close := UIKit.ghost_button("Close", 13)
+	close.custom_minimum_size = Vector2(0, 38)
+	close.pressed.connect(layer.queue_free)
+	v.add_child(close)
+
+# capture hook (tools/dev/capture.gd CAP_CALL="_dbg_intel"): the "This stage" sheet
+func _dbg_intel() -> void:
+	_intel_sheet()
