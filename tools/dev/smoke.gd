@@ -39,6 +39,7 @@ func _initialize() -> void:
 	_check_support()
 	_check_weapons()
 	_check_perks()
+	_check_base_evo()
 	_check_ability_ups()
 	_check_links()
 	_check_season()
@@ -854,6 +855,23 @@ func _check_perks() -> void:
 	_expect(Base.perks(s) == ["armory"], "a perk needs level 5 AND a place on an open slot (%s)" % str(Base.perks(s)))
 	s["base"]["levels"]["reactor"] = 5
 	_expect(Base.perks(s) == ["armory", "reactor"], "the Reactor reaches level 5: its perk too")
+
+# building evolutions at level 10 (Base.EVOS, 2026-11-18)
+func _check_base_evo() -> void:
+	_expect(Base.EVO_LEVEL == Base.MAX_LEVEL, "a building evolves at its top level")
+	var names: Array = []
+	for id in Base.ORDER:
+		_expect(Base.EVOS.has(id) and Base.evo_name(String(id)) != "" and Base.evo_text(String(id)) != "", "building %s has an evolution with a name and a line" % id)
+		_expect(not names.has(Base.evo_name(String(id))), "evolution names are all different (%s)" % Base.evo_name(String(id)))
+		names.append(Base.evo_name(String(id)))
+		_expect(Base.evo_text(String(id)) != Base.perk_text(String(id)), "%s: the evolution is not its perk again" % id)
+	var s := {"stage_unlocked": 20, "base": {"slots": ["armory", "reactor", "", ""], "levels": {"armory": 9, "reactor": 10, "radar": 10}}}
+	_expect(not Base.has_evo(s, "armory") and not Base.has_evo(Base.read(s), "armory"), "no evolution at level 9")
+	_expect(Base.has_evo(s, "reactor") and Base.has_evo(Base.read(s), "reactor"), "evolved at level 10 (a save or the read base)")
+	_expect(not Base.has_evo(s, "medbay"), "not for a building you do not own")
+	_expect(Base.evos(s) == ["reactor"], "in the fight: level 10 AND a place on an open slot (%s)" % str(Base.evos(s)))
+	s["base"]["levels"]["armory"] = 10
+	_expect(Base.has_evo(s, "armory") and Base.evos(s) == ["armory", "reactor"], "the Armory reaches level 10: evolved too")
 
 func _check_ability_ups() -> void:
 	var s := {"pilot_xp": 0, "hero": {"selected": "rook", "owned": ["rook", "frost"], "levels": {}, "def": {}, "tiers": {}, "shards": {"rook": 40, "frost": 3}, "wing": "frost", "ability": {"frost": 2}}}

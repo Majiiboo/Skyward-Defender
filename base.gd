@@ -206,6 +206,43 @@ static func perks(save: Dictionary) -> Array:
 			out.append(String(id))
 	return out
 
+# LEVEL 10 EVOLUTIONS (2026-11-18): at EVO_LEVEL a building EVOLVES: a second, bigger milestone after
+# the level-5 perk, earned here in the menu (never as a card in the fight). Each is one thing you can
+# SEE in a fight, different in kind from the building's numbers and its perk. The names are the ones
+# Cards.BEVO carried while buildings were cards. The fight side is battle.gd, block BUILDING EVOLUTIONS.
+const EVO_LEVEL := 10
+const EVOS := {
+	"shield_gen": {"name": "Aegis Dome",     "text": "When the shield breaks it bursts: bugs near the base are stunned 3 s and lose 20% health"},
+	"repair_bay": {"name": "Nanoforge",      "text": "A standing shield mends itself: 1% every 4 s after 8 s without a hit"},
+	"armory":     {"name": "War Forge",      "text": "Every 12th hero shot is a sure crit"},
+	"medbay":     {"name": "Trauma Ward",    "text": "Once a wave, a hero under 30% health gets 15% back"},
+	"plating":    {"name": "Bastion Plate",  "text": "The first hit on the base in every wave does nothing"},
+	"hangar":     {"name": "Carrier Deck",   "text": "Your gun drone fires 25% faster"},
+	"reactor":    {"name": "Overdrive Core", "text": "The Core Pulse stands 2 s longer"},
+	"radar":      {"name": "Deep Scan",      "text": "Runners are scanned as they arrive: they come in at half health"},
+	"refinery":   {"name": "Mother Lode",    "text": "Every 10th coin you pick up is worth five"},
+}
+
+static func evo_name(id: String) -> String:
+	return String(Dictionary(EVOS.get(id, {})).get("name", ""))
+
+static func evo_text(id: String) -> String:
+	return String(Dictionary(EVOS.get(id, {})).get("text", ""))
+
+# `src` = a save, or the dict Base.read returns (it has "levels")
+static func has_evo(src: Dictionary, id: String) -> bool:
+	var b: Dictionary = src if src.has("levels") and src.has("slots") else read(src)
+	return EVOS.has(id) and b.levels.has(id) and level(b, id) >= EVO_LEVEL
+
+# the evolutions in force this fight: evolved buildings standing on open slots
+static func evos(save: Dictionary) -> Array:
+	var out: Array = []
+	var b := read(save)
+	for id in stats(save).on:
+		if has_evo(b, String(id)):
+			out.append(String(id))
+	return out
+
 # LINKS (2026-11-10): two buildings that work together. Field both (on open slots, any two) and
 # the link is live: one more bonus on top of what each gives alone. Every building has at least
 # one partner, so "which four" is also "which pairs". The fight draws a gold line between linked pods.

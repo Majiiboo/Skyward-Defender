@@ -1001,6 +1001,7 @@ func _process(delta: float) -> void:
 	prev_soldier_y = soldier_pos.y
 	vy_smooth = lerpf(vy_smooth, vy, 0.15)
 	_bc_tick(delta)
+	_evo_tick(delta)
 	# no free regeneration any more: only the Shield Recharge card (2.5 s after the last hit)
 	if _regen_every > 0.0 and pilot_hp > 0.0:   # Field Medic: a slow trickle of health, faster with each level
 		_regen_t += delta
@@ -1416,7 +1417,7 @@ func _fire(origin: Vector2, dir: Vector2, target_id: int = -2, pierce: bool = fa
 		# Heavy Bolts overcharged: every 6th bolt is a big one that hits 3x
 		var crit: bool = (_crit6 and _shot_n % 6 == 0) or (int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0)   # the Pistol's charged shot
 		var w_charged: bool = int(w.get("charge", 0)) > 0 and _shot_n % int(w.charge) == 0 and not (_crit6 and _shot_n % 6 == 0)   # the weapon's own charged bolt
-		var lucky: bool = rng.randf() < _crit_rate   # a critical hit (crit rate / crit damage)
+		var lucky: bool = rng.randf() < _crit_rate or _evo_forge()   # a critical hit (crit rate / crit damage); War Forge: every 12th for sure
 		# Railstorm fusion: every 4th bolt is a rail shot that pierces the whole line
 		var rail: bool = _railstorm and _shot_n % 4 == 0
 		var rail_gun: bool = w.get("rail", false)   # Nightmare railgun: every bolt pierces
@@ -2352,7 +2353,7 @@ func _update_gems(delta: float) -> void:
 			_fx_add("spark", g.pos, 26.0, 0.25, 0.0, 1.8, Parts.KINDS[g.part].color)
 			continue
 		if d < 16.0 and g.get("coin", false):
-			_coins_f += float(g.get("value", 1.0)) * _coin_mult
+			_coins_f += float(g.get("value", 1.0)) * _coin_mult * _evo_lode(g)   # Mother Lode: every 10th is worth five
 			Sfx.play_rising("coin")
 			coins_earned = int(_coins_f)
 			_fx_add("spark", g.pos, 18.0, 0.2, 0.0, 1.7, Color(1.0, 0.85, 0.35))
@@ -2406,6 +2407,8 @@ func _hurt_base(amount: float) -> void:
 		_pulse_blocked += 1
 		_pulse_flash = maxf(_pulse_flash, 0.35)
 		return
+	if _evo_plate():   # Bastion Plate (Hull Plating Lv.10): the first hit of a wave does nothing
+		return
 	amount *= (1.0 - _base_dr) * _base_hit()   # gear milestones (Chest); bugs hit the base harder (dev272)
 	if (_bcards.has("reflective_barrier") or _bonds.has("mirror_dome")) and shield > 0.0:
 		_bc_reflect()
@@ -2418,6 +2421,8 @@ func _hurt_base(amount: float) -> void:
 	if shield > 0.0:
 		Sfx.play("shield")
 		shield = maxf(shield - amount, 0.0)
+		if shield <= 0.0:
+			_evo_aegis()   # Aegis Dome (Shield Generator Lv.10): the breaking shield bursts
 		if shield <= 0.0 and _base_perks.has("shield_gen") and not _dome_used:   # Shield Generator Lv.5: it comes back once
 			_dome_used = true
 			_pod_ping("shield_gen")
@@ -3694,7 +3699,7 @@ func _update_drone(delta: float) -> void:
 		_drone_aim = lerp_angle(_drone_aim, -PI / 2.0, delta * 3.0)
 		return
 	_drone_aim = lerp_angle(_drone_aim, (Vector2(best.pos) - p).angle(), minf(1.0, delta * 10.0))
-	_drone_cd -= delta * float(body.rate) * DroneData.rate_bonus(int(_drone.level))
+	_drone_cd -= delta * float(body.rate) * DroneData.rate_bonus(int(_drone.level)) * _evo_drone_rate
 	if _drone_cd > 0.0:
 		return
 	_drone_cd = float(pod.every)
@@ -6089,6 +6094,7 @@ func _apply_base(sv: Dictionary) -> void:
 	_base_perks = []
 	_dome_used = false
 	_bld_menu = {}
+	_evo_reset()
 	for i in Base.SLOTS:
 		_base_slots[i] = ""
 		_base_levels[i] = 0
@@ -6111,6 +6117,8 @@ func _apply_base(sv: Dictionary) -> void:
 		_bld_apply(id, 1.0)
 		if lv >= Base.PERK_LEVEL:
 			_bld_perk(id)
+		if lv >= Base.EVO_LEVEL:
+			_bld_evolve(id)
 	_bld_links()
 	shield = shield_max   # the fight starts with everything full
 	hull = hull_max
@@ -6180,6 +6188,125 @@ func _bld_links() -> void:
 			"drone_bay": _drone_mult *= 1.2
 			"capacitor": _pulse_cd_mult = 0.75
 			"prospector": _coin_mult *= 1.1
+
+# ------------------------------------------------------------------ BUILDING EVOLUTIONS (Base.EVOS, 2026-11-18)
+# A building levelled to Base.EVO_LEVEL (10) on the Base page is EVOLVED: one more thing it does in the
+# fight, on top of its numbers and its level-5 perk. Earned in the menu, never a card. Its pod wears a
+# slow ring of light (Backdrop pd "evo"). The numbers are first guesses.
+const EVO_AEGIS_REACH := 300.0   # Aegis Dome: bugs this far above the base line or lower are caught in the burst
+const EVO_FORGE_EVERY := 12      # War Forge: every Nth hero shot is a sure crit
+const EVO_LODE_EVERY := 10       # Mother Lode: every Nth coin picked up...
+const EVO_LODE_MULT := 5.0       # ...is worth this many
+var _bld_evo: Array = []         # the evolved buildings standing on the base this fight
+var _evo_drone_rate := 1.0       # Carrier Deck: the gun drone fires this much faster
+var _evo_pulse := 0.0            # Overdrive Core: the Core Pulse stands this much longer
+var _evo_plate_wave := -1        # Bastion Plate: the wave whose first hit it has already swallowed
+var _evo_ward_wave := -1         # Trauma Ward: the wave it has already been used in
+var _evo_mend_t := 0.0           # Nanoforge: seconds toward the next 1%
+var _evo_coin_n := 0             # Mother Lode: coins picked up this stage
+var _evo_forge_ping := -9.0      # War Forge: when its pod last flashed (a rifle would flash it without end)
+
+func _evo_reset() -> void:
+	_bld_evo = []
+	_evo_drone_rate = 1.0
+	_evo_pulse = 0.0
+	_evo_plate_wave = -1
+	_evo_ward_wave = -1
+	_evo_mend_t = 0.0
+	_evo_coin_n = 0
+	_evo_forge_ping = -9.0
+
+# called from _apply_base for a fielded building at level 10
+func _bld_evolve(id: String) -> void:
+	if _bld_evo.has(id) or not Base.EVOS.has(id):
+		return
+	_bld_evo.append(id)
+	match id:
+		"hangar": _evo_drone_rate = 1.25
+		"reactor": _evo_pulse = 2.0
+
+# Aegis Dome: the shield just broke. Bugs near the base are stunned 3 s and lose a fifth of their
+# health (a boss is only slowed).
+func _evo_aegis() -> void:
+	if not _bld_evo.has("shield_gen"):
+		return
+	_pod_ping("shield_gen")
+	var eye := Backdrop.core_eye(FIELD_W, BASE_Y)
+	for e in enemies:
+		if e.pos.y < BASE_Y - EVO_AEGIS_REACH or not _can_hurt(e):
+			continue
+		if _is_boss(e):
+			e.slow = 0.4
+			e.slow_t = 3.0
+			continue
+		e.freeze_t = maxf(float(e.get("freeze_t", 0.0)), 3.0)
+		var dmg: float = 0.2 * float(e.hp_max)
+		e.hp -= dmg
+		e.hit_t = HIT_FLINCH_T
+		_count_dmg("base", dmg, e)
+	_fx_add("nova", eye, 340.0, 0.7, 0.0, 2.6, Color(0.31, 0.88, 1.0))
+	_float_text(eye + Vector2(0, -DOME_RY - 52.0), "AEGIS BURST", Color(0.5, 0.92, 1.0), true)
+	shake = maxf(shake, 0.5)
+
+# Bastion Plate: true = this hit on the base is the first of its wave and does nothing
+func _evo_plate() -> bool:
+	if not _bld_evo.has("plating") or _evo_plate_wave == wave_index:
+		return false
+	_evo_plate_wave = wave_index
+	_pod_ping("plating")
+	_float_text(Vector2(FIELD_W * 0.5, BASE_Y - DOME_RY - 16.0), "PLATED", Color(0.82, 0.87, 0.96), true)
+	Sfx.play("shield", 1.3)
+	return true
+
+# War Forge: true on every 12th hero shot (it is then a sure crit)
+func _evo_forge() -> bool:
+	if not _bld_evo.has("armory") or _shot_n % EVO_FORGE_EVERY != 0:
+		return false
+	if time_alive - _evo_forge_ping > 2.0:
+		_evo_forge_ping = time_alive
+		_pod_ping("armory")
+	return true
+
+# Mother Lode: what this coin pickup is worth (x5 on every 10th)
+func _evo_lode(g: Dictionary) -> float:
+	if not _bld_evo.has("refinery"):
+		return 1.0
+	_evo_coin_n += 1
+	if _evo_coin_n % EVO_LODE_EVERY != 0:
+		return 1.0
+	_pod_ping("refinery")
+	_float_text(Vector2(g.pos) + Vector2(0, -18), "x%d" % int(EVO_LODE_MULT), Color(1.0, 0.85, 0.35))
+	return EVO_LODE_MULT
+
+# every frame: Nanoforge, Trauma Ward, Deep Scan
+func _evo_tick(delta: float) -> void:
+	if _bld_evo.is_empty() or _preview or game_over or stage_cleared:
+		return
+	# Nanoforge: a standing shield mends itself, 1% every 4 s, once no hit has landed for 8 s
+	if _bld_evo.has("repair_bay") and shield > 0.0 and shield < shield_max and hit_t > 8.0:
+		_evo_mend_t += delta
+		if _evo_mend_t >= 4.0:
+			_evo_mend_t = 0.0
+			shield = minf(shield + shield_max * 0.01, shield_max)
+			_pod_ping("repair_bay")
+	else:
+		_evo_mend_t = 0.0
+	# Trauma Ward: once a wave, a hero under 30% health gets 15% back
+	if _bld_evo.has("medbay") and _evo_ward_wave != wave_index and pilot_hp > 0.0 and pilot_hp < pilot_hp_max * 0.3:
+		_evo_ward_wave = wave_index
+		var back: float = roundf(pilot_hp_max * 0.15)
+		pilot_hp = minf(pilot_hp + back, pilot_hp_max)
+		_pod_ping("medbay")
+		_fx_add("nova", soldier_pos, 70.0, 0.4, 0.0, 1.6, Color(1.0, 0.45, 0.5))
+		_float_text(soldier_pos + Vector2(0, -56), "TRAUMA WARD +%d" % int(back), Color(1.0, 0.6, 0.65), true)
+	# Deep Scan: a runner is scanned as it arrives and comes in at half health
+	if _bld_evo.has("radar"):
+		for e in enemies:
+			if e.has("runner") and not e.has("scanned"):
+				e.scanned = true
+				e.hp = float(e.hp) * 0.5
+				_pod_ping("radar")
+				_float_text(Vector2(e.pos) + Vector2(0, 26), "SCANNED", Color(0.5, 1.0, 0.78))
 
 # With the turrets gone the hero does all the shooting. The turrets did nothing on the first
 # stages and about a third of the damage from planet 3 on (16 g sweeps), so bug health comes down by
@@ -6299,6 +6426,7 @@ func _draw_core_base() -> void:
 		var id: String = _base_slots[i]
 		var pd := {"open": _base_open[i], "level": _base_levels[i], "flash": 1.0 - (time_alive - float(_pod_ping_t[i])) / 0.7}
 		pd["gold"] = id != "" and _bc_of.has(id)
+		pd["evo"] = id != "" and _bld_evo.has(id)
 		if id != "":
 			pd["col"] = Color(1.0, 0.35, 0.3) if _pod_held(i) else Base.BUILDINGS[id].col
 			pd["tex"] = _tex.get("bld_" + id)
@@ -6564,7 +6692,7 @@ func _use_pulse() -> void:
 	if _pulse_t > 0.0 or paused or picking or game_over or stage_cleared or _outro_t >= 0.0:
 		return
 	_pulse_t = PULSE_CD * _pulse_cd_mult
-	_pulse_live = PULSE_T + _pulse_bonus
+	_pulse_live = PULSE_T + _pulse_bonus + _evo_pulse
 	_pulse_flash = 1.0
 	_buzz(55)
 	_ai_pulse = 1.0

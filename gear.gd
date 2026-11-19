@@ -4348,6 +4348,11 @@ func _base_card(data: Dictionary, b: Dictionary) -> PanelContainer:
 	var pk := UIKit.label(("Perk: " if has_pk else "At Lv.%d: " % Base.PERK_LEVEL) + Base.perk_text(id), 12, UIKit.GOLD if has_pk else UIKit.SOFT)
 	pk.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	nv.add_child(pk)
+	# its level-10 evolution (Base.EVOS): the same pattern, a promise in grey, gold once earned
+	var has_ev: bool = own and Base.has_evo(b, id)
+	var ev := UIKit.label(("%s: %s" % [Base.evo_name(id), Base.evo_text(id)]) if has_ev else ("At Lv.%d: %s" % [Base.EVO_LEVEL, Base.evo_name(id)]), 12, UIKit.GOLD if has_ev else UIKit.SOFT)
+	ev.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	nv.add_child(ev)
 	# who it links with (Base.LINKS): gold when both are fielded
 	var live_l: Array = Base.links(data)
 	for lk in Base.links_of(id):
@@ -4421,8 +4426,17 @@ func _on_base_level(id: String) -> void:
 	coins = int(data.get("coins", 0))
 	Sfx.play("upgrade")
 	Progress.bump("turret_upgrades")
-	_milestone_toast("%s Lv.%d: %s" % [String(Base.BUILDINGS[id].name), Base.level(b, id), Base.text(id, Base.level(b, id))])
+	if Base.level(b, id) >= Base.EVO_LEVEL and Base.EVOS.has(id):   # level 10: the building evolves, with the full-screen moment
+		Moment.show(self, {"title": "EVOLVED", "text": "%s\n%s" % [Base.evo_name(id), Base.evo_text(id)], "tex": Base.pic(id), "col": Base.BUILDINGS[id].col, "chip": String(Base.BUILDINGS[id].name)})
+	else:
+		_milestone_toast("%s Lv.%d: %s" % [String(Base.BUILDINGS[id].name), Base.level(b, id), Base.text(id, Base.level(b, id))])
 	_refresh_base()
+
+# capture hook (CAP_CALL="_dbg_base_evo|<id>"): the EVOLVED moment for a building, without paying
+func _dbg_base_evo(id: String = "shield_gen") -> void:
+	b_focus = id
+	_refresh_base()
+	Moment.show(self, {"title": "EVOLVED", "text": "%s\n%s" % [Base.evo_name(id), Base.evo_text(id)], "tex": Base.pic(id), "col": Base.BUILDINGS[id].col, "chip": String(Base.BUILDINGS[id].name)})
 
 # the unlock moment (moment.gd) for something built here
 func _rarity_fx_plain(who: String, tex: Texture2D, col: Color, chip: String, line: String) -> void:
