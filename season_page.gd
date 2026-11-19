@@ -116,7 +116,13 @@ func _fill() -> void:
 		go.pressed.connect(_on_claim)
 		v.add_child(go)
 	elif not prem:
-		var up := UIKit.gold_button("UNLOCK PREMIUM  ·  %d crystals" % Season.PREMIUM_COST, 15)
+		var up: Button
+		if DevTools.on or int(d.get("crystals", 0)) >= Season.PREMIUM_COST:
+			up = UIKit.gold_button("UNLOCK PREMIUM  ·  %d crystals" % Season.PREMIUM_COST, 15)
+		else:   # a price you cannot pay: a dark button, the words in red (it still answers a tap)
+			up = UIKit.ghost_button("UNLOCK PREMIUM  ·  %d crystals" % Season.PREMIUM_COST, 15)
+			for cn in ["font_color", "font_hover_color", "font_pressed_color"]:
+				up.add_theme_color_override(cn, Color(1.0, 0.55, 0.55))
 		up.custom_minimum_size = Vector2(0, 52)
 		up.pressed.connect(_on_premium)
 		v.add_child(up)

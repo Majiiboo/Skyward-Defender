@@ -151,6 +151,13 @@ func _ready() -> void:
 	Progress.write(ws)
 	# WHAT IS NEW (WhatsNew): once per build, a short list of what changed and where it is
 	var news: bool = back.is_empty() and WhatsNew.due(ws)
+	# NEVER TWO SHEETS IN A ROW (Rudy 2026-11-18): when What is new or Welcome back takes this visit,
+	# a stage offer that was due is not saved up for the next one: it goes straight to
+	# Store > Offers > Stage, with a red dot on the Store tab (Progress.attention)
+	if (news or not back.is_empty()) and StageOffers.due(ws) > 0:
+		StageOffers.mark_seen(ws, StageOffers.due(ws))
+		ws["stage_offer_dot"] = true
+		Progress.write(ws)
 	if news:
 		WhatsNew.mark(ws)
 		Progress.write(ws)

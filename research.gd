@@ -34,7 +34,7 @@ static func open(save: Dictionary) -> bool:
 	return DevTools.on or int(save.get("stage_unlocked", 1)) > RESEARCH_FROM
 
 static func read(save: Dictionary) -> Dictionary:
-	var out := {"levels": {}, "active": "", "done_at": 0}
+	var out := {"levels": {}, "active": "", "done_at": 0, "last": ""}
 	var r = save.get("research", {})
 	if typeof(r) != TYPE_DICTIONARY:
 		return out
@@ -43,10 +43,37 @@ static func read(save: Dictionary) -> Dictionary:
 		for id in lv:
 			if PROJECTS.has(id):
 				out.levels[id] = clampi(int(lv[id]), 0, MAX_LEVEL)
+	if PROJECTS.has(String(r.get("last", ""))):
+		out.last = String(r.last)
 	if PROJECTS.has(String(r.get("active", ""))):
 		out.active = String(r.active)
 		out.done_at = int(r.get("done_at", 0))
 	return out
+
+# THE ONE GOLD BUTTON (Rudy 2026-11-18): of the projects that can start now, the one the page
+# suggests: the project you ran last (carry on down that path), else the cheapest when one is
+# cheaper than every other. "" = no suggestion (a tie on a fresh lab: we do not pick for the player).
+static func suggested(save: Dictionary, r: Dictionary) -> String:
+	var can: Array = []
+	for id in ORDER:
+		if why_not_start(save, r, String(id)) == "":
+			can.append(String(id))
+	if can.is_empty():
+		return ""
+	if can.has(String(r.get("last", ""))):
+		return String(r.last)
+	var best := ""
+	var low := -1
+	var tie := false
+	for id in can:
+		var c := cost(level(r, String(id)))
+		if low < 0 or c < low:
+			low = c
+			best = String(id)
+			tie = false
+		elif c == low:
+			tie = true
+	return "" if tie else best
 
 static func level(r: Dictionary, id: String) -> int:
 	return int(r.levels.get(id, 0))
@@ -89,6 +116,7 @@ static func start(save: Dictionary, id: String) -> String:
 	if not DevTools.on:
 		save["coins"] = int(save.get("coins", 0)) - cost(level(r, id))
 	r.active = id
+	r.last = id
 	r.done_at = now() + time_s(level(r, id))
 	save["research"] = r
 	return ""

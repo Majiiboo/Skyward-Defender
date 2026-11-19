@@ -5019,7 +5019,7 @@ func _chip_sheet(wlayer: Control, hid: String, item: String, slot: int, pick: St
 		elif lack != "":
 			var bw := Chips.why_not_buy(data, id) if general else lack
 			c.note = ("St.%d" % int(Chips.RARITY[Chips.rarity_of(id)].stage)) if bw.begins_with("Clear") else (UIKit.num(Chips.cost(id)) if general else lack.replace("Weapon ", ""))
-			c.note_col = UIKit.GOLD if general and bw == "" else UIKit.MUTED
+			c.note_col = UIKit.GOLD if general and bw == "" else (SHORT if general and bw.ends_with("coins") else UIKit.MUTED)
 			c.note_tex = load("res://icons/ui_padlock.png") if (bw.begins_with("Clear") or not general) else UIKit.ic("ic_coin")
 		c.pressed.connect(func(): _chip_sheet(wlayer, hid, item, slot, id))
 		grid.add_child(c)

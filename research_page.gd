@@ -132,14 +132,19 @@ func _project(id: String, r: Dictionary) -> Button:
 	var maxed: bool = lv >= Research.MAX_LEVEL
 	var why := Research.why_not_start(d, r, id)
 	var can: bool = why == ""
+	var gold: bool = can and Research.suggested(d, r) == id   # one gold button a page: the suggested one
+	var busy: bool = String(r.active) != "" and not running   # the lab is at work on another project
+	var short: bool = not can and not busy and not maxed and not running   # only the coins are missing
 	var b := Button.new()
 	b.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	b.custom_minimum_size = Vector2(0, 166)   # room for a two-line "Next:" (the button sat on the card edge at 150)
 	var edge := Color(1, 1, 1, 0.05)
 	if running:
 		edge = UIKit.CYAN
-	elif can:
+	elif gold:
 		edge = Color(UIKit.GOLD, 0.6)
+	elif can:
+		edge = Color(UIKit.CYAN, 0.35)
 	var nb := UIKit.box(Color(UIKit.CARD_HI, 0.55), edge, 20, 1)
 	for st in ["normal", "hover", "disabled"]:
 		b.add_theme_stylebox_override(st, nb)
@@ -194,15 +199,34 @@ func _project(id: String, r: Dictionary) -> Button:
 	var state := PanelContainer.new()
 	state.custom_minimum_size = Vector2(0, 30)
 	state.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD if can else Color(UIKit.CARD, 0.9), 12, Vector2(6, 0)))
+	if gold:
+		state.add_theme_stylebox_override("panel", UIKit.pill(UIKit.GOLD, 12, Vector2(6, 0)))
+	elif can:   # ready to start: a dark pill with a thin cyan edge
+		var rs := UIKit.box(Color(UIKit.CARD, 0.9), Color(UIKit.CYAN, 0.8), 12, 1)
+		rs.content_margin_left = 6.0
+		rs.content_margin_right = 6.0
+		state.add_theme_stylebox_override("panel", rs)
+	else:
+		state.add_theme_stylebox_override("panel", UIKit.pill(Color(UIKit.CARD, 0.9), 12, Vector2(6, 0)))
 	var st_text := "Finished" if maxed else ("Running" if running else ("%s  ·  %s" % [UIKit.num(Research.cost(lv)), Research.time_text(Research.time_s(lv))]))
-	var sl := UIKit.title(st_text, 12, UIKit.GOLD_INK if can else UIKit.SOFT, HORIZONTAL_ALIGNMENT_CENTER)
+	var ink := UIKit.SOFT
+	if gold:
+		ink = UIKit.GOLD_INK
+	elif can:
+		ink = UIKit.TEXT
+	elif short:
+		ink = Color(1.0, 0.55, 0.55)   # a price you cannot pay reads red, everywhere
+	elif running:
+		ink = UIKit.CYAN
+	var sl := UIKit.title(st_text, 12, ink, HORIZONTAL_ALIGNMENT_CENTER)
 	sl.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	state.add_child(sl)
 	bv.add_child(state)
 	b.add_child(bv)
 	b.pressed.connect(func(): _on_start(id))
 	UIKit.press_fx(b)
+	if busy and not maxed:
+		b.modulate = Color(1, 1, 1, 0.5)   # one project at a time: the others step back
 	return b
 
 func _on_start(id: String) -> void:

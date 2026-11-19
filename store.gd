@@ -328,7 +328,7 @@ func _fill() -> void:
 	var pack_free := false
 	for p in PACKS_FREE:
 		pack_free = pack_free or free_left_s(d, "pack_" + String(p.id), int(p.every)) == 0
-	UIKit.tab_dots(_tabs_row, [chest_free or bool(Progress.attend(d).claimable), pack_free or Spin.free_ready(d), false])
+	UIKit.tab_dots(_tabs_row, [chest_free or bool(Progress.attend(d).claimable), pack_free or Spin.free_ready(d) or bool(d.get("stage_offer_dot", false)), false])
 	match tab:
 		0: _fill_main()
 		1: _fill_offers2()
@@ -1693,6 +1693,9 @@ func _chest_card(tier: String, mats: Dictionary) -> Button:
 		act.icon = UIKit.ic("ic_crystal", "ui_crystal")
 		act.add_theme_constant_override("icon_max_width", 20)
 		act.add_theme_font_override("font", UIKit.title_font())
+		if not DevTools.on and int(d.get("crystals", 0)) < int(c.crystals):   # cannot pay: the number in red
+			for cn in ["font_color", "font_hover_color", "font_pressed_color"]:
+				act.add_theme_color_override(cn, Color(1.0, 0.55, 0.55))
 	act.custom_minimum_size = Vector2(0, 42)
 	var open_how := how
 	act.pressed.connect(func(): _open_key_chest(tier, open_how))
@@ -1706,7 +1709,7 @@ func _chest_card(tier: String, mats: Dictionary) -> Button:
 func _fill_offers2() -> void:
 	var pack_ready := func(id: String, every: int) -> bool:
 		return free_left_s(d, "pack_" + id, every) == 0
-	var dots: Array = [pack_ready.call("daily", DAY_S) or Spin.free_ready(d), pack_ready.call("weekly", 7 * DAY_S), pack_ready.call("monthly", 30 * DAY_S), false]
+	var dots: Array = [pack_ready.call("daily", DAY_S) or Spin.free_ready(d), pack_ready.call("weekly", 7 * DAY_S), pack_ready.call("monthly", 30 * DAY_S), bool(d.get("stage_offer_dot", false)) and _offers_tab != 3]
 	_offers_tab = clampi(_offers_tab, 0, 3)
 	_page.add_child(UIKit.sub_tabs(["Daily", "Weekly", "Monthly", "Stage"], _offers_tab, func(i): _offers_tab = i; _fill(), dots))
 	match _offers_tab:
@@ -1753,6 +1756,9 @@ func _fill_offers2() -> void:
 					get_tree().change_scene_to_file("res://season_page.tscn"))
 			g.add_child(ss)
 		3:
+			if bool(d.get("stage_offer_dot", false)):   # seen: the red dot that stood in for the Home sheet goes
+				d.erase("stage_offer_dot")
+				Progress.write(d)
 			var list := StageOffers.stages(d)
 			if list.is_empty():
 				var e := _small("Clear stage %d to open your first stage offer.\nEvery fifth stage opens one, and it waits here until you buy it." % StageOffers.EVERY)
